@@ -140,3 +140,18 @@ Before implementing a task:
 - Keep implementations simple and maintainable.
 - Do not modify unrelated files.
 - Explain important architectural decisions.
+
+# Git Policy
+
+Git operations are performed exclusively by the developer.
+
+The AI must never:
+
+- Commit
+- Push
+- Pull
+- Merge
+- Rebase
+- Create or switch branches
+- Stage files
+- Modify Git history
