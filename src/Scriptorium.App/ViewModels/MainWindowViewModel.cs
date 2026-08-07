@@ -1,15 +1,25 @@
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Services;
 
 namespace Scriptorium.App.ViewModels;
 
 public sealed class MainWindowViewModel : ViewModelBase
 {
-    private string _welcomeMessage = "Welcome to Scriptorium!";
+    private readonly ILogger<MainWindowViewModel> _logger;
+    private string _welcomeMessage;
     private string _statusMessage = "Ready";
 
-    public MainWindowViewModel()
+    public MainWindowViewModel(
+        IApplicationInfoService applicationInfoService,
+        ILogger<MainWindowViewModel> logger)
     {
+        ArgumentNullException.ThrowIfNull(applicationInfoService);
+        ArgumentNullException.ThrowIfNull(logger);
+
+        _logger = logger;
+        _welcomeMessage = $"Welcome to {applicationInfoService.ApplicationName}!";
         UpdateWelcomeMessageCommand = new RelayCommand(UpdateWelcomeMessage);
         UpdateWelcomeMessageAsyncCommand = new AsyncRelayCommand(UpdateWelcomeMessageAsync);
     }
@@ -34,6 +44,7 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         WelcomeMessage = "The welcome message was updated by a command.";
         StatusMessage = "Synchronous command completed.";
+        _logger.LogInformation("The welcome message was updated synchronously.");
     }
 
     private async Task UpdateWelcomeMessageAsync()
@@ -42,5 +53,6 @@ public sealed class MainWindowViewModel : ViewModelBase
         await Task.Delay(TimeSpan.FromSeconds(1));
         WelcomeMessage = "The welcome message was updated asynchronously.";
         StatusMessage = "Asynchronous command completed.";
+        _logger.LogInformation("The welcome message was updated asynchronously.");
     }
 }
