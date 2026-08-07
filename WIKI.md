@@ -43,6 +43,35 @@ Scriptorium
 
 ---
 
+## Solution Structure
+
+The solution is split into four projects so application dependencies point inward:
+
+```
+Scriptorium.App (WPF UI and composition root)
+    -> Scriptorium.Infrastructure (data access implementations)
+    -> Scriptorium.Core (domain models and service abstractions)
+
+Scriptorium.Infrastructure
+    -> Scriptorium.Core
+
+Scriptorium.Tests
+    -> Scriptorium.Core
+```
+
+| Project | Responsibility | Main namespaces/folders |
+| --- | --- | --- |
+| `Scriptorium.App` | WPF presentation and application composition. | `Scriptorium.App.Views`, `ViewModels`, `Resources`, `Assets`, `Helpers` |
+| `Scriptorium.Core` | Domain models and business-service abstractions. It has no dependency on UI or data access. | `Scriptorium.Core.Models`, `Services` |
+| `Scriptorium.Infrastructure` | Persistence and external infrastructure implementations. | `Scriptorium.Infrastructure.Data`, `Repositories` |
+| `Scriptorium.Tests` | Automated tests for Core behavior; it does not reference the UI. | `Scriptorium.Tests` |
+
+Views contain presentation only. ViewModels own UI state and coordinate Core services. Repository contracts and domain models belong in Core; their concrete data-access implementations belong in Infrastructure. `Scriptorium.App` is the only project permitted to reference both UI-facing and infrastructure layers, which keeps dependency wiring at the composition root.
+
+The initial Tests project contains no test framework dependency because no tests have been introduced yet; add one together with the first test suite.
+
+---
+
 # Technology Stack
 
 | Layer                | Technology                               |

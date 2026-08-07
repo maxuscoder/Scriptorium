@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace Scriptorium;
+namespace Scriptorium.App.Views;
 
 public partial class MainWindow : Window
 {

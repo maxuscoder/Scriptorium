@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <RootNamespace>Scriptorium.App</RootNamespace>
+    <AssemblyName>Scriptorium.App</AssemblyName>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scriptorium.Core\Scriptorium.Core.csproj" />
+    <ProjectReference Include="..\Scriptorium.Infrastructure\Scriptorium.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
