@@ -2,10 +2,11 @@ using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
+using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.ViewModels;
 
-public sealed class MainWindowViewModel : ViewModelBase
+public sealed class MainWindowViewModel : PageViewModel
 {
     private readonly ILogger<MainWindowViewModel> _logger;
     private string _welcomeMessage;
@@ -39,6 +40,8 @@ public sealed class MainWindowViewModel : ViewModelBase
     public ICommand UpdateWelcomeMessageCommand { get; }
 
     public ICommand UpdateWelcomeMessageAsyncCommand { get; }
+
+    public override string Title => "Home";
 
     private void UpdateWelcomeMessage()
     {

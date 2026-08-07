@@ -1,0 +1,42 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Pages.HomePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <StackPanel
+            MaxWidth="640"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center">
+            <TextBlock
+                HorizontalAlignment="Center"
+                FontSize="32"
+                FontWeight="SemiBold"
+                Text="{Binding WelcomeMessage}"
+                TextAlignment="Center"
+                TextWrapping="Wrap" />
+
+            <TextBlock
+                Margin="0,12,0,24"
+                HorizontalAlignment="Center"
+                Foreground="#AAB2C0"
+                Text="{Binding StatusMessage}"
+                TextAlignment="Center" />
+
+            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                <Button
+                    MinWidth="120"
+                    Height="32"
+                    Margin="0,0,8,0"
+                    Command="{Binding UpdateWelcomeMessageCommand}">
+                    Click me mofo!
+                </Button>
+                <Button
+                    MinWidth="170"
+                    Height="32"
+                    Command="{Binding UpdateWelcomeMessageAsyncCommand}">
+                    Update asynchronously
+                </Button>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+</UserControl>
