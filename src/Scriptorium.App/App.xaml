@@ -6,11 +6,20 @@
              xmlns:viewModels="clr-namespace:Scriptorium.App.ViewModels">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Theme/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Theme/Typography.xaml" />
+                <ResourceDictionary Source="Resources/Theme/Layout.xaml" />
+                <ResourceDictionary Source="Resources/Theme/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
             <DataTemplate DataType="{x:Type viewModels:MainWindowViewModel}">
                 <pages:HomePage />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:LibraryPageViewModel}">
                 <pages:LibraryPage />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type pagesViewModels:FavoritesPageViewModel}">
+                <pages:FavoritesPage />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:SettingsPageViewModel}">
                 <pages:SettingsPage />

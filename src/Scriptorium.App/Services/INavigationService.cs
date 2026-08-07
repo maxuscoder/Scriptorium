@@ -1,12 +1,12 @@
-using Scriptorium.App.ViewModels;
+using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Services;
 
 public interface INavigationService
 {
-    ViewModelBase? CurrentViewModel { get; }
+    PageViewModel? CurrentPage { get; }
 
-    event EventHandler? Navigated;
+    event Action<PageViewModel>? Navigated;
 
-    void NavigateTo<TViewModel>() where TViewModel : ViewModelBase;
+    void NavigateTo(PageViewModel page);
 }

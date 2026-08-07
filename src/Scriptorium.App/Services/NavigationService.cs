@@ -1,27 +1,35 @@
-using Microsoft.Extensions.DependencyInjection;
-using Scriptorium.App.ViewModels;
+using Microsoft.Extensions.Logging;
+using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Services;
 
 /// <summary>
-/// Resolves destination ViewModels through DI and exposes the current destination.
+/// Coordinates the active page without coupling navigation to a View.
 /// </summary>
 public sealed class NavigationService : INavigationService
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<NavigationService> _logger;
 
-    public NavigationService(IServiceProvider serviceProvider)
+    public NavigationService(ILogger<NavigationService> logger)
     {
-        _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
-    public ViewModelBase? CurrentViewModel { get; private set; }
+    public PageViewModel? CurrentPage { get; private set; }
 
-    public event EventHandler? Navigated;
+    public event Action<PageViewModel>? Navigated;
 
-    public void NavigateTo<TViewModel>() where TViewModel : ViewModelBase
+    public void NavigateTo(PageViewModel page)
     {
-        CurrentViewModel = _serviceProvider.GetRequiredService<TViewModel>();
-        Navigated?.Invoke(this, EventArgs.Empty);
+        ArgumentNullException.ThrowIfNull(page);
+
+        if (ReferenceEquals(CurrentPage, page))
+        {
+            return;
+        }
+
+        CurrentPage = page;
+        _logger.LogInformation("Navigated to {PageTitle}.", page.Title);
+        Navigated?.Invoke(page);
     }
 }

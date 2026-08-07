@@ -9,16 +9,13 @@
             VerticalAlignment="Center">
             <TextBlock
                 HorizontalAlignment="Center"
-                FontSize="32"
-                FontWeight="SemiBold"
+                Style="{StaticResource Text.Display}"
                 Text="Library" />
             <TextBlock
                 Margin="0,12,0,0"
                 HorizontalAlignment="Center"
-                Foreground="#AAB2C0"
-                Text="Your media library will appear here."
-                TextAlignment="Center"
-                TextWrapping="Wrap" />
+                Style="{StaticResource Text.Body}"
+                Text="Your media library will appear here." />
         </StackPanel>
     </Grid>
 </UserControl>

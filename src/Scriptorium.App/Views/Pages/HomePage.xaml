@@ -9,30 +9,28 @@
             VerticalAlignment="Center">
             <TextBlock
                 HorizontalAlignment="Center"
-                FontSize="32"
-                FontWeight="SemiBold"
-                Text="{Binding WelcomeMessage}"
-                TextAlignment="Center"
-                TextWrapping="Wrap" />
+                Style="{StaticResource Text.Display}"
+                Text="{Binding WelcomeMessage}" />
 
             <TextBlock
                 Margin="0,12,0,24"
                 HorizontalAlignment="Center"
-                Foreground="#AAB2C0"
-                Text="{Binding StatusMessage}"
-                TextAlignment="Center" />
+                Style="{StaticResource Text.Body}"
+                Text="{Binding StatusMessage}" />
 
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
                 <Button
                     MinWidth="120"
                     Height="32"
                     Margin="0,0,8,0"
+                    Style="{StaticResource Button.Secondary}"
                     Command="{Binding UpdateWelcomeMessageCommand}">
                     Click me mofo!
                 </Button>
                 <Button
                     MinWidth="170"
                     Height="32"
+                    Style="{StaticResource Button.Primary}"
                     Command="{Binding UpdateWelcomeMessageAsyncCommand}">
                     Update asynchronously
                 </Button>
