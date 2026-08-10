@@ -86,6 +86,12 @@ The current schema keeps media metadata in the existing `MediaItems` table. `Lib
 
 Repository contracts live in `Scriptorium.Core.Repositories`; EF Core implementations live in `Scriptorium.Infrastructure.Repositories`. `IMediaItemRepository`, `ICategoryRepository`, and `ILibraryFolderRepository` provide asynchronous CRUD operations, while media-item queries also load their folder and category. The implementations use `IDbContextFactory<ScriptoriumDbContext>`, keeping their context lifetime short and independent of the WPF UI.
 
+Imported files are persisted through `IImportedMediaPersistenceService`. It normalizes a file path, then inserts a new `MediaItem` or updates the existing item with the same path (case-insensitive), preserving one database record per imported file.
+
+`IPlaybackProgressService` stores position, duration, completion, and last-watched time directly on `MediaItems`. Updates use a single database statement, and completed items resume at zero rather than their finished position.
+
+`IFavoriteService` toggles the single `IsFavorite` value on each media item, making duplicate favorite records impossible. `ICategoryService` creates, renames, deletes, and assigns the existing `Categories` records; deleting a category relies on the `CategoryId` foreign key to clear assignments safely.
+
 ### Superseded prototype schema
 
 The SQLite schema is configured in `ScriptoriumDbContext`. Every entity has an application-assigned `Guid` primary key, except junction tables where the foreign-key pair is the key.

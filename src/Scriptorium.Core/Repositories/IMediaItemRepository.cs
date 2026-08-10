@@ -7,6 +7,9 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface IMediaItemRepository : IRepository<MediaItem>
 {
+    /// <summary>Gets a media item by its file path.</summary>
+    Task<MediaItem?> GetByPathAsync(string path, CancellationToken cancellationToken = default);
+
     /// <summary>Gets media items belonging to a library folder.</summary>
     Task<IReadOnlyList<MediaItem>> GetByLibraryFolderIdAsync(
         Guid libraryFolderId,
@@ -14,4 +17,29 @@ public interface IMediaItemRepository : IRepository<MediaItem>
 
     /// <summary>Gets favorited media items.</summary>
     Task<IReadOnlyList<MediaItem>> GetFavoritesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Gets media items assigned to a category.</summary>
+    Task<IReadOnlyList<MediaItem>> GetByCategoryIdAsync(
+        Guid categoryId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the favorite state without loading the media item first.</summary>
+    Task<bool> UpdateFavoriteAsync(
+        Guid mediaItemId,
+        bool isFavorite,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Sets or clears a media item's category without loading the media item first.</summary>
+    Task<bool> UpdateCategoryAsync(
+        Guid mediaItemId,
+        Guid? categoryId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Updates playback state without loading the media item first.</summary>
+    Task<bool> UpdatePlaybackAsync(
+        Guid mediaItemId,
+        long playbackPositionSeconds,
+        long durationSeconds,
+        DateTimeOffset lastWatched,
+        CancellationToken cancellationToken = default);
 }
