@@ -14,16 +14,6 @@ public class TVShow : MediaItem
     }
 
     /// <summary>
-    /// Gets or sets a description of the television show.
-    /// </summary>
-    public string? Description { get; set; }
-
-    /// <summary>
-    /// Gets or sets the year the television show was first released.
-    /// </summary>
-    public int? ReleaseYear { get; set; }
-
-    /// <summary>
     /// Gets or sets the seasons available for the television show.
     /// </summary>
     public List<Season> Seasons { get; set; } = [];

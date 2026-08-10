@@ -5,8 +5,20 @@ namespace Scriptorium.Core.Models;
 /// </summary>
 public class PlaybackProgress
 {
-    /// <summary>Gets or sets the identifier of the media item being played.</summary>
-    public Guid MediaId { get; set; }
+    /// <summary>Gets or sets the unique identifier for this playback state.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>Gets or sets the optional identifier of the media item being played.</summary>
+    public Guid? MediaItemId { get; set; }
+
+    /// <summary>Gets or sets the media item being played, when the state belongs to an item.</summary>
+    public MediaItem? MediaItem { get; set; }
+
+    /// <summary>Gets or sets the optional identifier of the episode being played.</summary>
+    public Guid? EpisodeId { get; set; }
+
+    /// <summary>Gets or sets the episode being played, when the state belongs to an episode.</summary>
+    public Episode? Episode { get; set; }
 
     /// <summary>Gets or sets the current playback position.</summary>
     public TimeSpan CurrentPosition { get; set; }

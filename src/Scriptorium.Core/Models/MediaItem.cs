@@ -35,10 +35,44 @@ public class MediaItem
     /// </summary>
     public DateTimeOffset? LastPlayed { get; set; }
 
-    /// <summary>
-    /// Gets or sets whether the media item is a favorite.
-    /// </summary>
+    /// <summary>Gets or sets the identifier of the library folder that contains this item.</summary>
+    public Guid LibraryFolderId { get; set; }
+
+    /// <summary>Gets or sets the library folder that contains this item.</summary>
+    public required LibraryFolder LibraryFolder { get; set; }
+
+    /// <summary>Gets or sets the optional category assigned to this media item.</summary>
+    public Guid? CategoryId { get; set; }
+
+    /// <summary>Gets or sets the optional category assigned to this media item.</summary>
+    public Category? Category { get; set; }
+
+    /// <summary>Gets or sets whether the item is a favorite.</summary>
     public bool IsFavorite { get; set; }
+
+    /// <summary>Gets or sets the runtime in whole seconds, when known.</summary>
+    public long? RuntimeSeconds { get; set; }
+
+    /// <summary>Gets or sets the release year, when known.</summary>
+    public int? ReleaseYear { get; set; }
+
+    /// <summary>Gets or sets the optional item description.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Gets or sets the resumable playback position in whole seconds.</summary>
+    public long PlaybackPositionSeconds { get; set; }
+
+    /// <summary>Gets or sets whether playback has been completed.</summary>
+    public bool IsCompleted { get; set; }
+
+    /// <summary>Gets or sets the file size in bytes, when known.</summary>
+    public long? FileSize { get; set; }
+
+    /// <summary>Gets or sets when the source file was created, when known.</summary>
+    public DateTimeOffset? CreatedDate { get; set; }
+
+    /// <summary>Gets or sets when the source file was last modified, when known.</summary>
+    public DateTimeOffset? ModifiedDate { get; set; }
 
     /// <summary>
     /// Gets or sets the category of media the item represents.

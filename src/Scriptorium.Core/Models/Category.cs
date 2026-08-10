@@ -14,6 +14,6 @@ public class Category
     /// <summary>Gets or sets the category color, such as a hexadecimal color value.</summary>
     public required string Color { get; set; }
 
-    /// <summary>Gets or sets the media items assigned to this category.</summary>
+    /// <summary>Gets the media items assigned to this category.</summary>
     public List<MediaItem> MediaItems { get; set; } = [];
 }

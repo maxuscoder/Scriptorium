@@ -5,6 +5,15 @@ namespace Scriptorium.Core.Models;
 /// </summary>
 public class Episode
 {
+    /// <summary>Gets or sets the unique identifier for the episode.</summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>Gets or sets the identifier of the season that owns this episode.</summary>
+    public Guid SeasonId { get; set; }
+
+    /// <summary>Gets or sets the season that owns this episode.</summary>
+    public required Season Season { get; set; }
+
     /// <summary>Gets or sets the episode's number within its season.</summary>
     public int EpisodeNumber { get; set; }
 
