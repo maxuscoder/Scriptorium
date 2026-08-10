@@ -74,13 +74,17 @@ The initial Tests project contains no test framework dependency because no tests
 
 Scriptorium stores its local metadata in SQLite at `%LocalAppData%\Scriptorium\scriptorium.db`. The file name can be changed through the `Database:FileName` setting in `Scriptorium.App/appsettings.json`; it must remain a file name rather than a path.
 
-At startup, `IDatabaseInitializer` creates the database and its schema when the file does not yet exist, then verifies the connection before the main window is shown. Data access code should obtain contexts through the registered `IDbContextFactory<ScriptoriumDbContext>` so operations remain short-lived and can run asynchronously.
+At startup, `IDatabaseInitializer` applies EF Core migrations before the main window is shown, creating the database when it does not yet exist, then verifies the connection. Existing databases created before migrations are safely upgraded and baselined once. Data access code should obtain contexts through the registered `IDbContextFactory<ScriptoriumDbContext>` so operations remain short-lived and can run asynchronously.
 
 ### Current schema
 
 The current schema keeps media metadata in the existing `MediaItems` table. `LibraryFolderId` is required and references `LibraryFolders.Id`; deleting a library folder is restricted so indexed media cannot be orphaned. `CategoryId` remains optional and references `Categories.Id`, with category deletion setting the reference to `NULL`.
 
 `IsFavorite` is the sole favorite state. Runtime and playback position are stored as whole seconds in `RuntimeSeconds` and `PlaybackPositionSeconds`; `LastPlayed` remains the last-watched timestamp. `FileSize`, `CreatedDate`, and `ModifiedDate` support later rescans. The schema upgrader copies legacy favorite rows into `IsFavorite`, then removes the legacy `Favorites` table and obsolete TV-show-specific columns.
+
+### Repositories
+
+Repository contracts live in `Scriptorium.Core.Repositories`; EF Core implementations live in `Scriptorium.Infrastructure.Repositories`. `IMediaItemRepository`, `ICategoryRepository`, and `ILibraryFolderRepository` provide asynchronous CRUD operations, while media-item queries also load their folder and category. The implementations use `IDbContextFactory<ScriptoriumDbContext>`, keeping their context lifetime short and independent of the WPF UI.
 
 ### Superseded prototype schema
 

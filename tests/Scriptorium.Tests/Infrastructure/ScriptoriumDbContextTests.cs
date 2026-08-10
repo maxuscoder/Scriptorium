@@ -9,14 +9,14 @@ namespace Scriptorium.Tests.Infrastructure;
 public sealed class ScriptoriumDbContextTests
 {
     [Fact]
-    public async Task EnsureCreatedAsync_creates_the_current_flat_media_schema()
+    public async Task MigrateAsync_creates_the_current_flat_media_schema()
     {
         var databasePath = CreateDatabasePath();
 
         try
         {
             await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
-            await context.Database.EnsureCreatedAsync();
+            await context.Database.MigrateAsync();
 
             var tableNames = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM sqlite_master WHERE type = 'table'")
@@ -29,6 +29,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.DoesNotContain("TVShows", tableNames);
             Assert.DoesNotContain("Seasons", tableNames);
             Assert.DoesNotContain("Episodes", tableNames);
+            Assert.Single(await context.Database.GetAppliedMigrationsAsync());
         }
         finally
         {

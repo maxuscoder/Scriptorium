@@ -16,8 +16,19 @@ public sealed class DatabaseInitializer(
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
-        await context.Database.EnsureCreatedAsync(cancellationToken);
-        await SqliteSchemaMigrator.UpgradeAsync(context, cancellationToken);
+        var migrations = context.Database.GetMigrations().ToArray();
+        if (migrations.Length == 0)
+        {
+            throw new InvalidOperationException("No database migrations are available.");
+        }
+
+        if (await LegacyDatabaseBaseliner.RequiresBaselineAsync(context, cancellationToken))
+        {
+            await SqliteSchemaMigrator.UpgradeAsync(context, cancellationToken);
+            await LegacyDatabaseBaseliner.BaselineAsync(context, migrations[0], cancellationToken);
+        }
+
+        await context.Database.MigrateAsync(cancellationToken);
         await SqliteSchemaMigrator.UpgradeAsync(context, cancellationToken);
 
         if (!await context.Database.CanConnectAsync(cancellationToken))
