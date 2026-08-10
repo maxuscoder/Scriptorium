@@ -11,12 +11,4 @@ public class Movie : MediaItem
         MediaType = MediaType.Movie;
     }
 
-    /// <summary>Gets or sets the total runtime of the movie.</summary>
-    public TimeSpan Runtime { get; set; }
-
-    /// <summary>Gets or sets the year the movie was released.</summary>
-    public int? ReleaseYear { get; set; }
-
-    /// <summary>Gets or sets a description of the movie.</summary>
-    public string? Description { get; set; }
 }

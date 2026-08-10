@@ -17,6 +17,8 @@ public sealed class DatabaseInitializer(
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
 
         await context.Database.EnsureCreatedAsync(cancellationToken);
+        await SqliteSchemaMigrator.UpgradeAsync(context, cancellationToken);
+        await SqliteSchemaMigrator.UpgradeAsync(context, cancellationToken);
 
         if (!await context.Database.CanConnectAsync(cancellationToken))
         {

@@ -76,7 +76,13 @@ Scriptorium stores its local metadata in SQLite at `%LocalAppData%\Scriptorium\s
 
 At startup, `IDatabaseInitializer` creates the database and its schema when the file does not yet exist, then verifies the connection before the main window is shown. Data access code should obtain contexts through the registered `IDbContextFactory<ScriptoriumDbContext>` so operations remain short-lived and can run asynchronously.
 
-### Schema
+### Current schema
+
+The current schema keeps media metadata in the existing `MediaItems` table. `LibraryFolderId` is required and references `LibraryFolders.Id`; deleting a library folder is restricted so indexed media cannot be orphaned. `CategoryId` remains optional and references `Categories.Id`, with category deletion setting the reference to `NULL`.
+
+`IsFavorite` is the sole favorite state. Runtime and playback position are stored as whole seconds in `RuntimeSeconds` and `PlaybackPositionSeconds`; `LastPlayed` remains the last-watched timestamp. `FileSize`, `CreatedDate`, and `ModifiedDate` support later rescans. The schema upgrader copies legacy favorite rows into `IsFavorite`, then removes the legacy `Favorites` table and obsolete TV-show-specific columns.
+
+### Superseded prototype schema
 
 The SQLite schema is configured in `ScriptoriumDbContext`. Every entity has an application-assigned `Guid` primary key, except junction tables where the foreign-key pair is the key.
 
