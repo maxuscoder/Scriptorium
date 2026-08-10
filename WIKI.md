@@ -70,6 +70,32 @@ Views contain presentation only. ViewModels own UI state and coordinate Core ser
 
 The initial Tests project contains no test framework dependency because no tests have been introduced yet; add one together with the first test suite.
 
+## Local database
+
+Scriptorium stores its local metadata in SQLite at `%LocalAppData%\Scriptorium\scriptorium.db`. The file name can be changed through the `Database:FileName` setting in `Scriptorium.App/appsettings.json`; it must remain a file name rather than a path.
+
+At startup, `IDatabaseInitializer` creates the database and its schema when the file does not yet exist, then verifies the connection before the main window is shown. Data access code should obtain contexts through the registered `IDbContextFactory<ScriptoriumDbContext>` so operations remain short-lived and can run asynchronously.
+
+### Schema
+
+The SQLite schema is configured in `ScriptoriumDbContext`. Every entity has an application-assigned `Guid` primary key, except junction tables where the foreign-key pair is the key.
+
+| Table | Primary key | Foreign keys | Purpose |
+| --- | --- | --- | --- |
+| `LibraryFolders` | `Id` | — | Imported source folders. `Path` is unique. |
+| `MediaItems` | `Id` | `LibraryFolderId` → `LibraryFolders.Id` (optional) | Common metadata for tutorials, movies, and TV shows. `Path` is unique. |
+| `Tutorials` | `Id` | `Id` → `MediaItems.Id` | Tutorial subtype table. |
+| `Movies` | `Id` | `Id` → `MediaItems.Id` | Movie-specific metadata; this is a one-to-one TPT subtype table. |
+| `TVShows` | `Id` | `Id` → `MediaItems.Id` | TV-show-specific metadata; this is a one-to-one TPT subtype table. |
+| `Seasons` | `Id` | `TVShowId` → `TVShows.Id` | A show’s seasons; show/season number is unique. |
+| `Episodes` | `Id` | `SeasonId` → `Seasons.Id` | A season’s episodes; season/episode number and file path are unique. |
+| `Categories` | `Id` | — | User-defined categories. `Name` is unique. |
+| `MediaItemCategories` | `MediaItemId`, `CategoryId` | → `MediaItems.Id`, → `Categories.Id` | Many-to-many category assignments. |
+| `Favorites` | `MediaItemId` | → `MediaItems.Id` | Optional one-to-one favorite record, including the date favorited. |
+| `PlaybackProgress` | `Id` | `MediaItemId` → `MediaItems.Id` or `EpisodeId` → `Episodes.Id` | One resumable state per media item or episode. A check constraint requires exactly one owner. |
+
+Deleting a media item, category, TV show, season, or episode cascades only to its dependent metadata. Deleting a library folder sets its media items’ optional folder reference to `NULL`, preserving the indexed media record. The separate `Favorites` and `MediaItemCategories` tables avoid duplicating favorite or category state on `MediaItems`.
+
 ---
 
 # Technology Stack

@@ -36,9 +36,21 @@ public class MediaItem
     public DateTimeOffset? LastPlayed { get; set; }
 
     /// <summary>
-    /// Gets or sets whether the media item is a favorite.
+    /// Gets or sets the optional library folder that contains this item.
     /// </summary>
-    public bool IsFavorite { get; set; }
+    public Guid? LibraryFolderId { get; set; }
+
+    /// <summary>Gets or sets the library folder that contains this item.</summary>
+    public LibraryFolder? LibraryFolder { get; set; }
+
+    /// <summary>Gets the categories assigned to this media item.</summary>
+    public List<Category> Categories { get; set; } = [];
+
+    /// <summary>Gets or sets the optional favorite record for this item.</summary>
+    public Favorite? Favorite { get; set; }
+
+    /// <summary>Gets or sets the optional resumable playback state for this item.</summary>
+    public PlaybackProgress? PlaybackProgress { get; set; }
 
     /// <summary>
     /// Gets or sets the category of media the item represents.

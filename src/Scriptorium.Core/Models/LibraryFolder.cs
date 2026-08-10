@@ -19,4 +19,7 @@ public class LibraryFolder
 
     /// <summary>Gets or sets whether the folder is included in library scans.</summary>
     public bool IsEnabled { get; set; } = true;
+
+    /// <summary>Gets the media items discovered in this folder.</summary>
+    public List<MediaItem> MediaItems { get; set; } = [];
 }

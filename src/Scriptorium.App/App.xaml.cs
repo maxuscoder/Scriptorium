@@ -7,6 +7,7 @@ using Serilog.Events;
 using Scriptorium.App.DependencyInjection;
 using Scriptorium.App.Services;
 using Scriptorium.App.Views;
+using Scriptorium.Infrastructure;
 using System.Windows.Threading;
 
 namespace Scriptorium.App;
@@ -30,6 +31,8 @@ public partial class App : Application
 
             var logFileLocation = LogFileLocation.CreateDefault();
             var settingsFileLocation = SettingsFileLocation.CreateDefault();
+            var databaseLocation = DatabaseLocation.CreateDefault(
+                configuration["Database:FileName"] ?? "scriptorium.db");
             Log.Logger = CreateLogger(configuration, logFileLocation);
 
             DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -41,6 +44,7 @@ public partial class App : Application
                 configuration,
                 logFileLocation,
                 settingsFileLocation,
+                databaseLocation,
                 Log.Logger);
 
             _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
@@ -53,6 +57,9 @@ public partial class App : Application
             _logger.LogInformation(
                 "Starting Scriptorium. Log files are written to {LogDirectory}.",
                 logFileLocation.DirectoryPath);
+
+            var databaseInitializer = _serviceProvider.GetRequiredService<IDatabaseInitializer>();
+            await databaseInitializer.InitializeAsync();
 
             _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
             await _settingsService.LoadAsync();

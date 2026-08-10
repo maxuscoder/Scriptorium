@@ -6,6 +6,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
+using Scriptorium.Infrastructure;
 
 namespace Scriptorium.App.DependencyInjection;
 
@@ -19,12 +20,15 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         ILogFileLocation logFileLocation,
         ISettingsFileLocation settingsFileLocation,
+        DatabaseLocation databaseLocation,
         Serilog.ILogger logger)
     {
         services.AddSingleton(configuration);
         services.AddSingleton(logFileLocation);
         services.AddSingleton(settingsFileLocation);
+        services.AddSingleton(databaseLocation);
         services.AddLogging(logging => logging.AddSerilog(logger, dispose: false));
+        services.AddScriptoriumInfrastructure(databaseLocation.ConnectionString);
 
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<INavigationService, NavigationService>();
