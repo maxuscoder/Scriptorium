@@ -29,7 +29,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.DoesNotContain("TVShows", tableNames);
             Assert.DoesNotContain("Seasons", tableNames);
             Assert.DoesNotContain("Episodes", tableNames);
-            Assert.Equal(2, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(3, (await context.Database.GetAppliedMigrationsAsync()).Count());
         }
         finally
         {

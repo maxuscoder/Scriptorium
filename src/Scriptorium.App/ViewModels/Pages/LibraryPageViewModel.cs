@@ -5,6 +5,7 @@ using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -13,9 +14,13 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly IImportFolderDialog _importFolderDialog;
     private readonly IConfirmationDialog _confirmationDialog;
     private readonly ILibraryFolderRepository _libraryFolderRepository;
+    private readonly ILibraryFolderValidator _libraryFolderValidator;
     private readonly ISettingsService _settingsService;
     private readonly AsyncRelayCommand _removeFolderCommand;
-    private LibraryFolder? _selectedFolder;
+    private readonly AsyncRelayCommand _reconnectFolderCommand;
+    private readonly AsyncRelayCommand _saveDisplayNameCommand;
+    private ConfiguredFolderViewModel? _selectedFolder;
+    private string? _customDisplayName;
     private string? _selectedFolderPath;
     private string? _statusMessage;
 
@@ -23,16 +28,24 @@ public sealed class LibraryPageViewModel : PageViewModel
         IImportFolderDialog importFolderDialog,
         IConfirmationDialog confirmationDialog,
         ILibraryFolderRepository libraryFolderRepository,
+        ILibraryFolderValidator libraryFolderValidator,
         ISettingsService settingsService)
     {
         _importFolderDialog = importFolderDialog;
         _confirmationDialog = confirmationDialog;
         _libraryFolderRepository = libraryFolderRepository;
+        _libraryFolderValidator = libraryFolderValidator;
         _settingsService = settingsService;
         ImportFolderCommand = new AsyncRelayCommand(ImportFolderAsync);
         _removeFolderCommand = new AsyncRelayCommand(RemoveSelectedFolderAsync, () => SelectedFolder is not null);
         RemoveFolderCommand = _removeFolderCommand;
+        _reconnectFolderCommand = new AsyncRelayCommand(
+            ReconnectSelectedFolderAsync,
+            () => SelectedFolder is { IsValidForScanning: false });
+        ReconnectFolderCommand = _reconnectFolderCommand;
         SaveFolderStateCommand = new AsyncRelayCommand(SaveFolderStateAsync);
+        _saveDisplayNameCommand = new AsyncRelayCommand(SaveDisplayNameAsync, () => SelectedFolder is not null);
+        SaveDisplayNameCommand = _saveDisplayNameCommand;
     }
 
     public override string Title => "Library";
@@ -43,14 +56,20 @@ public sealed class LibraryPageViewModel : PageViewModel
     /// <summary>Removes the selected folder after confirmation.</summary>
     public ICommand RemoveFolderCommand { get; }
 
+    /// <summary>Rechecks a selected unavailable folder without changing its configuration.</summary>
+    public ICommand ReconnectFolderCommand { get; }
+
+    /// <summary>Saves the optional friendly name for the selected folder.</summary>
+    public ICommand SaveDisplayNameCommand { get; }
+
     /// <summary>Saves a configured folder's enabled state.</summary>
     public ICommand SaveFolderStateCommand { get; }
 
     /// <summary>Gets the folders currently configured for the library.</summary>
-    public ObservableCollection<LibraryFolder> ConfiguredFolders { get; } = [];
+    public ObservableCollection<ConfiguredFolderViewModel> ConfiguredFolders { get; } = [];
 
     /// <summary>Gets or sets the configured folder selected for removal.</summary>
-    public LibraryFolder? SelectedFolder
+    public ConfiguredFolderViewModel? SelectedFolder
     {
         get => _selectedFolder;
         set
@@ -58,8 +77,18 @@ public sealed class LibraryPageViewModel : PageViewModel
             if (SetProperty(ref _selectedFolder, value))
             {
                 _removeFolderCommand.NotifyCanExecuteChanged();
+                _reconnectFolderCommand.NotifyCanExecuteChanged();
+                _saveDisplayNameCommand.NotifyCanExecuteChanged();
+                CustomDisplayName = value?.Folder.DisplayName;
             }
         }
+    }
+
+    /// <summary>Gets or sets the friendly name being edited for the selected folder.</summary>
+    public string? CustomDisplayName
+    {
+        get => _customDisplayName;
+        set => SetProperty(ref _customDisplayName, value);
     }
 
     /// <summary>Gets the path returned by the most recent successful folder selection.</summary>
@@ -85,7 +114,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         ConfiguredFolders.Clear();
         foreach (var folder in folders.OrderBy(folder => folder.Name, StringComparer.OrdinalIgnoreCase))
         {
-            ConfiguredFolders.Add(folder);
+            ConfiguredFolders.Add(new ConfiguredFolderViewModel(folder, _libraryFolderValidator.Validate(folder.Path)));
         }
 
         SelectedFolder = selectedFolderId is null
@@ -130,14 +159,15 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     private async Task RemoveSelectedFolderAsync()
     {
-        var folder = SelectedFolder;
-        if (folder is null || !_confirmationDialog.Confirm(
-                $"Remove '{folder.Name}' from the library? Indexed media will be kept.",
+        var configuredFolder = SelectedFolder;
+        if (configuredFolder is null || !_confirmationDialog.Confirm(
+                $"Remove '{configuredFolder.DisplayName}' from the library? Indexed media will be kept.",
                 "Remove library folder"))
         {
             return;
         }
 
+        var folder = configuredFolder.Folder;
         await _libraryFolderRepository.DeleteAsync(folder.Id);
 
         var removedSettingsEntries = _settingsService.Settings.LibraryFolders.RemoveAll(
@@ -154,16 +184,51 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     private async Task SaveFolderStateAsync(object? parameter)
     {
-        if (parameter is not LibraryFolder folder || !ConfiguredFolders.Any(configured => configured.Id == folder.Id))
+        if (parameter is not ConfiguredFolderViewModel configuredFolder ||
+            !ConfiguredFolders.Any(configured => configured.Id == configuredFolder.Id))
         {
             return;
         }
 
-        await _libraryFolderRepository.UpdateAsync(folder);
+        await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
         await RefreshConfiguredFoldersAsync();
-        StatusMessage = folder.IsEnabled
+        StatusMessage = configuredFolder.IsEnabled
             ? "Folder enabled for future scans."
             : "Folder disabled and excluded from future scans.";
+    }
+
+    private async Task ReconnectSelectedFolderAsync()
+    {
+        var folderId = SelectedFolder?.Id;
+        if (folderId is null)
+        {
+            return;
+        }
+
+        await RefreshConfiguredFoldersAsync();
+        var folder = ConfiguredFolders.SingleOrDefault(configured => configured.Id == folderId);
+        SelectedFolder = folder;
+        StatusMessage = folder?.IsValidForScanning == true
+            ? "Folder is available again. Its configuration was preserved."
+            : "Folder is still unavailable and will be skipped during scans.";
+    }
+
+    private async Task SaveDisplayNameAsync()
+    {
+        var configuredFolder = SelectedFolder;
+        if (configuredFolder is null)
+        {
+            return;
+        }
+
+        configuredFolder.Folder.DisplayName = string.IsNullOrWhiteSpace(CustomDisplayName)
+            ? null
+            : CustomDisplayName.Trim();
+        await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
+        await RefreshConfiguredFoldersAsync();
+        StatusMessage = configuredFolder.Folder.DisplayName is null
+            ? "Custom name cleared. The folder name is shown instead."
+            : "Custom display name saved.";
     }
 
     private static string GetFolderName(string folderPath)

@@ -33,6 +33,8 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.HasKey(folder => folder.Id);
             entity.Property(folder => folder.Path).IsRequired();
             entity.Property(folder => folder.Name).IsRequired();
+            entity.Property(folder => folder.DisplayName);
+            entity.Ignore(folder => folder.DisplayNameOrName);
         });
 
         modelBuilder.Entity<Category>(entity =>

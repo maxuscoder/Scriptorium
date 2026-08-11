@@ -22,6 +22,8 @@ public sealed class RepositoryTests
         Assert.IsType<MediaItemRepository>(provider.GetRequiredService<IMediaItemRepository>());
         Assert.IsType<CategoryRepository>(provider.GetRequiredService<ICategoryRepository>());
         Assert.IsType<LibraryFolderRepository>(provider.GetRequiredService<ILibraryFolderRepository>());
+        Assert.IsType<LibraryFolderValidator>(provider.GetRequiredService<ILibraryFolderValidator>());
+        Assert.IsType<LibraryFolderScanSource>(provider.GetRequiredService<ILibraryFolderScanSource>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
         Assert.IsType<FavoriteService>(provider.GetRequiredService<IFavoriteService>());
@@ -336,6 +338,102 @@ public sealed class RepositoryTests
         }
         finally
         {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Library_folder_custom_display_name_is_persisted_and_falls_back_to_folder_name()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var folder = new LibraryFolder
+            {
+                Name = "1080p.Bluray.h264.The.Boondocks",
+                DisplayName = "The Boondocks",
+                Path = "D:\\TV Shows\\1080p.Bluray.h264.The.Boondocks"
+            };
+            await folderRepository.AddAsync(folder);
+
+            var storedFolder = (await folderRepository.GetByIdAsync(folder.Id))!;
+            Assert.Equal("The Boondocks", storedFolder.DisplayName);
+            Assert.Equal("The Boondocks", storedFolder.DisplayNameOrName);
+
+            storedFolder.DisplayName = null;
+            await folderRepository.UpdateAsync(storedFolder);
+
+            var folderWithoutCustomName = (await folderRepository.GetByIdAsync(folder.Id))!;
+            Assert.Null(folderWithoutCustomName.DisplayName);
+            Assert.Equal("1080p.Bluray.h264.The.Boondocks", folderWithoutCustomName.DisplayNameOrName);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Folder_validation_and_scan_source_exclude_missing_and_disabled_folders()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var validFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-folder-{Guid.NewGuid():N}");
+        var missingFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-missing-{Guid.NewGuid():N}");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            Directory.CreateDirectory(validFolderPath);
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var validator = new LibraryFolderValidator();
+            await folderRepository.AddAsync(new LibraryFolder { Name = "Valid", Path = validFolderPath });
+            await folderRepository.AddAsync(new LibraryFolder { Name = "Missing", Path = missingFolderPath });
+            await folderRepository.AddAsync(new LibraryFolder { Name = "Disabled", Path = validFolderPath, IsEnabled = false });
+
+            Assert.True(validator.Validate(validFolderPath).IsValidForScanning);
+            Assert.Equal(LibraryFolderValidationStatus.NotFound, validator.Validate(missingFolderPath).Status);
+
+            var scanSource = new LibraryFolderScanSource(folderRepository, validator);
+            var eligibleFolders = await scanSource.GetEligibleFoldersAsync();
+
+            var eligibleFolder = Assert.Single(eligibleFolders);
+            Assert.Equal("Valid", eligibleFolder.Name);
+
+            Directory.CreateDirectory(missingFolderPath);
+
+            var reconnectedFolders = await scanSource.GetEligibleFoldersAsync();
+            Assert.Equal(2, reconnectedFolders.Count);
+            Assert.Contains(reconnectedFolders, folder => folder.Name == "Missing");
+        }
+        finally
+        {
+            if (Directory.Exists(validFolderPath))
+            {
+                Directory.Delete(validFolderPath);
+            }
+
+            if (Directory.Exists(missingFolderPath))
+            {
+                Directory.Delete(missingFolderPath);
+            }
+
             File.Delete(databasePath);
         }
     }
