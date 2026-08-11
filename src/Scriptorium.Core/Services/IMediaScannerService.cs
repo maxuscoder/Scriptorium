@@ -6,7 +6,7 @@ namespace Scriptorium.Core.Services;
 public interface IMediaScannerService
 {
     /// <summary>
-    /// Scans enabled library folders and returns only new files with supported media formats.
+    /// Scans enabled library folders, synchronizes their supported files, and returns the scan results.
     /// </summary>
     Task<IReadOnlyList<DiscoveredMediaFile>> ScanAsync(CancellationToken cancellationToken = default);
 }

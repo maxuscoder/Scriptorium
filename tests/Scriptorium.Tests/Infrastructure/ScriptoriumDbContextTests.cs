@@ -29,7 +29,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.DoesNotContain("TVShows", tableNames);
             Assert.DoesNotContain("Seasons", tableNames);
             Assert.DoesNotContain("Episodes", tableNames);
-            Assert.Equal(3, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(4, (await context.Database.GetAppliedMigrationsAsync()).Count());
         }
         finally
         {
@@ -63,6 +63,8 @@ public sealed class ScriptoriumDbContextTests
             Assert.Equal(12, item.RuntimeSeconds);
             Assert.Equal(0, item.PlaybackPositionSeconds);
             Assert.False(item.IsCompleted);
+            Assert.False(item.IsMissing);
+            Assert.Null(item.MissingSince);
             Assert.NotEqual(Guid.Empty, item.LibraryFolderId);
 
             var tableNames = await context.Database

@@ -1,5 +1,4 @@
 using Scriptorium.Core.Services;
-using Scriptorium.Core.Models;
 
 namespace Scriptorium.Infrastructure.Services;
 
@@ -12,7 +11,7 @@ public sealed class MediaScannerService(
     IMediaFormatService mediaFormatService,
     IMediaDuplicateDetector mediaDuplicateDetector,
     IMediaMetadataReader mediaMetadataReader,
-    IImportedMediaPersistenceService importedMediaPersistenceService) : IMediaScannerService
+    IMediaLibrarySynchronizer mediaLibrarySynchronizer) : IMediaScannerService
 {
     /// <inheritdoc />
     public Task<IReadOnlyList<DiscoveredMediaFile>> ScanAsync(CancellationToken cancellationToken = default) =>
@@ -28,32 +27,20 @@ public sealed class MediaScannerService(
                     .Where(path => mediaFormatService.IsSupportedExtension(Path.GetExtension(path)))
                     .Select(path => new MediaFileCandidate(folder.Id, path)))
                 .ToList();
-            var newCandidates = await mediaDuplicateDetector
-                .GetNewCandidatesAsync(supportedCandidates, cancellationToken)
+            var uniqueCandidates = await mediaDuplicateDetector
+                .GetUniqueCandidatesAsync(supportedCandidates, cancellationToken)
                 .ConfigureAwait(false);
-            IReadOnlyList<DiscoveredMediaFile> discoveredFiles = newCandidates
+            IReadOnlyList<DiscoveredMediaFile> discoveredFiles = uniqueCandidates
                 .Select(candidate => mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.Path) with { IsSupportedFormat = true })
                 .ToList();
 
-            if (discoveredFiles.Count > 0)
-            {
-                await importedMediaPersistenceService.SaveRangeAsync(
-                        discoveredFiles.Select(ToImportedMedia),
-                        cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            await mediaLibrarySynchronizer.SynchronizeAsync(
+                    discoveredFiles,
+                    folders.Select(folder => folder.Id),
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             return discoveredFiles;
         }, cancellationToken);
 
-    private static ImportedMedia ToImportedMedia(DiscoveredMediaFile discoveredFile) => new(
-        discoveredFile.LibraryFolderId,
-        discoveredFile.Path,
-        discoveredFile.DisplayTitle,
-        ThumbnailPath: null,
-        MediaType.Movie,
-        RuntimeSeconds: discoveredFile.RuntimeSeconds,
-        FileSize: discoveredFile.FileSize,
-        CreatedDate: discoveredFile.CreatedDate,
-        ModifiedDate: discoveredFile.ModifiedDate);
 }

@@ -29,6 +29,7 @@ public sealed class RepositoryTests
         Assert.IsType<MediaDuplicateDetector>(provider.GetRequiredService<IMediaDuplicateDetector>());
         Assert.IsType<TagLibMediaDurationReader>(provider.GetRequiredService<IMediaDurationReader>());
         Assert.IsType<MediaMetadataReader>(provider.GetRequiredService<IMediaMetadataReader>());
+        Assert.IsType<MediaLibrarySynchronizer>(provider.GetRequiredService<IMediaLibrarySynchronizer>());
         Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
@@ -506,38 +507,67 @@ public sealed class RepositoryTests
                 Path = storedRootFilePath,
                 LibraryFolderId = enabledFolder.Id,
                 LibraryFolder = null!,
-                MediaType = MediaType.Movie
+                MediaType = MediaType.Movie,
+                IsFavorite = true,
+                PlaybackPositionSeconds = 90,
+                LastPlayed = DateTimeOffset.UtcNow,
+                ThumbnailPath = "C:\\Media\\custom-thumbnail.jpg"
             });
             var scanner = new MediaScannerService(
                 new LibraryFolderScanSource(repository, new LibraryFolderValidator()),
                 new FileSystemService(),
                 new MediaFormatService(),
-                new MediaDuplicateDetector(mediaItemRepository),
+                new MediaDuplicateDetector(),
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
-                new ImportedMediaPersistenceService(mediaItemRepository));
+                new MediaLibrarySynchronizer(mediaItemRepository));
 
             var files = await scanner.ScanAsync();
 
             var nestedFileFullPath = Path.GetFullPath(nestedFilePath);
-            Assert.Single(files);
-            Assert.DoesNotContain(files, file => file.Path == rootFilePath);
+            Assert.Equal(2, files.Count);
+            Assert.Contains(files, file => file.Path == rootFilePath && file.IsSupportedFormat);
             Assert.Contains(files, file => file.Path == nestedFilePath && file.IsSupportedFormat);
             Assert.DoesNotContain(files, file => file.Path == unsupportedFilePath);
             Assert.DoesNotContain(files, file => file.Path == disabledFilePath);
-            Assert.Equal(nestedFileFullPath, files[0].Path);
-            Assert.Equal("nested.mp4", files[0].FileName);
-            Assert.Equal(".mp4", files[0].Extension);
-            Assert.Equal(nestedFolderPath, files[0].ContainingFolderPath);
-            Assert.Equal("nested", files[0].DisplayTitle);
-            Assert.Equal(enabledFolder.Id, files[0].LibraryFolderId);
+            var nestedFile = Assert.Single(files, file => file.Path == nestedFileFullPath);
+            Assert.Equal("nested.mp4", nestedFile.FileName);
+            Assert.Equal(".mp4", nestedFile.Extension);
+            Assert.Equal(nestedFolderPath, nestedFile.ContainingFolderPath);
+            Assert.Equal("nested", nestedFile.DisplayTitle);
+            Assert.Equal(enabledFolder.Id, nestedFile.LibraryFolderId);
 
             var savedMedia = await mediaItemRepository.GetByPathAsync(nestedFileFullPath);
             Assert.NotNull(savedMedia);
             Assert.Equal(enabledFolder.Id, savedMedia.LibraryFolderId);
             Assert.Equal("nested", savedMedia.Title);
-            Assert.Equal(files[0].FileSize, savedMedia.FileSize);
+            Assert.Equal(nestedFile.FileSize, savedMedia.FileSize);
 
-            Assert.Empty(await scanner.ScanAsync());
+            var synchronizedRoot = (await mediaItemRepository.GetByPathAsync(rootFilePath))!;
+            Assert.Equal("root", synchronizedRoot.Title);
+            Assert.True(synchronizedRoot.IsFavorite);
+            Assert.Equal(90, synchronizedRoot.PlaybackPositionSeconds);
+            Assert.Equal("C:\\Media\\custom-thumbnail.jpg", synchronizedRoot.ThumbnailPath);
+            Assert.Equal(new FileInfo(rootFilePath).Length, synchronizedRoot.FileSize);
+            Assert.NotNull(synchronizedRoot.ModifiedDate);
+
+            Assert.Equal(2, (await scanner.ScanAsync()).Count);
+            Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
+
+            File.Delete(nestedFilePath);
+
+            var filesAfterDeletion = await scanner.ScanAsync();
+            Assert.Single(filesAfterDeletion);
+            var missingMedia = (await mediaItemRepository.GetByPathAsync(nestedFileFullPath))!;
+            Assert.True(missingMedia.IsMissing);
+            Assert.NotNull(missingMedia.MissingSince);
+            Assert.False(((await mediaItemRepository.GetByPathAsync(rootFilePath))!).IsMissing);
+
+            await File.WriteAllTextAsync(nestedFilePath, "recovered");
+            await scanner.ScanAsync();
+
+            var recoveredMedia = (await mediaItemRepository.GetByPathAsync(nestedFileFullPath))!;
+            Assert.False(recoveredMedia.IsMissing);
+            Assert.Null(recoveredMedia.MissingSince);
             Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
         }
         finally
@@ -565,7 +595,7 @@ public sealed class RepositoryTests
             new MediaFormatService(),
             new ThrowingDuplicateDetector(),
             new ThrowingMetadataReader(),
-            new ThrowingPersistenceService());
+            new ThrowingSynchronizer());
         using var cancellationSource = new CancellationTokenSource();
         cancellationSource.Cancel();
 
@@ -651,7 +681,7 @@ public sealed class RepositoryTests
 
     private sealed class ThrowingDuplicateDetector : IMediaDuplicateDetector
     {
-        public Task<IReadOnlyList<MediaFileCandidate>> GetNewCandidatesAsync(
+        public Task<IReadOnlyList<MediaFileCandidate>> GetUniqueCandidatesAsync(
             IEnumerable<MediaFileCandidate> candidates,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not compare media paths.");
@@ -663,13 +693,11 @@ public sealed class RepositoryTests
             throw new InvalidOperationException("The cancelled scan should not read media metadata.");
     }
 
-    private sealed class ThrowingPersistenceService : IImportedMediaPersistenceService
+    private sealed class ThrowingSynchronizer : IMediaLibrarySynchronizer
     {
-        public Task<MediaItem> SaveAsync(ImportedMedia importedMedia, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("The cancelled scan should not persist media.");
-
-        public Task<IReadOnlyList<MediaItem>> SaveRangeAsync(
-            IEnumerable<ImportedMedia> importedMedia,
+        public Task<IReadOnlyList<MediaItem>> SynchronizeAsync(
+            IEnumerable<DiscoveredMediaFile> discoveredFiles,
+            IEnumerable<Guid> scannedFolderIds,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not persist media.");
     }

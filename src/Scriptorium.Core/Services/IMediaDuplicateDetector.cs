@@ -1,14 +1,14 @@
 namespace Scriptorium.Core.Services;
 
 /// <summary>
-/// Filters scan candidates that are already present in the media library.
+/// Removes duplicate file paths discovered during one scan.
 /// </summary>
 public interface IMediaDuplicateDetector
 {
     /// <summary>
-    /// Returns normalized candidates whose paths do not already belong to a persisted media item.
+    /// Returns one normalized candidate for each discovered path.
     /// </summary>
-    Task<IReadOnlyList<MediaFileCandidate>> GetNewCandidatesAsync(
+    Task<IReadOnlyList<MediaFileCandidate>> GetUniqueCandidatesAsync(
         IEnumerable<MediaFileCandidate> candidates,
         CancellationToken cancellationToken = default);
 }

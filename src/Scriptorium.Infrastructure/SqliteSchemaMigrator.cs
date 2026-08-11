@@ -52,6 +52,7 @@ public static class SqliteSchemaMigrator
                         "RuntimeSeconds" INTEGER NULL, "ReleaseYear" INTEGER NULL, "Description" TEXT NULL,
                         "PlaybackPositionSeconds" INTEGER NOT NULL DEFAULT 0, "IsCompleted" INTEGER NOT NULL DEFAULT 0,
                         "FileSize" INTEGER NULL, "CreatedDate" TEXT NULL, "ModifiedDate" TEXT NULL,
+                        "IsMissing" INTEGER NOT NULL DEFAULT 0, "MissingSince" TEXT NULL,
                         CONSTRAINT "FK_MediaItems_Categories_CategoryId"
                             FOREIGN KEY ("CategoryId") REFERENCES "Categories" ("Id") ON DELETE SET NULL,
                         CONSTRAINT "FK_MediaItems_LibraryFolders_LibraryFolderId"
@@ -97,6 +98,7 @@ public static class SqliteSchemaMigrator
         columns.Contains("LibraryFolderId") && columns.Contains("RuntimeSeconds") &&
         columns.Contains("PlaybackPositionSeconds") && columns.Contains("IsCompleted") &&
         columns.Contains("FileSize") && columns.Contains("CreatedDate") && columns.Contains("ModifiedDate") &&
+        columns.Contains("IsMissing") && columns.Contains("MissingSince") &&
         !columns.Contains("TVShow_Description") && !columns.Contains("TVShow_ReleaseYear");
 
     private static string BuildCopyStatement(IReadOnlySet<string> columns)
@@ -107,13 +109,14 @@ public static class SqliteSchemaMigrator
 
         return $"""
             INSERT INTO "MediaItems_Upgrade" (
-                "Id", "Title", "Path", "ThumbnailPath", "DateAdded", "LastPlayed", "IsFavorite", "MediaType", "CategoryId", "LibraryFolderId", "RuntimeSeconds", "ReleaseYear", "Description", "PlaybackPositionSeconds", "IsCompleted", "FileSize", "CreatedDate", "ModifiedDate")
+                "Id", "Title", "Path", "ThumbnailPath", "DateAdded", "LastPlayed", "IsFavorite", "MediaType", "CategoryId", "LibraryFolderId", "RuntimeSeconds", "ReleaseYear", "Description", "PlaybackPositionSeconds", "IsCompleted", "FileSize", "CreatedDate", "ModifiedDate", "IsMissing", "MissingSince")
             SELECT
                 {ColumnOrDefault(columns, "Id", "lower(hex(randomblob(16)))")}, {ColumnOrDefault(columns, "Title", "''")}, {ColumnOrDefault(columns, "Path", "''")}, {ColumnOrDefault(columns, "ThumbnailPath", "NULL")},
                 {ColumnOrDefault(columns, "DateAdded", "CURRENT_TIMESTAMP")}, {ColumnOrDefault(columns, "LastPlayed", "NULL")}, {ColumnOrDefault(columns, "IsFavorite", "0")}, {ColumnOrDefault(columns, "MediaType", "0")},
                 {ColumnOrDefault(columns, "CategoryId", "NULL")}, COALESCE({ColumnOrDefault(columns, "LibraryFolderId", "NULL")}, '{LegacyFolderId}'), {runtimeSeconds},
                 {ColumnOrDefault(columns, "ReleaseYear", "NULL")}, {ColumnOrDefault(columns, "Description", "NULL")}, {ColumnOrDefault(columns, "PlaybackPositionSeconds", "0")},
-                {ColumnOrDefault(columns, "IsCompleted", "0")}, {ColumnOrDefault(columns, "FileSize", "NULL")}, {ColumnOrDefault(columns, "CreatedDate", "NULL")}, {ColumnOrDefault(columns, "ModifiedDate", "NULL")}
+                {ColumnOrDefault(columns, "IsCompleted", "0")}, {ColumnOrDefault(columns, "FileSize", "NULL")}, {ColumnOrDefault(columns, "CreatedDate", "NULL")}, {ColumnOrDefault(columns, "ModifiedDate", "NULL")},
+                {ColumnOrDefault(columns, "IsMissing", "0")}, {ColumnOrDefault(columns, "MissingSince", "NULL")}
             FROM "MediaItems";
             """;
     }

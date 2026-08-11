@@ -18,15 +18,10 @@ public sealed class TagLibMediaDurationReader : IMediaDurationReader
             var duration = mediaFile.Properties.Duration;
             return duration > TimeSpan.Zero ? duration : null;
         }
-        catch (Exception exception) when (CanIgnore(exception))
+        // TagLib# uses general exceptions for some malformed container structures.
+        catch (Exception)
         {
             return null;
         }
     }
-
-    private static bool CanIgnore(Exception exception) => exception is
-        IOException or
-        UnauthorizedAccessException or
-        TagLib.CorruptFileException or
-        TagLib.UnsupportedFormatException;
 }

@@ -1,29 +1,25 @@
-using Scriptorium.Core.Repositories;
 using Scriptorium.Core.Services;
 
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
-/// Compares scan candidates with persisted media paths before metadata extraction begins.
+/// Removes duplicate paths produced by overlapping configured folders before metadata extraction begins.
 /// </summary>
-public sealed class MediaDuplicateDetector(IMediaItemRepository mediaItemRepository) : IMediaDuplicateDetector
+public sealed class MediaDuplicateDetector : IMediaDuplicateDetector
 {
     private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
         : StringComparer.Ordinal;
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<MediaFileCandidate>> GetNewCandidatesAsync(
+    public Task<IReadOnlyList<MediaFileCandidate>> GetUniqueCandidatesAsync(
         IEnumerable<MediaFileCandidate> candidates,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(candidates);
 
-        var existingMedia = await mediaItemRepository.GetAllAsync(cancellationToken);
-        var knownPaths = existingMedia
-            .Select(mediaItem => NormalizePath(mediaItem.Path))
-            .ToHashSet(PathComparer);
-        var newCandidates = new List<MediaFileCandidate>();
+        var knownPaths = new HashSet<string>(PathComparer);
+        var uniqueCandidates = new List<MediaFileCandidate>();
 
         foreach (var candidate in candidates)
         {
@@ -32,11 +28,11 @@ public sealed class MediaDuplicateDetector(IMediaItemRepository mediaItemReposit
 
             if (knownPaths.Add(normalizedPath))
             {
-                newCandidates.Add(candidate with { Path = normalizedPath });
+                uniqueCandidates.Add(candidate with { Path = normalizedPath });
             }
         }
 
-        return newCandidates;
+        return Task.FromResult<IReadOnlyList<MediaFileCandidate>>(uniqueCandidates);
     }
 
     private static string NormalizePath(string path)
