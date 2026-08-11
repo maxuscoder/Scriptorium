@@ -15,8 +15,16 @@ public sealed class LibraryFolderScanSource(
     public async Task<IReadOnlyList<LibraryFolder>> GetEligibleFoldersAsync(CancellationToken cancellationToken = default)
     {
         var enabledFolders = await libraryFolderRepository.GetEnabledAsync(cancellationToken);
-        return enabledFolders
-            .Where(folder => libraryFolderValidator.Validate(folder.Path).IsValidForScanning)
-            .ToList();
+        var eligibleFolders = new List<LibraryFolder>();
+        foreach (var folder in enabledFolders)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (libraryFolderValidator.Validate(folder.Path).IsValidForScanning)
+            {
+                eligibleFolders.Add(folder);
+            }
+        }
+
+        return eligibleFolders;
     }
 }

@@ -7,6 +7,12 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface IMediaItemRepository : IRepository<MediaItem>
 {
+    /// <summary>Adds media items in one database save operation.</summary>
+    Task AddRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default);
+
+    /// <summary>Updates media items in one database save operation.</summary>
+    Task UpdateRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default);
+
     /// <summary>Gets a media item by its file path.</summary>
     Task<MediaItem?> GetByPathAsync(string path, CancellationToken cancellationToken = default);
 

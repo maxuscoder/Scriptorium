@@ -74,6 +74,12 @@ public class MediaItem
     /// <summary>Gets or sets when the source file was last modified, when known.</summary>
     public DateTimeOffset? ModifiedDate { get; set; }
 
+    /// <summary>Gets or sets whether the file was absent during the most recent successful scan of its folder.</summary>
+    public bool IsMissing { get; set; }
+
+    /// <summary>Gets or sets when the file was first observed as missing, if applicable.</summary>
+    public DateTimeOffset? MissingSince { get; set; }
+
     /// <summary>
     /// Gets or sets the category of media the item represents.
     /// </summary>

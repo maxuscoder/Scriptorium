@@ -53,6 +53,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.Property(item => item.Path).IsRequired();
             entity.Property(item => item.PlaybackPositionSeconds).HasDefaultValue(0L);
             entity.Property(item => item.IsCompleted).HasDefaultValue(false);
+            entity.Property(item => item.IsMissing).HasDefaultValue(false);
             entity.HasIndex(item => item.Path);
             entity.HasIndex(item => item.LibraryFolderId);
             entity.HasIndex(item => item.CategoryId);

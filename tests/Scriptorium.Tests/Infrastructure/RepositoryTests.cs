@@ -24,6 +24,13 @@ public sealed class RepositoryTests
         Assert.IsType<LibraryFolderRepository>(provider.GetRequiredService<ILibraryFolderRepository>());
         Assert.IsType<LibraryFolderValidator>(provider.GetRequiredService<ILibraryFolderValidator>());
         Assert.IsType<LibraryFolderScanSource>(provider.GetRequiredService<ILibraryFolderScanSource>());
+        Assert.IsType<FileSystemService>(provider.GetRequiredService<IFileSystemService>());
+        Assert.IsType<MediaFormatService>(provider.GetRequiredService<IMediaFormatService>());
+        Assert.IsType<MediaDuplicateDetector>(provider.GetRequiredService<IMediaDuplicateDetector>());
+        Assert.IsType<TagLibMediaDurationReader>(provider.GetRequiredService<IMediaDurationReader>());
+        Assert.IsType<MediaMetadataReader>(provider.GetRequiredService<IMediaMetadataReader>());
+        Assert.IsType<MediaLibrarySynchronizer>(provider.GetRequiredService<IMediaLibrarySynchronizer>());
+        Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
         Assert.IsType<FavoriteService>(provider.GetRequiredService<IFavoriteService>());
@@ -190,6 +197,27 @@ public sealed class RepositoryTests
             Assert.Equal("C:\\Media\\updated.jpg", storedItem.ThumbnailPath);
             Assert.Equal(90, storedItem.RuntimeSeconds);
             Assert.Equal(2048, storedItem.FileSize);
+
+            var batchItems = await persistenceService.SaveRangeAsync(
+            [
+                new ImportedMedia(
+                    folder.Id,
+                    "C:\\Media\\batch.mp4",
+                    "Initial batch title",
+                    null,
+                    MediaType.Movie),
+                new ImportedMedia(
+                    folder.Id,
+                    "C:\\Media\\batch.mp4",
+                    "Updated batch title",
+                    null,
+                    MediaType.Movie)
+            ]);
+
+            Assert.Equal(batchItems[0].Id, batchItems[1].Id);
+            var batchItem = (await mediaItemRepository.GetByPathAsync("C:\\Media\\batch.mp4"))!;
+            Assert.Equal("Updated batch title", batchItem.Title);
+            Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
         }
         finally
         {
@@ -438,6 +466,211 @@ public sealed class RepositoryTests
         }
     }
 
+    [Fact]
+    public async Task Library_scanner_discovers_files_in_enabled_folders_and_nested_subfolders()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var enabledFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-folder-{Guid.NewGuid():N}");
+        var disabledFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-folder-{Guid.NewGuid():N}");
+        var nestedFolderPath = Path.Combine(enabledFolderPath, "Nested", "Deeper");
+        var rootFilePath = Path.Combine(enabledFolderPath, "root.MKV");
+        var storedRootFilePath = Path.Combine(enabledFolderPath, ".", "root.MKV");
+        var nestedFilePath = Path.Combine(nestedFolderPath, "nested.mp4");
+        var unsupportedFilePath = Path.Combine(enabledFolderPath, "notes.txt");
+        var disabledFilePath = Path.Combine(disabledFolderPath, "excluded.avi");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            Directory.CreateDirectory(nestedFolderPath);
+            Directory.CreateDirectory(disabledFolderPath);
+            await File.WriteAllTextAsync(rootFilePath, "root");
+            await File.WriteAllTextAsync(nestedFilePath, "nested");
+            await File.WriteAllTextAsync(unsupportedFilePath, "notes");
+            await File.WriteAllTextAsync(disabledFilePath, "disabled");
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var repository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var enabledFolder = new LibraryFolder { Name = "Enabled", Path = enabledFolderPath };
+            await repository.AddAsync(enabledFolder);
+            await repository.AddAsync(new LibraryFolder { Name = "Disabled", Path = disabledFolderPath, IsEnabled = false });
+            var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
+            await mediaItemRepository.AddAsync(new MediaItem
+            {
+                Title = "Already indexed",
+                Path = storedRootFilePath,
+                LibraryFolderId = enabledFolder.Id,
+                LibraryFolder = null!,
+                MediaType = MediaType.Movie,
+                IsFavorite = true,
+                PlaybackPositionSeconds = 90,
+                LastPlayed = DateTimeOffset.UtcNow,
+                ThumbnailPath = "C:\\Media\\custom-thumbnail.jpg"
+            });
+            var scanner = new MediaScannerService(
+                new LibraryFolderScanSource(repository, new LibraryFolderValidator()),
+                new FileSystemService(),
+                new MediaFormatService(),
+                new MediaDuplicateDetector(),
+                new MediaMetadataReader(new TagLibMediaDurationReader()),
+                new MediaLibrarySynchronizer(mediaItemRepository));
+
+            var progress = new CapturingProgress();
+            var scanResult = await scanner.ScanAsync(progress: progress);
+            var files = scanResult.DiscoveredFiles;
+
+            var nestedFileFullPath = Path.GetFullPath(nestedFilePath);
+            Assert.Equal(3, scanResult.ProcessedFileCount);
+            Assert.Equal(2, scanResult.DiscoveredMediaCount);
+            Assert.Equal(0, scanResult.NonCriticalErrorCount);
+            Assert.Contains(progress.Reports, report => report.IsIndeterminate && report.CurrentFilePath == rootFilePath);
+            Assert.Contains(progress.Reports, report => report.IsIndeterminate && report.CurrentFilePath == nestedFilePath);
+            Assert.Equal(2, files.Count);
+            Assert.Contains(files, file => file.Path == rootFilePath && file.IsSupportedFormat);
+            Assert.Contains(files, file => file.Path == nestedFilePath && file.IsSupportedFormat);
+            Assert.DoesNotContain(files, file => file.Path == unsupportedFilePath);
+            Assert.DoesNotContain(files, file => file.Path == disabledFilePath);
+            var nestedFile = Assert.Single(files, file => file.Path == nestedFileFullPath);
+            Assert.Equal("nested.mp4", nestedFile.FileName);
+            Assert.Equal(".mp4", nestedFile.Extension);
+            Assert.Equal(nestedFolderPath, nestedFile.ContainingFolderPath);
+            Assert.Equal("nested", nestedFile.DisplayTitle);
+            Assert.Equal(enabledFolder.Id, nestedFile.LibraryFolderId);
+
+            var savedMedia = await mediaItemRepository.GetByPathAsync(nestedFileFullPath);
+            Assert.NotNull(savedMedia);
+            Assert.Equal(enabledFolder.Id, savedMedia.LibraryFolderId);
+            Assert.Equal("nested", savedMedia.Title);
+            Assert.Equal(nestedFile.FileSize, savedMedia.FileSize);
+
+            var synchronizedRoot = (await mediaItemRepository.GetByPathAsync(rootFilePath))!;
+            Assert.Equal("root", synchronizedRoot.Title);
+            Assert.True(synchronizedRoot.IsFavorite);
+            Assert.Equal(90, synchronizedRoot.PlaybackPositionSeconds);
+            Assert.Equal("C:\\Media\\custom-thumbnail.jpg", synchronizedRoot.ThumbnailPath);
+            Assert.Equal(new FileInfo(rootFilePath).Length, synchronizedRoot.FileSize);
+            Assert.NotNull(synchronizedRoot.ModifiedDate);
+
+            Assert.Equal(2, (await scanner.ScanAsync()).DiscoveredFiles.Count);
+            Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
+
+            File.Delete(nestedFilePath);
+
+            var filesAfterDeletion = (await scanner.ScanAsync()).DiscoveredFiles;
+            Assert.Single(filesAfterDeletion);
+            var missingMedia = (await mediaItemRepository.GetByPathAsync(nestedFileFullPath))!;
+            Assert.True(missingMedia.IsMissing);
+            Assert.NotNull(missingMedia.MissingSince);
+            Assert.False(((await mediaItemRepository.GetByPathAsync(rootFilePath))!).IsMissing);
+
+            await File.WriteAllTextAsync(nestedFilePath, "recovered");
+            await scanner.ScanAsync();
+
+            var recoveredMedia = (await mediaItemRepository.GetByPathAsync(nestedFileFullPath))!;
+            Assert.False(recoveredMedia.IsMissing);
+            Assert.Null(recoveredMedia.MissingSince);
+            Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
+        }
+        finally
+        {
+            if (Directory.Exists(enabledFolderPath))
+            {
+                Directory.Delete(enabledFolderPath, recursive: true);
+            }
+
+            if (Directory.Exists(disabledFolderPath))
+            {
+                Directory.Delete(disabledFolderPath, recursive: true);
+            }
+
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Library_scanner_honors_cancellation()
+    {
+        var scanner = new MediaScannerService(
+            new CancellingScanSource(),
+            new FileSystemService(),
+            new MediaFormatService(),
+            new ThrowingDuplicateDetector(),
+            new ThrowingMetadataReader(),
+            new ThrowingSynchronizer());
+        using var cancellationSource = new CancellationTokenSource();
+        cancellationSource.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => scanner.ScanAsync(cancellationSource.Token));
+    }
+
+    [Theory]
+    [InlineData(".mp4")]
+    [InlineData("MKV")]
+    [InlineData(" .AVI ")]
+    [InlineData(".MoV")]
+    [InlineData(".wmv")]
+    [InlineData("WEBM")]
+    public void Media_format_service_recognizes_normalized_supported_extensions(string extension)
+    {
+        var mediaFormatService = new MediaFormatService();
+
+        Assert.True(mediaFormatService.IsSupportedExtension(extension));
+        Assert.False(mediaFormatService.IsSupportedExtension(".txt"));
+    }
+
+    [Fact]
+    public async Task Media_metadata_reader_extracts_normalized_file_metadata()
+    {
+        var folderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-metadata-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(folderPath, ".", "Example.MKV");
+        var normalizedFilePath = Path.GetFullPath(filePath);
+
+        try
+        {
+            Directory.CreateDirectory(folderPath);
+            await File.WriteAllTextAsync(normalizedFilePath, "metadata");
+            var mediaMetadataReader = new MediaMetadataReader(new FixedDurationReader(TimeSpan.FromMilliseconds(1500)));
+
+            var metadata = mediaMetadataReader.Read(Guid.NewGuid(), filePath);
+
+            Assert.Equal(normalizedFilePath, metadata.Path);
+            Assert.Equal("Example.MKV", metadata.FileName);
+            Assert.Equal(".mkv", metadata.Extension);
+            Assert.Equal(folderPath, metadata.ContainingFolderPath);
+            Assert.Equal("Example", metadata.DisplayTitle);
+            Assert.Equal(2, metadata.RuntimeSeconds);
+            Assert.Equal(new FileInfo(normalizedFilePath).Length, metadata.FileSize);
+            Assert.NotNull(metadata.CreatedDate);
+            Assert.NotNull(metadata.ModifiedDate);
+            Assert.Equal(TimeSpan.Zero, metadata.CreatedDate.Value.Offset);
+            Assert.Equal(TimeSpan.Zero, metadata.ModifiedDate.Value.Offset);
+            Assert.False(metadata.IsSupportedFormat);
+        }
+        finally
+        {
+            if (Directory.Exists(folderPath))
+            {
+                Directory.Delete(folderPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Taglib_duration_reader_returns_null_when_duration_cannot_be_read()
+    {
+        var mediaDurationReader = new TagLibMediaDurationReader();
+
+        var duration = mediaDurationReader.ReadDuration(Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.mp4"));
+
+        Assert.Null(duration);
+    }
+
     private sealed class TestDbContextFactory(DbContextOptions<ScriptoriumDbContext> options)
         : IDbContextFactory<ScriptoriumDbContext>
     {
@@ -445,5 +678,46 @@ public sealed class RepositoryTests
 
         public Task<ScriptoriumDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(CreateDbContext());
+    }
+
+    private sealed class CancellingScanSource : ILibraryFolderScanSource
+    {
+        public Task<IReadOnlyList<LibraryFolder>> GetEligibleFoldersAsync(CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not read configured folders.");
+    }
+
+    private sealed class ThrowingDuplicateDetector : IMediaDuplicateDetector
+    {
+        public Task<IReadOnlyList<MediaFileCandidate>> GetUniqueCandidatesAsync(
+            IEnumerable<MediaFileCandidate> candidates,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not compare media paths.");
+    }
+
+    private sealed class ThrowingMetadataReader : IMediaMetadataReader
+    {
+        public DiscoveredMediaFile Read(Guid libraryFolderId, string filePath) =>
+            throw new InvalidOperationException("The cancelled scan should not read media metadata.");
+    }
+
+    private sealed class ThrowingSynchronizer : IMediaLibrarySynchronizer
+    {
+        public Task<IReadOnlyList<MediaItem>> SynchronizeAsync(
+            IEnumerable<DiscoveredMediaFile> discoveredFiles,
+            IEnumerable<Guid> scannedFolderIds,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not persist media.");
+    }
+
+    private sealed class FixedDurationReader(TimeSpan? duration) : IMediaDurationReader
+    {
+        public TimeSpan? ReadDuration(string filePath) => duration;
+    }
+
+    private sealed class CapturingProgress : IProgress<MediaScanProgress>
+    {
+        public List<MediaScanProgress> Reports { get; } = [];
+
+        public void Report(MediaScanProgress value) => Reports.Add(value);
     }
 }
