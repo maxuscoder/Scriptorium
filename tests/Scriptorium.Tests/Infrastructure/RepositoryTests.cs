@@ -233,7 +233,8 @@ public sealed class RepositoryTests
 
             var storedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
             Assert.NotNull(storedItem);
-            Assert.Equal(folder.Name, storedItem.LibraryFolder.Name);
+            var storedFolder = Assert.IsType<LibraryFolder>(storedItem.LibraryFolder);
+            Assert.Equal(folder.Name, storedFolder.Name);
             Assert.Equal(category.Name, storedItem.Category!.Name);
 
             storedItem.IsFavorite = true;
@@ -247,6 +248,91 @@ public sealed class RepositoryTests
 
             await mediaItemRepository.DeleteAsync(mediaItem.Id);
             Assert.Null(await mediaItemRepository.GetByIdAsync(mediaItem.Id));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Deleting_a_library_folder_preserves_its_media_metadata()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var folder = new LibraryFolder { Name = "Media", Path = "C:\\Media" };
+            await folderRepository.AddAsync(folder);
+
+            var mediaItem = new MediaItem
+            {
+                Title = "Lesson",
+                Path = "C:\\Media\\lesson.mp4",
+                LibraryFolderId = folder.Id,
+                MediaType = MediaType.Tutorial
+            };
+            await mediaItemRepository.AddAsync(mediaItem);
+
+            await folderRepository.DeleteAsync(folder.Id);
+
+            Assert.Null(await folderRepository.GetByIdAsync(folder.Id));
+            var storedMediaItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(storedMediaItem);
+            Assert.Null(storedMediaItem.LibraryFolderId);
+            Assert.Null(storedMediaItem.LibraryFolder);
+            Assert.Equal("Lesson", storedMediaItem.Title);
+            Assert.Equal("C:\\Media\\lesson.mp4", storedMediaItem.Path);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Enabled_folder_query_excludes_disabled_folders()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var enabledFolder = new LibraryFolder { Name = "Enabled", Path = "C:\\Enabled" };
+            var disabledFolder = new LibraryFolder { Name = "Disabled", Path = "C:\\Disabled", IsEnabled = false };
+            await folderRepository.AddAsync(enabledFolder);
+            await folderRepository.AddAsync(disabledFolder);
+
+            var foldersForScanning = await folderRepository.GetEnabledAsync();
+
+            var folder = Assert.Single(foldersForScanning);
+            Assert.Equal(enabledFolder.Id, folder.Id);
+            Assert.True(folder.IsEnabled);
+
+            enabledFolder.IsEnabled = false;
+            await folderRepository.UpdateAsync(enabledFolder);
+
+            Assert.Empty(await folderRepository.GetEnabledAsync());
+            Assert.False((await folderRepository.GetByIdAsync(enabledFolder.Id))!.IsEnabled);
         }
         finally
         {

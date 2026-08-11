@@ -58,8 +58,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.HasOne(item => item.LibraryFolder)
                 .WithMany(folder => folder.MediaItems)
                 .HasForeignKey(item => item.LibraryFolderId)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(item => item.Category)
                 .WithMany(category => category.MediaItems)

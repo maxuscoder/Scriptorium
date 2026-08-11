@@ -35,11 +35,11 @@ public class MediaItem
     /// </summary>
     public DateTimeOffset? LastPlayed { get; set; }
 
-    /// <summary>Gets or sets the identifier of the library folder that contains this item.</summary>
-    public Guid LibraryFolderId { get; set; }
+    /// <summary>Gets or sets the identifier of the library folder that contains this item, when it remains configured.</summary>
+    public Guid? LibraryFolderId { get; set; }
 
-    /// <summary>Gets or sets the library folder that contains this item.</summary>
-    public required LibraryFolder LibraryFolder { get; set; }
+    /// <summary>Gets or sets the library folder that contains this item, when it remains configured.</summary>
+    public LibraryFolder? LibraryFolder { get; set; }
 
     /// <summary>Gets or sets the optional category assigned to this media item.</summary>
     public Guid? CategoryId { get; set; }
