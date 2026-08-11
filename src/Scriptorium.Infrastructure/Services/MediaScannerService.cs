@@ -1,4 +1,5 @@
 using Scriptorium.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Scriptorium.Infrastructure.Services;
 
@@ -11,28 +12,70 @@ public sealed class MediaScannerService(
     IMediaFormatService mediaFormatService,
     IMediaDuplicateDetector mediaDuplicateDetector,
     IMediaMetadataReader mediaMetadataReader,
-    IMediaLibrarySynchronizer mediaLibrarySynchronizer) : IMediaScannerService
+    IMediaLibrarySynchronizer mediaLibrarySynchronizer,
+    ILogger<MediaScannerService>? logger = null) : IMediaScannerService
 {
     /// <inheritdoc />
-    public Task<IReadOnlyList<DiscoveredMediaFile>> ScanAsync(CancellationToken cancellationToken = default) =>
+    public Task<MediaScanResult> ScanAsync(
+        CancellationToken cancellationToken = default,
+        IProgress<MediaScanProgress>? progress = null) =>
         Task.Run(async () =>
         {
             cancellationToken.ThrowIfCancellationRequested();
             var folders = await libraryFolderScanSource.GetEligibleFoldersAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var supportedCandidates = folders
-                .SelectMany(folder => fileSystemService
-                    .EnumerateFiles([folder.Path], cancellationToken)
-                    .Where(path => mediaFormatService.IsSupportedExtension(Path.GetExtension(path)))
-                    .Select(path => new MediaFileCandidate(folder.Id, path)))
-                .ToList();
+            var supportedCandidates = new List<MediaFileCandidate>();
+            var processedFileCount = 0;
+            var nonCriticalErrorCount = 0;
+
+            foreach (var folder in folders)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                progress?.Report(new MediaScanProgress(folder.Path, null, processedFileCount, supportedCandidates.Count));
+
+                var folderFiles = fileSystemService.EnumerateFiles(
+                    [folder.Path],
+                    cancellationToken,
+                    filePath =>
+                    {
+                        processedFileCount++;
+                        progress?.Report(new MediaScanProgress(folder.Path, filePath, processedFileCount, supportedCandidates.Count));
+                    },
+                    (path, exception) =>
+                    {
+                        nonCriticalErrorCount++;
+                        logger?.LogDebug(exception, "Skipped file-system path during library scan: {Path}", path);
+                    });
+
+                foreach (var path in folderFiles)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (mediaFormatService.IsSupportedExtension(Path.GetExtension(path)))
+                    {
+                        supportedCandidates.Add(new MediaFileCandidate(folder.Id, path));
+                        progress?.Report(new MediaScanProgress(folder.Path, path, processedFileCount, supportedCandidates.Count));
+                    }
+                }
+            }
+
             var uniqueCandidates = await mediaDuplicateDetector
                 .GetUniqueCandidatesAsync(supportedCandidates, cancellationToken)
                 .ConfigureAwait(false);
-            IReadOnlyList<DiscoveredMediaFile> discoveredFiles = uniqueCandidates
-                .Select(candidate => mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.Path) with { IsSupportedFormat = true })
-                .ToList();
+            var discoveredFiles = new List<DiscoveredMediaFile>();
+            foreach (var candidate in uniqueCandidates)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    discoveredFiles.Add(mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.Path) with { IsSupportedFormat = true });
+                }
+                catch (Exception exception) when (CanSkip(exception))
+                {
+                    nonCriticalErrorCount++;
+                    logger?.LogWarning(exception, "Skipped media file while reading metadata: {FilePath}", candidate.Path);
+                }
+            }
 
             await mediaLibrarySynchronizer.SynchronizeAsync(
                     discoveredFiles,
@@ -40,7 +83,12 @@ public sealed class MediaScannerService(
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            return discoveredFiles;
+            return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
         }, cancellationToken);
 
+    private static bool CanSkip(Exception exception) => exception is
+        IOException or
+        UnauthorizedAccessException or
+        System.Security.SecurityException or
+        ArgumentException;
 }

@@ -521,9 +521,16 @@ public sealed class RepositoryTests
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
                 new MediaLibrarySynchronizer(mediaItemRepository));
 
-            var files = await scanner.ScanAsync();
+            var progress = new CapturingProgress();
+            var scanResult = await scanner.ScanAsync(progress: progress);
+            var files = scanResult.DiscoveredFiles;
 
             var nestedFileFullPath = Path.GetFullPath(nestedFilePath);
+            Assert.Equal(3, scanResult.ProcessedFileCount);
+            Assert.Equal(2, scanResult.DiscoveredMediaCount);
+            Assert.Equal(0, scanResult.NonCriticalErrorCount);
+            Assert.Contains(progress.Reports, report => report.IsIndeterminate && report.CurrentFilePath == rootFilePath);
+            Assert.Contains(progress.Reports, report => report.IsIndeterminate && report.CurrentFilePath == nestedFilePath);
             Assert.Equal(2, files.Count);
             Assert.Contains(files, file => file.Path == rootFilePath && file.IsSupportedFormat);
             Assert.Contains(files, file => file.Path == nestedFilePath && file.IsSupportedFormat);
@@ -550,12 +557,12 @@ public sealed class RepositoryTests
             Assert.Equal(new FileInfo(rootFilePath).Length, synchronizedRoot.FileSize);
             Assert.NotNull(synchronizedRoot.ModifiedDate);
 
-            Assert.Equal(2, (await scanner.ScanAsync()).Count);
+            Assert.Equal(2, (await scanner.ScanAsync()).DiscoveredFiles.Count);
             Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
 
             File.Delete(nestedFilePath);
 
-            var filesAfterDeletion = await scanner.ScanAsync();
+            var filesAfterDeletion = (await scanner.ScanAsync()).DiscoveredFiles;
             Assert.Single(filesAfterDeletion);
             var missingMedia = (await mediaItemRepository.GetByPathAsync(nestedFileFullPath))!;
             Assert.True(missingMedia.IsMissing);
@@ -705,5 +712,12 @@ public sealed class RepositoryTests
     private sealed class FixedDurationReader(TimeSpan? duration) : IMediaDurationReader
     {
         public TimeSpan? ReadDuration(string filePath) => duration;
+    }
+
+    private sealed class CapturingProgress : IProgress<MediaScanProgress>
+    {
+        public List<MediaScanProgress> Reports { get; } = [];
+
+        public void Report(MediaScanProgress value) => Reports.Add(value);
     }
 }

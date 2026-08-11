@@ -26,6 +26,27 @@
             <Button
                 Margin="0,12,0,0"
                 HorizontalAlignment="Center"
+                Command="{Binding RefreshLibraryCommand}">
+                <Button.Style>
+                    <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
+                        <Setter Property="Content" Value="Rescan library" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                <Setter Property="Content" Value="Scanning library…" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+            <Button
+                Margin="0,12,0,0"
+                HorizontalAlignment="Center"
+                Command="{Binding CancelScanCommand}"
+                Content="Stop scan"
+                Style="{StaticResource Button.Secondary}" />
+            <Button
+                Margin="0,12,0,0"
+                HorizontalAlignment="Center"
                 Command="{Binding RemoveFolderCommand}"
                 Content="Remove selected folder"
                 Style="{StaticResource Button.Secondary}" />
@@ -64,6 +85,40 @@
                 HorizontalAlignment="Center"
                 Foreground="{StaticResource Brush.TextMuted}"
                 Text="{Binding StatusMessage}"
+                TextAlignment="Center"
+                TextWrapping="Wrap" />
+            <StackPanel Margin="0,8,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <ProgressBar Height="4" IsIndeterminate="True" />
+                <TextBlock
+                    Margin="0,8,0,0"
+                    HorizontalAlignment="Center"
+                    Foreground="{StaticResource Brush.TextSecondary}"
+                    Text="{Binding ScanProgressMessage}"
+                    TextAlignment="Center" />
+                <TextBlock
+                    Margin="0,4,0,0"
+                    HorizontalAlignment="Center"
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="{Binding CurrentScanPath}"
+                    TextAlignment="Center"
+                    TextTrimming="CharacterEllipsis"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                Foreground="{StaticResource Brush.TextSecondary}"
+                Text="{Binding LibrarySummary}"
                 TextAlignment="Center"
                 TextWrapping="Wrap" />
             <Border Margin="0,24,0,0" Style="{StaticResource Card}">

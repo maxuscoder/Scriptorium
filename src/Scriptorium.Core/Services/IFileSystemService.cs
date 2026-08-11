@@ -6,5 +6,9 @@ namespace Scriptorium.Core.Services;
 public interface IFileSystemService
 {
     /// <summary>Recursively enumerates files in the supplied folders.</summary>
-    IReadOnlyList<string> EnumerateFiles(IEnumerable<string> folderPaths, CancellationToken cancellationToken = default);
+    IReadOnlyList<string> EnumerateFiles(
+        IEnumerable<string> folderPaths,
+        CancellationToken cancellationToken = default,
+        Action<string>? onFileDiscovered = null,
+        Action<string, Exception>? onError = null);
 }

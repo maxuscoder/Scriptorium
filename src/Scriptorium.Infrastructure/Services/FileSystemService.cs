@@ -1,16 +1,19 @@
 using Scriptorium.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
 /// Performs resilient file-system traversal for the media scanning pipeline.
 /// </summary>
-public sealed class FileSystemService : IFileSystemService
+public sealed class FileSystemService(ILogger<FileSystemService>? logger = null) : IFileSystemService
 {
     /// <inheritdoc />
     public IReadOnlyList<string> EnumerateFiles(
         IEnumerable<string> folderPaths,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        Action<string>? onFileDiscovered = null,
+        Action<string, Exception>? onError = null)
     {
         ArgumentNullException.ThrowIfNull(folderPaths);
 
@@ -18,13 +21,18 @@ public sealed class FileSystemService : IFileSystemService
         foreach (var folderPath in folderPaths)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            ScanFolder(folderPath, files, cancellationToken);
+            ScanFolder(folderPath, files, cancellationToken, onFileDiscovered, onError);
         }
 
         return files.ToList();
     }
 
-    private static void ScanFolder(string folderPath, ISet<string> files, CancellationToken cancellationToken)
+    private void ScanFolder(
+        string folderPath,
+        ISet<string> files,
+        CancellationToken cancellationToken,
+        Action<string>? onFileDiscovered,
+        Action<string, Exception>? onError)
     {
         var directories = new Stack<string>();
         directories.Push(folderPath);
@@ -34,31 +42,41 @@ public sealed class FileSystemService : IFileSystemService
             cancellationToken.ThrowIfCancellationRequested();
             var directory = directories.Pop();
 
-            AddFiles(directory, files, cancellationToken);
-            AddSubdirectories(directory, directories, cancellationToken);
+            AddFiles(directory, files, cancellationToken, onFileDiscovered, onError);
+            AddSubdirectories(directory, directories, cancellationToken, onError);
         }
     }
 
-    private static void AddFiles(string directory, ISet<string> files, CancellationToken cancellationToken)
+    private void AddFiles(
+        string directory,
+        ISet<string> files,
+        CancellationToken cancellationToken,
+        Action<string>? onFileDiscovered,
+        Action<string, Exception>? onError)
     {
         try
         {
             foreach (var file in Directory.EnumerateFiles(directory))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                files.Add(file);
+                if (files.Add(file))
+                {
+                    onFileDiscovered?.Invoke(file);
+                }
             }
         }
         catch (Exception exception) when (CanSkip(exception))
         {
-            // The directory is unavailable; retain files already found and continue the scan.
+            logger?.LogDebug(exception, "Skipped inaccessible directory while enumerating files: {DirectoryPath}", directory);
+            onError?.Invoke(directory, exception);
         }
     }
 
-    private static void AddSubdirectories(
+    private void AddSubdirectories(
         string directory,
         Stack<string> directories,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string, Exception>? onError)
     {
         try
         {
@@ -74,7 +92,8 @@ public sealed class FileSystemService : IFileSystemService
         }
         catch (Exception exception) when (CanSkip(exception))
         {
-            // The directory is unavailable; continue with the remaining folders.
+            logger?.LogDebug(exception, "Skipped inaccessible directory while enumerating subdirectories: {DirectoryPath}", directory);
+            onError?.Invoke(directory, exception);
         }
     }
 

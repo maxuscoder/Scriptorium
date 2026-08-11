@@ -1,11 +1,14 @@
 using Scriptorium.Core.Services;
+using Microsoft.Extensions.Logging;
 
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
 /// Creates media scan metadata directly from a file-system path.
 /// </summary>
-public sealed class MediaMetadataReader(IMediaDurationReader mediaDurationReader) : IMediaMetadataReader
+public sealed class MediaMetadataReader(
+    IMediaDurationReader mediaDurationReader,
+    ILogger<MediaMetadataReader>? logger = null) : IMediaMetadataReader
 {
     /// <inheritdoc />
     public DiscoveredMediaFile Read(Guid libraryFolderId, string filePath)
@@ -35,7 +38,7 @@ public sealed class MediaMetadataReader(IMediaDurationReader mediaDurationReader
             IsSupportedFormat: false);
     }
 
-    private static (long? FileSize, DateTimeOffset? CreatedDate, DateTimeOffset? ModifiedDate) ReadFileSystemMetadata(string filePath)
+    private (long? FileSize, DateTimeOffset? CreatedDate, DateTimeOffset? ModifiedDate) ReadFileSystemMetadata(string filePath)
     {
         try
         {
@@ -47,6 +50,7 @@ public sealed class MediaMetadataReader(IMediaDurationReader mediaDurationReader
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
         {
+            logger?.LogDebug(exception, "Could not read file-system metadata: {FilePath}", filePath);
             return (null, null, null);
         }
     }

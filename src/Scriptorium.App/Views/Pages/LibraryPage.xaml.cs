@@ -14,7 +14,7 @@ public partial class LibraryPage : UserControl
     {
         if (DataContext is LibraryPageViewModel viewModel)
         {
-            await viewModel.RefreshConfiguredFoldersAsync();
+            await viewModel.RefreshLibraryDataAsync();
         }
     }
 }
