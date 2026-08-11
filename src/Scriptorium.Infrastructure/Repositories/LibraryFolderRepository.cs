@@ -20,4 +20,15 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
             .AsNoTracking()
             .SingleOrDefaultAsync(folder => folder.Path == path, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LibraryFolder>> GetEnabledAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.LibraryFolders
+            .AsNoTracking()
+            .Where(folder => folder.IsEnabled)
+            .OrderBy(folder => folder.Name)
+            .ToListAsync(cancellationToken);
+    }
 }

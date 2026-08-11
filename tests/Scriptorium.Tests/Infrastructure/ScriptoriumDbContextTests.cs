@@ -29,7 +29,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.DoesNotContain("TVShows", tableNames);
             Assert.DoesNotContain("Seasons", tableNames);
             Assert.DoesNotContain("Episodes", tableNames);
-            Assert.Single(await context.Database.GetAppliedMigrationsAsync());
+            Assert.Equal(3, (await context.Database.GetAppliedMigrationsAsync()).Count());
         }
         finally
         {
@@ -42,7 +42,7 @@ public sealed class ScriptoriumDbContextTests
     {
         using var context = new ScriptoriumDbContext(CreateOptions(":memory:"));
 
-        AssertRelationship<MediaItem, LibraryFolder>(context, nameof(MediaItem.LibraryFolderId), true, DeleteBehavior.Restrict);
+        AssertRelationship<MediaItem, LibraryFolder>(context, nameof(MediaItem.LibraryFolderId), false, DeleteBehavior.SetNull);
         AssertRelationship<MediaItem, Category>(context, nameof(MediaItem.CategoryId), false, DeleteBehavior.SetNull);
     }
 

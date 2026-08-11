@@ -14,6 +14,12 @@ public class LibraryFolder
     /// <summary>Gets or sets the display name of the folder.</summary>
     public required string Name { get; set; }
 
+    /// <summary>Gets or sets the optional user-defined display name for the folder.</summary>
+    public string? DisplayName { get; set; }
+
+    /// <summary>Gets the friendly name when set, otherwise the path-derived folder name.</summary>
+    public string DisplayNameOrName => string.IsNullOrWhiteSpace(DisplayName) ? Name : DisplayName;
+
     /// <summary>Gets or sets when the folder was last scanned, if it has been scanned.</summary>
     public DateTimeOffset? LastScanned { get; set; }
 

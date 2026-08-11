@@ -33,6 +33,8 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.HasKey(folder => folder.Id);
             entity.Property(folder => folder.Path).IsRequired();
             entity.Property(folder => folder.Name).IsRequired();
+            entity.Property(folder => folder.DisplayName);
+            entity.Ignore(folder => folder.DisplayNameOrName);
         });
 
         modelBuilder.Entity<Category>(entity =>
@@ -58,8 +60,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.HasOne(item => item.LibraryFolder)
                 .WithMany(folder => folder.MediaItems)
                 .HasForeignKey(item => item.LibraryFolderId)
-                .IsRequired()
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.SetNull);
 
             entity.HasOne(item => item.Category)
                 .WithMany(category => category.MediaItems)

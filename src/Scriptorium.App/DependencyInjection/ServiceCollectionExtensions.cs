@@ -31,6 +31,8 @@ public static class ServiceCollectionExtensions
         services.AddScriptoriumInfrastructure(databaseLocation.ConnectionString);
 
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
+        services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
+        services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ISettingsService, SettingsService>();
 

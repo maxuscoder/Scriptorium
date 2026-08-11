@@ -9,4 +9,7 @@ public interface ILibraryFolderRepository : IRepository<LibraryFolder>
 {
     /// <summary>Gets a library folder by its path.</summary>
     Task<LibraryFolder?> GetByPathAsync(string path, CancellationToken cancellationToken = default);
+
+    /// <summary>Gets only folders enabled for library scans.</summary>
+    Task<IReadOnlyList<LibraryFolder>> GetEnabledAsync(CancellationToken cancellationToken = default);
 }

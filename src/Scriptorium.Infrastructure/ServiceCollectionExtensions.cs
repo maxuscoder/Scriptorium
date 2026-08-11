@@ -22,6 +22,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
         services.AddSingleton<ICategoryRepository, CategoryRepository>();
         services.AddSingleton<ILibraryFolderRepository, LibraryFolderRepository>();
+        services.AddSingleton<ILibraryFolderValidator, LibraryFolderValidator>();
+        services.AddSingleton<ILibraryFolderScanSource, LibraryFolderScanSource>();
         services.AddSingleton<IImportedMediaPersistenceService, ImportedMediaPersistenceService>();
         services.AddSingleton<IPlaybackProgressService, PlaybackProgressService>();
         services.AddSingleton<IFavoriteService, FavoriteService>();
