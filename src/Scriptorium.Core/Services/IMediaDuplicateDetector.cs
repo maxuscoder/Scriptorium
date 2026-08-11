@@ -6,9 +6,9 @@ namespace Scriptorium.Core.Services;
 public interface IMediaDuplicateDetector
 {
     /// <summary>
-    /// Returns normalized paths that do not already belong to a persisted media item.
+    /// Returns normalized candidates whose paths do not already belong to a persisted media item.
     /// </summary>
-    Task<IReadOnlyList<string>> GetNewPathsAsync(
-        IEnumerable<string> candidatePaths,
+    Task<IReadOnlyList<MediaFileCandidate>> GetNewCandidatesAsync(
+        IEnumerable<MediaFileCandidate> candidates,
         CancellationToken cancellationToken = default);
 }

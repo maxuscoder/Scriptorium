@@ -9,4 +9,9 @@ public interface IImportedMediaPersistenceService
 {
     /// <summary>Saves imported media metadata and returns the persisted item.</summary>
     Task<MediaItem> SaveAsync(ImportedMedia importedMedia, CancellationToken cancellationToken = default);
+
+    /// <summary>Saves imported media metadata in a batch and returns the persisted items.</summary>
+    Task<IReadOnlyList<MediaItem>> SaveRangeAsync(
+        IEnumerable<ImportedMedia> importedMedia,
+        CancellationToken cancellationToken = default);
 }

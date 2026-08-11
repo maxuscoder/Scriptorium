@@ -13,30 +13,30 @@ public sealed class MediaDuplicateDetector(IMediaItemRepository mediaItemReposit
         : StringComparer.Ordinal;
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> GetNewPathsAsync(
-        IEnumerable<string> candidatePaths,
+    public async Task<IReadOnlyList<MediaFileCandidate>> GetNewCandidatesAsync(
+        IEnumerable<MediaFileCandidate> candidates,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(candidatePaths);
+        ArgumentNullException.ThrowIfNull(candidates);
 
         var existingMedia = await mediaItemRepository.GetAllAsync(cancellationToken);
         var knownPaths = existingMedia
             .Select(mediaItem => NormalizePath(mediaItem.Path))
             .ToHashSet(PathComparer);
-        var newPaths = new List<string>();
+        var newCandidates = new List<MediaFileCandidate>();
 
-        foreach (var candidatePath in candidatePaths)
+        foreach (var candidate in candidates)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var normalizedPath = NormalizePath(candidatePath);
+            var normalizedPath = NormalizePath(candidate.Path);
 
             if (knownPaths.Add(normalizedPath))
             {
-                newPaths.Add(normalizedPath);
+                newCandidates.Add(candidate with { Path = normalizedPath });
             }
         }
 
-        return newPaths;
+        return newCandidates;
     }
 
     private static string NormalizePath(string path)

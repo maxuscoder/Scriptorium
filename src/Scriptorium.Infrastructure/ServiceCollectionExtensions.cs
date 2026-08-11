@@ -27,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFileSystemService, FileSystemService>();
         services.AddSingleton<IMediaFormatService, MediaFormatService>();
         services.AddSingleton<IMediaDuplicateDetector, MediaDuplicateDetector>();
+        services.AddSingleton<IMediaDurationReader, TagLibMediaDurationReader>();
         services.AddSingleton<IMediaMetadataReader, MediaMetadataReader>();
         services.AddSingleton<IMediaScannerService, MediaScannerService>();
         services.AddSingleton<IImportedMediaPersistenceService, ImportedMediaPersistenceService>();

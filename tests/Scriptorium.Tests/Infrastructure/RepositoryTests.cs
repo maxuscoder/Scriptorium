@@ -27,6 +27,7 @@ public sealed class RepositoryTests
         Assert.IsType<FileSystemService>(provider.GetRequiredService<IFileSystemService>());
         Assert.IsType<MediaFormatService>(provider.GetRequiredService<IMediaFormatService>());
         Assert.IsType<MediaDuplicateDetector>(provider.GetRequiredService<IMediaDuplicateDetector>());
+        Assert.IsType<TagLibMediaDurationReader>(provider.GetRequiredService<IMediaDurationReader>());
         Assert.IsType<MediaMetadataReader>(provider.GetRequiredService<IMediaMetadataReader>());
         Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
@@ -195,6 +196,27 @@ public sealed class RepositoryTests
             Assert.Equal("C:\\Media\\updated.jpg", storedItem.ThumbnailPath);
             Assert.Equal(90, storedItem.RuntimeSeconds);
             Assert.Equal(2048, storedItem.FileSize);
+
+            var batchItems = await persistenceService.SaveRangeAsync(
+            [
+                new ImportedMedia(
+                    folder.Id,
+                    "C:\\Media\\batch.mp4",
+                    "Initial batch title",
+                    null,
+                    MediaType.Movie),
+                new ImportedMedia(
+                    folder.Id,
+                    "C:\\Media\\batch.mp4",
+                    "Updated batch title",
+                    null,
+                    MediaType.Movie)
+            ]);
+
+            Assert.Equal(batchItems[0].Id, batchItems[1].Id);
+            var batchItem = (await mediaItemRepository.GetByPathAsync("C:\\Media\\batch.mp4"))!;
+            Assert.Equal("Updated batch title", batchItem.Title);
+            Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
         }
         finally
         {
@@ -491,7 +513,8 @@ public sealed class RepositoryTests
                 new FileSystemService(),
                 new MediaFormatService(),
                 new MediaDuplicateDetector(mediaItemRepository),
-                new MediaMetadataReader());
+                new MediaMetadataReader(new TagLibMediaDurationReader()),
+                new ImportedMediaPersistenceService(mediaItemRepository));
 
             var files = await scanner.ScanAsync();
 
@@ -506,6 +529,16 @@ public sealed class RepositoryTests
             Assert.Equal(".mp4", files[0].Extension);
             Assert.Equal(nestedFolderPath, files[0].ContainingFolderPath);
             Assert.Equal("nested", files[0].DisplayTitle);
+            Assert.Equal(enabledFolder.Id, files[0].LibraryFolderId);
+
+            var savedMedia = await mediaItemRepository.GetByPathAsync(nestedFileFullPath);
+            Assert.NotNull(savedMedia);
+            Assert.Equal(enabledFolder.Id, savedMedia.LibraryFolderId);
+            Assert.Equal("nested", savedMedia.Title);
+            Assert.Equal(files[0].FileSize, savedMedia.FileSize);
+
+            Assert.Empty(await scanner.ScanAsync());
+            Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);
         }
         finally
         {
@@ -531,7 +564,8 @@ public sealed class RepositoryTests
             new FileSystemService(),
             new MediaFormatService(),
             new ThrowingDuplicateDetector(),
-            new ThrowingMetadataReader());
+            new ThrowingMetadataReader(),
+            new ThrowingPersistenceService());
         using var cancellationSource = new CancellationTokenSource();
         cancellationSource.Cancel();
 
@@ -554,19 +588,50 @@ public sealed class RepositoryTests
     }
 
     [Fact]
-    public void Media_metadata_reader_extracts_normalized_file_metadata()
+    public async Task Media_metadata_reader_extracts_normalized_file_metadata()
     {
-        var mediaMetadataReader = new MediaMetadataReader();
-        var filePath = Path.Combine(Path.GetTempPath(), "Scriptorium", ".", "Example.MKV");
+        var folderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-metadata-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(folderPath, ".", "Example.MKV");
+        var normalizedFilePath = Path.GetFullPath(filePath);
 
-        var metadata = mediaMetadataReader.Read(filePath);
+        try
+        {
+            Directory.CreateDirectory(folderPath);
+            await File.WriteAllTextAsync(normalizedFilePath, "metadata");
+            var mediaMetadataReader = new MediaMetadataReader(new FixedDurationReader(TimeSpan.FromMilliseconds(1500)));
 
-        Assert.Equal(Path.GetFullPath(filePath), metadata.Path);
-        Assert.Equal("Example.MKV", metadata.FileName);
-        Assert.Equal(".mkv", metadata.Extension);
-        Assert.Equal(Path.Combine(Path.GetTempPath(), "Scriptorium"), metadata.ContainingFolderPath);
-        Assert.Equal("Example", metadata.DisplayTitle);
-        Assert.False(metadata.IsSupportedFormat);
+            var metadata = mediaMetadataReader.Read(Guid.NewGuid(), filePath);
+
+            Assert.Equal(normalizedFilePath, metadata.Path);
+            Assert.Equal("Example.MKV", metadata.FileName);
+            Assert.Equal(".mkv", metadata.Extension);
+            Assert.Equal(folderPath, metadata.ContainingFolderPath);
+            Assert.Equal("Example", metadata.DisplayTitle);
+            Assert.Equal(2, metadata.RuntimeSeconds);
+            Assert.Equal(new FileInfo(normalizedFilePath).Length, metadata.FileSize);
+            Assert.NotNull(metadata.CreatedDate);
+            Assert.NotNull(metadata.ModifiedDate);
+            Assert.Equal(TimeSpan.Zero, metadata.CreatedDate.Value.Offset);
+            Assert.Equal(TimeSpan.Zero, metadata.ModifiedDate.Value.Offset);
+            Assert.False(metadata.IsSupportedFormat);
+        }
+        finally
+        {
+            if (Directory.Exists(folderPath))
+            {
+                Directory.Delete(folderPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Taglib_duration_reader_returns_null_when_duration_cannot_be_read()
+    {
+        var mediaDurationReader = new TagLibMediaDurationReader();
+
+        var duration = mediaDurationReader.ReadDuration(Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.mp4"));
+
+        Assert.Null(duration);
     }
 
     private sealed class TestDbContextFactory(DbContextOptions<ScriptoriumDbContext> options)
@@ -586,15 +651,31 @@ public sealed class RepositoryTests
 
     private sealed class ThrowingDuplicateDetector : IMediaDuplicateDetector
     {
-        public Task<IReadOnlyList<string>> GetNewPathsAsync(
-            IEnumerable<string> candidatePaths,
+        public Task<IReadOnlyList<MediaFileCandidate>> GetNewCandidatesAsync(
+            IEnumerable<MediaFileCandidate> candidates,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not compare media paths.");
     }
 
     private sealed class ThrowingMetadataReader : IMediaMetadataReader
     {
-        public DiscoveredMediaFile Read(string filePath) =>
+        public DiscoveredMediaFile Read(Guid libraryFolderId, string filePath) =>
             throw new InvalidOperationException("The cancelled scan should not read media metadata.");
+    }
+
+    private sealed class ThrowingPersistenceService : IImportedMediaPersistenceService
+    {
+        public Task<MediaItem> SaveAsync(ImportedMedia importedMedia, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not persist media.");
+
+        public Task<IReadOnlyList<MediaItem>> SaveRangeAsync(
+            IEnumerable<ImportedMedia> importedMedia,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not persist media.");
+    }
+
+    private sealed class FixedDurationReader(TimeSpan? duration) : IMediaDurationReader
+    {
+        public TimeSpan? ReadDuration(string filePath) => duration;
     }
 }

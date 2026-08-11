@@ -13,6 +13,38 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     : Repository<MediaItem>(contextFactory), IMediaItemRepository
 {
     /// <inheritdoc />
+    public async Task AddRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mediaItems);
+
+        var items = mediaItems.ToList();
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        await context.MediaItems.AddRangeAsync(items, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mediaItems);
+
+        var items = mediaItems.ToList();
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        context.MediaItems.UpdateRange(items);
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<MediaItem?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
