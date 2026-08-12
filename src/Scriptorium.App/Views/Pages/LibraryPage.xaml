@@ -3,7 +3,10 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Loaded="OnLoaded">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer
+        x:Name="PageScrollViewer"
+        PreviewMouseWheel="OnPagePreviewMouseWheel"
+        VerticalScrollBarVisibility="Auto">
         <StackPanel
             MaxWidth="600"
             HorizontalAlignment="Center"
