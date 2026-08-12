@@ -6,7 +6,7 @@ namespace Scriptorium.App.Services;
 public interface IImportFolderDialog
 {
     /// <summary>
-    /// Shows the folder picker and returns the normalized folder path, or <see langword="null"/> when cancelled.
+    /// Shows the folder picker and media-type selector, returning the chosen folder and classification, or <see langword="null"/> when cancelled.
     /// </summary>
-    string? SelectFolder(string? initialDirectory = null);
+    ImportFolderSelection? SelectFolder(string? initialDirectory = null);
 }

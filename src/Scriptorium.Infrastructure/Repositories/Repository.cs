@@ -27,7 +27,7 @@ public abstract class Repository<TEntity>(IDbContextFactory<ScriptoriumDbContext
     }
 
     /// <inheritdoc />
-    public async Task AddAsync(TEntity entity, CancellationToken cancellationToken = default)
+    public virtual async Task AddAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -37,7 +37,7 @@ public abstract class Repository<TEntity>(IDbContextFactory<ScriptoriumDbContext
     }
 
     /// <inheritdoc />
-    public async Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
+    public virtual async Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entity);
 

@@ -26,10 +26,24 @@ public sealed class ScriptoriumDbContextTests
                 new HashSet<string>(tableNames),
                 new HashSet<string> { "MediaItems", "Categories", "LibraryFolders" });
             Assert.DoesNotContain("Favorites", tableNames);
-            Assert.DoesNotContain("TVShows", tableNames);
-            Assert.DoesNotContain("Seasons", tableNames);
-            Assert.DoesNotContain("Episodes", tableNames);
-            Assert.Equal(4, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Contains("TVShows", tableNames);
+            Assert.Contains("Seasons", tableNames);
+            Assert.Contains("Episodes", tableNames);
+            Assert.Contains("Courses", tableNames);
+            Assert.Contains("Lessons", tableNames);
+            Assert.Equal(11, (await context.Database.GetAppliedMigrationsAsync()).Count());
+
+            var folderColumns = await context.Database
+                .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
+                .ToListAsync();
+            Assert.Contains("MediaType", folderColumns);
+
+            var mediaItemColumns = await context.Database
+                .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('MediaItems')")
+                .ToListAsync();
+            Assert.Contains("TVShowTitle", mediaItemColumns);
+            Assert.Contains("SeasonNumber", mediaItemColumns);
+            Assert.Contains("EpisodeNumber", mediaItemColumns);
         }
         finally
         {
@@ -57,6 +71,8 @@ public sealed class ScriptoriumDbContextTests
 
             await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
             await SqliteSchemaMigrator.UpgradeAsync(context);
+            await LegacyDatabaseBaseliner.BaselineAsync(context, context.Database.GetMigrations().First());
+            await context.Database.MigrateAsync();
 
             var item = await context.MediaItems.SingleAsync();
             Assert.True(item.IsFavorite);

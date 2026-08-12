@@ -14,8 +14,17 @@ public class Episode
     /// <summary>Gets or sets the season that owns this episode.</summary>
     public required Season Season { get; set; }
 
+    /// <summary>Gets or sets the identifier of the indexed media item that provides this episode.</summary>
+    public Guid MediaItemId { get; set; }
+
+    /// <summary>Gets or sets the indexed media item that provides this episode.</summary>
+    public required MediaItem MediaItem { get; set; }
+
     /// <summary>Gets or sets the episode's number within its season.</summary>
-    public int EpisodeNumber { get; set; }
+    public int? EpisodeNumber { get; set; }
+
+    /// <summary>Gets or sets the persistent display order within the season.</summary>
+    public int SortOrder { get; set; }
 
     /// <summary>Gets or sets the title of the episode.</summary>
     public required string Title { get; set; }

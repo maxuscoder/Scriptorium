@@ -99,10 +99,14 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         changed |= SetIfChanged(() => mediaItem.Title, value => mediaItem.Title = value, discoveredFile.DisplayTitle);
         changed |= SetIfChanged(() => mediaItem.Path, value => mediaItem.Path = value, normalizedPath);
         changed |= SetIfChanged(() => mediaItem.LibraryFolderId, value => mediaItem.LibraryFolderId = value, discoveredFile.LibraryFolderId);
+        changed |= SetIfChanged(() => mediaItem.MediaType, value => mediaItem.MediaType = value, discoveredFile.MediaType);
         changed |= SetIfChanged(() => mediaItem.RuntimeSeconds, value => mediaItem.RuntimeSeconds = value, discoveredFile.RuntimeSeconds);
         changed |= SetIfChanged(() => mediaItem.FileSize, value => mediaItem.FileSize = value, discoveredFile.FileSize);
         changed |= SetIfChanged(() => mediaItem.CreatedDate, value => mediaItem.CreatedDate = value, discoveredFile.CreatedDate);
         changed |= SetIfChanged(() => mediaItem.ModifiedDate, value => mediaItem.ModifiedDate = value, discoveredFile.ModifiedDate);
+        changed |= SetIfChanged(() => mediaItem.TVShowTitle, value => mediaItem.TVShowTitle = value, discoveredFile.TVShowTitle);
+        changed |= SetIfChanged(() => mediaItem.SeasonNumber, value => mediaItem.SeasonNumber = value, discoveredFile.SeasonNumber);
+        changed |= SetIfChanged(() => mediaItem.EpisodeNumber, value => mediaItem.EpisodeNumber = value, discoveredFile.EpisodeNumber);
         changed |= SetIfChanged(() => mediaItem.IsMissing, value => mediaItem.IsMissing = value, false);
         changed |= SetIfChanged(() => mediaItem.MissingSince, value => mediaItem.MissingSince = value, null);
         return changed;
@@ -115,11 +119,14 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         Path = normalizedPath,
         LibraryFolderId = discoveredFile.LibraryFolderId,
         LibraryFolder = null!,
-        MediaType = MediaType.Movie,
+        MediaType = discoveredFile.MediaType,
         RuntimeSeconds = discoveredFile.RuntimeSeconds,
         FileSize = discoveredFile.FileSize,
         CreatedDate = discoveredFile.CreatedDate,
-        ModifiedDate = discoveredFile.ModifiedDate
+        ModifiedDate = discoveredFile.ModifiedDate,
+        TVShowTitle = discoveredFile.TVShowTitle,
+        SeasonNumber = discoveredFile.SeasonNumber,
+        EpisodeNumber = discoveredFile.EpisodeNumber
     };
 
     private static bool SetIfChanged<T>(Func<T> getValue, Action<T> setValue, T value)

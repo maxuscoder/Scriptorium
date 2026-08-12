@@ -1,3 +1,5 @@
+using Scriptorium.Core.Models;
+
 namespace Scriptorium.Core.Services;
 
 /// <summary>
@@ -5,6 +7,7 @@ namespace Scriptorium.Core.Services;
 /// </summary>
 public sealed record DiscoveredMediaFile(
     Guid LibraryFolderId,
+    MediaType MediaType,
     string Path,
     string FileName,
     string Extension,
@@ -14,4 +17,7 @@ public sealed record DiscoveredMediaFile(
     long? FileSize,
     DateTimeOffset? CreatedDate,
     DateTimeOffset? ModifiedDate,
-    bool IsSupportedFormat);
+    bool IsSupportedFormat,
+    string? TVShowTitle = null,
+    int? SeasonNumber = null,
+    int? EpisodeNumber = null);

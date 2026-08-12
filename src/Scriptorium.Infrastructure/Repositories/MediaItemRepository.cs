@@ -83,6 +83,30 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<int> UpdateMediaTypeByLibraryFolderIdAsync(
+        Guid libraryFolderId,
+        MediaType mediaType,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(libraryFolderId, Guid.Empty);
+        if (!mediaType.IsSupported())
+        {
+            throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, "The media type is not supported.");
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems
+            .Where(item => item.LibraryFolderId == libraryFolderId)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(item => item.MediaType, mediaType)
+                    .SetProperty(item => item.TVShowTitle, (string?)null)
+                    .SetProperty(item => item.SeasonNumber, (int?)null)
+                    .SetProperty(item => item.EpisodeNumber, (int?)null),
+                cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> GetFavoritesAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
