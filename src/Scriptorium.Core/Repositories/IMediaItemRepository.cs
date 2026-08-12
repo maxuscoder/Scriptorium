@@ -21,6 +21,12 @@ public interface IMediaItemRepository : IRepository<MediaItem>
         Guid libraryFolderId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Reclassifies all indexed media belonging to a library folder.</summary>
+    Task<int> UpdateMediaTypeByLibraryFolderIdAsync(
+        Guid libraryFolderId,
+        MediaType mediaType,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets favorited media items.</summary>
     Task<IReadOnlyList<MediaItem>> GetFavoritesAsync(CancellationToken cancellationToken = default);
 

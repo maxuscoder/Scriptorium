@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMediaLibrarySynchronizer, MediaLibrarySynchronizer>();
         services.AddSingleton<ITvShowHierarchySynchronizer, TvShowHierarchySynchronizer>();
         services.AddSingleton<ITutorialCourseSynchronizer, TutorialCourseSynchronizer>();
+        services.AddSingleton<IMediaGroupingService, MediaGroupingService>();
         services.AddSingleton<IMediaScannerService, MediaScannerService>();
         services.AddSingleton<IImportedMediaPersistenceService, ImportedMediaPersistenceService>();
         services.AddSingleton<IPlaybackProgressService, PlaybackProgressService>();

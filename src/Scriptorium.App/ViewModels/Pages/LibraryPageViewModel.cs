@@ -17,14 +17,25 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly ILibraryFolderValidator _libraryFolderValidator;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaScannerService _mediaScannerService;
+    private readonly IMediaGroupingService _mediaGroupingService;
     private readonly ISettingsService _settingsService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _removeFolderCommand;
     private readonly AsyncRelayCommand _reconnectFolderCommand;
     private readonly AsyncRelayCommand _saveDisplayNameCommand;
+    private readonly AsyncRelayCommand _changeMediaTypeCommand;
+    private readonly AsyncRelayCommand _renameGroupCommand;
+    private readonly AsyncRelayCommand _moveMediaToGroupCommand;
+    private readonly AsyncRelayCommand _mergeGroupsCommand;
+    private readonly AsyncRelayCommand _splitGroupCommand;
     private ConfiguredFolderViewModel? _selectedFolder;
     private string? _customDisplayName;
+    private MediaType? _selectedMediaType;
+    private ManualTvShowGroupViewModel? _selectedTvShowGroup;
+    private ManualTvShowGroupViewModel? _targetTvShowGroup;
+    private ManualTvShowMediaViewModel? _selectedTvShowMedia;
+    private string? _groupName;
     private string? _selectedFolderPath;
     private string? _statusMessage;
     private bool _isScanning;
@@ -42,6 +53,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         ILibraryFolderValidator libraryFolderValidator,
         IMediaItemRepository mediaItemRepository,
         IMediaScannerService mediaScannerService,
+        IMediaGroupingService mediaGroupingService,
         ISettingsService settingsService)
     {
         _importFolderDialog = importFolderDialog;
@@ -50,6 +62,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         _libraryFolderValidator = libraryFolderValidator;
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
+        _mediaGroupingService = mediaGroupingService;
         _settingsService = settingsService;
         _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning);
         RefreshLibraryCommand = _refreshLibraryCommand;
@@ -65,6 +78,18 @@ public sealed class LibraryPageViewModel : PageViewModel
         SaveFolderStateCommand = new AsyncRelayCommand(SaveFolderStateAsync);
         _saveDisplayNameCommand = new AsyncRelayCommand(SaveDisplayNameAsync, () => SelectedFolder is not null);
         SaveDisplayNameCommand = _saveDisplayNameCommand;
+        _changeMediaTypeCommand = new AsyncRelayCommand(
+            ChangeSelectedFolderMediaTypeAsync,
+            () => SelectedFolder is not null && SelectedMediaType is { } mediaType && mediaType != SelectedFolder.Folder.MediaType && !IsScanning);
+        ChangeMediaTypeCommand = _changeMediaTypeCommand;
+        _renameGroupCommand = new AsyncRelayCommand(RenameSelectedGroupAsync, CanRenameSelectedGroup);
+        RenameGroupCommand = _renameGroupCommand;
+        _moveMediaToGroupCommand = new AsyncRelayCommand(MoveSelectedMediaToGroupAsync, CanMoveSelectedMediaToGroup);
+        MoveMediaToGroupCommand = _moveMediaToGroupCommand;
+        _mergeGroupsCommand = new AsyncRelayCommand(MergeSelectedGroupsAsync, CanMergeSelectedGroups);
+        MergeGroupsCommand = _mergeGroupsCommand;
+        _splitGroupCommand = new AsyncRelayCommand(SplitSelectedGroupAsync, CanSplitSelectedGroup);
+        SplitGroupCommand = _splitGroupCommand;
     }
 
     public override string Title => "Library";
@@ -90,6 +115,82 @@ public sealed class LibraryPageViewModel : PageViewModel
     /// <summary>Saves a configured folder's enabled state.</summary>
     public ICommand SaveFolderStateCommand { get; }
 
+    /// <summary>Reclassifies the selected folder and all of its indexed media.</summary>
+    public ICommand ChangeMediaTypeCommand { get; }
+
+    /// <summary>Gets the classifications available for a library folder.</summary>
+    public IReadOnlyList<MediaTypeChoice> MediaTypes { get; } =
+    [
+        new(MediaType.Tutorial, "Tutorials"),
+        new(MediaType.TvShow, "TV shows"),
+        new(MediaType.Movie, "Movies")
+    ];
+
+    /// <summary>Gets the television-show groups available for manual organization.</summary>
+    public ObservableCollection<ManualTvShowGroupViewModel> TvShowGroups { get; } = [];
+
+    /// <summary>Gets or sets the group whose media is being organized.</summary>
+    public ManualTvShowGroupViewModel? SelectedTvShowGroup
+    {
+        get => _selectedTvShowGroup;
+        set
+        {
+            if (SetProperty(ref _selectedTvShowGroup, value))
+            {
+                SelectedTvShowMedia = null;
+                GroupName = value?.Title;
+                NotifyGroupingCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the destination group for move and merge operations.</summary>
+    public ManualTvShowGroupViewModel? TargetTvShowGroup
+    {
+        get => _targetTvShowGroup;
+        set
+        {
+            if (SetProperty(ref _targetTvShowGroup, value))
+            {
+                NotifyGroupingCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the media selected for a move or split operation.</summary>
+    public ManualTvShowMediaViewModel? SelectedTvShowMedia
+    {
+        get => _selectedTvShowMedia;
+        set
+        {
+            if (SetProperty(ref _selectedTvShowMedia, value))
+            {
+                NotifyGroupingCommands();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the name used to rename or split a group.</summary>
+    public string? GroupName
+    {
+        get => _groupName;
+        set
+        {
+            if (SetProperty(ref _groupName, value))
+            {
+                NotifyGroupingCommands();
+            }
+        }
+    }
+
+    public ICommand RenameGroupCommand { get; }
+
+    public ICommand MoveMediaToGroupCommand { get; }
+
+    public ICommand MergeGroupsCommand { get; }
+
+    public ICommand SplitGroupCommand { get; }
+
     /// <summary>Gets the folders currently configured for the library.</summary>
     public ObservableCollection<ConfiguredFolderViewModel> ConfiguredFolders { get; } = [];
 
@@ -105,6 +206,7 @@ public sealed class LibraryPageViewModel : PageViewModel
                 _reconnectFolderCommand.NotifyCanExecuteChanged();
                 _saveDisplayNameCommand.NotifyCanExecuteChanged();
                 CustomDisplayName = value?.Folder.DisplayName;
+                SelectedMediaType = value?.Folder.MediaType;
             }
         }
     }
@@ -114,6 +216,19 @@ public sealed class LibraryPageViewModel : PageViewModel
     {
         get => _customDisplayName;
         set => SetProperty(ref _customDisplayName, value);
+    }
+
+    /// <summary>Gets or sets the type selected for the currently selected library folder.</summary>
+    public MediaType? SelectedMediaType
+    {
+        get => _selectedMediaType;
+        set
+        {
+            if (SetProperty(ref _selectedMediaType, value))
+            {
+                _changeMediaTypeCommand.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     /// <summary>Gets the path returned by the most recent successful folder selection.</summary>
@@ -140,6 +255,7 @@ public sealed class LibraryPageViewModel : PageViewModel
             {
                 _refreshLibraryCommand.NotifyCanExecuteChanged();
                 _cancelScanCommand.NotifyCanExecuteChanged();
+                _changeMediaTypeCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(LibrarySummary));
                 OnPropertyChanged(nameof(ScanProgressMessage));
             }
@@ -239,6 +355,26 @@ public sealed class LibraryPageViewModel : PageViewModel
         var mediaItems = await _mediaItemRepository.GetAllAsync();
         IndexedMediaCount = mediaItems.Count;
         MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
+        await RefreshTvShowGroupsAsync();
+    }
+
+    /// <summary>Reloads manually manageable television-show groups from the database.</summary>
+    public async Task RefreshTvShowGroupsAsync()
+    {
+        var selectedGroupId = SelectedTvShowGroup?.Id;
+        var targetGroupId = TargetTvShowGroup?.Id;
+        TvShowGroups.Clear();
+        foreach (var group in await _mediaGroupingService.GetTvShowGroupsAsync())
+        {
+            TvShowGroups.Add(new ManualTvShowGroupViewModel(group));
+        }
+
+        SelectedTvShowGroup = selectedGroupId is { } selectedId
+            ? TvShowGroups.SingleOrDefault(group => group.Id == selectedId)
+            : null;
+        TargetTvShowGroup = targetGroupId is { } targetId
+            ? TvShowGroups.SingleOrDefault(group => group.Id == targetId)
+            : null;
     }
 
     private async Task ImportFolderAsync()
@@ -407,9 +543,105 @@ public sealed class LibraryPageViewModel : PageViewModel
             : "Custom display name saved.";
     }
 
+    private async Task ChangeSelectedFolderMediaTypeAsync()
+    {
+        var configuredFolder = SelectedFolder;
+        var mediaType = SelectedMediaType;
+        if (configuredFolder is null || mediaType is null || configuredFolder.Folder.MediaType == mediaType)
+        {
+            return;
+        }
+
+        configuredFolder.Folder.MediaType = mediaType.Value;
+        await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
+        var reclassifiedMediaCount = await _mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
+            configuredFolder.Id,
+            mediaType.Value);
+        await RefreshLibraryDataAsync();
+
+        StatusMessage = $"Media type changed to {GetMediaTypeDisplayName(mediaType.Value)}. Reclassified {reclassifiedMediaCount} indexed media file{(reclassifiedMediaCount == 1 ? string.Empty : "s")}.";
+    }
+
     private static string GetFolderName(string folderPath)
     {
         var name = new DirectoryInfo(folderPath).Name;
         return string.IsNullOrWhiteSpace(name) ? folderPath : name;
     }
+
+    private static string GetMediaTypeDisplayName(MediaType mediaType) => mediaType switch
+    {
+        MediaType.Tutorial => "Tutorials",
+        MediaType.TvShow => "TV shows",
+        MediaType.Movie => "Movies",
+        _ => mediaType.ToString()
+    };
+
+    private bool CanRenameSelectedGroup() =>
+        SelectedTvShowGroup is not null && !string.IsNullOrWhiteSpace(GroupName);
+
+    private bool CanMoveSelectedMediaToGroup() =>
+        SelectedTvShowMedia is not null &&
+        SelectedTvShowGroup is not null &&
+        TargetTvShowGroup is { } targetGroup &&
+        targetGroup.Id != SelectedTvShowGroup.Id;
+
+    private bool CanMergeSelectedGroups() =>
+        SelectedTvShowGroup is not null &&
+        TargetTvShowGroup is { } targetGroup &&
+        targetGroup.Id != SelectedTvShowGroup.Id;
+
+    private bool CanSplitSelectedGroup() =>
+        SelectedTvShowGroup is not null &&
+        SelectedTvShowMedia is not null &&
+        !string.IsNullOrWhiteSpace(GroupName);
+
+    private Task RenameSelectedGroupAsync() => ApplyGroupingChangeAsync(
+        () => _mediaGroupingService.RenameTvShowGroupAsync(SelectedTvShowGroup!.Id, GroupName!),
+        "Group renamed and library refreshed.");
+
+    private Task MoveSelectedMediaToGroupAsync() => ApplyGroupingChangeAsync(
+        () => _mediaGroupingService.MoveEpisodeAsync(SelectedTvShowMedia!.MediaItemId, TargetTvShowGroup!.Id),
+        "Media moved and library refreshed.");
+
+    private Task MergeSelectedGroupsAsync() => ApplyGroupingChangeAsync(
+        () => _mediaGroupingService.MergeTvShowGroupsAsync(SelectedTvShowGroup!.Id, TargetTvShowGroup!.Id),
+        "Groups merged and library refreshed.");
+
+    private Task SplitSelectedGroupAsync() => ApplyGroupingChangeAsync(
+        () => _mediaGroupingService.SplitTvShowGroupAsync(
+            SelectedTvShowGroup!.Id,
+            [SelectedTvShowMedia!.MediaItemId],
+            GroupName!),
+        "New group created and library refreshed.");
+
+    private async Task ApplyGroupingChangeAsync(Func<Task> change, string successMessage)
+    {
+        try
+        {
+            await change();
+            SelectedTvShowGroup = null;
+            TargetTvShowGroup = null;
+            await RefreshLibraryDataAsync();
+            StatusMessage = successMessage;
+        }
+        catch (ArgumentException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+        catch (InvalidOperationException exception)
+        {
+            StatusMessage = exception.Message;
+        }
+    }
+
+    private void NotifyGroupingCommands()
+    {
+        _renameGroupCommand.NotifyCanExecuteChanged();
+        _moveMediaToGroupCommand.NotifyCanExecuteChanged();
+        _mergeGroupsCommand.NotifyCanExecuteChanged();
+        _splitGroupCommand.NotifyCanExecuteChanged();
+    }
 }
+
+/// <summary>Represents a display-ready media type that can be selected for a library folder.</summary>
+public sealed record MediaTypeChoice(MediaType Value, string DisplayName);

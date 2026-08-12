@@ -90,6 +90,20 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    <Style x:Key="Input.ComboBox" TargetType="ComboBox">
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="Padding" Value="10,7" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="Dialog.Surface" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />

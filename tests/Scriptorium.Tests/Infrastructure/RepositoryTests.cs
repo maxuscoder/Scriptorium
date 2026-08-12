@@ -35,6 +35,7 @@ public sealed class RepositoryTests
         Assert.IsType<MediaLibrarySynchronizer>(provider.GetRequiredService<IMediaLibrarySynchronizer>());
         Assert.IsType<TvShowHierarchySynchronizer>(provider.GetRequiredService<ITvShowHierarchySynchronizer>());
         Assert.IsType<TutorialCourseSynchronizer>(provider.GetRequiredService<ITutorialCourseSynchronizer>());
+        Assert.IsType<MediaGroupingService>(provider.GetRequiredService<IMediaGroupingService>());
         Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
@@ -419,6 +420,84 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Reclassifying_a_library_folder_updates_all_of_its_indexed_media()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var reclassifiedFolder = new LibraryFolder
+            {
+                Name = "Tutorials",
+                Path = "C:\\Tutorials",
+                MediaType = MediaType.Tutorial
+            };
+            var unaffectedFolder = new LibraryFolder { Name = "Movies", Path = "C:\\Movies" };
+            await folderRepository.AddAsync(reclassifiedFolder);
+            await folderRepository.AddAsync(unaffectedFolder);
+            await mediaItemRepository.AddRangeAsync(
+            [
+                new MediaItem
+                {
+                    Title = "First lesson",
+                    Path = "C:\\Tutorials\\first.mp4",
+                    LibraryFolderId = reclassifiedFolder.Id,
+                    MediaType = MediaType.Tutorial,
+                    TVShowTitle = "Stale show",
+                    SeasonNumber = 1,
+                    EpisodeNumber = 1
+                },
+                new MediaItem
+                {
+                    Title = "Second lesson",
+                    Path = "C:\\Tutorials\\second.mp4",
+                    LibraryFolderId = reclassifiedFolder.Id,
+                    MediaType = MediaType.Tutorial
+                },
+                new MediaItem
+                {
+                    Title = "Unrelated movie",
+                    Path = "C:\\Movies\\movie.mp4",
+                    LibraryFolderId = unaffectedFolder.Id,
+                    MediaType = MediaType.Movie
+                }
+            ]);
+
+            reclassifiedFolder.MediaType = MediaType.Movie;
+            await folderRepository.UpdateAsync(reclassifiedFolder);
+            Assert.Equal(2, await mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
+                reclassifiedFolder.Id,
+                MediaType.Movie));
+
+            Assert.Equal(MediaType.Movie, (await folderRepository.GetByIdAsync(reclassifiedFolder.Id))!.MediaType);
+            var reclassifiedMedia = await mediaItemRepository.GetByLibraryFolderIdAsync(reclassifiedFolder.Id);
+            Assert.All(reclassifiedMedia, item => Assert.Equal(MediaType.Movie, item.MediaType));
+            Assert.All(reclassifiedMedia, item =>
+            {
+                Assert.Null(item.TVShowTitle);
+                Assert.Null(item.SeasonNumber);
+                Assert.Null(item.EpisodeNumber);
+            });
+            Assert.Equal(MediaType.Movie, (await mediaItemRepository.GetByLibraryFolderIdAsync(unaffectedFolder.Id)).Single().MediaType);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Library_folder_rejects_an_unsupported_media_type()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
@@ -442,6 +521,129 @@ public sealed class RepositoryTests
             };
 
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => folderRepository.AddAsync(invalidFolder));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Manual_tv_show_grouping_moves_renames_merges_and_splits_media()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var folder = new LibraryFolder { Name = "TV", Path = "C:\\TV", MediaType = MediaType.TvShow };
+            await folderRepository.AddAsync(folder);
+            var mediaItems = new[]
+            {
+                new MediaItem
+                {
+                    Title = "Episode one",
+                    Path = "C:\\TV\\one.mkv",
+                    LibraryFolderId = folder.Id,
+                    MediaType = MediaType.TvShow,
+                    TVShowTitle = "Detected source",
+                    SeasonNumber = 1,
+                    EpisodeNumber = 1
+                },
+                new MediaItem
+                {
+                    Title = "Episode two",
+                    Path = "C:\\TV\\two.mkv",
+                    LibraryFolderId = folder.Id,
+                    MediaType = MediaType.TvShow,
+                    TVShowTitle = "Detected source",
+                    SeasonNumber = 1,
+                    EpisodeNumber = 2
+                },
+                new MediaItem
+                {
+                    Title = "Episode three",
+                    Path = "C:\\TV\\three.mkv",
+                    LibraryFolderId = folder.Id,
+                    MediaType = MediaType.TvShow,
+                    TVShowTitle = "Target show",
+                    SeasonNumber = 1,
+                    EpisodeNumber = 3
+                }
+            };
+            await mediaItemRepository.AddRangeAsync(mediaItems);
+
+            var sourceGroup = new TVShow { Title = "Detected source", LibraryFolderId = folder.Id };
+            var sourceSeason = new Season { TVShowId = sourceGroup.Id, TVShow = sourceGroup, SeasonNumber = 1 };
+            sourceGroup.Seasons.Add(sourceSeason);
+            sourceSeason.Episodes.AddRange(
+            [
+                new Episode
+                {
+                    SeasonId = sourceSeason.Id,
+                    Season = sourceSeason,
+                    MediaItemId = mediaItems[0].Id,
+                    MediaItem = null!,
+                    EpisodeNumber = 1,
+                    Title = mediaItems[0].Title,
+                    FilePath = mediaItems[0].Path
+                },
+                new Episode
+                {
+                    SeasonId = sourceSeason.Id,
+                    Season = sourceSeason,
+                    MediaItemId = mediaItems[1].Id,
+                    MediaItem = null!,
+                    EpisodeNumber = 2,
+                    Title = mediaItems[1].Title,
+                    FilePath = mediaItems[1].Path
+                }
+            ]);
+            var targetGroup = new TVShow { Title = "Target show", LibraryFolderId = folder.Id };
+            var targetSeason = new Season { TVShowId = targetGroup.Id, TVShow = targetGroup, SeasonNumber = 1 };
+            targetGroup.Seasons.Add(targetSeason);
+            targetSeason.Episodes.Add(new Episode
+            {
+                SeasonId = targetSeason.Id,
+                Season = targetSeason,
+                MediaItemId = mediaItems[2].Id,
+                MediaItem = null!,
+                EpisodeNumber = 3,
+                Title = mediaItems[2].Title,
+                FilePath = mediaItems[2].Path
+            });
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                context.TVShows.AddRange(sourceGroup, targetGroup);
+                await context.SaveChangesAsync();
+            }
+
+            var groupingService = new MediaGroupingService(contextFactory);
+            await groupingService.RenameTvShowGroupAsync(sourceGroup.Id, "Renamed source");
+            Assert.Equal("Renamed source", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+
+            await groupingService.MoveEpisodeAsync(mediaItems[0].Id, targetGroup.Id);
+            Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+
+            await groupingService.SplitTvShowGroupAsync(targetGroup.Id, [mediaItems[0].Id], "Split show");
+            var splitGroup = (await groupingService.GetTvShowGroupsAsync()).Single(group => group.Title == "Split show");
+            Assert.Equal("Split show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+
+            await groupingService.MergeTvShowGroupsAsync(splitGroup.Id, targetGroup.Id);
+            var groups = await groupingService.GetTvShowGroupsAsync();
+            Assert.DoesNotContain(groups, group => group.Id == splitGroup.Id);
+            Assert.Equal(2, groups.Single(group => group.Id == targetGroup.Id).EpisodeCount);
+            Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
         }
         finally
         {
