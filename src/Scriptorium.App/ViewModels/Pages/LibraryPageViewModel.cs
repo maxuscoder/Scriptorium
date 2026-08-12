@@ -243,13 +243,14 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     private async Task ImportFolderAsync()
     {
-        var folderPath = _importFolderDialog.SelectFolder(SelectedFolderPath);
-        if (folderPath is null)
+        var selection = _importFolderDialog.SelectFolder(SelectedFolderPath);
+        if (selection is null)
         {
             // Cancellation is an expected outcome; leave the existing library unchanged.
             return;
         }
 
+        var folderPath = selection.FolderPath;
         var existingFolders = await _libraryFolderRepository.GetAllAsync();
         if (existingFolders.Any(folder => string.Equals(folder.Path, folderPath, StringComparison.OrdinalIgnoreCase)))
         {
@@ -262,7 +263,8 @@ public sealed class LibraryPageViewModel : PageViewModel
         await _libraryFolderRepository.AddAsync(new LibraryFolder
         {
             Path = folderPath,
-            Name = GetFolderName(folderPath)
+            Name = GetFolderName(folderPath),
+            MediaType = selection.MediaType
         });
 
         if (!_settingsService.Settings.LibraryFolders.Any(path => string.Equals(path, folderPath, StringComparison.OrdinalIgnoreCase)))

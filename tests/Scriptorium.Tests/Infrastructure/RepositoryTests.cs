@@ -390,13 +390,15 @@ public sealed class RepositoryTests
             {
                 Name = "1080p.Bluray.h264.The.Boondocks",
                 DisplayName = "The Boondocks",
-                Path = "D:\\TV Shows\\1080p.Bluray.h264.The.Boondocks"
+                Path = "D:\\TV Shows\\1080p.Bluray.h264.The.Boondocks",
+                MediaType = MediaType.TvShow
             };
             await folderRepository.AddAsync(folder);
 
             var storedFolder = (await folderRepository.GetByIdAsync(folder.Id))!;
             Assert.Equal("The Boondocks", storedFolder.DisplayName);
             Assert.Equal("The Boondocks", storedFolder.DisplayNameOrName);
+            Assert.Equal(MediaType.TvShow, storedFolder.MediaType);
 
             storedFolder.DisplayName = null;
             await folderRepository.UpdateAsync(storedFolder);
@@ -497,7 +499,7 @@ public sealed class RepositoryTests
             }
 
             var repository = new LibraryFolderRepository(new TestDbContextFactory(options));
-            var enabledFolder = new LibraryFolder { Name = "Enabled", Path = enabledFolderPath };
+            var enabledFolder = new LibraryFolder { Name = "Enabled", Path = enabledFolderPath, MediaType = MediaType.Tutorial };
             await repository.AddAsync(enabledFolder);
             await repository.AddAsync(new LibraryFolder { Name = "Disabled", Path = disabledFolderPath, IsEnabled = false });
             var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
@@ -542,15 +544,18 @@ public sealed class RepositoryTests
             Assert.Equal(nestedFolderPath, nestedFile.ContainingFolderPath);
             Assert.Equal("nested", nestedFile.DisplayTitle);
             Assert.Equal(enabledFolder.Id, nestedFile.LibraryFolderId);
+            Assert.Equal(MediaType.Tutorial, nestedFile.MediaType);
 
             var savedMedia = await mediaItemRepository.GetByPathAsync(nestedFileFullPath);
             Assert.NotNull(savedMedia);
             Assert.Equal(enabledFolder.Id, savedMedia.LibraryFolderId);
             Assert.Equal("nested", savedMedia.Title);
+            Assert.Equal(MediaType.Tutorial, savedMedia.MediaType);
             Assert.Equal(nestedFile.FileSize, savedMedia.FileSize);
 
             var synchronizedRoot = (await mediaItemRepository.GetByPathAsync(rootFilePath))!;
             Assert.Equal("root", synchronizedRoot.Title);
+            Assert.Equal(MediaType.Tutorial, synchronizedRoot.MediaType);
             Assert.True(synchronizedRoot.IsFavorite);
             Assert.Equal(90, synchronizedRoot.PlaybackPositionSeconds);
             Assert.Equal("C:\\Media\\custom-thumbnail.jpg", synchronizedRoot.ThumbnailPath);
@@ -637,13 +642,14 @@ public sealed class RepositoryTests
             await File.WriteAllTextAsync(normalizedFilePath, "metadata");
             var mediaMetadataReader = new MediaMetadataReader(new FixedDurationReader(TimeSpan.FromMilliseconds(1500)));
 
-            var metadata = mediaMetadataReader.Read(Guid.NewGuid(), filePath);
+            var metadata = mediaMetadataReader.Read(Guid.NewGuid(), MediaType.Tutorial, filePath);
 
             Assert.Equal(normalizedFilePath, metadata.Path);
             Assert.Equal("Example.MKV", metadata.FileName);
             Assert.Equal(".mkv", metadata.Extension);
             Assert.Equal(folderPath, metadata.ContainingFolderPath);
             Assert.Equal("Example", metadata.DisplayTitle);
+            Assert.Equal(MediaType.Tutorial, metadata.MediaType);
             Assert.Equal(2, metadata.RuntimeSeconds);
             Assert.Equal(new FileInfo(normalizedFilePath).Length, metadata.FileSize);
             Assert.NotNull(metadata.CreatedDate);
@@ -696,7 +702,7 @@ public sealed class RepositoryTests
 
     private sealed class ThrowingMetadataReader : IMediaMetadataReader
     {
-        public DiscoveredMediaFile Read(Guid libraryFolderId, string filePath) =>
+        public DiscoveredMediaFile Read(Guid libraryFolderId, MediaType mediaType, string filePath) =>
             throw new InvalidOperationException("The cancelled scan should not read media metadata.");
     }
 

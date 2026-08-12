@@ -1,6 +1,7 @@
 using Microsoft.Win32;
 using System.IO;
 using System.Windows;
+using Scriptorium.App.Views;
 
 namespace Scriptorium.App.Services;
 
@@ -10,7 +11,7 @@ namespace Scriptorium.App.Services;
 public sealed class ImportFolderDialog : IImportFolderDialog
 {
     /// <inheritdoc />
-    public string? SelectFolder(string? initialDirectory = null)
+    public ImportFolderSelection? SelectFolder(string? initialDirectory = null)
     {
         while (true)
         {
@@ -28,7 +29,14 @@ public sealed class ImportFolderDialog : IImportFolderDialog
 
             if (TryNormalizeLocalFolderPath(dialog.FolderName, out var folderPath))
             {
-                return folderPath;
+                var mediaTypeDialog = new MediaTypeSelectionDialog
+                {
+                    Owner = Application.Current?.MainWindow
+                };
+
+                return mediaTypeDialog.ShowDialog() == true && mediaTypeDialog.SelectedMediaType is { } mediaType
+                    ? new ImportFolderSelection(folderPath, mediaType)
+                    : null;
             }
 
             MessageBox.Show(

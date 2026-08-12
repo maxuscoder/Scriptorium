@@ -1,3 +1,4 @@
+using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
 using Microsoft.Extensions.Logging;
 
@@ -11,7 +12,7 @@ public sealed class MediaMetadataReader(
     ILogger<MediaMetadataReader>? logger = null) : IMediaMetadataReader
 {
     /// <inheritdoc />
-    public DiscoveredMediaFile Read(Guid libraryFolderId, string filePath)
+    public DiscoveredMediaFile Read(Guid libraryFolderId, MediaType mediaType, string filePath)
     {
         ArgumentOutOfRangeException.ThrowIfEqual(libraryFolderId, Guid.Empty);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
@@ -26,6 +27,7 @@ public sealed class MediaMetadataReader(
 
         return new DiscoveredMediaFile(
             libraryFolderId,
+            mediaType,
             normalizedPath,
             fileName,
             extension,

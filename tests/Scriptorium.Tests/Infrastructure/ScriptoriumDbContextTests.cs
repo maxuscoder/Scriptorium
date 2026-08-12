@@ -29,7 +29,12 @@ public sealed class ScriptoriumDbContextTests
             Assert.DoesNotContain("TVShows", tableNames);
             Assert.DoesNotContain("Seasons", tableNames);
             Assert.DoesNotContain("Episodes", tableNames);
-            Assert.Equal(4, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(5, (await context.Database.GetAppliedMigrationsAsync()).Count());
+
+            var folderColumns = await context.Database
+                .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
+                .ToListAsync();
+            Assert.Contains("MediaType", folderColumns);
         }
         finally
         {

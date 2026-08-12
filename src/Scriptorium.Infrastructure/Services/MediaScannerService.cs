@@ -53,7 +53,7 @@ public sealed class MediaScannerService(
                     cancellationToken.ThrowIfCancellationRequested();
                     if (mediaFormatService.IsSupportedExtension(Path.GetExtension(path)))
                     {
-                        supportedCandidates.Add(new MediaFileCandidate(folder.Id, path));
+                        supportedCandidates.Add(new MediaFileCandidate(folder.Id, folder.MediaType, path));
                         progress?.Report(new MediaScanProgress(folder.Path, path, processedFileCount, supportedCandidates.Count));
                     }
                 }
@@ -68,7 +68,7 @@ public sealed class MediaScannerService(
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    discoveredFiles.Add(mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.Path) with { IsSupportedFormat = true });
+                    discoveredFiles.Add(mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.MediaType, candidate.Path) with { IsSupportedFormat = true });
                 }
                 catch (Exception exception) when (CanSkip(exception))
                 {

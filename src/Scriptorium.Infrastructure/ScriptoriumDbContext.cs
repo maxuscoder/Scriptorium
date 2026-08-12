@@ -34,6 +34,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.Property(folder => folder.Path).IsRequired();
             entity.Property(folder => folder.Name).IsRequired();
             entity.Property(folder => folder.DisplayName);
+            entity.Property(folder => folder.MediaType)
+                .HasDefaultValue(MediaType.Movie)
+                .ValueGeneratedNever();
             entity.Ignore(folder => folder.DisplayNameOrName);
         });
 

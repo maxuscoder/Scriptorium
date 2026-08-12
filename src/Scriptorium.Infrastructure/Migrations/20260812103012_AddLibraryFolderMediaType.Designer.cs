@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Scriptorium.Infrastructure;
 
@@ -10,9 +11,11 @@ using Scriptorium.Infrastructure;
 namespace Scriptorium.Infrastructure.Migrations
 {
     [DbContext(typeof(ScriptoriumDbContext))]
-    partial class ScriptoriumDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812103012_AddLibraryFolderMediaType")]
+    partial class AddLibraryFolderMediaType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
