@@ -26,10 +26,12 @@ public sealed class ScriptoriumDbContextTests
                 new HashSet<string>(tableNames),
                 new HashSet<string> { "MediaItems", "Categories", "LibraryFolders" });
             Assert.DoesNotContain("Favorites", tableNames);
-            Assert.DoesNotContain("TVShows", tableNames);
-            Assert.DoesNotContain("Seasons", tableNames);
-            Assert.DoesNotContain("Episodes", tableNames);
-            Assert.Equal(8, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Contains("TVShows", tableNames);
+            Assert.Contains("Seasons", tableNames);
+            Assert.Contains("Episodes", tableNames);
+            Assert.Contains("Courses", tableNames);
+            Assert.Contains("Lessons", tableNames);
+            Assert.Equal(11, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")

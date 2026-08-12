@@ -28,10 +28,13 @@ public sealed class RepositoryTests
         Assert.IsType<MediaFormatService>(provider.GetRequiredService<IMediaFormatService>());
         Assert.IsType<SeasonFolderDetector>(provider.GetRequiredService<ISeasonFolderDetector>());
         Assert.IsType<EpisodeFileNameParser>(provider.GetRequiredService<IEpisodeFileNameParser>());
+        Assert.IsType<LessonFileNameParser>(provider.GetRequiredService<ILessonFileNameParser>());
         Assert.IsType<MediaDuplicateDetector>(provider.GetRequiredService<IMediaDuplicateDetector>());
         Assert.IsType<TagLibMediaDurationReader>(provider.GetRequiredService<IMediaDurationReader>());
         Assert.IsType<MediaMetadataReader>(provider.GetRequiredService<IMediaMetadataReader>());
         Assert.IsType<MediaLibrarySynchronizer>(provider.GetRequiredService<IMediaLibrarySynchronizer>());
+        Assert.IsType<TvShowHierarchySynchronizer>(provider.GetRequiredService<ITvShowHierarchySynchronizer>());
+        Assert.IsType<TutorialCourseSynchronizer>(provider.GetRequiredService<ITutorialCourseSynchronizer>());
         Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
@@ -556,7 +559,9 @@ public sealed class RepositoryTests
                 new EpisodeFileNameParser(),
                 new MediaDuplicateDetector(),
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
-                new MediaLibrarySynchronizer(mediaItemRepository));
+                new MediaLibrarySynchronizer(mediaItemRepository),
+                new TvShowHierarchySynchronizer(new TestDbContextFactory(options)),
+                new TutorialCourseSynchronizer(new TestDbContextFactory(options), new LessonFileNameParser()));
 
             var progress = new CapturingProgress();
             var scanResult = await scanner.ScanAsync(progress: progress);
@@ -644,7 +649,9 @@ public sealed class RepositoryTests
             new EpisodeFileNameParser(),
             new ThrowingDuplicateDetector(),
             new ThrowingMetadataReader(),
-            new ThrowingSynchronizer());
+            new ThrowingSynchronizer(),
+            new ThrowingHierarchySynchronizer(),
+            new ThrowingCourseSynchronizer());
         using var cancellationSource = new CancellationTokenSource();
         cancellationSource.Cancel();
 
@@ -707,6 +714,101 @@ public sealed class RepositoryTests
         Assert.Null(parser.Parse(fileName));
     }
 
+    [Theory]
+    [InlineData("01 - Introduction.mp4", 1)]
+    [InlineData("Lesson 02 - Components.mkv", 2)]
+    [InlineData("Part 10 - Advanced Patterns.avi", 10)]
+    [InlineData("Welcome.mp4", null)]
+    public void Lesson_file_name_parser_detects_leading_lesson_numbers(string fileName, int? expectedLessonNumber)
+    {
+        var parser = new LessonFileNameParser();
+
+        Assert.Equal(expectedLessonNumber, parser.ParseLessonNumber(fileName));
+    }
+
+    [Fact]
+    public async Task Tutorial_course_synchronizer_creates_one_course_per_folder_and_orders_lessons()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var reactFolder = new LibraryFolder
+            {
+                Name = "React Course",
+                Path = "C:\\Tutorials\\React Course",
+                MediaType = MediaType.Tutorial
+            };
+            var emptyFolder = new LibraryFolder
+            {
+                Name = "Empty Course",
+                Path = "C:\\Tutorials\\Empty Course",
+                MediaType = MediaType.Tutorial
+            };
+            await folderRepository.AddAsync(reactFolder);
+            await folderRepository.AddAsync(emptyFolder);
+            var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
+            var lessons = new[]
+            {
+                new MediaItem
+                {
+                    Title = "10 - Advanced Patterns",
+                    Path = "C:\\Tutorials\\React Course\\10 - Advanced Patterns.mp4",
+                    LibraryFolderId = reactFolder.Id,
+                    MediaType = MediaType.Tutorial
+                },
+                new MediaItem
+                {
+                    Title = "02 - Components",
+                    Path = "C:\\Tutorials\\React Course\\02 - Components.mp4",
+                    LibraryFolderId = reactFolder.Id,
+                    MediaType = MediaType.Tutorial
+                },
+                new MediaItem
+                {
+                    Title = "Welcome",
+                    Path = "C:\\Tutorials\\React Course\\Welcome.mp4",
+                    LibraryFolderId = reactFolder.Id,
+                    MediaType = MediaType.Tutorial
+                }
+            };
+            await mediaItemRepository.AddRangeAsync(lessons);
+
+            var synchronizer = new TutorialCourseSynchronizer(
+                new TestDbContextFactory(options),
+                new LessonFileNameParser());
+            await synchronizer.SynchronizeAsync([reactFolder, emptyFolder], lessons);
+
+            await using var hierarchyContext = new ScriptoriumDbContext(options);
+            var reactCourse = await hierarchyContext.Courses
+                .Include(course => course.Lessons)
+                .SingleAsync(course => course.LibraryFolderId == reactFolder.Id);
+            Assert.Equal("React Course", reactCourse.Title);
+            Assert.Collection(
+                reactCourse.Lessons.OrderBy(lesson => lesson.SortOrder),
+                lesson => Assert.Equal(2, lesson.LessonNumber),
+                lesson => Assert.Equal(10, lesson.LessonNumber),
+                lesson => Assert.Null(lesson.LessonNumber));
+            var emptyCourse = await hierarchyContext.Courses
+                .Include(course => course.Lessons)
+                .SingleAsync(course => course.LibraryFolderId == emptyFolder.Id);
+            Assert.Empty(emptyCourse.Lessons);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
     [Fact]
     public async Task Library_scanner_associates_detected_season_folders_with_their_tv_shows()
     {
@@ -725,9 +827,13 @@ public sealed class RepositoryTests
             Directory.CreateDirectory(foundationSeasonPath);
             Directory.CreateDirectory(extrasPath);
             var expanseFilePath = Path.Combine(expanseSeasonPath, "S01E01.mkv");
+            var expanseLaterEpisodeFilePath = Path.Combine(expanseSeasonPath, "S01E10.mkv");
+            var expanseUnnumberedFilePath = Path.Combine(expanseSeasonPath, "Interview.mkv");
             var foundationFilePath = Path.Combine(foundationSeasonPath, "S02E03.mp4");
             var extrasFilePath = Path.Combine(extrasPath, "behind-the-scenes.avi");
             await File.WriteAllTextAsync(expanseFilePath, "episode");
+            await File.WriteAllTextAsync(expanseLaterEpisodeFilePath, "episode");
+            await File.WriteAllTextAsync(expanseUnnumberedFilePath, "extra");
             await File.WriteAllTextAsync(foundationFilePath, "episode");
             await File.WriteAllTextAsync(extrasFilePath, "extra");
 
@@ -753,16 +859,21 @@ public sealed class RepositoryTests
                 new EpisodeFileNameParser(),
                 new MediaDuplicateDetector(),
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
-                new MediaLibrarySynchronizer(mediaItemRepository));
+                new MediaLibrarySynchronizer(mediaItemRepository),
+                new TvShowHierarchySynchronizer(new TestDbContextFactory(options)),
+                new TutorialCourseSynchronizer(new TestDbContextFactory(options), new LessonFileNameParser()));
 
             var result = await scanner.ScanAsync();
 
-            Assert.Equal(3, result.DiscoveredMediaCount);
+            Assert.Equal(5, result.DiscoveredMediaCount);
             var expanseMedia = (await mediaItemRepository.GetByPathAsync(expanseFilePath))!;
             Assert.Equal(MediaType.TvShow, expanseMedia.MediaType);
             Assert.Equal("The Expanse", expanseMedia.TVShowTitle);
             Assert.Equal(1, expanseMedia.SeasonNumber);
             Assert.Equal(1, expanseMedia.EpisodeNumber);
+            var expanseUnnumberedMedia = (await mediaItemRepository.GetByPathAsync(expanseUnnumberedFilePath))!;
+            Assert.Equal(1, expanseUnnumberedMedia.SeasonNumber);
+            Assert.Null(expanseUnnumberedMedia.EpisodeNumber);
             var foundationMedia = (await mediaItemRepository.GetByPathAsync(foundationFilePath))!;
             Assert.Equal("Foundation", foundationMedia.TVShowTitle);
             Assert.Equal(2, foundationMedia.SeasonNumber);
@@ -771,6 +882,23 @@ public sealed class RepositoryTests
             Assert.Null(extrasMedia.TVShowTitle);
             Assert.Null(extrasMedia.SeasonNumber);
             Assert.Null(extrasMedia.EpisodeNumber);
+
+            await using var hierarchyContext = new ScriptoriumDbContext(options);
+            var expanseShow = await hierarchyContext.TVShows
+                .Include(show => show.Seasons)
+                .ThenInclude(season => season.Episodes)
+                .SingleAsync(show => show.Title == "The Expanse");
+            var expanseSeason = Assert.Single(expanseShow.Seasons);
+            Assert.Equal(1, expanseSeason.SeasonNumber);
+            Assert.Equal(3, expanseShow.EpisodeCount);
+            Assert.Collection(
+                expanseSeason.Episodes.OrderBy(episode => episode.SortOrder),
+                episode => Assert.Equal(1, episode.EpisodeNumber),
+                episode => Assert.Equal(10, episode.EpisodeNumber),
+                episode => Assert.Null(episode.EpisodeNumber));
+            var foundationShow = await hierarchyContext.TVShows
+                .SingleAsync(show => show.Title == "Foundation");
+            Assert.Equal(1, foundationShow.EpisodeCount);
         }
         finally
         {
@@ -882,6 +1010,21 @@ public sealed class RepositoryTests
             IEnumerable<Guid> scannedFolderIds,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not persist media.");
+    }
+
+    private sealed class ThrowingHierarchySynchronizer : ITvShowHierarchySynchronizer
+    {
+        public Task SynchronizeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not organize television media.");
+    }
+
+    private sealed class ThrowingCourseSynchronizer : ITutorialCourseSynchronizer
+    {
+        public Task SynchronizeAsync(
+            IEnumerable<LibraryFolder> libraryFolders,
+            IEnumerable<MediaItem> mediaItems,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not organize tutorial media.");
     }
 
     private sealed class FixedDurationReader(TimeSpan? duration) : IMediaDurationReader

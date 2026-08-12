@@ -31,4 +31,10 @@ public class LibraryFolder
 
     /// <summary>Gets the media items discovered in this folder.</summary>
     public List<MediaItem> MediaItems { get; set; } = [];
+
+    /// <summary>Gets the television shows discovered from this folder.</summary>
+    public List<TVShow> TVShows { get; set; } = [];
+
+    /// <summary>Gets the tutorial course generated from this folder, when the folder contains tutorials.</summary>
+    public Course? Course { get; set; }
 }

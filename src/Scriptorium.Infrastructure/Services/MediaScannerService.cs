@@ -16,6 +16,8 @@ public sealed class MediaScannerService(
     IMediaDuplicateDetector mediaDuplicateDetector,
     IMediaMetadataReader mediaMetadataReader,
     IMediaLibrarySynchronizer mediaLibrarySynchronizer,
+    ITvShowHierarchySynchronizer tvShowHierarchySynchronizer,
+    ITutorialCourseSynchronizer tutorialCourseSynchronizer,
     ILogger<MediaScannerService>? logger = null) : IMediaScannerService
 {
     /// <inheritdoc />
@@ -101,10 +103,14 @@ public sealed class MediaScannerService(
                 }
             }
 
-            await mediaLibrarySynchronizer.SynchronizeAsync(
+            var synchronizedMediaItems = await mediaLibrarySynchronizer.SynchronizeAsync(
                     discoveredFiles,
                     scannedFolders.Select(folder => folder.Id),
                     cancellationToken)
+                .ConfigureAwait(false);
+            await tvShowHierarchySynchronizer.SynchronizeAsync(synchronizedMediaItems, cancellationToken)
+                .ConfigureAwait(false);
+            await tutorialCourseSynchronizer.SynchronizeAsync(scannedFolders, synchronizedMediaItems, cancellationToken)
                 .ConfigureAwait(false);
 
             return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
