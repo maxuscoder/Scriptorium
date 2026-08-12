@@ -8,6 +8,7 @@
         PreviewMouseWheel="OnPagePreviewMouseWheel"
         VerticalScrollBarVisibility="Auto">
         <StackPanel
+            Margin="{StaticResource Spacing.XL}"
             MaxWidth="600"
             HorizontalAlignment="Center"
             VerticalAlignment="Center">

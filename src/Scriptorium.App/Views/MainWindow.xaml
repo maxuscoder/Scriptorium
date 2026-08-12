@@ -42,7 +42,6 @@
             Grid.Column="1"
             MinWidth="0"
             MinHeight="0"
-            Margin="{StaticResource Spacing.XL}"
             Content="{Binding CurrentPage}" />
     </Grid>
 </Window>
