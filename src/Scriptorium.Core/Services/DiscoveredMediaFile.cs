@@ -17,4 +17,7 @@ public sealed record DiscoveredMediaFile(
     long? FileSize,
     DateTimeOffset? CreatedDate,
     DateTimeOffset? ModifiedDate,
-    bool IsSupportedFormat);
+    bool IsSupportedFormat,
+    string? TVShowTitle = null,
+    int? SeasonNumber = null,
+    int? EpisodeNumber = null);

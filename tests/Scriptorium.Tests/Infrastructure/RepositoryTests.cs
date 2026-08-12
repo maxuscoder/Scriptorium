@@ -26,6 +26,8 @@ public sealed class RepositoryTests
         Assert.IsType<LibraryFolderScanSource>(provider.GetRequiredService<ILibraryFolderScanSource>());
         Assert.IsType<FileSystemService>(provider.GetRequiredService<IFileSystemService>());
         Assert.IsType<MediaFormatService>(provider.GetRequiredService<IMediaFormatService>());
+        Assert.IsType<SeasonFolderDetector>(provider.GetRequiredService<ISeasonFolderDetector>());
+        Assert.IsType<EpisodeFileNameParser>(provider.GetRequiredService<IEpisodeFileNameParser>());
         Assert.IsType<MediaDuplicateDetector>(provider.GetRequiredService<IMediaDuplicateDetector>());
         Assert.IsType<TagLibMediaDurationReader>(provider.GetRequiredService<IMediaDurationReader>());
         Assert.IsType<MediaMetadataReader>(provider.GetRequiredService<IMediaMetadataReader>());
@@ -414,6 +416,37 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Library_folder_rejects_an_unsupported_media_type()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var invalidFolder = new LibraryFolder
+            {
+                Name = "Invalid",
+                Path = "C:\\Invalid",
+                MediaType = (MediaType)99
+            };
+
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => folderRepository.AddAsync(invalidFolder));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Folder_validation_and_scan_source_exclude_missing_and_disabled_folders()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
@@ -519,6 +552,8 @@ public sealed class RepositoryTests
                 new LibraryFolderScanSource(repository, new LibraryFolderValidator()),
                 new FileSystemService(),
                 new MediaFormatService(),
+                new SeasonFolderDetector(),
+                new EpisodeFileNameParser(),
                 new MediaDuplicateDetector(),
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
                 new MediaLibrarySynchronizer(mediaItemRepository));
@@ -605,6 +640,8 @@ public sealed class RepositoryTests
             new CancellingScanSource(),
             new FileSystemService(),
             new MediaFormatService(),
+            new SeasonFolderDetector(),
+            new EpisodeFileNameParser(),
             new ThrowingDuplicateDetector(),
             new ThrowingMetadataReader(),
             new ThrowingSynchronizer());
@@ -612,6 +649,138 @@ public sealed class RepositoryTests
         cancellationSource.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => scanner.ScanAsync(cancellationSource.Token));
+    }
+
+    [Theory]
+    [InlineData("Season 1", 1)]
+    [InlineData("Season 02", 2)]
+    [InlineData("S01", 1)]
+    [InlineData("S2", 2)]
+    [InlineData("season.01", 1)]
+    [InlineData("SERIES-12", 12)]
+    [InlineData("s 3", 3)]
+    public void Season_folder_detector_recognizes_common_numbered_season_names(string folderName, int expectedSeasonNumber)
+    {
+        var detector = new SeasonFolderDetector();
+
+        Assert.Equal(expectedSeasonNumber, detector.DetectSeasonNumber(folderName));
+    }
+
+    [Theory]
+    [InlineData("Specials")]
+    [InlineData("Season zero")]
+    [InlineData("Season 0")]
+    [InlineData("Season 1 Extras")]
+    [InlineData("The Season 1 Documentary")]
+    public void Season_folder_detector_ignores_non_season_folder_names(string folderName)
+    {
+        var detector = new SeasonFolderDetector();
+
+        Assert.Null(detector.DetectSeasonNumber(folderName));
+    }
+
+    [Theory]
+    [InlineData("Show.S01E01.mkv", 1, 1)]
+    [InlineData("Show S02E15.mp4", 2, 15)]
+    [InlineData("Show.1x03.avi", 1, 3)]
+    [InlineData("Show - Episode 05.webm", null, 5)]
+    public void Episode_file_name_parser_recognizes_common_episode_markers(string fileName, int? expectedSeasonNumber, int expectedEpisodeNumber)
+    {
+        var parser = new EpisodeFileNameParser();
+
+        var episode = Assert.IsType<EpisodeFileNameInfo>(parser.Parse(fileName));
+
+        Assert.Equal(expectedSeasonNumber, episode.SeasonNumber);
+        Assert.Equal(expectedEpisodeNumber, episode.EpisodeNumber);
+    }
+
+    [Theory]
+    [InlineData("Show.S00E01.mkv")]
+    [InlineData("Show.S01E00.mkv")]
+    [InlineData("Show.0x03.mkv")]
+    [InlineData("Show - Episode zero.mkv")]
+    [InlineData("Show - Episode 1000.mkv")]
+    public void Episode_file_name_parser_ignores_invalid_episode_markers(string fileName)
+    {
+        var parser = new EpisodeFileNameParser();
+
+        Assert.Null(parser.Parse(fileName));
+    }
+
+    [Fact]
+    public async Task Library_scanner_associates_detected_season_folders_with_their_tv_shows()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var libraryPath = Path.Combine(Path.GetTempPath(), $"scriptorium-tv-{Guid.NewGuid():N}");
+        var expanseSeasonPath = Path.Combine(libraryPath, "The Expanse", "Season 01");
+        var foundationSeasonPath = Path.Combine(libraryPath, "Foundation", "S02");
+        var extrasPath = Path.Combine(libraryPath, "The Expanse", "Specials");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            Directory.CreateDirectory(expanseSeasonPath);
+            Directory.CreateDirectory(foundationSeasonPath);
+            Directory.CreateDirectory(extrasPath);
+            var expanseFilePath = Path.Combine(expanseSeasonPath, "S01E01.mkv");
+            var foundationFilePath = Path.Combine(foundationSeasonPath, "S02E03.mp4");
+            var extrasFilePath = Path.Combine(extrasPath, "behind-the-scenes.avi");
+            await File.WriteAllTextAsync(expanseFilePath, "episode");
+            await File.WriteAllTextAsync(foundationFilePath, "episode");
+            await File.WriteAllTextAsync(extrasFilePath, "extra");
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var libraryFolder = new LibraryFolder
+            {
+                Name = "TV library",
+                Path = libraryPath,
+                MediaType = MediaType.TvShow
+            };
+            await folderRepository.AddAsync(libraryFolder);
+            var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
+            var scanner = new MediaScannerService(
+                new LibraryFolderScanSource(folderRepository, new LibraryFolderValidator()),
+                new FileSystemService(),
+                new MediaFormatService(),
+                new SeasonFolderDetector(),
+                new EpisodeFileNameParser(),
+                new MediaDuplicateDetector(),
+                new MediaMetadataReader(new TagLibMediaDurationReader()),
+                new MediaLibrarySynchronizer(mediaItemRepository));
+
+            var result = await scanner.ScanAsync();
+
+            Assert.Equal(3, result.DiscoveredMediaCount);
+            var expanseMedia = (await mediaItemRepository.GetByPathAsync(expanseFilePath))!;
+            Assert.Equal(MediaType.TvShow, expanseMedia.MediaType);
+            Assert.Equal("The Expanse", expanseMedia.TVShowTitle);
+            Assert.Equal(1, expanseMedia.SeasonNumber);
+            Assert.Equal(1, expanseMedia.EpisodeNumber);
+            var foundationMedia = (await mediaItemRepository.GetByPathAsync(foundationFilePath))!;
+            Assert.Equal("Foundation", foundationMedia.TVShowTitle);
+            Assert.Equal(2, foundationMedia.SeasonNumber);
+            Assert.Equal(3, foundationMedia.EpisodeNumber);
+            var extrasMedia = (await mediaItemRepository.GetByPathAsync(extrasFilePath))!;
+            Assert.Null(extrasMedia.TVShowTitle);
+            Assert.Null(extrasMedia.SeasonNumber);
+            Assert.Null(extrasMedia.EpisodeNumber);
+        }
+        finally
+        {
+            if (Directory.Exists(libraryPath))
+            {
+                Directory.Delete(libraryPath, recursive: true);
+            }
+
+            File.Delete(databasePath);
+        }
     }
 
     [Theory]

@@ -80,6 +80,15 @@ public class MediaItem
     /// <summary>Gets or sets when the file was first observed as missing, if applicable.</summary>
     public DateTimeOffset? MissingSince { get; set; }
 
+    /// <summary>Gets or sets the television show that owns this media item, when discovered from a TV-show library.</summary>
+    public string? TVShowTitle { get; set; }
+
+    /// <summary>Gets or sets the season number that owns this media item, when detected from its folder path.</summary>
+    public int? SeasonNumber { get; set; }
+
+    /// <summary>Gets or sets the episode number that owns this media item, when detected from its filename.</summary>
+    public int? EpisodeNumber { get; set; }
+
     /// <summary>
     /// Gets or sets the category of media the item represents.
     /// </summary>

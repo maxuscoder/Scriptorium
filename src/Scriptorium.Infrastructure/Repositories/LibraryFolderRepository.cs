@@ -11,6 +11,20 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
     : Repository<LibraryFolder>(contextFactory), ILibraryFolderRepository
 {
     /// <inheritdoc />
+    public override Task AddAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
+    {
+        ValidateMediaType(entity);
+        return base.AddAsync(entity, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override Task UpdateAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
+    {
+        ValidateMediaType(entity);
+        return base.UpdateAsync(entity, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<LibraryFolder?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -30,5 +44,14 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
             .Where(folder => folder.IsEnabled)
             .OrderBy(folder => folder.Name)
             .ToListAsync(cancellationToken);
+    }
+
+    private static void ValidateMediaType(LibraryFolder folder)
+    {
+        ArgumentNullException.ThrowIfNull(folder);
+        if (!folder.MediaType.IsSupported())
+        {
+            throw new ArgumentOutOfRangeException(nameof(folder.MediaType), folder.MediaType, "The library folder media type is not supported.");
+        }
     }
 }

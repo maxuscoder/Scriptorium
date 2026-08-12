@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Scriptorium.Infrastructure;
 
@@ -10,9 +11,11 @@ using Scriptorium.Infrastructure;
 namespace Scriptorium.Infrastructure.Migrations
 {
     [DbContext(typeof(ScriptoriumDbContext))]
-    partial class ScriptoriumDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812170249_EnforceLibraryFolderMediaType")]
+    partial class EnforceLibraryFolderMediaType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -89,9 +92,6 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("EpisodeNumber")
-                        .HasColumnType("INTEGER");
-
                     b.Property<long?>("FileSize")
                         .HasColumnType("INTEGER");
 
@@ -137,12 +137,6 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<long?>("RuntimeSeconds")
                         .HasColumnType("INTEGER");
-
-                    b.Property<int?>("SeasonNumber")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("TVShowTitle")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("ThumbnailPath")
                         .HasColumnType("TEXT");

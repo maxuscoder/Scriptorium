@@ -26,6 +26,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILibraryFolderScanSource, LibraryFolderScanSource>();
         services.AddSingleton<IFileSystemService, FileSystemService>();
         services.AddSingleton<IMediaFormatService, MediaFormatService>();
+        services.AddSingleton<ISeasonFolderDetector, SeasonFolderDetector>();
+        services.AddSingleton<IEpisodeFileNameParser, EpisodeFileNameParser>();
         services.AddSingleton<IMediaDuplicateDetector, MediaDuplicateDetector>();
         services.AddSingleton<IMediaDurationReader, TagLibMediaDurationReader>();
         services.AddSingleton<IMediaMetadataReader, MediaMetadataReader>();

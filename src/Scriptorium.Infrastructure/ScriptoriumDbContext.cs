@@ -29,7 +29,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
 
         modelBuilder.Entity<LibraryFolder>(entity =>
         {
-            entity.ToTable("LibraryFolders");
+            entity.ToTable("LibraryFolders", table => table.HasCheckConstraint(
+                "CK_LibraryFolders_MediaType",
+                "\"MediaType\" IN (0, 1, 2)"));
             entity.HasKey(folder => folder.Id);
             entity.Property(folder => folder.Path).IsRequired();
             entity.Property(folder => folder.Name).IsRequired();
@@ -57,6 +59,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.Property(item => item.PlaybackPositionSeconds).HasDefaultValue(0L);
             entity.Property(item => item.IsCompleted).HasDefaultValue(false);
             entity.Property(item => item.IsMissing).HasDefaultValue(false);
+            entity.Property(item => item.TVShowTitle);
+            entity.Property(item => item.SeasonNumber);
+            entity.Property(item => item.EpisodeNumber);
             entity.HasIndex(item => item.Path);
             entity.HasIndex(item => item.LibraryFolderId);
             entity.HasIndex(item => item.CategoryId);
