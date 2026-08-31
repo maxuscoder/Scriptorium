@@ -20,6 +20,8 @@ public sealed class RepositoryTests
 
         using var provider = services.BuildServiceProvider(validateScopes: true);
         Assert.IsType<MediaItemRepository>(provider.GetRequiredService<IMediaItemRepository>());
+        Assert.IsType<CourseRepository>(provider.GetRequiredService<ICourseRepository>());
+        Assert.IsType<TvShowRepository>(provider.GetRequiredService<ITvShowRepository>());
         Assert.IsType<CategoryRepository>(provider.GetRequiredService<ICategoryRepository>());
         Assert.IsType<LibraryFolderRepository>(provider.GetRequiredService<ILibraryFolderRepository>());
         Assert.IsType<LibraryFolderValidator>(provider.GetRequiredService<ILibraryFolderValidator>());

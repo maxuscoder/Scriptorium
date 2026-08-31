@@ -1,0 +1,19 @@
+using Scriptorium.Core.Models;
+
+namespace Scriptorium.App.ViewModels.Pages;
+
+/// <summary>
+/// Presents a tutorial collection in the library browser.
+/// </summary>
+public sealed class TutorialCollectionViewModel(Course course)
+{
+    public Guid Id => course.Id;
+
+    public string Title => course.Title;
+
+    public string SourceFolder => course.LibraryFolder.DisplayNameOrName;
+
+    public int LessonCount => course.Lessons.Count;
+
+    public string LessonCountText => $"{LessonCount} lesson{(LessonCount == 1 ? string.Empty : "s")}";
+}

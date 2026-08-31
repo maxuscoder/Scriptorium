@@ -60,14 +60,18 @@ public sealed class ShellViewModel : ViewModelBase
 
     private void OnNavigated(PageViewModel page)
     {
-        var selectedItem = NavigationItems.First(item => ReferenceEquals(item.Destination, page));
+        var selectedItem = NavigationItems.FirstOrDefault(item => ReferenceEquals(item.Destination, page));
 
         if (SelectedNavigationItem is not null)
         {
             SelectedNavigationItem.IsSelected = false;
         }
 
-        selectedItem.IsSelected = true;
+        if (selectedItem is not null)
+        {
+            selectedItem.IsSelected = true;
+        }
+
         SelectedNavigationItem = selectedItem;
         OnPropertyChanged(nameof(CurrentPage));
         OnPropertyChanged(nameof(PageTitle));
