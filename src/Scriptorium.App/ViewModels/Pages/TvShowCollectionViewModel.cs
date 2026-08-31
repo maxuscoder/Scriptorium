@@ -13,6 +13,11 @@ public sealed class TvShowCollectionViewModel(TVShow show)
 
     public string SourceFolder => show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
 
+    public string? ThumbnailPath => show.Seasons
+        .SelectMany(season => season.Episodes)
+        .Select(episode => episode.MediaItem.ThumbnailPath)
+        .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+
     public int SeasonCount => show.Seasons.Count;
 
     public int EpisodeCount => show.EpisodeCount;

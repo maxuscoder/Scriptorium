@@ -16,6 +16,8 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem)
 
     public string SourcePath => MediaItem.Path;
 
+    public string? ThumbnailPath => MediaItem.ThumbnailPath;
+
     public string FileName => Path.GetFileName(MediaItem.Path);
 
     public string MediaType => MediaItem.MediaType switch

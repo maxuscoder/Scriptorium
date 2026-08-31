@@ -140,6 +140,9 @@ public sealed class SettingsService : ISettingsService
     {
         settings.Theme = string.IsNullOrWhiteSpace(settings.Theme) ? "System" : settings.Theme;
         settings.LibraryFolders ??= [];
+        settings.LibraryLayout = string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase)
+            ? "List"
+            : "Grid";
         return settings;
     }
 }
