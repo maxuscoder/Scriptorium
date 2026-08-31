@@ -80,6 +80,20 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
     public string FavoriteActionText => _movie?.IsFavorite == true ? "Remove from favorites" : "Add to favorites";
 
+    /// <summary>Gets the movie's completion percentage for the playback indicator.</summary>
+    public double PlaybackProgressPercentage => _movie is null
+        ? 0
+        : _movie.IsCompleted
+            ? 100
+            : MediaPlaybackProgress.CompletionPercentage(_movie);
+
+    /// <summary>Gets a concise status for the playback indicator.</summary>
+    public string PlaybackProgressText => _movie is null
+        ? string.Empty
+        : _movie.RuntimeSeconds is not > 0
+            ? "Runtime unavailable"
+            : PlaybackText(_movie);
+
     public ICommand BackCommand { get; }
 
     public ICommand PlayCommand { get; }
@@ -200,6 +214,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(CompletionActionText));
         OnPropertyChanged(nameof(FavoriteActionText));
+        OnPropertyChanged(nameof(PlaybackProgressPercentage));
+        OnPropertyChanged(nameof(PlaybackProgressText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)PlayCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleCompletionCommand).NotifyCanExecuteChanged();

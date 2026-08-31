@@ -20,14 +20,60 @@
                 Margin="0,6,0,0"
                 Foreground="{StaticResource Brush.TextSecondary}"
                 Text="{Binding SourceFolder}" />
-            <TextBlock
-                Margin="0,16,0,0"
-                Foreground="{StaticResource Brush.TextMuted}"
-                Text="{Binding LessonCountText}" />
+            <WrapPanel Margin="0,16,0,0">
+                <TextBlock
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="{Binding LessonCountText}" />
+                <TextBlock
+                    Margin="16,0,0,0"
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="Total duration:" />
+                <TextBlock
+                    Margin="6,0,0,0"
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="{Binding TotalDurationText}" />
+            </WrapPanel>
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock
+                            Foreground="{StaticResource Brush.TextMuted}"
+                            Text="{Binding SelectedLessonPositionText}" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontWeight="SemiBold"
+                            Text="{Binding SelectedLesson.Title}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button
+                            Margin="0,0,8,0"
+                            Command="{Binding PreviousLessonCommand}"
+                            Content="Previous lesson"
+                            Style="{StaticResource Button.Secondary}" />
+                        <Button
+                            Command="{Binding NextLessonCommand}"
+                            Content="Next lesson"
+                            Style="{StaticResource Button.Secondary}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Lessons}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Margin="0,0,0,10" Style="{StaticResource Card}">
+                        <Border Margin="0,0,0,10">
+                            <Border.Style>
+                                <Style BasedOn="{StaticResource Card}" TargetType="Border">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="110" />
@@ -63,11 +109,18 @@
                                         Text="{Binding FilePath}"
                                         TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <TextBlock
-                                    Grid.Column="2"
-                                    VerticalAlignment="Center"
-                                    Foreground="{StaticResource Brush.TextSecondary}"
-                                    Text="{Binding Availability}" />
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                    <TextBlock
+                                        HorizontalAlignment="Right"
+                                        Foreground="{StaticResource Brush.TextSecondary}"
+                                        Text="{Binding Availability}" />
+                                    <Button
+                                        Margin="0,8,0,0"
+                                        Command="{Binding DataContext.SelectLessonCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}"
+                                        Content="Select"
+                                        Style="{StaticResource Button.Secondary}" />
+                                </StackPanel>
                             </Grid>
                         </Border>
                     </DataTemplate>
