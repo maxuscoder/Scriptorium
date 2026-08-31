@@ -35,9 +35,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<LibraryPageViewModel>();
+        services.AddTransient<TutorialDetailsPageViewModel>();
+        services.AddTransient<TvShowDetailsPageViewModel>();
+        services.AddTransient<MovieDetailsPageViewModel>();
         services.AddTransient<FavoritesPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<ShellViewModel>();

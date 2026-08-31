@@ -1,0 +1,40 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Pages.MovieDetailsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
+    <controls:MediaDetailsPage
+        BackCommand="{Binding BackCommand}"
+        Description="{Binding Description}"
+        FallbackGlyph="▶"
+        HeaderMetadata="{Binding HeaderMetadata}"
+        MetadataItems="{Binding MetadataItems}"
+        PrimaryActionCommand="{Binding PlayCommand}"
+        PrimaryActionText="{Binding PlayActionText}"
+        SecondaryActionCommand="{Binding ToggleCompletionCommand}"
+        SecondaryActionText="{Binding CompletionActionText}"
+        Status="{Binding Availability}"
+        TertiaryActionCommand="{Binding ToggleFavoriteCommand}"
+        TertiaryActionText="{Binding FavoriteActionText}"
+        ThumbnailPath="{Binding ThumbnailPath}"
+        Title="{Binding Title}"
+        TypeLabel="Movie">
+        <controls:MediaDetailsPage.ExtensionContent>
+            <StackPanel>
+                <TextBlock FontWeight="SemiBold" Text="Playback progress" />
+                <ProgressBar
+                    Height="6"
+                    Margin="0,12,0,0"
+                    Background="{StaticResource Brush.Border}"
+                    Foreground="{StaticResource Brush.Accent}"
+                    Maximum="100"
+                    Minimum="0"
+                    Value="{Binding PlaybackProgressPercentage, Mode=OneWay}" />
+                <TextBlock
+                    Margin="0,8,0,0"
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="{Binding PlaybackProgressText}" />
+            </StackPanel>
+        </controls:MediaDetailsPage.ExtensionContent>
+    </controls:MediaDetailsPage>
+</UserControl>

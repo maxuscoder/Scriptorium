@@ -5,6 +5,9 @@ namespace Scriptorium.Core.Services;
 /// </summary>
 public interface IPlaybackProgressService
 {
+    /// <summary>Raised after persisted playback state changes for an item.</summary>
+    event Action<Guid>? PlaybackProgressSaved;
+
     /// <summary>Saves a playback update and returns false when the media item does not exist.</summary>
     Task<bool> SaveAsync(
         Guid mediaItemId,

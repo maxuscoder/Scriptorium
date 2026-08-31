@@ -1,0 +1,362 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.MediaCard"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="OptionalActionButton" BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding ActionCommand, ElementName=Root}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="PlaybackProgressBar" TargetType="ProgressBar">
+            <Setter Property="Background" Value="{StaticResource Brush.Border}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+            <Setter Property="Height" Value="5" />
+            <Setter Property="Maximum" Value="100" />
+            <Setter Property="Minimum" Value="0" />
+        </Style>
+    </UserControl.Resources>
+    <Border x:Name="CardBorder">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                        <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+        <Grid>
+            <StackPanel>
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsListLayout, ElementName=Root}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <Grid Height="132" ClipToBounds="True">
+                    <Border
+                        Background="{StaticResource Brush.AccentSurface}"
+                        CornerRadius="{StaticResource CornerRadius.M}" />
+                    <Image
+                        Stretch="Uniform"
+                        ImageFailed="OnThumbnailImageFailed"
+                        Source="{Binding ThumbnailSource, ElementName=Root}" />
+                    <Border
+                        Margin="8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Background="{StaticResource Brush.AccentSurface}"
+                        CornerRadius="{StaticResource CornerRadius.S}"
+                        Padding="6,3"
+                        ToolTip="Favorite">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFavorite, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource Brush.Accent}" Text="&#x2605;" />
+                    </Border>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasUsableThumbnail, ElementName=Root}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock
+                            HorizontalAlignment="Center"
+                            FontSize="30"
+                            Foreground="{StaticResource Brush.Accent}"
+                            Text="{Binding FallbackGlyph, ElementName=Root}" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="No image" />
+                    </StackPanel>
+                </Grid>
+                <StackPanel Margin="{StaticResource Spacing.M}">
+                    <TextBlock Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TypeLabel, ElementName=Root}" />
+                    <Border
+                        Margin="0,8,0,0"
+                        HorizontalAlignment="Left"
+                        Background="{Binding CategoryBrush, ElementName=Root}"
+                        CornerRadius="{StaticResource CornerRadius.S}"
+                        Padding="6,2">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasCategory, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding CategoryName, ElementName=Root}" />
+                    </Border>
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource Brush.TextPrimary}"
+                        Text="{Binding Title, ElementName=Root}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap"
+                        ToolTip="{Binding Title, ElementName=Root}" />
+                    <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding PrimaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TertiaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Margin="0,12,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasPlaybackProgress, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <ProgressBar
+                            Style="{StaticResource PlaybackProgressBar}"
+                            Value="{Binding PlaybackProgressPercentage, ElementName=Root}" />
+                        <TextBlock
+                            Margin="0,5,0,0"
+                            Foreground="{StaticResource Brush.TextMuted}"
+                            Text="{Binding PlaybackProgressText, ElementName=Root}" />
+                    </StackPanel>
+                    <TextBlock Margin="0,10,0,0" Text="{Binding Status, ElementName=Root}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMissing, ElementName=Root}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <Button
+                        Margin="0,16,0,0"
+                        HorizontalAlignment="Left"
+                        Command="{Binding ActionCommand, ElementName=Root}"
+                        CommandParameter="{Binding ActionParameter, ElementName=Root}"
+                        Content="{Binding ActionText, ElementName=Root}"
+                        Style="{StaticResource OptionalActionButton}" />
+                </StackPanel>
+            </StackPanel>
+
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsListLayout, ElementName=Root}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid Margin="12" ClipToBounds="True">
+                    <Border
+                        Background="{StaticResource Brush.AccentSurface}"
+                        CornerRadius="{StaticResource CornerRadius.S}" />
+                    <Image
+                        Stretch="Uniform"
+                        ImageFailed="OnThumbnailImageFailed"
+                        Source="{Binding ThumbnailSource, ElementName=Root}" />
+                    <Border
+                        Margin="8"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Background="{StaticResource Brush.AccentSurface}"
+                        CornerRadius="{StaticResource CornerRadius.S}"
+                        Padding="6,3"
+                        ToolTip="Favorite">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFavorite, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Foreground="{StaticResource Brush.Accent}" Text="&#x2605;" />
+                    </Border>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasUsableThumbnail, ElementName=Root}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock HorizontalAlignment="Center" FontSize="30" Foreground="{StaticResource Brush.Accent}" Text="{Binding FallbackGlyph, ElementName=Root}" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="No image" />
+                    </StackPanel>
+                </Grid>
+                <Grid Grid.Column="1" Margin="0,16,16,16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TypeLabel, ElementName=Root}" />
+                        <Border
+                            Margin="0,6,0,0"
+                            HorizontalAlignment="Left"
+                            Background="{Binding CategoryBrush, ElementName=Root}"
+                            CornerRadius="{StaticResource CornerRadius.S}"
+                            Padding="6,2">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasCategory, ElementName=Root}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding CategoryName, ElementName=Root}" />
+                        </Border>
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource Brush.TextPrimary}"
+                            Text="{Binding Title, ElementName=Root}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap"
+                            ToolTip="{Binding Title, ElementName=Root}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                        <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding PrimaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TertiaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <StackPanel Margin="0,12,0,0">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasPlaybackProgress, ElementName=Root}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <ProgressBar
+                                Style="{StaticResource PlaybackProgressBar}"
+                                Value="{Binding PlaybackProgressPercentage, ElementName=Root}" />
+                            <TextBlock
+                                Margin="0,5,0,0"
+                                Foreground="{StaticResource Brush.TextMuted}"
+                                Text="{Binding PlaybackProgressText, ElementName=Root}" />
+                        </StackPanel>
+                        <TextBlock Margin="0,8,0,0" Text="{Binding Status, ElementName=Root}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsMissing, ElementName=Root}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <Button
+                        Grid.Row="2"
+                        HorizontalAlignment="Left"
+                        Command="{Binding ActionCommand, ElementName=Root}"
+                        CommandParameter="{Binding ActionParameter, ElementName=Root}"
+                        Content="{Binding ActionText, ElementName=Root}"
+                        Style="{StaticResource OptionalActionButton}" />
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

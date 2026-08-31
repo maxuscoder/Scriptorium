@@ -18,6 +18,15 @@
             <DataTemplate DataType="{x:Type pagesViewModels:LibraryPageViewModel}">
                 <pages:LibraryPage />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type pagesViewModels:TutorialDetailsPageViewModel}">
+                <pages:TutorialDetailsPage />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type pagesViewModels:TvShowDetailsPageViewModel}">
+                <pages:TvShowDetailsPage />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type pagesViewModels:MovieDetailsPageViewModel}">
+                <pages:MovieDetailsPage />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:FavoritesPageViewModel}">
                 <pages:FavoritesPage />
             </DataTemplate>

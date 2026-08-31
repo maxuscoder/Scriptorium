@@ -20,6 +20,8 @@ public static class ServiceCollectionExtensions
         services.AddDbContextFactory<ScriptoriumDbContext>(options => options.UseSqlite(connectionString));
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
         services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
+        services.AddSingleton<ICourseRepository, CourseRepository>();
+        services.AddSingleton<ITvShowRepository, TvShowRepository>();
         services.AddSingleton<ICategoryRepository, CategoryRepository>();
         services.AddSingleton<ILibraryFolderRepository, LibraryFolderRepository>();
         services.AddSingleton<ILibraryFolderValidator, LibraryFolderValidator>();

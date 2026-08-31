@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
@@ -17,8 +18,16 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly ILibraryFolderValidator _libraryFolderValidator;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaScannerService _mediaScannerService;
+    private readonly IPlaybackProgressService _playbackProgressService;
+    private readonly IFavoriteService _favoriteService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly ISettingsService _settingsService;
+    private readonly ICourseRepository _courseRepository;
+    private readonly ITvShowRepository _tvShowRepository;
+    private readonly INavigationService _navigationService;
+    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
+    private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
+    private readonly MovieDetailsPageViewModel _movieDetailsPage;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _removeFolderCommand;
@@ -29,6 +38,11 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly AsyncRelayCommand _moveMediaToGroupCommand;
     private readonly AsyncRelayCommand _mergeGroupsCommand;
     private readonly AsyncRelayCommand _splitGroupCommand;
+    private readonly AsyncRelayCommand _openTutorialCommand;
+    private readonly AsyncRelayCommand _openTvShowCommand;
+    private readonly AsyncRelayCommand _openMovieCommand;
+    private readonly AsyncRelayCommand _setGridLayoutCommand;
+    private readonly AsyncRelayCommand _setListLayoutCommand;
     private ConfiguredFolderViewModel? _selectedFolder;
     private string? _customDisplayName;
     private MediaType? _selectedMediaType;
@@ -45,6 +59,9 @@ public sealed class LibraryPageViewModel : PageViewModel
     private string? _currentScanPath;
     private int _processedFileCount;
     private int _discoveredMediaCount;
+    private bool _isListLayout;
+    private int _isPlaybackRefreshQueued;
+    private int _isFavoriteRefreshQueued;
 
     public LibraryPageViewModel(
         IImportFolderDialog importFolderDialog,
@@ -53,8 +70,16 @@ public sealed class LibraryPageViewModel : PageViewModel
         ILibraryFolderValidator libraryFolderValidator,
         IMediaItemRepository mediaItemRepository,
         IMediaScannerService mediaScannerService,
+        IPlaybackProgressService playbackProgressService,
+        IFavoriteService favoriteService,
         IMediaGroupingService mediaGroupingService,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        ICourseRepository courseRepository,
+        ITvShowRepository tvShowRepository,
+        INavigationService navigationService,
+        TutorialDetailsPageViewModel tutorialDetailsPage,
+        TvShowDetailsPageViewModel tvShowDetailsPage,
+        MovieDetailsPageViewModel movieDetailsPage)
     {
         _importFolderDialog = importFolderDialog;
         _confirmationDialog = confirmationDialog;
@@ -62,8 +87,16 @@ public sealed class LibraryPageViewModel : PageViewModel
         _libraryFolderValidator = libraryFolderValidator;
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
+        _playbackProgressService = playbackProgressService;
+        _favoriteService = favoriteService;
         _mediaGroupingService = mediaGroupingService;
         _settingsService = settingsService;
+        _courseRepository = courseRepository;
+        _tvShowRepository = tvShowRepository;
+        _navigationService = navigationService;
+        _tutorialDetailsPage = tutorialDetailsPage;
+        _tvShowDetailsPage = tvShowDetailsPage;
+        _movieDetailsPage = movieDetailsPage;
         _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning);
         RefreshLibraryCommand = _refreshLibraryCommand;
         _cancelScanCommand = new RelayCommand(CancelScan, () => IsScanning);
@@ -90,6 +123,19 @@ public sealed class LibraryPageViewModel : PageViewModel
         MergeGroupsCommand = _mergeGroupsCommand;
         _splitGroupCommand = new AsyncRelayCommand(SplitSelectedGroupAsync, CanSplitSelectedGroup);
         SplitGroupCommand = _splitGroupCommand;
+        _openTutorialCommand = new AsyncRelayCommand(OpenTutorialAsync, parameter => parameter is TutorialCollectionViewModel);
+        OpenTutorialCommand = _openTutorialCommand;
+        _openTvShowCommand = new AsyncRelayCommand(OpenTvShowAsync, parameter => parameter is TvShowCollectionViewModel);
+        OpenTvShowCommand = _openTvShowCommand;
+        _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
+        OpenMovieCommand = _openMovieCommand;
+        _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
+        _setGridLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: false), () => IsListLayout);
+        SetGridLayoutCommand = _setGridLayoutCommand;
+        _setListLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: true), () => IsGridLayout);
+        SetListLayoutCommand = _setListLayoutCommand;
+        _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
+        _favoriteService.FavoriteChanged += OnFavoriteChanged;
     }
 
     public override string Title => "Library";
@@ -193,6 +239,66 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets the folders currently configured for the library.</summary>
     public ObservableCollection<ConfiguredFolderViewModel> ConfiguredFolders { get; } = [];
+
+    /// <summary>Gets every supported media item currently indexed in the library.</summary>
+    public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
+
+    /// <summary>Gets the tutorial collections available in the library.</summary>
+    public ObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
+
+    /// <summary>Gets the television-show collections available in the library.</summary>
+    public ObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
+
+    /// <summary>Gets the movies available in the library.</summary>
+    public ObservableCollection<MovieItemViewModel> Movies { get; } = [];
+
+    /// <summary>Gets whether the browser has no media items to display.</summary>
+    public bool IsLibraryEmpty => MediaItems.Count == 0;
+
+    /// <summary>Gets a concise count suitable for the library browser header.</summary>
+    public string MediaCountText => $"{MediaItems.Count} item{(MediaItems.Count == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets the command that opens a tutorial collection's lesson list.</summary>
+    public ICommand OpenTutorialCommand { get; }
+
+    /// <summary>Gets the command that opens a television show's seasons and episodes.</summary>
+    public ICommand OpenTvShowCommand { get; }
+
+    /// <summary>Gets the command that opens a movie's metadata page.</summary>
+    public ICommand OpenMovieCommand { get; }
+
+    /// <summary>Gets the command that switches the library to card-grid layout.</summary>
+    public ICommand SetGridLayoutCommand { get; }
+
+    /// <summary>Gets the command that switches the library to list layout.</summary>
+    public ICommand SetListLayoutCommand { get; }
+
+    /// <summary>Gets whether media is currently displayed as a vertical list.</summary>
+    public bool IsListLayout
+    {
+        get => _isListLayout;
+        private set
+        {
+            if (SetProperty(ref _isListLayout, value))
+            {
+                OnPropertyChanged(nameof(IsGridLayout));
+                _setGridLayoutCommand.NotifyCanExecuteChanged();
+                _setListLayoutCommand.NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Gets whether media is currently displayed as a card grid.</summary>
+    public bool IsGridLayout => !IsListLayout;
+
+    /// <summary>Gets the count shown in the tutorials section header.</summary>
+    public string TutorialCountText => $"{Tutorials.Count} collection{(Tutorials.Count == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets the count shown in the TV shows section header.</summary>
+    public string TvShowCountText => $"{TvShows.Count} show{(TvShows.Count == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets the count shown in the movies section header.</summary>
+    public string MovieCountText => $"{Movies.Count} movie{(Movies.Count == 1 ? string.Empty : "s")}";
 
     /// <summary>Gets or sets the configured folder selected for removal.</summary>
     public ConfiguredFolderViewModel? SelectedFolder
@@ -348,14 +454,128 @@ public sealed class LibraryPageViewModel : PageViewModel
             : ConfiguredFolders.SingleOrDefault(folder => folder.Id == selectedFolderId);
     }
 
-    /// <summary>Refreshes configured folders and the indexed-media summary.</summary>
+    /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
     public async Task RefreshLibraryDataAsync()
     {
         await RefreshConfiguredFoldersAsync();
         var mediaItems = await _mediaItemRepository.GetAllAsync();
+        MediaItems.Clear();
+        foreach (var mediaItem in mediaItems.Where(mediaItem => mediaItem.MediaType.IsSupported()))
+        {
+            MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
+        }
+
         IndexedMediaCount = mediaItems.Count;
         MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
+        OnPropertyChanged(nameof(IsLibraryEmpty));
+        OnPropertyChanged(nameof(MediaCountText));
+        RefreshMovies(mediaItems);
+        await RefreshTutorialsAsync();
+        await RefreshTvShowsAsync();
         await RefreshTvShowGroupsAsync();
+    }
+
+    private void OnPlaybackProgressSaved(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isPlaybackRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterPlaybackAsync);
+            return;
+        }
+
+        _ = RefreshAfterPlaybackAsync();
+    }
+
+    private async Task RefreshAfterPlaybackAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isPlaybackRefreshQueued, 0);
+        }
+    }
+
+    private void OnFavoriteChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isFavoriteRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterFavoriteChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterFavoriteChangeAsync();
+    }
+
+    private async Task RefreshAfterFavoriteChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isFavoriteRefreshQueued, 0);
+        }
+    }
+
+    /// <summary>Reloads tutorial collections in alphabetical order.</summary>
+    public async Task RefreshTutorialsAsync()
+    {
+        var courses = await _courseRepository.GetAllAsync();
+        Tutorials.Clear();
+        foreach (var course in courses.OrderBy(course => course.Title, StringComparer.OrdinalIgnoreCase))
+        {
+            Tutorials.Add(new TutorialCollectionViewModel(course));
+        }
+
+        OnPropertyChanged(nameof(TutorialCountText));
+    }
+
+    /// <summary>Reloads television-show collections in alphabetical order.</summary>
+    public async Task RefreshTvShowsAsync()
+    {
+        var shows = await _tvShowRepository.GetAllAsync();
+        TvShows.Clear();
+        foreach (var show in shows.OrderBy(show => show.Title, StringComparer.OrdinalIgnoreCase))
+        {
+            TvShows.Add(new TvShowCollectionViewModel(show));
+        }
+
+        OnPropertyChanged(nameof(TvShowCountText));
+    }
+
+    private void RefreshMovies(IEnumerable<MediaItem> mediaItems)
+    {
+        Movies.Clear();
+        foreach (var movie in mediaItems
+                     .Where(mediaItem => mediaItem.MediaType == MediaType.Movie)
+                     .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
+        {
+            Movies.Add(new MovieItemViewModel(movie));
+        }
+
+        OnPropertyChanged(nameof(MovieCountText));
     }
 
     /// <summary>Reloads manually manageable television-show groups from the database.</summary>
@@ -490,7 +710,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         }
 
         SelectedFolder = null;
-        await RefreshConfiguredFoldersAsync();
+        await RefreshLibraryDataAsync();
         StatusMessage = "Library folder removed. Indexed media metadata was kept.";
     }
 
@@ -537,7 +757,7 @@ public sealed class LibraryPageViewModel : PageViewModel
             ? null
             : CustomDisplayName.Trim();
         await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
-        await RefreshConfiguredFoldersAsync();
+        await RefreshLibraryDataAsync();
         StatusMessage = configuredFolder.Folder.DisplayName is null
             ? "Custom name cleared. The folder name is shown instead."
             : "Custom display name saved.";
@@ -640,6 +860,54 @@ public sealed class LibraryPageViewModel : PageViewModel
         _moveMediaToGroupCommand.NotifyCanExecuteChanged();
         _mergeGroupsCommand.NotifyCanExecuteChanged();
         _splitGroupCommand.NotifyCanExecuteChanged();
+    }
+
+    private async Task OpenTutorialAsync(object? parameter)
+    {
+        if (parameter is not TutorialCollectionViewModel tutorial ||
+            !await _tutorialDetailsPage.LoadAsync(tutorial.Id, this))
+        {
+            StatusMessage = "This tutorial collection is no longer available.";
+            return;
+        }
+
+        _navigationService.NavigateTo(_tutorialDetailsPage);
+    }
+
+    private async Task OpenTvShowAsync(object? parameter)
+    {
+        if (parameter is not TvShowCollectionViewModel show ||
+            !await _tvShowDetailsPage.LoadAsync(show.Id, this))
+        {
+            StatusMessage = "This TV show is no longer available.";
+            return;
+        }
+
+        _navigationService.NavigateTo(_tvShowDetailsPage);
+    }
+
+    private async Task OpenMovieAsync(object? parameter)
+    {
+        if (parameter is not MovieItemViewModel movie ||
+            !await _movieDetailsPage.LoadAsync(movie.Id, this))
+        {
+            StatusMessage = "This movie is no longer available.";
+            return;
+        }
+
+        _navigationService.NavigateTo(_movieDetailsPage);
+    }
+
+    private async Task SetLayoutAsync(bool isListLayout)
+    {
+        if (IsListLayout == isListLayout)
+        {
+            return;
+        }
+
+        IsListLayout = isListLayout;
+        _settingsService.Settings.LibraryLayout = isListLayout ? "List" : "Grid";
+        await _settingsService.SaveAsync();
     }
 }
 
