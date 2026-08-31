@@ -14,10 +14,21 @@
                 FontSize="28"
                 FontWeight="SemiBold"
                 Foreground="{StaticResource Brush.TextPrimary}"
-                Text="{Binding Title}" />
+                Text="{Binding Title}"
+                TextWrapping="Wrap" />
             <WrapPanel Margin="0,12,0,0">
                 <TextBlock Margin="0,0,16,0" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding ReleaseYear}" />
-                <TextBlock Margin="0,0,16,0" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Runtime}" />
+                <TextBlock Margin="0,0,16,0" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Runtime}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Runtime}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
                 <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Availability}" />
             </WrapPanel>
             <TextBlock

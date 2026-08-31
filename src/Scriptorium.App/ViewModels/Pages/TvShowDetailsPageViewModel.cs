@@ -54,7 +54,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         }
 
         _returnPage = returnPage;
-        _showTitle = show.Title;
+        _showTitle = MediaDisplayText.TitleOrFallback(show.Title, "Untitled TV show");
         SourceFolder = show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
         Seasons.Clear();
         foreach (var season in show.Seasons.OrderBy(season => season.SeasonNumber))
@@ -89,9 +89,11 @@ public sealed class TvShowSeasonViewModel(Season season)
 /// <summary>Displays one television-show episode.</summary>
 public sealed class TvShowEpisodeViewModel(Episode episode)
 {
-    public string Title => episode.Title;
+    public string Title => MediaDisplayText.TitleOrFallback(episode.Title, "Untitled episode");
 
     public string Position => episode.EpisodeNumber is { } number ? $"Episode {number}" : $"Episode {episode.SortOrder + 1}";
+
+    public string Runtime => MediaRuntimeFormatter.Format(episode.MediaItem.RuntimeSeconds);
 
     public string FilePath => episode.FilePath;
 

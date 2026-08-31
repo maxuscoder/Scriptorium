@@ -9,7 +9,7 @@ public sealed class TvShowCollectionViewModel(TVShow show)
 {
     public Guid Id => show.Id;
 
-    public string Title => show.Title;
+    public string Title => MediaDisplayText.TitleOrFallback(show.Title, "Untitled TV show");
 
     public string SourceFolder => show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
 

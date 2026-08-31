@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace Scriptorium.App.Views.Controls;
 
@@ -15,6 +16,13 @@ public partial class MediaCard : UserControl
             typeof(bool),
             typeof(MediaCard),
             new PropertyMetadata(false));
+
+    private static readonly DependencyPropertyKey ThumbnailSourcePropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(ThumbnailSource),
+            typeof(ImageSource),
+            typeof(MediaCard),
+            new PropertyMetadata(null));
 
     public static readonly DependencyProperty ThumbnailPathProperty =
         DependencyProperty.Register(
@@ -34,6 +42,9 @@ public partial class MediaCard : UserControl
 
     public static readonly DependencyProperty SecondaryMetadataProperty =
         DependencyProperty.Register(nameof(SecondaryMetadata), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty TertiaryMetadataProperty =
+        DependencyProperty.Register(nameof(TertiaryMetadata), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
     public static readonly DependencyProperty StatusProperty =
         DependencyProperty.Register(nameof(Status), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
@@ -69,6 +80,10 @@ public partial class MediaCard : UserControl
 
     public static readonly DependencyProperty HasUsableThumbnailProperty = HasUsableThumbnailPropertyKey.DependencyProperty;
 
+    public static readonly DependencyProperty ThumbnailSourceProperty = ThumbnailSourcePropertyKey.DependencyProperty;
+
+    private long _thumbnailLoadVersion;
+
     public MediaCard()
     {
         InitializeComponent();
@@ -102,6 +117,12 @@ public partial class MediaCard : UserControl
     {
         get => (string)GetValue(SecondaryMetadataProperty);
         set => SetValue(SecondaryMetadataProperty, value);
+    }
+
+    public string TertiaryMetadata
+    {
+        get => (string)GetValue(TertiaryMetadataProperty);
+        set => SetValue(TertiaryMetadataProperty, value);
     }
 
     public string Status
@@ -155,10 +176,13 @@ public partial class MediaCard : UserControl
 
     public bool HasUsableThumbnail => (bool)GetValue(HasUsableThumbnailProperty);
 
+    /// <summary>Gets the asynchronously loaded, shared preview source for this card.</summary>
+    public ImageSource? ThumbnailSource => (ImageSource?)GetValue(ThumbnailSourceProperty);
+
     private static void OnThumbnailPathChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
         var card = (MediaCard)dependencyObject;
-        card.SetValue(HasUsableThumbnailPropertyKey, !string.IsNullOrWhiteSpace((string?)eventArgs.NewValue));
+        _ = card.LoadThumbnailAsync((string?)eventArgs.NewValue);
     }
 
     private static void OnLayoutPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -167,6 +191,25 @@ public partial class MediaCard : UserControl
         card.Width = card.IsListLayout ? double.NaN : card.CardWidth;
     }
 
-    private void OnThumbnailImageFailed(object sender, ExceptionRoutedEventArgs eventArgs) =>
+    private async Task LoadThumbnailAsync(string? thumbnailPath)
+    {
+        var loadVersion = Interlocked.Increment(ref _thumbnailLoadVersion);
+        SetValue(ThumbnailSourcePropertyKey, null);
         SetValue(HasUsableThumbnailPropertyKey, false);
+
+        var thumbnail = await ThumbnailCache.GetAsync(thumbnailPath);
+        if (loadVersion != _thumbnailLoadVersion)
+        {
+            return;
+        }
+
+        SetValue(ThumbnailSourcePropertyKey, thumbnail);
+        SetValue(HasUsableThumbnailPropertyKey, thumbnail is not null);
+    }
+
+    private void OnThumbnailImageFailed(object sender, ExceptionRoutedEventArgs eventArgs)
+    {
+        SetValue(ThumbnailSourcePropertyKey, null);
+        SetValue(HasUsableThumbnailPropertyKey, false);
+    }
 }

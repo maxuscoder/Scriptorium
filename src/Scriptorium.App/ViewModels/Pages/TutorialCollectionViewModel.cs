@@ -9,7 +9,7 @@ public sealed class TutorialCollectionViewModel(Course course)
 {
     public Guid Id => course.Id;
 
-    public string Title => course.Title;
+    public string Title => MediaDisplayText.TitleOrFallback(course.Title, "Untitled tutorial");
 
     public string SourceFolder => course.LibraryFolder.DisplayNameOrName;
 

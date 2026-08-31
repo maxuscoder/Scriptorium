@@ -44,9 +44,9 @@
                         Background="{StaticResource Brush.AccentSurface}"
                         CornerRadius="{StaticResource CornerRadius.M}" />
                     <Image
-                        Stretch="UniformToFill"
+                        Stretch="Uniform"
                         ImageFailed="OnThumbnailImageFailed"
-                        Source="{Binding ThumbnailPath, ElementName=Root}" />
+                        Source="{Binding ThumbnailSource, ElementName=Root}" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -74,9 +74,38 @@
                         FontWeight="SemiBold"
                         Foreground="{StaticResource Brush.TextPrimary}"
                         Text="{Binding Title, ElementName=Root}"
-                        TextTrimming="CharacterEllipsis" />
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap"
+                        ToolTip="{Binding Title, ElementName=Root}" />
                     <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding PrimaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TertiaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <TextBlock Margin="0,10,0,0" Text="{Binding Status, ElementName=Root}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -119,9 +148,9 @@
                         Background="{StaticResource Brush.AccentSurface}"
                         CornerRadius="{StaticResource CornerRadius.S}" />
                     <Image
-                        Stretch="UniformToFill"
+                        Stretch="Uniform"
                         ImageFailed="OnThumbnailImageFailed"
-                        Source="{Binding ThumbnailPath, ElementName=Root}" />
+                        Source="{Binding ThumbnailSource, ElementName=Root}" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <StackPanel.Style>
                             <Style TargetType="StackPanel">
@@ -145,11 +174,46 @@
                     </Grid.RowDefinitions>
                     <StackPanel>
                         <TextBlock Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TypeLabel, ElementName=Root}" />
-                        <TextBlock Margin="0,4,0,0" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding Title, ElementName=Root}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource Brush.TextPrimary}"
+                            Text="{Binding Title, ElementName=Root}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap"
+                            ToolTip="{Binding Title, ElementName=Root}" />
                     </StackPanel>
                     <StackPanel Grid.Row="1" Margin="0,10,0,0">
                         <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding PrimaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SecondaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding TertiaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding TertiaryMetadata, ElementName=Root}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBlock Margin="0,8,0,0" Text="{Binding Status, ElementName=Root}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">

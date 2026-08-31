@@ -53,7 +53,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         }
 
         _returnPage = returnPage;
-        _courseTitle = course.Title;
+        _courseTitle = MediaDisplayText.TitleOrFallback(course.Title, "Untitled tutorial");
         SourceFolder = course.LibraryFolder.DisplayNameOrName;
         Lessons.Clear();
         foreach (var lesson in course.Lessons.OrderBy(lesson => lesson.SortOrder))
@@ -79,9 +79,11 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 /// <summary>Displays one ordered tutorial lesson.</summary>
 public sealed class TutorialLessonViewModel(Lesson lesson)
 {
-    public string Title => lesson.Title;
+    public string Title => MediaDisplayText.TitleOrFallback(lesson.Title, "Untitled lesson");
 
     public string Position => lesson.LessonNumber is { } number ? $"Lesson {number}" : $"Lesson {lesson.SortOrder + 1}";
+
+    public string Runtime => MediaRuntimeFormatter.Format(lesson.MediaItem.RuntimeSeconds);
 
     public string FilePath => lesson.FilePath;
 

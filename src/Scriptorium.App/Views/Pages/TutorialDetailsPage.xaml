@@ -14,7 +14,8 @@
                 FontSize="28"
                 FontWeight="SemiBold"
                 Foreground="{StaticResource Brush.TextPrimary}"
-                Text="{Binding Title}" />
+                Text="{Binding Title}"
+                TextWrapping="Wrap" />
             <TextBlock
                 Margin="0,6,0,0"
                 Foreground="{StaticResource Brush.TextSecondary}"
@@ -33,12 +34,29 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    Foreground="{StaticResource Brush.Accent}"
-                                    Text="{Binding Position}" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock
+                                        Foreground="{StaticResource Brush.Accent}"
+                                        Text="{Binding Position}" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Runtime}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Runtime}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
                                 <StackPanel Grid.Column="1">
-                                    <TextBlock FontWeight="SemiBold" Text="{Binding Title}" />
+                                    <TextBlock
+                                        FontWeight="SemiBold"
+                                        Text="{Binding Title}"
+                                        TextTrimming="CharacterEllipsis"
+                                        TextWrapping="NoWrap"
+                                        ToolTip="{Binding Title}" />
                                     <TextBlock
                                         Margin="0,4,0,0"
                                         Foreground="{StaticResource Brush.TextMuted}"

@@ -287,6 +287,7 @@
                                 SecondaryMetadata="{Binding Runtime}"
                                 Status="{Binding Availability}"
                                 IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                TertiaryMetadata="{Binding SourceFolder}"
                                 ThumbnailPath="{Binding ThumbnailPath}"
                                 Title="{Binding Title}"
                                 TypeLabel="Movie" />
@@ -350,9 +351,10 @@
                             FallbackGlyph="{Binding TypeGlyph}"
                             IsMissing="{Binding IsMissing}"
                             PrimaryMetadata="{Binding Detail}"
-                            SecondaryMetadata="{Binding Location}"
+                            SecondaryMetadata="{Binding Runtime}"
                             Status="{Binding Availability}"
                             IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            TertiaryMetadata="{Binding Location}"
                             ThumbnailPath="{Binding ThumbnailPath}"
                             Title="{Binding Title}"
                             TypeLabel="{Binding MediaType}" />

@@ -12,7 +12,7 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem)
     /// <summary>Gets the indexed item represented by this card.</summary>
     public MediaItem MediaItem { get; } = mediaItem;
 
-    public string Title => MediaItem.Title;
+    public string Title => MediaDisplayText.TitleOrFallback(MediaItem.Title, "Untitled media");
 
     public string SourcePath => MediaItem.Path;
 
@@ -42,6 +42,8 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem)
                             !string.IsNullOrWhiteSpace(MediaItem.TVShowTitle)
         ? BuildEpisodeDetail(MediaItem)
         : FileName;
+
+    public string Runtime => MediaRuntimeFormatter.Format(MediaItem.RuntimeSeconds);
 
     public bool IsMissing => MediaItem.IsMissing;
 
