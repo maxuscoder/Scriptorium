@@ -45,6 +45,19 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem)
 
     public string Runtime => MediaRuntimeFormatter.Format(MediaItem.RuntimeSeconds);
 
+    public string CategoryName => MediaCategoryDisplay.Name(MediaItem);
+
+    public string CategoryColor => MediaCategoryDisplay.Color(MediaItem);
+
+    /// <summary>Gets whether this indexed media item is marked as a favorite.</summary>
+    public bool IsFavorite => MediaItem.IsFavorite;
+
+    public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(MediaItem);
+
+    public double PlaybackProgressPercentage => MediaPlaybackProgress.CompletionPercentage(MediaItem);
+
+    public string PlaybackProgressText => MediaPlaybackProgress.DisplayText(MediaItem);
+
     public bool IsMissing => MediaItem.IsMissing;
 
     public string Availability => IsMissing ? "File unavailable" : "Available";

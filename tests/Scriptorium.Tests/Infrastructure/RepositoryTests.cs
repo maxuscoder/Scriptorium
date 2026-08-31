@@ -65,6 +65,8 @@ public sealed class RepositoryTests
             var categoryRepository = new CategoryRepository(contextFactory);
             var mediaItemRepository = new MediaItemRepository(contextFactory);
             var favoriteService = new FavoriteService(mediaItemRepository);
+            var changedFavoriteIds = new List<Guid>();
+            favoriteService.FavoriteChanged += changedFavoriteIds.Add;
             var categoryService = new CategoryService(categoryRepository, mediaItemRepository);
             var folder = new LibraryFolder { Name = "Media", Path = "C:\\Media" };
             await folderRepository.AddAsync(folder);
@@ -90,6 +92,7 @@ public sealed class RepositoryTests
             Assert.Single(await favoriteService.GetAllAsync());
             Assert.True(await favoriteService.RemoveAsync(mediaItem.Id));
             Assert.Empty(await favoriteService.GetAllAsync());
+            Assert.Equal([mediaItem.Id, mediaItem.Id, mediaItem.Id], changedFavoriteIds);
 
             Assert.True(await categoryService.DeleteAsync(category.Id));
             var unassignedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
@@ -122,6 +125,8 @@ public sealed class RepositoryTests
             var folderRepository = new LibraryFolderRepository(contextFactory);
             var mediaItemRepository = new MediaItemRepository(contextFactory);
             var playbackProgressService = new PlaybackProgressService(mediaItemRepository);
+            var savedPlaybackIds = new List<Guid>();
+            playbackProgressService.PlaybackProgressSaved += savedPlaybackIds.Add;
             var folder = new LibraryFolder { Name = "Media", Path = "C:\\Media" };
             await folderRepository.AddAsync(folder);
 
@@ -147,15 +152,44 @@ public sealed class RepositoryTests
             Assert.Equal(lastWatched, savedItem.LastPlayed);
             Assert.False(savedItem.IsCompleted);
             Assert.Equal(70, await playbackProgressService.GetResumePositionAsync(mediaItem.Id));
+            Assert.Equal([mediaItem.Id], savedPlaybackIds);
 
             await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(130, 120));
             Assert.Equal(0, await playbackProgressService.GetResumePositionAsync(mediaItem.Id));
             Assert.False(await playbackProgressService.SaveAsync(Guid.NewGuid(), new PlaybackProgressUpdate(1, 2)));
+            Assert.Equal([mediaItem.Id, mediaItem.Id], savedPlaybackIds);
         }
         finally
         {
             File.Delete(databasePath);
         }
+    }
+
+    [Fact]
+    public void Media_playback_progress_only_shows_resumable_items()
+    {
+        var inProgress = new MediaItem
+        {
+            Title = "In progress",
+            Path = "C:\\Media\\in-progress.mp4",
+            RuntimeSeconds = 400,
+            PlaybackPositionSeconds = 125
+        };
+        var completed = new MediaItem
+        {
+            Title = "Completed",
+            Path = "C:\\Media\\completed.mp4",
+            RuntimeSeconds = 400,
+            PlaybackPositionSeconds = 400,
+            IsCompleted = true
+        };
+
+        Assert.True(MediaPlaybackProgress.HasPartialProgress(inProgress));
+        Assert.Equal(31.25, MediaPlaybackProgress.CompletionPercentage(inProgress));
+        Assert.Equal("31% watched", MediaPlaybackProgress.DisplayText(inProgress));
+        Assert.False(MediaPlaybackProgress.HasPartialProgress(completed));
+        Assert.Equal(0, MediaPlaybackProgress.CompletionPercentage(completed));
+        Assert.Equal(string.Empty, MediaPlaybackProgress.DisplayText(completed));
     }
 
     [Fact]

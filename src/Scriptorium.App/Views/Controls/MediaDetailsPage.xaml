@@ -1,0 +1,171 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.MediaDetailsPage"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="OptionalActionButton" BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Command, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="{StaticResource Spacing.XL}" MaxWidth="960">
+            <Button
+                HorizontalAlignment="Left"
+                Command="{Binding BackCommand, ElementName=Root}"
+                Content="Back to library"
+                Style="{StaticResource Button.Secondary}" />
+
+            <Grid Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="230" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border
+                    Height="300"
+                    Background="{StaticResource Brush.AccentSurface}"
+                    BorderBrush="{StaticResource Brush.Border}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource CornerRadius.M}">
+                    <Grid ClipToBounds="True">
+                        <Image
+                            Stretch="Uniform"
+                            ImageFailed="OnThumbnailImageFailed"
+                            Source="{Binding ThumbnailSource, ElementName=Root}" />
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasUsableThumbnail, ElementName=Root}" Value="False">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock
+                                HorizontalAlignment="Center"
+                                FontSize="44"
+                                Foreground="{StaticResource Brush.Accent}"
+                                Text="{Binding FallbackGlyph, ElementName=Root}" />
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                Foreground="{StaticResource Brush.TextSecondary}"
+                                Text="No image available" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <StackPanel Grid.Column="2">
+                    <TextBlock
+                        Foreground="{StaticResource Brush.TextMuted}"
+                        Text="{Binding TypeLabel, ElementName=Root}" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        FontSize="28"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource Brush.TextPrimary}"
+                        Text="{Binding Title, ElementName=Root}"
+                        TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        Foreground="{StaticResource Brush.TextSecondary}"
+                        Text="{Binding HeaderMetadata, ElementName=Root}"
+                        TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HeaderMetadata, ElementName=Root}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        Foreground="{StaticResource Brush.TextMuted}"
+                        Text="{Binding Status, ElementName=Root}" />
+                    <TextBlock
+                        Margin="0,16,0,0"
+                        Foreground="{StaticResource Brush.TextSecondary}"
+                        Text="{Binding Description, ElementName=Root}"
+                        TextWrapping="Wrap" />
+
+                    <WrapPanel Margin="0,20,0,0">
+                        <Button
+                            Margin="0,0,8,8"
+                            Command="{Binding PrimaryActionCommand, ElementName=Root}"
+                            Content="{Binding PrimaryActionText, ElementName=Root}">
+                            <Button.Style>
+                                <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding PrimaryActionCommand, ElementName=Root}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button
+                            Margin="0,0,8,8"
+                            Command="{Binding SecondaryActionCommand, ElementName=Root}"
+                            Content="{Binding SecondaryActionText, ElementName=Root}"
+                            Style="{StaticResource OptionalActionButton}" />
+                        <Button
+                            Margin="0,0,8,8"
+                            Command="{Binding TertiaryActionCommand, ElementName=Root}"
+                            Content="{Binding TertiaryActionText, ElementName=Root}"
+                            Style="{StaticResource OptionalActionButton}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Grid>
+
+            <Border Margin="0,24,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock FontWeight="SemiBold" Text="Metadata" />
+                    <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding MetadataItems, ElementName=Root}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Width="200" Margin="0,0,20,16">
+                                    <TextBlock Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Label}" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        Foreground="{StaticResource Brush.TextPrimary}"
+                                        Text="{Binding Value}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip="{Binding Value}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Border Margin="0,16,0,0">
+                <Border.Style>
+                    <Style BasedOn="{StaticResource Card}" TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ExtensionContent, ElementName=Root}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <ContentPresenter Content="{Binding ExtensionContent, ElementName=Root}" />
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

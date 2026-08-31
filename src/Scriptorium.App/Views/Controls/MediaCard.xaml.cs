@@ -24,6 +24,20 @@ public partial class MediaCard : UserControl
             typeof(MediaCard),
             new PropertyMetadata(null));
 
+    private static readonly DependencyPropertyKey CategoryBrushPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(CategoryBrush),
+            typeof(Brush),
+            typeof(MediaCard),
+            new PropertyMetadata(CreateDefaultCategoryBrush()));
+
+    private static readonly DependencyPropertyKey HasCategoryPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(HasCategory),
+            typeof(bool),
+            typeof(MediaCard),
+            new PropertyMetadata(false));
+
     public static readonly DependencyProperty ThumbnailPathProperty =
         DependencyProperty.Register(
             nameof(ThumbnailPath),
@@ -46,6 +60,20 @@ public partial class MediaCard : UserControl
     public static readonly DependencyProperty TertiaryMetadataProperty =
         DependencyProperty.Register(nameof(TertiaryMetadata), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
+    public static readonly DependencyProperty CategoryNameProperty =
+        DependencyProperty.Register(
+            nameof(CategoryName),
+            typeof(string),
+            typeof(MediaCard),
+            new PropertyMetadata(string.Empty, OnCategoryNameChanged));
+
+    public static readonly DependencyProperty CategoryColorProperty =
+        DependencyProperty.Register(
+            nameof(CategoryColor),
+            typeof(string),
+            typeof(MediaCard),
+            new PropertyMetadata(null, OnCategoryColorChanged));
+
     public static readonly DependencyProperty StatusProperty =
         DependencyProperty.Register(nameof(Status), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
@@ -54,6 +82,22 @@ public partial class MediaCard : UserControl
 
     public static readonly DependencyProperty IsMissingProperty =
         DependencyProperty.Register(nameof(IsMissing), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty IsFavoriteProperty =
+        DependencyProperty.Register(nameof(IsFavorite), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty HasPlaybackProgressProperty =
+        DependencyProperty.Register(nameof(HasPlaybackProgress), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+
+    public static readonly DependencyProperty PlaybackProgressPercentageProperty =
+        DependencyProperty.Register(
+            nameof(PlaybackProgressPercentage),
+            typeof(double),
+            typeof(MediaCard),
+            new PropertyMetadata(0d, null, CoercePlaybackProgressPercentage));
+
+    public static readonly DependencyProperty PlaybackProgressTextProperty =
+        DependencyProperty.Register(nameof(PlaybackProgressText), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
     public static readonly DependencyProperty IsListLayoutProperty =
         DependencyProperty.Register(
@@ -81,6 +125,10 @@ public partial class MediaCard : UserControl
     public static readonly DependencyProperty HasUsableThumbnailProperty = HasUsableThumbnailPropertyKey.DependencyProperty;
 
     public static readonly DependencyProperty ThumbnailSourceProperty = ThumbnailSourcePropertyKey.DependencyProperty;
+
+    public static readonly DependencyProperty CategoryBrushProperty = CategoryBrushPropertyKey.DependencyProperty;
+
+    public static readonly DependencyProperty HasCategoryProperty = HasCategoryPropertyKey.DependencyProperty;
 
     private long _thumbnailLoadVersion;
 
@@ -125,6 +173,18 @@ public partial class MediaCard : UserControl
         set => SetValue(TertiaryMetadataProperty, value);
     }
 
+    public string CategoryName
+    {
+        get => (string)GetValue(CategoryNameProperty);
+        set => SetValue(CategoryNameProperty, value);
+    }
+
+    public string? CategoryColor
+    {
+        get => (string?)GetValue(CategoryColorProperty);
+        set => SetValue(CategoryColorProperty, value);
+    }
+
     public string Status
     {
         get => (string)GetValue(StatusProperty);
@@ -141,6 +201,34 @@ public partial class MediaCard : UserControl
     {
         get => (bool)GetValue(IsMissingProperty);
         set => SetValue(IsMissingProperty, value);
+    }
+
+    /// <summary>Gets or sets whether the card's media item is marked as a favorite.</summary>
+    public bool IsFavorite
+    {
+        get => (bool)GetValue(IsFavoriteProperty);
+        set => SetValue(IsFavoriteProperty, value);
+    }
+
+    /// <summary>Gets or sets whether resumable playback progress is displayed.</summary>
+    public bool HasPlaybackProgress
+    {
+        get => (bool)GetValue(HasPlaybackProgressProperty);
+        set => SetValue(HasPlaybackProgressProperty, value);
+    }
+
+    /// <summary>Gets or sets the bounded playback-completion percentage.</summary>
+    public double PlaybackProgressPercentage
+    {
+        get => (double)GetValue(PlaybackProgressPercentageProperty);
+        set => SetValue(PlaybackProgressPercentageProperty, value);
+    }
+
+    /// <summary>Gets or sets the human-readable playback-progress label.</summary>
+    public string PlaybackProgressText
+    {
+        get => (string)GetValue(PlaybackProgressTextProperty);
+        set => SetValue(PlaybackProgressTextProperty, value);
     }
 
     public bool IsListLayout
@@ -179,6 +267,11 @@ public partial class MediaCard : UserControl
     /// <summary>Gets the asynchronously loaded, shared preview source for this card.</summary>
     public ImageSource? ThumbnailSource => (ImageSource?)GetValue(ThumbnailSourceProperty);
 
+    /// <summary>Gets the validated category-color brush used by the category chip.</summary>
+    public Brush CategoryBrush => (Brush)GetValue(CategoryBrushProperty);
+
+    public bool HasCategory => (bool)GetValue(HasCategoryProperty);
+
     private static void OnThumbnailPathChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
         var card = (MediaCard)dependencyObject;
@@ -189,6 +282,54 @@ public partial class MediaCard : UserControl
     {
         var card = (MediaCard)dependencyObject;
         card.Width = card.IsListLayout ? double.NaN : card.CardWidth;
+    }
+
+    private static object CoercePlaybackProgressPercentage(DependencyObject dependencyObject, object baseValue) =>
+        Math.Clamp((double)baseValue, 0d, 100d);
+
+    private static void OnCategoryColorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
+    {
+        var brush = TryCreateCategoryBrush((string?)eventArgs.NewValue) ?? CreateDefaultCategoryBrush();
+        ((MediaCard)dependencyObject).SetValue(CategoryBrushPropertyKey, brush);
+    }
+
+    private static void OnCategoryNameChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs) =>
+        ((MediaCard)dependencyObject).SetValue(
+            HasCategoryPropertyKey,
+            !string.IsNullOrWhiteSpace((string?)eventArgs.NewValue));
+
+    private static Brush? TryCreateCategoryBrush(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (new BrushConverter().ConvertFromInvariantString(color) is not Brush brush)
+            {
+                return null;
+            }
+
+            if (brush.CanFreeze)
+            {
+                brush.Freeze();
+            }
+
+            return brush;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    private static Brush CreateDefaultCategoryBrush()
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(43, 50, 64));
+        brush.Freeze();
+        return brush;
     }
 
     private async Task LoadThumbnailAsync(string? thumbnailPath)

@@ -7,6 +7,9 @@ namespace Scriptorium.Core.Services;
 /// </summary>
 public interface IFavoriteService
 {
+    /// <summary>Raised after the persisted favorite state changes for an item.</summary>
+    event Action<Guid>? FavoriteChanged;
+
     /// <summary>Adds a media item to favorites. The operation is idempotent.</summary>
     Task<bool> AddAsync(Guid mediaItemId, CancellationToken cancellationToken = default);
 

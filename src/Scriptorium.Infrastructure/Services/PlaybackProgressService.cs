@@ -9,6 +9,9 @@ namespace Scriptorium.Infrastructure.Services;
 public sealed class PlaybackProgressService(IMediaItemRepository mediaItemRepository) : IPlaybackProgressService
 {
     /// <inheritdoc />
+    public event Action<Guid>? PlaybackProgressSaved;
+
+    /// <inheritdoc />
     public async Task<bool> SaveAsync(
         Guid mediaItemId,
         PlaybackProgressUpdate progressUpdate,
@@ -23,12 +26,19 @@ public sealed class PlaybackProgressService(IMediaItemRepository mediaItemReposi
             : progressUpdate.PositionSeconds;
         var lastWatched = progressUpdate.LastWatched ?? DateTimeOffset.UtcNow;
 
-        return await mediaItemRepository.UpdatePlaybackAsync(
+        var wasSaved = await mediaItemRepository.UpdatePlaybackAsync(
             mediaItemId,
             positionSeconds,
             progressUpdate.DurationSeconds,
             lastWatched,
             cancellationToken);
+
+        if (wasSaved)
+        {
+            PlaybackProgressSaved?.Invoke(mediaItemId);
+        }
+
+        return wasSaved;
     }
 
     /// <inheritdoc />

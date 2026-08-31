@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
@@ -17,6 +18,8 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly ILibraryFolderValidator _libraryFolderValidator;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaScannerService _mediaScannerService;
+    private readonly IPlaybackProgressService _playbackProgressService;
+    private readonly IFavoriteService _favoriteService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly ISettingsService _settingsService;
     private readonly ICourseRepository _courseRepository;
@@ -57,6 +60,8 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _processedFileCount;
     private int _discoveredMediaCount;
     private bool _isListLayout;
+    private int _isPlaybackRefreshQueued;
+    private int _isFavoriteRefreshQueued;
 
     public LibraryPageViewModel(
         IImportFolderDialog importFolderDialog,
@@ -65,6 +70,8 @@ public sealed class LibraryPageViewModel : PageViewModel
         ILibraryFolderValidator libraryFolderValidator,
         IMediaItemRepository mediaItemRepository,
         IMediaScannerService mediaScannerService,
+        IPlaybackProgressService playbackProgressService,
+        IFavoriteService favoriteService,
         IMediaGroupingService mediaGroupingService,
         ISettingsService settingsService,
         ICourseRepository courseRepository,
@@ -80,6 +87,8 @@ public sealed class LibraryPageViewModel : PageViewModel
         _libraryFolderValidator = libraryFolderValidator;
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
+        _playbackProgressService = playbackProgressService;
+        _favoriteService = favoriteService;
         _mediaGroupingService = mediaGroupingService;
         _settingsService = settingsService;
         _courseRepository = courseRepository;
@@ -125,6 +134,8 @@ public sealed class LibraryPageViewModel : PageViewModel
         SetGridLayoutCommand = _setGridLayoutCommand;
         _setListLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: true), () => IsGridLayout);
         SetListLayoutCommand = _setListLayoutCommand;
+        _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
+        _favoriteService.FavoriteChanged += OnFavoriteChanged;
     }
 
     public override string Title => "Library";
@@ -462,6 +473,70 @@ public sealed class LibraryPageViewModel : PageViewModel
         await RefreshTutorialsAsync();
         await RefreshTvShowsAsync();
         await RefreshTvShowGroupsAsync();
+    }
+
+    private void OnPlaybackProgressSaved(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isPlaybackRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterPlaybackAsync);
+            return;
+        }
+
+        _ = RefreshAfterPlaybackAsync();
+    }
+
+    private async Task RefreshAfterPlaybackAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isPlaybackRefreshQueued, 0);
+        }
+    }
+
+    private void OnFavoriteChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isFavoriteRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterFavoriteChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterFavoriteChangeAsync();
+    }
+
+    private async Task RefreshAfterFavoriteChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isFavoriteRefreshQueued, 0);
+        }
     }
 
     /// <summary>Reloads tutorial collections in alphabetical order.</summary>

@@ -19,6 +19,19 @@ public sealed class MovieItemViewModel(MediaItem movie)
 
     public string Runtime => MediaRuntimeFormatter.Format(movie.RuntimeSeconds);
 
+    public string CategoryName => MediaCategoryDisplay.Name(movie);
+
+    public string CategoryColor => MediaCategoryDisplay.Color(movie);
+
+    /// <summary>Gets whether this movie is marked as a favorite.</summary>
+    public bool IsFavorite => movie.IsFavorite;
+
+    public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(movie);
+
+    public double PlaybackProgressPercentage => MediaPlaybackProgress.CompletionPercentage(movie);
+
+    public string PlaybackProgressText => MediaPlaybackProgress.DisplayText(movie);
+
     public string Summary => string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
 
     public bool IsMissing => movie.IsMissing;
