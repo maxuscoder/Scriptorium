@@ -13,4 +13,7 @@ public sealed class ApplicationSettings
 
     /// <summary>Gets or sets the preferred layout for media cards in the library.</summary>
     public string LibraryLayout { get; set; } = "Grid";
+
+    /// <summary>Gets or sets the preferred alphabetical ordering for library media.</summary>
+    public string LibrarySortOrder { get; set; } = "Ascending";
 }

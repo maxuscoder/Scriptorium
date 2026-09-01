@@ -12,11 +12,15 @@ public sealed class CategoryService(
     IMediaItemRepository mediaItemRepository) : ICategoryService
 {
     /// <inheritdoc />
+    public event Action? CategoriesChanged;
+
+    /// <inheritdoc />
     public async Task<Category> CreateAsync(string name, string color, CancellationToken cancellationToken = default)
     {
         Validate(name, color);
         var category = new Category { Id = Guid.NewGuid(), Name = name, Color = color };
         await categoryRepository.AddAsync(category, cancellationToken);
+        CategoriesChanged?.Invoke();
         return category;
     }
 
@@ -32,6 +36,7 @@ public sealed class CategoryService(
 
         category.Name = name;
         await categoryRepository.UpdateAsync(category, cancellationToken);
+        CategoriesChanged?.Invoke();
         return true;
     }
 
@@ -44,6 +49,7 @@ public sealed class CategoryService(
         }
 
         await categoryRepository.DeleteAsync(categoryId, cancellationToken);
+        CategoriesChanged?.Invoke();
         return true;
     }
 
@@ -58,7 +64,13 @@ public sealed class CategoryService(
             return false;
         }
 
-        return await mediaItemRepository.UpdateCategoryAsync(mediaItemId, categoryId, cancellationToken);
+        var wasAssigned = await mediaItemRepository.UpdateCategoryAsync(mediaItemId, categoryId, cancellationToken);
+        if (wasAssigned)
+        {
+            CategoriesChanged?.Invoke();
+        }
+
+        return wasAssigned;
     }
 
     /// <inheritdoc />

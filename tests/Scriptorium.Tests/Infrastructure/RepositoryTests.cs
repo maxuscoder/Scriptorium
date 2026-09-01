@@ -328,6 +328,56 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Media_search_matches_categories_and_uncategorized_items()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var categoryRepository = new CategoryRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var category = new Category { Name = "Documentaries", Color = "#6B46C1" };
+            await categoryRepository.AddAsync(category);
+            await mediaItemRepository.AddRangeAsync(
+            [
+                new MediaItem
+                {
+                    Title = "Ocean depths",
+                    Path = "C:\\Media\\ocean.mp4",
+                    CategoryId = category.Id,
+                    MediaType = MediaType.Movie
+                },
+                new MediaItem
+                {
+                    Title = "Untitled lesson",
+                    Path = "C:\\Media\\lesson.mp4",
+                    MediaType = MediaType.Tutorial
+                }
+            ]);
+
+            var categoryMatches = await mediaItemRepository.SearchAsync("MENTAR");
+            var uncategorizedMatches = await mediaItemRepository.SearchAsync("uncategor");
+
+            Assert.Collection(categoryMatches, item => Assert.Equal("Ocean depths", item.Title));
+            Assert.Collection(uncategorizedMatches, item => Assert.Equal("Untitled lesson", item.Title));
+            Assert.Equal("Documentaries", categoryMatches[0].Category!.Name);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Deleting_a_library_folder_preserves_its_media_metadata()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");

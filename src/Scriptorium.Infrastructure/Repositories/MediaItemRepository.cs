@@ -127,6 +127,31 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaItem>> SearchAsync(
+        string query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+
+        var normalizedQuery = query.Trim();
+        var normalizedComparisonQuery = normalizedQuery.ToLowerInvariant();
+        var matchesUncategorized = "Uncategorized".Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase);
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await MediaItems(context)
+            .Where(item =>
+                item.Title.ToLower().Contains(normalizedComparisonQuery) ||
+                (item.LibraryFolder != null &&
+                 (item.LibraryFolder.Name.ToLower().Contains(normalizedComparisonQuery) ||
+                  (item.LibraryFolder.DisplayName != null &&
+                   item.LibraryFolder.DisplayName.ToLower().Contains(normalizedComparisonQuery)))) ||
+                (item.Category != null &&
+                 item.Category.Name.ToLower().Contains(normalizedComparisonQuery)) ||
+                (matchesUncategorized && item.CategoryId == null))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<bool> UpdateFavoriteAsync(
         Guid mediaItemId,
         bool isFavorite,

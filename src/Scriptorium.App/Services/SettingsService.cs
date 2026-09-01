@@ -143,6 +143,9 @@ public sealed class SettingsService : ISettingsService
         settings.LibraryLayout = string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase)
             ? "List"
             : "Grid";
+        settings.LibrarySortOrder = string.IsNullOrWhiteSpace(settings.LibrarySortOrder)
+            ? "Ascending"
+            : settings.LibrarySortOrder;
         return settings;
     }
 }

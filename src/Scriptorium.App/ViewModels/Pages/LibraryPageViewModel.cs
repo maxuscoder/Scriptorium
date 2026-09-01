@@ -20,8 +20,10 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly IMediaScannerService _mediaScannerService;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly IFavoriteService _favoriteService;
+    private readonly ICategoryService _categoryService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly ISettingsService _settingsService;
+    private readonly ICategoryRepository _categoryRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
     private readonly INavigationService _navigationService;
@@ -43,6 +45,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly AsyncRelayCommand _openMovieCommand;
     private readonly AsyncRelayCommand _setGridLayoutCommand;
     private readonly AsyncRelayCommand _setListLayoutCommand;
+    private readonly RelayCommand _clearFiltersCommand;
     private ConfiguredFolderViewModel? _selectedFolder;
     private string? _customDisplayName;
     private MediaType? _selectedMediaType;
@@ -60,8 +63,14 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _processedFileCount;
     private int _discoveredMediaCount;
     private bool _isListLayout;
+    private bool _showFavoritesOnly;
+    private PlaybackFilter _selectedPlaybackFilter;
+    private CompletionFilter _selectedCompletionFilter;
+    private LibrarySortOrder _selectedSortOrder;
+    private IReadOnlyList<MediaItem> _availableMediaItems = [];
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
+    private int _isCategoryRefreshQueued;
 
     public LibraryPageViewModel(
         IImportFolderDialog importFolderDialog,
@@ -72,8 +81,10 @@ public sealed class LibraryPageViewModel : PageViewModel
         IMediaScannerService mediaScannerService,
         IPlaybackProgressService playbackProgressService,
         IFavoriteService favoriteService,
+        ICategoryService categoryService,
         IMediaGroupingService mediaGroupingService,
         ISettingsService settingsService,
+        ICategoryRepository categoryRepository,
         ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
         INavigationService navigationService,
@@ -89,8 +100,10 @@ public sealed class LibraryPageViewModel : PageViewModel
         _mediaScannerService = mediaScannerService;
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
+        _categoryService = categoryService;
         _mediaGroupingService = mediaGroupingService;
         _settingsService = settingsService;
+        _categoryRepository = categoryRepository;
         _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -130,12 +143,51 @@ public sealed class LibraryPageViewModel : PageViewModel
         _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
         OpenMovieCommand = _openMovieCommand;
         _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
+        _selectedSortOrder = Enum.TryParse<LibrarySortOrder>(
+                _settingsService.Settings.LibrarySortOrder,
+                ignoreCase: true,
+                out var savedSortOrder) &&
+            Enum.IsDefined(savedSortOrder)
+            ? savedSortOrder
+            : LibrarySortOrder.Ascending;
         _setGridLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: false), () => IsListLayout);
         SetGridLayoutCommand = _setGridLayoutCommand;
         _setListLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: true), () => IsGridLayout);
         SetListLayoutCommand = _setListLayoutCommand;
+        _clearFiltersCommand = new RelayCommand(ClearFilters, () => HasActiveFilters);
+        ClearFiltersCommand = _clearFiltersCommand;
+        MediaTypeFilters =
+        [
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.Tutorial, "Tutorials", ApplyFilters),
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.TvShow, "TV shows", ApplyFilters),
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.Movie, "Movies", ApplyFilters)
+        ];
+        PlaybackFilters =
+        [
+            new(PlaybackFilter.All, "All playback"),
+            new(PlaybackFilter.Watched, "Watched"),
+            new(PlaybackFilter.Unwatched, "Unwatched")
+        ];
+        CompletionFilters =
+        [
+            new(CompletionFilter.All, "All completion"),
+            new(CompletionFilter.Completed, "Completed"),
+            new(CompletionFilter.Incomplete, "Incomplete")
+        ];
+        SortOrders =
+        [
+            new(LibrarySortOrder.Ascending, "Title: A to Z"),
+            new(LibrarySortOrder.Descending, "Title: Z to A"),
+            new(LibrarySortOrder.ImportDateNewest, "Import date: newest first"),
+            new(LibrarySortOrder.ImportDateOldest, "Import date: oldest first"),
+            new(LibrarySortOrder.MostRecentlyWatched, "Playback: most recent first"),
+            new(LibrarySortOrder.LeastRecentlyWatched, "Playback: least recent first"),
+            new(LibrarySortOrder.HighestPlaybackProgress, "Progress: highest first"),
+            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: lowest first")
+        ];
         _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
+        _categoryService.CategoriesChanged += OnCategoriesChanged;
     }
 
     public override string Title => "Library";
@@ -243,6 +295,85 @@ public sealed class LibraryPageViewModel : PageViewModel
     /// <summary>Gets every supported media item currently indexed in the library.</summary>
     public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
 
+    /// <summary>Gets the selectable media-type filters.</summary>
+    public IReadOnlyList<LibraryFilterOptionViewModel<MediaType>> MediaTypeFilters { get; }
+
+    /// <summary>Gets the selectable category filters.</summary>
+    public ObservableCollection<LibraryFilterOptionViewModel<Guid>> CategoryFilters { get; } = [];
+
+    /// <summary>Gets the available playback-state filters.</summary>
+    public IReadOnlyList<PlaybackFilterOption> PlaybackFilters { get; }
+
+    /// <summary>Gets the available playback-completion filters.</summary>
+    public IReadOnlyList<CompletionFilterOption> CompletionFilters { get; }
+
+    /// <summary>Gets the available alphabetical sort orders.</summary>
+    public IReadOnlyList<LibrarySortOption> SortOrders { get; }
+
+    /// <summary>Gets or sets the alphabetical sort order for displayed media.</summary>
+    public LibrarySortOrder SelectedSortOrder
+    {
+        get => _selectedSortOrder;
+        set
+        {
+            if (SetProperty(ref _selectedSortOrder, value))
+            {
+                ApplyFilters();
+                _ = SaveSortOrderAsync();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets whether only favorite media is displayed.</summary>
+    public bool ShowFavoritesOnly
+    {
+        get => _showFavoritesOnly;
+        set
+        {
+            if (SetProperty(ref _showFavoritesOnly, value))
+            {
+                ApplyFilters();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the playback state used to filter displayed media.</summary>
+    public PlaybackFilter SelectedPlaybackFilter
+    {
+        get => _selectedPlaybackFilter;
+        set
+        {
+            if (SetProperty(ref _selectedPlaybackFilter, value))
+            {
+                ApplyFilters();
+            }
+        }
+    }
+
+    /// <summary>Gets or sets the completion state used to filter displayed media.</summary>
+    public CompletionFilter SelectedCompletionFilter
+    {
+        get => _selectedCompletionFilter;
+        set
+        {
+            if (SetProperty(ref _selectedCompletionFilter, value))
+            {
+                ApplyFilters();
+            }
+        }
+    }
+
+    /// <summary>Gets whether one or more library filters are active.</summary>
+    public bool HasActiveFilters =>
+        ShowFavoritesOnly ||
+        SelectedPlaybackFilter != PlaybackFilter.All ||
+        SelectedCompletionFilter != CompletionFilter.All ||
+        MediaTypeFilters.Any(filter => filter.IsSelected) ||
+        CategoryFilters.Any(filter => filter.IsSelected);
+
+    /// <summary>Clears all selected library filters.</summary>
+    public ICommand ClearFiltersCommand { get; }
+
     /// <summary>Gets the tutorial collections available in the library.</summary>
     public ObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
 
@@ -254,6 +385,17 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets whether the browser has no media items to display.</summary>
     public bool IsLibraryEmpty => MediaItems.Count == 0;
+
+    /// <summary>Gets whether the indexed library has media before filters are applied.</summary>
+    public bool HasIndexedMedia => _availableMediaItems.Count != 0;
+
+    /// <summary>Gets the empty-state heading appropriate for the current filters.</summary>
+    public string EmptyLibraryTitle => HasIndexedMedia ? "No media matches your filters" : "Your library is empty";
+
+    /// <summary>Gets the empty-state guidance appropriate for the current filters.</summary>
+    public string EmptyLibraryDescription => HasIndexedMedia
+        ? "Adjust or clear the filters to see more media."
+        : "Add a library folder, then rescan it to bring your supported media here.";
 
     /// <summary>Gets a concise count suitable for the library browser header.</summary>
     public string MediaCountText => $"{MediaItems.Count} item{(MediaItems.Count == 1 ? string.Empty : "s")}";
@@ -459,20 +601,112 @@ public sealed class LibraryPageViewModel : PageViewModel
     {
         await RefreshConfiguredFoldersAsync();
         var mediaItems = await _mediaItemRepository.GetAllAsync();
-        MediaItems.Clear();
-        foreach (var mediaItem in mediaItems.Where(mediaItem => mediaItem.MediaType.IsSupported()))
-        {
-            MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
-        }
+        _availableMediaItems = mediaItems
+            .Where(mediaItem => mediaItem.MediaType.IsSupported())
+            .ToArray();
+        await RefreshCategoryFiltersAsync();
+        ApplyFilters();
 
         IndexedMediaCount = mediaItems.Count;
         MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
-        OnPropertyChanged(nameof(IsLibraryEmpty));
-        OnPropertyChanged(nameof(MediaCountText));
         RefreshMovies(mediaItems);
         await RefreshTutorialsAsync();
         await RefreshTvShowsAsync();
         await RefreshTvShowGroupsAsync();
+    }
+
+    private async Task RefreshCategoryFiltersAsync()
+    {
+        var selectedCategoryIds = CategoryFilters
+            .Where(filter => filter.IsSelected)
+            .Select(filter => filter.Value)
+            .ToHashSet();
+        var categories = await _categoryRepository.GetAllAsync();
+
+        CategoryFilters.Clear();
+        foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            var filter = new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFilters)
+            {
+                IsSelected = selectedCategoryIds.Contains(category.Id)
+            };
+            CategoryFilters.Add(filter);
+        }
+
+        OnPropertyChanged(nameof(HasActiveFilters));
+        _clearFiltersCommand.NotifyCanExecuteChanged();
+    }
+
+    private IReadOnlyList<MediaItem> FilterMediaItems()
+    {
+        var selectedMediaTypes = MediaTypeFilters
+            .Where(filter => filter.IsSelected)
+            .Select(filter => filter.Value)
+            .ToHashSet();
+        var selectedCategoryIds = CategoryFilters
+            .Where(filter => filter.IsSelected)
+            .Select(filter => filter.Value)
+            .ToHashSet();
+
+        var filteredMediaItems = _availableMediaItems
+            .Where(mediaItem => selectedMediaTypes.Count == 0 || selectedMediaTypes.Contains(mediaItem.MediaType))
+            .Where(mediaItem => selectedCategoryIds.Count == 0 ||
+                                (mediaItem.CategoryId is { } categoryId && selectedCategoryIds.Contains(categoryId)))
+            .Where(mediaItem => !ShowFavoritesOnly || mediaItem.IsFavorite)
+            .Where(mediaItem => SelectedPlaybackFilter switch
+            {
+                PlaybackFilter.Watched => mediaItem.LastPlayed is not null,
+                PlaybackFilter.Unwatched => mediaItem.LastPlayed is null,
+                _ => true
+            })
+            .Where(mediaItem => SelectedCompletionFilter switch
+            {
+                CompletionFilter.Completed => mediaItem.IsCompleted,
+                CompletionFilter.Incomplete => !mediaItem.IsCompleted,
+                _ => true
+            });
+
+        return OrderMediaItems(filteredMediaItems).ToArray();
+    }
+
+    private void ApplyFilters()
+    {
+        MediaItems.Clear();
+        foreach (var mediaItem in FilterMediaItems())
+        {
+            MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
+        }
+
+        RefreshMovies(_availableMediaItems);
+        SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
+        SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
+
+        OnPropertyChanged(nameof(IsLibraryEmpty));
+        OnPropertyChanged(nameof(HasIndexedMedia));
+        OnPropertyChanged(nameof(EmptyLibraryTitle));
+        OnPropertyChanged(nameof(EmptyLibraryDescription));
+        OnPropertyChanged(nameof(MediaCountText));
+        OnPropertyChanged(nameof(HasActiveFilters));
+        _clearFiltersCommand?.NotifyCanExecuteChanged();
+    }
+
+    private void ClearFilters()
+    {
+        ShowFavoritesOnly = false;
+
+        foreach (var filter in MediaTypeFilters)
+        {
+            filter.IsSelected = false;
+        }
+
+        foreach (var filter in CategoryFilters)
+        {
+            filter.IsSelected = false;
+        }
+
+        SelectedPlaybackFilter = PlaybackFilter.All;
+        SelectedCompletionFilter = CompletionFilter.All;
+        ApplyFilters();
     }
 
     private void OnPlaybackProgressSaved(Guid mediaItemId)
@@ -539,15 +773,49 @@ public sealed class LibraryPageViewModel : PageViewModel
         }
     }
 
+    private void OnCategoriesChanged()
+    {
+        if (Interlocked.Exchange(ref _isCategoryRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterCategoryChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterCategoryChangeAsync();
+    }
+
+    private async Task RefreshAfterCategoryChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isCategoryRefreshQueued, 0);
+        }
+    }
+
     /// <summary>Reloads tutorial collections in alphabetical order.</summary>
     public async Task RefreshTutorialsAsync()
     {
         var courses = await _courseRepository.GetAllAsync();
         Tutorials.Clear();
-        foreach (var course in courses.OrderBy(course => course.Title, StringComparer.OrdinalIgnoreCase))
+        foreach (var course in courses)
         {
             Tutorials.Add(new TutorialCollectionViewModel(course));
         }
+
+        SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
 
         OnPropertyChanged(nameof(TutorialCountText));
     }
@@ -557,10 +825,12 @@ public sealed class LibraryPageViewModel : PageViewModel
     {
         var shows = await _tvShowRepository.GetAllAsync();
         TvShows.Clear();
-        foreach (var show in shows.OrderBy(show => show.Title, StringComparer.OrdinalIgnoreCase))
+        foreach (var show in shows)
         {
             TvShows.Add(new TvShowCollectionViewModel(show));
         }
+
+        SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
 
         OnPropertyChanged(nameof(TvShowCountText));
     }
@@ -568,9 +838,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private void RefreshMovies(IEnumerable<MediaItem> mediaItems)
     {
         Movies.Clear();
-        foreach (var movie in mediaItems
-                     .Where(mediaItem => mediaItem.MediaType == MediaType.Movie)
-                     .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
+        foreach (var movie in OrderMediaItems(mediaItems.Where(mediaItem => mediaItem.MediaType == MediaType.Movie)))
         {
             Movies.Add(new MovieItemViewModel(movie));
         }
@@ -907,6 +1175,91 @@ public sealed class LibraryPageViewModel : PageViewModel
 
         IsListLayout = isListLayout;
         _settingsService.Settings.LibraryLayout = isListLayout ? "List" : "Grid";
+        await _settingsService.SaveAsync();
+    }
+
+    private IEnumerable<MediaItem> OrderMediaItems(IEnumerable<MediaItem> mediaItems) =>
+        OrderLibraryItems(
+            mediaItems,
+            mediaItem => mediaItem.Title,
+            mediaItem => mediaItem.DateAdded,
+            mediaItem => mediaItem.DateAdded,
+            mediaItem => mediaItem.LastPlayed,
+            mediaItem => mediaItem.LastPlayed,
+            MediaPlaybackProgress.ProgressPercentage,
+            MediaPlaybackProgress.ProgressPercentage);
+
+    private IEnumerable<TutorialCollectionViewModel> OrderTutorials(IEnumerable<TutorialCollectionViewModel> tutorials) =>
+        OrderLibraryItems(
+            tutorials,
+            tutorial => tutorial.Title,
+            tutorial => tutorial.OldestImportDate,
+            tutorial => tutorial.NewestImportDate,
+            tutorial => tutorial.EarliestPlayback,
+            tutorial => tutorial.LatestPlayback,
+            tutorial => tutorial.LowestPlaybackProgress,
+            tutorial => tutorial.HighestPlaybackProgress);
+
+    private IEnumerable<TvShowCollectionViewModel> OrderTvShows(IEnumerable<TvShowCollectionViewModel> tvShows) =>
+        OrderLibraryItems(
+            tvShows,
+            tvShow => tvShow.Title,
+            tvShow => tvShow.OldestImportDate,
+            tvShow => tvShow.NewestImportDate,
+            tvShow => tvShow.EarliestPlayback,
+            tvShow => tvShow.LatestPlayback,
+            tvShow => tvShow.LowestPlaybackProgress,
+            tvShow => tvShow.HighestPlaybackProgress);
+
+    private IEnumerable<T> OrderLibraryItems<T>(
+        IEnumerable<T> items,
+        Func<T, string> titleSelector,
+        Func<T, DateTimeOffset> oldestImportSelector,
+        Func<T, DateTimeOffset> newestImportSelector,
+        Func<T, DateTimeOffset?> earliestPlaybackSelector,
+        Func<T, DateTimeOffset?> latestPlaybackSelector,
+        Func<T, double> lowestProgressSelector,
+        Func<T, double> highestProgressSelector) =>
+        SelectedSortOrder switch
+        {
+            LibrarySortOrder.Descending => items
+                .OrderByDescending(titleSelector, StringComparer.OrdinalIgnoreCase),
+            LibrarySortOrder.ImportDateNewest => items
+                .OrderByDescending(newestImportSelector)
+                .ThenBy(titleSelector, StringComparer.OrdinalIgnoreCase),
+            LibrarySortOrder.ImportDateOldest => items
+                .OrderBy(oldestImportSelector)
+                .ThenBy(titleSelector, StringComparer.OrdinalIgnoreCase),
+            LibrarySortOrder.MostRecentlyWatched => items
+                .OrderByDescending(item => latestPlaybackSelector(item).HasValue)
+                .ThenByDescending(latestPlaybackSelector)
+                .ThenBy(titleSelector, StringComparer.OrdinalIgnoreCase),
+            LibrarySortOrder.LeastRecentlyWatched => items
+                .OrderBy(item => earliestPlaybackSelector(item).HasValue)
+                .ThenBy(earliestPlaybackSelector)
+                .ThenBy(titleSelector, StringComparer.OrdinalIgnoreCase),
+            LibrarySortOrder.HighestPlaybackProgress => items
+                .OrderByDescending(highestProgressSelector)
+                .ThenBy(titleSelector, StringComparer.OrdinalIgnoreCase),
+            LibrarySortOrder.LowestPlaybackProgress => items
+                .OrderBy(lowestProgressSelector)
+                .ThenBy(titleSelector, StringComparer.OrdinalIgnoreCase),
+            _ => items.OrderBy(titleSelector, StringComparer.OrdinalIgnoreCase)
+        };
+
+    private static void SortDisplayedGroups<T>(ObservableCollection<T> groups, IEnumerable<T> orderedGroups)
+    {
+        var reorderedGroups = orderedGroups.ToArray();
+        groups.Clear();
+        foreach (var group in reorderedGroups)
+        {
+            groups.Add(group);
+        }
+    }
+
+    private async Task SaveSortOrderAsync()
+    {
+        _settingsService.Settings.LibrarySortOrder = SelectedSortOrder.ToString();
         await _settingsService.SaveAsync();
     }
 }

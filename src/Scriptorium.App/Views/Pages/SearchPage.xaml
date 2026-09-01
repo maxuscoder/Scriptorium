@@ -14,7 +14,7 @@
             <TextBlock
                 Margin="0,4,0,0"
                 Foreground="{StaticResource Brush.TextSecondary}"
-                Text="Searches media titles and imported library-folder names across every movie, tutorial lesson, and TV episode." />
+                Text="Searches media titles, categories, and imported library-folder names across every movie, tutorial lesson, and TV episode." />
 
             <Grid Margin="0,20,0,0">
                 <TextBlock
@@ -109,7 +109,7 @@
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
                     Foreground="{StaticResource Brush.TextSecondary}"
-                    Text="Start typing in the search bar above to find any media title in your library."
+                    Text="Start typing in the search bar above to find media by title, category, or library-folder name."
                     TextAlignment="Center"
                     TextWrapping="Wrap" />
             </StackPanel>
@@ -138,7 +138,7 @@
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
                     Foreground="{StaticResource Brush.TextSecondary}"
-                    Text="Try another complete or partial media title or library-folder name."
+                    Text="Try another complete or partial media title, category, or library-folder name."
                     TextAlignment="Center"
                     TextWrapping="Wrap" />
             </StackPanel>

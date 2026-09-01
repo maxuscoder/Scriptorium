@@ -104,14 +104,14 @@ public sealed class SearchPageViewModel : PageViewModel
 
         try
         {
-            var mediaItems = await _mediaItemRepository.GetAllAsync(cancellationSource.Token);
+            var mediaItems = await _mediaItemRepository.SearchAsync(Query, cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
                 return;
             }
 
             foreach (var mediaItem in mediaItems
-                         .Where(mediaItem => mediaItem.MediaType.IsSupported() && Matches(mediaItem, Query))
+                         .Where(mediaItem => mediaItem.MediaType.IsSupported())
                          .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
             {
                 Results.Add(new SearchResultViewModel(mediaItem, Query));
@@ -193,10 +193,4 @@ public sealed class SearchPageViewModel : PageViewModel
         OnPropertyChanged(nameof(ResultCountText));
     }
 
-    private static bool Matches(MediaItem mediaItem, string query)
-    {
-        return mediaItem.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-               mediaItem.LibraryFolder?.Name.Contains(query, StringComparison.OrdinalIgnoreCase) == true ||
-               mediaItem.LibraryFolder?.DisplayName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true;
-    }
 }

@@ -35,6 +35,14 @@ public interface IMediaItemRepository : IRepository<MediaItem>
         Guid categoryId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Searches media titles, library-folder names, and assigned category names.
+    /// A query matching "Uncategorized" also returns media without an assigned category.
+    /// </summary>
+    Task<IReadOnlyList<MediaItem>> SearchAsync(
+        string query,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Sets the favorite state without loading the media item first.</summary>
     Task<bool> UpdateFavoriteAsync(
         Guid mediaItemId,
