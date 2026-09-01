@@ -12,17 +12,28 @@ namespace Scriptorium.App.ViewModels;
 public sealed class ShellViewModel : ViewModelBase
 {
     private readonly INavigationService _navigationService;
+    private readonly SearchPageViewModel _searchPage;
+    private readonly ISearchQueryResetService _searchQueryResetService;
+    private readonly ISettingsService _settingsService;
     private NavigationItem? _selectedNavigationItem;
+    private string _searchQuery = string.Empty;
 
     public ShellViewModel(
         INavigationService navigationService,
         MainWindowViewModel homePage,
         LibraryPageViewModel libraryPage,
         FavoritesPageViewModel favoritesPage,
-        SettingsPageViewModel settingsPage)
+        SettingsPageViewModel settingsPage,
+        SearchPageViewModel searchPage,
+        ISearchQueryResetService searchQueryResetService,
+        ISettingsService settingsService)
     {
         _navigationService = navigationService;
+        _searchPage = searchPage;
+        _searchQueryResetService = searchQueryResetService;
+        _settingsService = settingsService;
         _navigationService.Navigated += OnNavigated;
+        _searchQueryResetService.ClearRequested += ClearSearchQuery;
 
         NavigationItems =
         [
@@ -34,6 +45,7 @@ public sealed class ShellViewModel : ViewModelBase
 
         NavigateCommand = new RelayCommand(Navigate);
         _navigationService.NavigateTo(homePage);
+        SearchQuery = _settingsService.Settings.LastSearchQuery;
     }
 
     public IReadOnlyList<NavigationItem> NavigationItems { get; }
@@ -50,6 +62,27 @@ public sealed class ShellViewModel : ViewModelBase
 
     public string PageTitle => CurrentPage?.Title ?? string.Empty;
 
+    /// <summary>Gets or sets the query entered in the persistent media search field.</summary>
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (!SetProperty(ref _searchQuery, value ?? string.Empty))
+            {
+                return;
+            }
+
+            _searchPage.UpdateQuery(_searchQuery);
+            _settingsService.Settings.LastSearchQuery = _searchQuery;
+            _ = _settingsService.SaveAsync();
+            if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                _navigationService.NavigateTo(_searchPage);
+            }
+        }
+    }
+
     private void Navigate(object? parameter)
     {
         if (parameter is NavigationItem navigationItem)
@@ -57,6 +90,8 @@ public sealed class ShellViewModel : ViewModelBase
             _navigationService.NavigateTo(navigationItem.Destination);
         }
     }
+
+    private void ClearSearchQuery() => SearchQuery = string.Empty;
 
     private void OnNavigated(PageViewModel page)
     {

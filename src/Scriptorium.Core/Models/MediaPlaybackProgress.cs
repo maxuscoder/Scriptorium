@@ -6,6 +6,24 @@ namespace Scriptorium.Core.Models;
 public static class MediaPlaybackProgress
 {
     /// <summary>
+    /// Gets an item's total playback progress as a percentage.
+    /// Completed media is reported as 100%; media with no usable duration is reported as 0%.
+    /// </summary>
+    public static double ProgressPercentage(MediaItem mediaItem)
+    {
+        ArgumentNullException.ThrowIfNull(mediaItem);
+
+        if (mediaItem.IsCompleted)
+        {
+            return 100;
+        }
+
+        return mediaItem.RuntimeSeconds > 0
+            ? Math.Clamp((double)mediaItem.PlaybackPositionSeconds / mediaItem.RuntimeSeconds.Value * 100, 0d, 100d)
+            : 0;
+    }
+
+    /// <summary>
     /// Gets whether the item has resumable progress that should be shown to the user.
     /// Completed items and items without a known duration are intentionally excluded.
     /// </summary>

@@ -48,6 +48,26 @@ public partial class MediaCard : UserControl
     public static readonly DependencyProperty TitleProperty =
         DependencyProperty.Register(nameof(Title), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
+    public static readonly DependencyProperty TitlePrefixProperty =
+        DependencyProperty.Register(nameof(TitlePrefix), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty TitleHighlightProperty =
+        DependencyProperty.Register(
+            nameof(TitleHighlight),
+            typeof(string),
+            typeof(MediaCard),
+            new PropertyMetadata(string.Empty, OnTitleHighlightChanged));
+
+    public static readonly DependencyProperty TitleSuffixProperty =
+        DependencyProperty.Register(nameof(TitleSuffix), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
+
+    private static readonly DependencyPropertyKey HasTitleHighlightPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(HasTitleHighlight),
+            typeof(bool),
+            typeof(MediaCard),
+            new PropertyMetadata(false));
+
     public static readonly DependencyProperty TypeLabelProperty =
         DependencyProperty.Register(nameof(TypeLabel), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
@@ -130,6 +150,8 @@ public partial class MediaCard : UserControl
 
     public static readonly DependencyProperty HasCategoryProperty = HasCategoryPropertyKey.DependencyProperty;
 
+    public static readonly DependencyProperty HasTitleHighlightProperty = HasTitleHighlightPropertyKey.DependencyProperty;
+
     private long _thumbnailLoadVersion;
 
     public MediaCard()
@@ -148,6 +170,30 @@ public partial class MediaCard : UserControl
         get => (string)GetValue(TitleProperty);
         set => SetValue(TitleProperty, value);
     }
+
+    /// <summary>Gets or sets the title portion displayed before an optional search match.</summary>
+    public string TitlePrefix
+    {
+        get => (string)GetValue(TitlePrefixProperty);
+        set => SetValue(TitlePrefixProperty, value);
+    }
+
+    /// <summary>Gets or sets the title portion emphasized for a search match.</summary>
+    public string TitleHighlight
+    {
+        get => (string)GetValue(TitleHighlightProperty);
+        set => SetValue(TitleHighlightProperty, value);
+    }
+
+    /// <summary>Gets or sets the title portion displayed after an optional search match.</summary>
+    public string TitleSuffix
+    {
+        get => (string)GetValue(TitleSuffixProperty);
+        set => SetValue(TitleSuffixProperty, value);
+    }
+
+    /// <summary>Gets whether this card should render an emphasized title match.</summary>
+    public bool HasTitleHighlight => (bool)GetValue(HasTitleHighlightProperty);
 
     public string TypeLabel
     {
@@ -296,6 +342,11 @@ public partial class MediaCard : UserControl
     private static void OnCategoryNameChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs) =>
         ((MediaCard)dependencyObject).SetValue(
             HasCategoryPropertyKey,
+            !string.IsNullOrWhiteSpace((string?)eventArgs.NewValue));
+
+    private static void OnTitleHighlightChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs) =>
+        ((MediaCard)dependencyObject).SetValue(
+            HasTitleHighlightPropertyKey,
             !string.IsNullOrWhiteSpace((string?)eventArgs.NewValue));
 
     private static Brush? TryCreateCategoryBrush(string? color)

@@ -127,6 +127,31 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaItem>> SearchAsync(
+        string query,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(query);
+
+        var normalizedQuery = query.Trim();
+        var searchPattern = $"%{EscapeLikePattern(normalizedQuery)}%";
+        var matchesUncategorized = "Uncategorized".Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase);
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await MediaItems(context)
+            .Where(item =>
+                EF.Functions.Like(EF.Functions.Collate(item.Title, "NOCASE"), searchPattern, "\\") ||
+                (item.LibraryFolder != null &&
+                 (EF.Functions.Like(EF.Functions.Collate(item.LibraryFolder.Name, "NOCASE"), searchPattern, "\\") ||
+                  (item.LibraryFolder.DisplayName != null &&
+                   EF.Functions.Like(EF.Functions.Collate(item.LibraryFolder.DisplayName, "NOCASE"), searchPattern, "\\")))) ||
+                (item.Category != null &&
+                 EF.Functions.Like(EF.Functions.Collate(item.Category.Name, "NOCASE"), searchPattern, "\\")) ||
+                (matchesUncategorized && item.CategoryId == null))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public Task<bool> UpdateFavoriteAsync(
         Guid mediaItemId,
         bool isFavorite,
@@ -174,6 +199,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .Include(item => item.LibraryFolder)
             .Include(item => item.Category)
             .OrderBy(item => item.Title);
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 
     private async Task<bool> UpdateAsync(
         Guid mediaItemId,

@@ -31,10 +31,41 @@
             Background="{StaticResource Brush.SurfaceHeader}"
             BorderBrush="{StaticResource Brush.Border}"
             BorderThickness="0,0,0,1">
-            <TextBlock
-                VerticalAlignment="Center"
-                Style="{StaticResource Text.PageTitle}"
-                Text="{Binding PageTitle}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="360" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    Style="{StaticResource Text.PageTitle}"
+                    Text="{Binding PageTitle}" />
+                <Grid Grid.Column="1">
+                    <TextBox
+                        x:Name="GlobalSearchBox"
+                        VerticalContentAlignment="Center"
+                        ToolTip="Search all imported media"
+                        Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                        Style="{StaticResource Input.TextBox}" />
+                    <TextBlock
+                        Margin="11,0,0,0"
+                        VerticalAlignment="Center"
+                        Foreground="{StaticResource Brush.TextMuted}"
+                        IsHitTestVisible="False"
+                        Text="Search all imported media">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Text, ElementName=GlobalSearchBox}" Value="">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Grid>
         </Border>
 
         <ContentControl

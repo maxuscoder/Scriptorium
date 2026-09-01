@@ -7,6 +7,9 @@ namespace Scriptorium.Core.Services;
 /// </summary>
 public interface ICategoryService
 {
+    /// <summary>Raised after categories or media-category assignments change.</summary>
+    event Action? CategoriesChanged;
+
     /// <summary>Creates a category.</summary>
     Task<Category> CreateAsync(string name, string color, CancellationToken cancellationToken = default);
 

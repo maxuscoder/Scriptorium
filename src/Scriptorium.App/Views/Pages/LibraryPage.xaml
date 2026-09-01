@@ -7,6 +7,31 @@
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     Loaded="OnLoaded">
     <UserControl.Resources>
+        <Style
+            x:Key="Library.ReadableComboBox"
+            BasedOn="{StaticResource Input.ComboBox}"
+            TargetType="ComboBox">
+            <Setter Property="Background" Value="#F4F6FA" />
+            <Setter Property="BorderBrush" Value="#9AA4B5" />
+            <Setter Property="Foreground" Value="#171A21" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Background" Value="#F4F6FA" />
+                        <Setter Property="Foreground" Value="#171A21" />
+                        <Setter Property="Padding" Value="10,6" />
+                        <Style.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter Property="Background" Value="#B9DDF0" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="#B9DDF0" />
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="LibraryMediaItems" TargetType="ItemsControl">
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
@@ -156,7 +181,105 @@
                 Text="{Binding StatusMessage}"
                 TextWrapping="Wrap" />
 
+            <Border Margin="0,20,0,0" Padding="16" Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" Text="Filter library" />
+                        <WrapPanel Grid.Column="1">
+                            <Button
+                                Margin="0,0,8,0"
+                                Command="{Binding ClearFiltersCommand}"
+                                Content="Clear filters"
+                                Style="{StaticResource Button.Secondary}" />
+                            <Button
+                                Command="{Binding ResetLibraryCommand}"
+                                Content="Reset library"
+                                Style="{StaticResource Button.Secondary}" />
+                        </WrapPanel>
+                    </Grid>
+                    <TextBlock Margin="0,12,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Sort" />
+                    <ComboBox
+                        Width="180"
+                        Margin="0,6,0,0"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{Binding SortOrders}"
+                        SelectedValue="{Binding SelectedSortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        SelectedValuePath="Value"
+                        Style="{StaticResource Library.ReadableComboBox}" />
+                    <TextBlock Margin="0,12,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Media type" />
+                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding MediaTypeFilters}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox
+                                    Margin="0,0,16,6"
+                                    Content="{Binding DisplayName}"
+                                    Foreground="{StaticResource Brush.TextPrimary}"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Categories" />
+                    <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding CategoryFilters}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox
+                                    Margin="0,0,16,6"
+                                    Content="{Binding DisplayName}"
+                                    Foreground="{StaticResource Brush.TextPrimary}"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <CheckBox
+                        Margin="0,6,0,0"
+                        Content="Favorites only"
+                        Foreground="{StaticResource Brush.TextPrimary}"
+                        IsChecked="{Binding ShowFavoritesOnly, Mode=TwoWay}" />
+                    <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Playback" />
+                    <ComboBox
+                        Width="180"
+                        Margin="0,6,0,0"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{Binding PlaybackFilters}"
+                        SelectedValue="{Binding SelectedPlaybackFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        SelectedValuePath="Value"
+                        Style="{StaticResource Library.ReadableComboBox}" />
+                    <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Completion" />
+                    <ComboBox
+                        Width="180"
+                        Margin="0,6,0,0"
+                        DisplayMemberPath="DisplayName"
+                        ItemsSource="{Binding CompletionFilters}"
+                        SelectedValue="{Binding SelectedCompletionFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        SelectedValuePath="Value"
+                        Style="{StaticResource Library.ReadableComboBox}" />
+                </StackPanel>
+            </Border>
+
             <StackPanel Margin="0,32,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasActiveFilters}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -203,6 +326,15 @@
             </StackPanel>
 
             <StackPanel Margin="0,16,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasActiveFilters}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -249,6 +381,15 @@
             </StackPanel>
 
             <StackPanel Margin="0,16,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasActiveFilters}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -325,12 +466,12 @@
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
                     Style="{StaticResource Text.Display}"
-                    Text="Your library is empty" />
+                    Text="{Binding EmptyLibraryTitle}" />
                 <TextBlock
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
                     Style="{StaticResource Text.Body}"
-                    Text="Add a library folder, then rescan it to bring your supported media here." />
+                    Text="{Binding EmptyLibraryDescription}" />
                 <Button
                     Margin="0,24,0,0"
                     HorizontalAlignment="Center"
@@ -430,7 +571,7 @@
                             ItemsSource="{Binding MediaTypes}"
                             SelectedValue="{Binding SelectedMediaType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                             SelectedValuePath="Value"
-                            Style="{StaticResource Input.ComboBox}" />
+                            Style="{StaticResource Library.ReadableComboBox}" />
                         <Button Margin="12,0,0,0" Command="{Binding ChangeMediaTypeCommand}" Content="Apply media type" Style="{StaticResource Button.Secondary}" />
                     </WrapPanel>
                 </StackPanel>
@@ -478,7 +619,7 @@
                         DisplayMemberPath="DisplayName"
                         ItemsSource="{Binding TvShowGroups}"
                         SelectedItem="{Binding TargetTvShowGroup, Mode=TwoWay}"
-                        Style="{StaticResource Input.ComboBox}" />
+                        Style="{StaticResource Library.ReadableComboBox}" />
                     <TextBlock Margin="0,12,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Group name" />
                     <TextBox
                         Margin="0,6,0,0"
