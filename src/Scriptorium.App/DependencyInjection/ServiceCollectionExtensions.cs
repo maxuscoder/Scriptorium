@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
         services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<ISearchQueryResetService, SearchQueryResetService>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
 

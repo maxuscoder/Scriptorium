@@ -23,6 +23,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly ICategoryService _categoryService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly ISettingsService _settingsService;
+    private readonly ISearchQueryResetService _searchQueryResetService;
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
@@ -46,6 +47,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly AsyncRelayCommand _setGridLayoutCommand;
     private readonly AsyncRelayCommand _setListLayoutCommand;
     private readonly RelayCommand _clearFiltersCommand;
+    private readonly AsyncRelayCommand _resetLibraryCommand;
     private ConfiguredFolderViewModel? _selectedFolder;
     private string? _customDisplayName;
     private MediaType? _selectedMediaType;
@@ -67,6 +69,8 @@ public sealed class LibraryPageViewModel : PageViewModel
     private PlaybackFilter _selectedPlaybackFilter;
     private CompletionFilter _selectedCompletionFilter;
     private LibrarySortOrder _selectedSortOrder;
+    private readonly HashSet<Guid> _selectedCategoryFilterIds = [];
+    private bool _suppressFilterStateSaving;
     private IReadOnlyList<MediaItem> _availableMediaItems = [];
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
@@ -84,6 +88,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         ICategoryService categoryService,
         IMediaGroupingService mediaGroupingService,
         ISettingsService settingsService,
+        ISearchQueryResetService searchQueryResetService,
         ICategoryRepository categoryRepository,
         ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
@@ -103,6 +108,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         _categoryService = categoryService;
         _mediaGroupingService = mediaGroupingService;
         _settingsService = settingsService;
+        _searchQueryResetService = searchQueryResetService;
         _categoryRepository = categoryRepository;
         _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
@@ -150,18 +156,42 @@ public sealed class LibraryPageViewModel : PageViewModel
             Enum.IsDefined(savedSortOrder)
             ? savedSortOrder
             : LibrarySortOrder.Ascending;
+        _showFavoritesOnly = _settingsService.Settings.LibraryShowFavoritesOnly;
+        _selectedPlaybackFilter = ParseFilter(_settingsService.Settings.LibraryPlaybackFilter, PlaybackFilter.All);
+        _selectedCompletionFilter = ParseFilter(_settingsService.Settings.LibraryCompletionFilter, CompletionFilter.All);
+        foreach (var categoryFilterId in _settingsService.Settings.LibraryCategoryFilterIds)
+        {
+            if (Guid.TryParse(categoryFilterId, out var categoryId))
+            {
+                _selectedCategoryFilterIds.Add(categoryId);
+            }
+        }
         _setGridLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: false), () => IsListLayout);
         SetGridLayoutCommand = _setGridLayoutCommand;
         _setListLayoutCommand = new AsyncRelayCommand(() => SetLayoutAsync(isListLayout: true), () => IsGridLayout);
         SetListLayoutCommand = _setListLayoutCommand;
         _clearFiltersCommand = new RelayCommand(ClearFilters, () => HasActiveFilters);
         ClearFiltersCommand = _clearFiltersCommand;
+        _resetLibraryCommand = new AsyncRelayCommand(ResetLibraryAsync, () => !IsScanning);
+        ResetLibraryCommand = _resetLibraryCommand;
         MediaTypeFilters =
         [
-            new LibraryFilterOptionViewModel<MediaType>(MediaType.Tutorial, "Tutorials", ApplyFilters),
-            new LibraryFilterOptionViewModel<MediaType>(MediaType.TvShow, "TV shows", ApplyFilters),
-            new LibraryFilterOptionViewModel<MediaType>(MediaType.Movie, "Movies", ApplyFilters)
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.Tutorial, "Tutorials", ApplyFiltersAndSaveFilterState),
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.TvShow, "TV shows", ApplyFiltersAndSaveFilterState),
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.Movie, "Movies", ApplyFiltersAndSaveFilterState)
         ];
+        _suppressFilterStateSaving = true;
+        var savedMediaTypes = _settingsService.Settings.LibraryMediaTypeFilters
+            .Select(ParseFilter<MediaType>)
+            .Where(mediaType => mediaType.HasValue)
+            .Select(mediaType => mediaType!.Value)
+            .ToHashSet();
+        foreach (var mediaTypeFilter in MediaTypeFilters)
+        {
+            mediaTypeFilter.IsSelected = savedMediaTypes.Contains(mediaTypeFilter.Value);
+        }
+
+        _suppressFilterStateSaving = false;
         PlaybackFilters =
         [
             new(PlaybackFilter.All, "All playback"),
@@ -332,7 +362,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         {
             if (SetProperty(ref _showFavoritesOnly, value))
             {
-                ApplyFilters();
+                ApplyFiltersAndSaveFilterState();
             }
         }
     }
@@ -345,7 +375,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         {
             if (SetProperty(ref _selectedPlaybackFilter, value))
             {
-                ApplyFilters();
+                ApplyFiltersAndSaveFilterState();
             }
         }
     }
@@ -358,7 +388,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         {
             if (SetProperty(ref _selectedCompletionFilter, value))
             {
-                ApplyFilters();
+                ApplyFiltersAndSaveFilterState();
             }
         }
     }
@@ -373,6 +403,9 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Clears all selected library filters.</summary>
     public ICommand ClearFiltersCommand { get; }
+
+    /// <summary>Clears library state and restores the default presentation without changing the view mode.</summary>
+    public ICommand ResetLibraryCommand { get; }
 
     /// <summary>Gets the tutorial collections available in the library.</summary>
     public ObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
@@ -504,6 +537,7 @@ public sealed class LibraryPageViewModel : PageViewModel
                 _refreshLibraryCommand.NotifyCanExecuteChanged();
                 _cancelScanCommand.NotifyCanExecuteChanged();
                 _changeMediaTypeCommand.NotifyCanExecuteChanged();
+                _resetLibraryCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(LibrarySummary));
                 OnPropertyChanged(nameof(ScanProgressMessage));
             }
@@ -617,24 +651,29 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     private async Task RefreshCategoryFiltersAsync()
     {
-        var selectedCategoryIds = CategoryFilters
-            .Where(filter => filter.IsSelected)
-            .Select(filter => filter.Value)
-            .ToHashSet();
         var categories = await _categoryRepository.GetAllAsync();
+        var availableCategoryIds = categories.Select(category => category.Id).ToHashSet();
+        var removedCategoryFilterIds = _selectedCategoryFilterIds.RemoveWhere(categoryId => !availableCategoryIds.Contains(categoryId));
 
+        _suppressFilterStateSaving = true;
         CategoryFilters.Clear();
         foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
         {
-            var filter = new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFilters)
+            var filter = new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFiltersAndSaveFilterState)
             {
-                IsSelected = selectedCategoryIds.Contains(category.Id)
+                IsSelected = _selectedCategoryFilterIds.Contains(category.Id)
             };
             CategoryFilters.Add(filter);
         }
 
+        _suppressFilterStateSaving = false;
+
         OnPropertyChanged(nameof(HasActiveFilters));
         _clearFiltersCommand.NotifyCanExecuteChanged();
+        if (removedCategoryFilterIds != 0)
+        {
+            _ = SaveLibraryFilterStateAsync();
+        }
     }
 
     private IReadOnlyList<MediaItem> FilterMediaItems()
@@ -690,8 +729,18 @@ public sealed class LibraryPageViewModel : PageViewModel
         _clearFiltersCommand?.NotifyCanExecuteChanged();
     }
 
+    private void ApplyFiltersAndSaveFilterState()
+    {
+        ApplyFilters();
+        if (!_suppressFilterStateSaving)
+        {
+            _ = SaveLibraryFilterStateAsync();
+        }
+    }
+
     private void ClearFilters()
     {
+        _suppressFilterStateSaving = true;
         ShowFavoritesOnly = false;
 
         foreach (var filter in MediaTypeFilters)
@@ -706,7 +755,17 @@ public sealed class LibraryPageViewModel : PageViewModel
 
         SelectedPlaybackFilter = PlaybackFilter.All;
         SelectedCompletionFilter = CompletionFilter.All;
+        _suppressFilterStateSaving = false;
         ApplyFilters();
+        _ = SaveLibraryFilterStateAsync();
+    }
+
+    private async Task ResetLibraryAsync()
+    {
+        _searchQueryResetService.Clear();
+        ClearFilters();
+        SelectedSortOrder = LibrarySortOrder.Ascending;
+        await RefreshLibraryDataAsync();
     }
 
     private void OnPlaybackProgressSaved(Guid mediaItemId)
@@ -1262,6 +1321,39 @@ public sealed class LibraryPageViewModel : PageViewModel
         _settingsService.Settings.LibrarySortOrder = SelectedSortOrder.ToString();
         await _settingsService.SaveAsync();
     }
+
+    private async Task SaveLibraryFilterStateAsync()
+    {
+        _selectedCategoryFilterIds.Clear();
+        _selectedCategoryFilterIds.UnionWith(
+            CategoryFilters
+                .Where(filter => filter.IsSelected)
+                .Select(filter => filter.Value));
+
+        _settingsService.Settings.LibraryMediaTypeFilters = MediaTypeFilters
+            .Where(filter => filter.IsSelected)
+            .Select(filter => filter.Value.ToString())
+            .ToList();
+        _settingsService.Settings.LibraryCategoryFilterIds = _selectedCategoryFilterIds
+            .Select(categoryId => categoryId.ToString())
+            .ToList();
+        _settingsService.Settings.LibraryShowFavoritesOnly = ShowFavoritesOnly;
+        _settingsService.Settings.LibraryPlaybackFilter = SelectedPlaybackFilter.ToString();
+        _settingsService.Settings.LibraryCompletionFilter = SelectedCompletionFilter.ToString();
+        await _settingsService.SaveAsync();
+    }
+
+    private static T ParseFilter<T>(string? value, T fallback)
+        where T : struct, Enum =>
+        Enum.TryParse<T>(value, ignoreCase: true, out var parsedValue) && Enum.IsDefined(parsedValue)
+            ? parsedValue
+            : fallback;
+
+    private static T? ParseFilter<T>(string? value)
+        where T : struct, Enum =>
+        Enum.TryParse<T>(value, ignoreCase: true, out var parsedValue) && Enum.IsDefined(parsedValue)
+            ? parsedValue
+            : null;
 }
 
 /// <summary>Represents a display-ready media type that can be selected for a library folder.</summary>

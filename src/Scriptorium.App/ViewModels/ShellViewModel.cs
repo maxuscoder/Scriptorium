@@ -13,6 +13,8 @@ public sealed class ShellViewModel : ViewModelBase
 {
     private readonly INavigationService _navigationService;
     private readonly SearchPageViewModel _searchPage;
+    private readonly ISearchQueryResetService _searchQueryResetService;
+    private readonly ISettingsService _settingsService;
     private NavigationItem? _selectedNavigationItem;
     private string _searchQuery = string.Empty;
 
@@ -22,11 +24,16 @@ public sealed class ShellViewModel : ViewModelBase
         LibraryPageViewModel libraryPage,
         FavoritesPageViewModel favoritesPage,
         SettingsPageViewModel settingsPage,
-        SearchPageViewModel searchPage)
+        SearchPageViewModel searchPage,
+        ISearchQueryResetService searchQueryResetService,
+        ISettingsService settingsService)
     {
         _navigationService = navigationService;
         _searchPage = searchPage;
+        _searchQueryResetService = searchQueryResetService;
+        _settingsService = settingsService;
         _navigationService.Navigated += OnNavigated;
+        _searchQueryResetService.ClearRequested += ClearSearchQuery;
 
         NavigationItems =
         [
@@ -38,6 +45,7 @@ public sealed class ShellViewModel : ViewModelBase
 
         NavigateCommand = new RelayCommand(Navigate);
         _navigationService.NavigateTo(homePage);
+        SearchQuery = _settingsService.Settings.LastSearchQuery;
     }
 
     public IReadOnlyList<NavigationItem> NavigationItems { get; }
@@ -66,6 +74,8 @@ public sealed class ShellViewModel : ViewModelBase
             }
 
             _searchPage.UpdateQuery(_searchQuery);
+            _settingsService.Settings.LastSearchQuery = _searchQuery;
+            _ = _settingsService.SaveAsync();
             if (!string.IsNullOrWhiteSpace(_searchQuery))
             {
                 _navigationService.NavigateTo(_searchPage);
@@ -80,6 +90,8 @@ public sealed class ShellViewModel : ViewModelBase
             _navigationService.NavigateTo(navigationItem.Destination);
         }
     }
+
+    private void ClearSearchQuery() => SearchQuery = string.Empty;
 
     private void OnNavigated(PageViewModel page)
     {

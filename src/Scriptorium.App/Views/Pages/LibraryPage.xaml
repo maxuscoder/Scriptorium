@@ -189,11 +189,17 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" Text="Filter library" />
-                        <Button
-                            Grid.Column="1"
-                            Command="{Binding ClearFiltersCommand}"
-                            Content="Clear filters"
-                            Style="{StaticResource Button.Secondary}" />
+                        <WrapPanel Grid.Column="1">
+                            <Button
+                                Margin="0,0,8,0"
+                                Command="{Binding ClearFiltersCommand}"
+                                Content="Clear filters"
+                                Style="{StaticResource Button.Secondary}" />
+                            <Button
+                                Command="{Binding ResetLibraryCommand}"
+                                Content="Reset library"
+                                Style="{StaticResource Button.Secondary}" />
+                        </WrapPanel>
                     </Grid>
                     <TextBlock Margin="0,12,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="Sort" />
                     <ComboBox

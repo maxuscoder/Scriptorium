@@ -146,6 +146,15 @@ public sealed class SettingsService : ISettingsService
         settings.LibrarySortOrder = string.IsNullOrWhiteSpace(settings.LibrarySortOrder)
             ? "Ascending"
             : settings.LibrarySortOrder;
+        settings.LastSearchQuery ??= string.Empty;
+        settings.LibraryMediaTypeFilters ??= [];
+        settings.LibraryCategoryFilterIds ??= [];
+        settings.LibraryPlaybackFilter = string.IsNullOrWhiteSpace(settings.LibraryPlaybackFilter)
+            ? "All"
+            : settings.LibraryPlaybackFilter;
+        settings.LibraryCompletionFilter = string.IsNullOrWhiteSpace(settings.LibraryCompletionFilter)
+            ? "All"
+            : settings.LibraryCompletionFilter;
         return settings;
     }
 }
