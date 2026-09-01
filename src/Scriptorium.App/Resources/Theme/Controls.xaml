@@ -135,7 +135,6 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid SnapsToDevicePixels="True">
-                        <Border x:Name="FocusGlow" Margin="-2" BorderBrush="{StaticResource Brush.FocusRing}" BorderThickness="2" CornerRadius="{StaticResource CornerRadius.L}" IsHitTestVisible="False" Opacity="0" />
                         <Border x:Name="SelectionIndicator" Width="3" Margin="0,10,0,10" HorizontalAlignment="Left" Background="{StaticResource Brush.Accent}" CornerRadius="{StaticResource CornerRadius.Pill}" Opacity="0" RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform>
                                 <ScaleTransform ScaleY="0.45" />
@@ -201,20 +200,6 @@
                                 </Storyboard>
                             </BeginStoryboard>
                         </EventTrigger>
-                        <EventTrigger RoutedEvent="GotKeyboardFocus">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="FocusGlow" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource Motion.Duration.Fast}" />
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                        <EventTrigger RoutedEvent="LostKeyboardFocus">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="FocusGlow" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Duration.Fast}" />
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -241,9 +226,6 @@
             <Trigger Property="IsPressed" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
-            </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.5" />
