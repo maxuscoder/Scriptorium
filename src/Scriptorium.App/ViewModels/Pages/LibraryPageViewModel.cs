@@ -348,7 +348,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         {
             if (SetProperty(ref _selectedSortOrder, value))
             {
-                ApplyFilters();
+                ApplyFilters(updateGroupedMedia: true);
                 _ = SaveSortOrderAsync();
             }
         }
@@ -708,7 +708,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         return OrderMediaItems(filteredMediaItems).ToArray();
     }
 
-    private void ApplyFilters()
+    private void ApplyFilters(bool updateGroupedMedia = false)
     {
         MediaItems.Clear();
         foreach (var mediaItem in FilterMediaItems())
@@ -716,9 +716,12 @@ public sealed class LibraryPageViewModel : PageViewModel
             MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
         }
 
-        RefreshMovies(_availableMediaItems);
-        SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
-        SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
+        if (updateGroupedMedia)
+        {
+            RefreshMovies(_availableMediaItems);
+            SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
+            SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
+        }
 
         OnPropertyChanged(nameof(IsLibraryEmpty));
         OnPropertyChanged(nameof(HasIndexedMedia));
@@ -731,11 +734,13 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     private void ApplyFiltersAndSaveFilterState()
     {
-        ApplyFilters();
-        if (!_suppressFilterStateSaving)
+        if (_suppressFilterStateSaving)
         {
-            _ = SaveLibraryFilterStateAsync();
+            return;
         }
+
+        ApplyFilters();
+        _ = SaveLibraryFilterStateAsync();
     }
 
     private void ClearFilters()

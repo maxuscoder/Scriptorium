@@ -10,6 +10,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>Searches every indexed media record and opens its owning media view.</summary>
 public sealed class SearchPageViewModel : PageViewModel
 {
+    private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(250);
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
@@ -76,12 +77,13 @@ public sealed class SearchPageViewModel : PageViewModel
     /// <summary>Updates results immediately after text is entered in the global search field.</summary>
     public void UpdateQuery(string? query)
     {
-        Query = query?.Trim() ?? string.Empty;
-        _ = SearchAsync();
-    }
+        var normalizedQuery = query?.Trim() ?? string.Empty;
+        if (string.Equals(Query, normalizedQuery, StringComparison.Ordinal))
+        {
+            return;
+        }
 
-    private async Task SearchAsync()
-    {
+        Query = normalizedQuery;
         var searchVersion = Interlocked.Increment(ref _searchVersion);
         _searchCancellationSource?.Cancel();
 
@@ -101,10 +103,18 @@ public sealed class SearchPageViewModel : PageViewModel
         StatusMessage = null;
         IsSearching = true;
         NotifyResultsChanged();
+        _ = SearchAfterDebounceAsync(normalizedQuery, searchVersion, cancellationSource);
+    }
 
+    private async Task SearchAfterDebounceAsync(
+        string query,
+        int searchVersion,
+        CancellationTokenSource cancellationSource)
+    {
         try
         {
-            var mediaItems = await _mediaItemRepository.SearchAsync(Query, cancellationSource.Token);
+            await Task.Delay(SearchDebounceDelay, cancellationSource.Token);
+            var mediaItems = await _mediaItemRepository.SearchAsync(query, cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
                 return;
@@ -114,7 +124,7 @@ public sealed class SearchPageViewModel : PageViewModel
                          .Where(mediaItem => mediaItem.MediaType.IsSupported())
                          .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
             {
-                Results.Add(new SearchResultViewModel(mediaItem, Query));
+                Results.Add(new SearchResultViewModel(mediaItem, query));
             }
         }
         catch (OperationCanceledException)

@@ -134,19 +134,19 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         ArgumentException.ThrowIfNullOrWhiteSpace(query);
 
         var normalizedQuery = query.Trim();
-        var normalizedComparisonQuery = normalizedQuery.ToLowerInvariant();
+        var searchPattern = $"%{EscapeLikePattern(normalizedQuery)}%";
         var matchesUncategorized = "Uncategorized".Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase);
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         return await MediaItems(context)
             .Where(item =>
-                item.Title.ToLower().Contains(normalizedComparisonQuery) ||
+                EF.Functions.Like(EF.Functions.Collate(item.Title, "NOCASE"), searchPattern, "\\") ||
                 (item.LibraryFolder != null &&
-                 (item.LibraryFolder.Name.ToLower().Contains(normalizedComparisonQuery) ||
+                 (EF.Functions.Like(EF.Functions.Collate(item.LibraryFolder.Name, "NOCASE"), searchPattern, "\\") ||
                   (item.LibraryFolder.DisplayName != null &&
-                   item.LibraryFolder.DisplayName.ToLower().Contains(normalizedComparisonQuery)))) ||
+                   EF.Functions.Like(EF.Functions.Collate(item.LibraryFolder.DisplayName, "NOCASE"), searchPattern, "\\")))) ||
                 (item.Category != null &&
-                 item.Category.Name.ToLower().Contains(normalizedComparisonQuery)) ||
+                 EF.Functions.Like(EF.Functions.Collate(item.Category.Name, "NOCASE"), searchPattern, "\\")) ||
                 (matchesUncategorized && item.CategoryId == null))
             .ToListAsync(cancellationToken);
     }
@@ -199,6 +199,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .Include(item => item.LibraryFolder)
             .Include(item => item.Category)
             .OrderBy(item => item.Title);
+
+    private static string EscapeLikePattern(string value) => value
+        .Replace("\\", "\\\\", StringComparison.Ordinal)
+        .Replace("%", "\\%", StringComparison.Ordinal)
+        .Replace("_", "\\_", StringComparison.Ordinal);
 
     private async Task<bool> UpdateAsync(
         Guid mediaItemId,
