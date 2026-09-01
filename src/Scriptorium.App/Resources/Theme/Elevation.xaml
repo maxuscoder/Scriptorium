@@ -1,0 +1,27 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Shadows communicate containment and temporary priority; do not use them decoratively. -->
+    <DropShadowEffect x:Key="Elevation.0"
+                      BlurRadius="0"
+                      ShadowDepth="0"
+                      Opacity="0"
+                      Color="{StaticResource Color.Shadow}" />
+    <DropShadowEffect x:Key="Elevation.1"
+                      BlurRadius="10"
+                      ShadowDepth="2"
+                      Opacity="0.18"
+                      Color="{StaticResource Color.Shadow}"
+                      RenderingBias="Performance" />
+    <DropShadowEffect x:Key="Elevation.2"
+                      BlurRadius="18"
+                      ShadowDepth="6"
+                      Opacity="0.24"
+                      Color="{StaticResource Color.Shadow}"
+                      RenderingBias="Quality" />
+    <DropShadowEffect x:Key="Elevation.3"
+                      BlurRadius="28"
+                      ShadowDepth="12"
+                      Opacity="0.32"
+                      Color="{StaticResource Color.Shadow}"
+                      RenderingBias="Quality" />
+</ResourceDictionary>

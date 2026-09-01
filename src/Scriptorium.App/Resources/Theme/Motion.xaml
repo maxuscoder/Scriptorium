@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Motion is short, purposeful, and respects the user’s reduced-motion preference in code. -->
+    <sys:TimeSpan x:Key="Motion.Duration.Instant">0:0:0.1</sys:TimeSpan>
+    <sys:TimeSpan x:Key="Motion.Duration.Fast">0:0:0.15</sys:TimeSpan>
+    <sys:TimeSpan x:Key="Motion.Duration.Standard">0:0:0.2</sys:TimeSpan>
+    <sys:TimeSpan x:Key="Motion.Duration.Deliberate">0:0:0.3</sys:TimeSpan>
+    <sys:TimeSpan x:Key="Motion.Duration.Slow">0:0:0.45</sys:TimeSpan>
+
+    <CubicEase x:Key="Motion.Easing.Enter" EasingMode="EaseOut" />
+    <CubicEase x:Key="Motion.Easing.Exit" EasingMode="EaseIn" />
+    <CubicEase x:Key="Motion.Easing.Standard" EasingMode="EaseInOut" />
+</ResourceDictionary>

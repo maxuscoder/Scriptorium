@@ -2,10 +2,16 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <FontFamily x:Key="FontFamily.Application">Segoe UI</FontFamily>
+    <!-- Type scale: reserve larger steps for page hierarchy, not routine labels. -->
+    <sys:Double x:Key="FontSize.Caption">12</sys:Double>
+    <sys:Double x:Key="FontSize.Label">13</sys:Double>
+    <sys:Double x:Key="FontSize.BodySmall">14</sys:Double>
     <sys:Double x:Key="FontSize.Body">15</sys:Double>
     <sys:Double x:Key="FontSize.Navigation">15</sys:Double>
+    <sys:Double x:Key="FontSize.Subheading">18</sys:Double>
     <sys:Double x:Key="FontSize.Heading">24</sys:Double>
     <sys:Double x:Key="FontSize.Display">32</sys:Double>
+    <sys:Double x:Key="FontSize.Hero">40</sys:Double>
     <sys:Double x:Key="FontSize.Brand">22</sys:Double>
 
     <Style x:Key="Text.Brand" TargetType="TextBlock">
@@ -17,6 +23,12 @@
     <Style x:Key="Text.PageTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Heading}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+    </Style>
+    <Style x:Key="Text.SectionTitle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Subheading}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
     </Style>
@@ -32,7 +44,20 @@
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
-        <Setter Property="TextAlignment" Value="Center" />
         <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="Text.Body.Center" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+        <Setter Property="TextAlignment" Value="Center" />
+    </Style>
+    <Style x:Key="Text.Label" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Label}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+    <Style x:Key="Text.Caption" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
     </Style>
 </ResourceDictionary>

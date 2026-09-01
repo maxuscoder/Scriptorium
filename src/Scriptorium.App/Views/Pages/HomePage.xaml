@@ -15,7 +15,7 @@
             <TextBlock
                 Margin="0,12,0,24"
                 HorizontalAlignment="Center"
-                Style="{StaticResource Text.Body}"
+                Style="{StaticResource Text.Body.Center}"
                 Text="{Binding StatusMessage}" />
 
             <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">

@@ -10,6 +10,8 @@
                 <ResourceDictionary Source="Resources/Theme/Colors.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Typography.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Layout.xaml" />
+                <ResourceDictionary Source="Resources/Theme/Elevation.xaml" />
+                <ResourceDictionary Source="Resources/Theme/Motion.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <DataTemplate DataType="{x:Type viewModels:MainWindowViewModel}">
