@@ -71,6 +71,11 @@ public partial class App : Application
         catch (Exception exception)
         {
             Log.Fatal(exception, "Scriptorium failed during startup.");
+            MessageBox.Show(
+                "Scriptorium could not start. Details have been written to the application log.",
+                "Scriptorium",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
             Log.CloseAndFlush();
             Shutdown(-1);
         }

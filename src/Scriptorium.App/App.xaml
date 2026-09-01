@@ -15,28 +15,28 @@
                 <ResourceDictionary Source="Resources/Theme/Controls.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <DataTemplate DataType="{x:Type viewModels:MainWindowViewModel}">
-                <pages:HomePage />
+                <pages:HomePage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:LibraryPageViewModel}">
-                <pages:LibraryPage />
+                <pages:LibraryPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:TutorialDetailsPageViewModel}">
-                <pages:TutorialDetailsPage />
+                <pages:TutorialDetailsPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:TvShowDetailsPageViewModel}">
-                <pages:TvShowDetailsPage />
+                <pages:TvShowDetailsPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:MovieDetailsPageViewModel}">
-                <pages:MovieDetailsPage />
+                <pages:MovieDetailsPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:SearchPageViewModel}">
-                <pages:SearchPage />
+                <pages:SearchPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:FavoritesPageViewModel}">
-                <pages:FavoritesPage />
+                <pages:FavoritesPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:SettingsPageViewModel}">
-                <pages:SettingsPage />
+                <pages:SettingsPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>

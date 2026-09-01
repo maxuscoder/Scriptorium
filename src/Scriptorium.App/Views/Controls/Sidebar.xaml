@@ -5,15 +5,78 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
     <Border
-        Background="{StaticResource Brush.Surface}"
+        Background="{StaticResource Brush.SurfaceHeader}"
         BorderBrush="{StaticResource Brush.Border}"
         BorderThickness="0,0,1,0">
-        <DockPanel Margin="{StaticResource Spacing.M}">
+        <DockPanel Margin="16,20,16,16">
+            <Grid Height="40" Margin="0,0,0,32" DockPanel.Dock="Top">
+                <Border
+                    Width="36"
+                    Height="36"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Background="{StaticResource Brush.AccentSurface}"
+                    CornerRadius="{StaticResource CornerRadius.M}">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        FontSize="18"
+                        FontWeight="Bold"
+                        Foreground="{StaticResource Brush.AccentText}"
+                        Text="S" />
+                </Border>
+                <StackPanel Margin="48,0,0,0" VerticalAlignment="Center">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Style="{StaticResource Text.Brand}" Text="Scriptorium" />
+                    <TextBlock Margin="1,1,0,0" Style="{StaticResource Text.Caption}" Text="YOUR MEDIA LIBRARY" />
+                </StackPanel>
+            </Grid>
+
             <TextBlock
                 DockPanel.Dock="Top"
-                Margin="8,8,8,28"
-                Style="{StaticResource Text.Brand}"
-                Text="SCRIPTORIUM" />
+                Margin="8,0,0,8"
+                Text="NAVIGATION">
+                <TextBlock.Style>
+                    <Style BasedOn="{StaticResource Text.Caption}" TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <Border
+                DockPanel.Dock="Bottom"
+                Margin="4,16,4,0"
+                Padding="8,12"
+                Background="{StaticResource Brush.Surface}"
+                BorderBrush="{StaticResource Brush.Border}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource CornerRadius.M}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Label}" Text="Your library" />
+                    <TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Caption}" Text="Organized and ready to watch" TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
 
             <ItemsControl ItemsSource="{Binding NavigationItems}">
                 <ItemsControl.ItemTemplate>
@@ -29,13 +92,25 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock
                                     VerticalAlignment="Center"
-                                    FontSize="{StaticResource FontSize.Heading}"
+                                    HorizontalAlignment="Center"
+                                    FontSize="{StaticResource Icon.Size.Default}"
                                     Text="{Binding Icon}" />
                                 <TextBlock
                                     Grid.Column="1"
+                                    Margin="8,0,0,0"
                                     VerticalAlignment="Center"
                                     FontSize="{StaticResource FontSize.Navigation}"
-                                    Text="{Binding Label}" />
+                                    Text="{Binding Label}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </Grid>
                         </Button>
                     </DataTemplate>

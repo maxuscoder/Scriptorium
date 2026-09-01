@@ -11,21 +11,21 @@
             x:Key="Library.ReadableComboBox"
             BasedOn="{StaticResource Input.ComboBox}"
             TargetType="ComboBox">
-            <Setter Property="Background" Value="#F4F6FA" />
-            <Setter Property="BorderBrush" Value="#9AA4B5" />
-            <Setter Property="Foreground" Value="#171A21" />
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
             <Setter Property="ItemContainerStyle">
                 <Setter.Value>
                     <Style TargetType="ComboBoxItem">
-                        <Setter Property="Background" Value="#F4F6FA" />
-                        <Setter Property="Foreground" Value="#171A21" />
+                        <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                        <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         <Setter Property="Padding" Value="10,6" />
                         <Style.Triggers>
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter Property="Background" Value="#B9DDF0" />
+                                <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="#B9DDF0" />
+                                <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
                             </Trigger>
                         </Style.Triggers>
                     </Style>
@@ -64,7 +64,7 @@
         x:Name="PageScrollViewer"
         PreviewMouseWheel="OnPagePreviewMouseWheel"
         VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="{StaticResource Spacing.XL}">
+        <StackPanel Margin="{StaticResource Spacing.XL}" MaxWidth="1400">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

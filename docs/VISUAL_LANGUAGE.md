@@ -2,6 +2,12 @@
 
 Scriptorium is a calm, dark, media-library desktop application. The interface uses a restrained blue accent, clear information hierarchy, and a small set of reusable tokens. New UI must consume these resources rather than introduce literal colors, sizes, radii, or shadows.
 
+## Application shell
+
+The shell has three layers: a persistent navigation rail, a contextual header, and the page canvas. On normal widths, the navigation rail is 256 px wide and includes the Scriptorium identity, section label, full navigation labels, and a small library-status card. Below 1060 px it becomes a 76 px icon rail, while the search field reduces from 400 px to 260 px; all commands and destinations remain available.
+
+The header is 80 px high and places a small contextual label above the current page title. Global search sits on the right and always keeps its visible search glyph and placeholder. Pages supply their own content and actions beneath the header; do not duplicate global navigation or search inside a page.
+
 ## Spacing and layout
 
 The base unit is 4 px. `Space.1` through `Space.8` represent 4, 8, 12, 16, 24, 32, 48, and 64 px. For `Margin` and `Padding`, use the matching `Spacing.XXS` through `Spacing.3XL` resources.

@@ -94,8 +94,25 @@
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="Padding" Value="12,10" />
-        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="Padding" Value="12,9" />
+        <Setter Property="Margin" Value="0,3" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="{StaticResource CornerRadius.M}"
+                        Padding="{TemplateBinding Padding}">
+                        <ContentPresenter
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            RecognizesAccessKey="True" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
@@ -159,5 +176,32 @@
     <Style x:Key="Divider" TargetType="Border">
         <Setter Property="Height" Value="1" />
         <Setter Property="Background" Value="{StaticResource Brush.Border}" />
+    </Style>
+    <Style x:Key="Page.Enter" TargetType="UserControl">
+        <Setter Property="Opacity" Value="0" />
+        <Setter Property="RenderTransform">
+            <Setter.Value>
+                <TranslateTransform Y="8" />
+            </Setter.Value>
+        </Setter>
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+        <Style.Triggers>
+            <EventTrigger RoutedEvent="Loaded">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation
+                            Storyboard.TargetProperty="Opacity"
+                            To="1"
+                            Duration="{StaticResource Motion.Duration.Standard}"
+                            EasingFunction="{StaticResource Motion.Easing.Enter}" />
+                        <DoubleAnimation
+                            Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)"
+                            To="0"
+                            Duration="{StaticResource Motion.Duration.Deliberate}"
+                            EasingFunction="{StaticResource Motion.Easing.Enter}" />
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Style.Triggers>
     </Style>
 </ResourceDictionary>
