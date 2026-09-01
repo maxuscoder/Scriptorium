@@ -75,6 +75,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
+    private Task? _initialDataLoadTask;
 
     public LibraryPageViewModel(
         IImportFolderDialog importFolderDialog,
@@ -221,6 +222,25 @@ public sealed class LibraryPageViewModel : PageViewModel
     }
 
     public override string Title => "Library";
+
+    /// <summary>
+    /// Loads the browser data once for the lifetime of this view model. Re-entering the Library
+    /// page must not repeat database work before the navigation view can become interactive.
+    /// </summary>
+    public Task EnsureLibraryDataLoadedAsync()
+    {
+        if (_initialDataLoadTask is { IsCompletedSuccessfully: true })
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_initialDataLoadTask is { IsCompleted: false })
+        {
+            return _initialDataLoadTask;
+        }
+
+        return _initialDataLoadTask = LoadInitialLibraryDataAsync();
+    }
 
     /// <summary>Starts the native picker for a new library folder.</summary>
     public ICommand ImportFolderCommand { get; }
@@ -647,6 +667,19 @@ public sealed class LibraryPageViewModel : PageViewModel
         await RefreshTutorialsAsync();
         await RefreshTvShowsAsync();
         await RefreshTvShowGroupsAsync();
+    }
+
+    private async Task LoadInitialLibraryDataAsync()
+    {
+        try
+        {
+            await RefreshLibraryDataAsync();
+        }
+        catch
+        {
+            _initialDataLoadTask = null;
+            throw;
+        }
     }
 
     private async Task RefreshCategoryFiltersAsync()

@@ -4,28 +4,93 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
+    <UserControl.Resources>
+        <DataTemplate x:Key="SidebarNavigationItemTemplate">
+            <Button
+                Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:Sidebar}}}"
+                CommandParameter="{Binding}"
+                ToolTip="{Binding Label}">
+                <Button.Style>
+                    <Style BasedOn="{StaticResource NavigationItemButton.Premium}" TargetType="Button">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                <Setter Property="Width" Value="52" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                <Setter Property="HorizontalContentAlignment" Value="Center" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0,3" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Path
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Width="{StaticResource Icon.Size.Default}"
+                        Height="{StaticResource Icon.Size.Default}"
+                        Data="{Binding IconGeometry}"
+                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+                        Stretch="Uniform">
+                        <Path.Style>
+                            <Style TargetType="Path">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                        <Setter Property="Grid.ColumnSpan" Value="2" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Path.Style>
+                    </Path>
+                    <TextBlock
+                        Grid.Column="1"
+                        Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        FontSize="{StaticResource FontSize.Navigation}"
+                        FontWeight="SemiBold"
+                        Text="{Binding Label}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Button>
+        </DataTemplate>
+    </UserControl.Resources>
     <Border
         Background="{StaticResource Brush.SurfaceHeader}"
         BorderBrush="{StaticResource Brush.Border}"
         BorderThickness="0,0,1,0">
-        <DockPanel Margin="16,20,16,16">
-            <Grid Height="40" Margin="0,0,0,32" DockPanel.Dock="Top">
+        <DockPanel Margin="12,18,12,14" LastChildFill="True">
+            <Grid Height="44" Margin="4,0,4,30" DockPanel.Dock="Top">
                 <Border
-                    Width="36"
-                    Height="36"
+                    Width="40"
+                    Height="40"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     Background="{StaticResource Brush.AccentSurface}"
+                    BorderBrush="{StaticResource Brush.Accent}"
+                    BorderThickness="1"
                     CornerRadius="{StaticResource CornerRadius.M}">
                     <TextBlock
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
-                        FontSize="18"
+                        FontSize="19"
                         FontWeight="Bold"
                         Foreground="{StaticResource Brush.AccentText}"
                         Text="S" />
                 </Border>
-                <StackPanel Margin="48,0,0,0" VerticalAlignment="Center">
+                <StackPanel Margin="52,0,0,0" VerticalAlignment="Center">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Style.Triggers>
@@ -36,13 +101,15 @@
                         </Style>
                     </StackPanel.Style>
                     <TextBlock Style="{StaticResource Text.Brand}" Text="Scriptorium" />
-                    <TextBlock Margin="1,1,0,0" Style="{StaticResource Text.Caption}" Text="YOUR MEDIA LIBRARY" />
+                    <TextBlock Margin="1,2,0,0" Style="{StaticResource Text.Caption}" Text="YOUR MEDIA LIBRARY" />
                 </StackPanel>
             </Grid>
 
             <TextBlock
                 DockPanel.Dock="Top"
-                Margin="8,0,0,8"
+                Margin="12,0,0,10"
+                FontWeight="SemiBold"
+                TextOptions.TextFormattingMode="Display"
                 Text="NAVIGATION">
                 <TextBlock.Style>
                     <Style BasedOn="{StaticResource Text.Caption}" TargetType="TextBlock">
@@ -57,8 +124,8 @@
 
             <Border
                 DockPanel.Dock="Bottom"
-                Margin="4,16,4,0"
-                Padding="8,12"
+                Margin="4,18,4,0"
+                Padding="12,14"
                 Background="{StaticResource Brush.Surface}"
                 BorderBrush="{StaticResource Brush.Border}"
                 BorderThickness="1"
@@ -74,48 +141,42 @@
                 </Border.Style>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="Your library" />
-                    <TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Caption}" Text="Organized and ready to watch" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="Organized and ready to watch" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
-            <ItemsControl ItemsSource="{Binding NavigationItems}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Button
-                            Style="{StaticResource NavigationItemButton}"
-                            Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:Sidebar}}}"
-                            CommandParameter="{Binding}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="28" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    HorizontalAlignment="Center"
-                                    FontSize="{StaticResource Icon.Size.Default}"
-                                    Text="{Binding Icon}" />
-                                <TextBlock
-                                    Grid.Column="1"
-                                    Margin="8,0,0,0"
-                                    VerticalAlignment="Center"
-                                    FontSize="{StaticResource FontSize.Navigation}"
-                                    Text="{Binding Label}">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </Grid>
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                <Setter Property="Margin" Value="0,12,0,0" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock
+                    Margin="12,0,0,8"
+                    FontWeight="SemiBold"
+                    Text="PREFERENCES"
+                    TextOptions.TextFormattingMode="Display">
+                    <TextBlock.Style>
+                        <Style BasedOn="{StaticResource Text.Caption}" TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding SecondaryNavigationItems}" />
+            </StackPanel>
+
+            <ItemsControl
+                Margin="0,0,0,4"
+                ItemTemplate="{StaticResource SidebarNavigationItemTemplate}"
+                ItemsSource="{Binding PrimaryNavigationItems}" />
         </DockPanel>
     </Border>
 </UserControl>

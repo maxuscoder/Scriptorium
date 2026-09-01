@@ -1,5 +1,6 @@
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Views.Pages;
@@ -15,7 +16,10 @@ public partial class LibraryPage : UserControl
     {
         if (DataContext is LibraryPageViewModel viewModel)
         {
-            await viewModel.RefreshLibraryDataAsync();
+            // Let WPF present the destination before the first data read begins. Subsequent
+            // visits reuse the loaded view-model state, so switching tabs stays immediate.
+            await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+            await viewModel.EnsureLibraryDataLoadedAsync();
         }
     }
 

@@ -124,6 +124,132 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    <Style x:Key="NavigationItemButton.Premium" TargetType="Button" BasedOn="{StaticResource NavigationItemButton}">
+        <Setter Property="Height" Value="48" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="12,8" />
+        <Setter Property="Margin" Value="0,2" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid SnapsToDevicePixels="True">
+                        <Border x:Name="FocusGlow" Margin="-2" BorderBrush="{StaticResource Brush.FocusRing}" BorderThickness="2" CornerRadius="{StaticResource CornerRadius.L}" IsHitTestVisible="False" Opacity="0" />
+                        <Border x:Name="SelectionIndicator" Width="3" Margin="0,10,0,10" HorizontalAlignment="Left" Background="{StaticResource Brush.Accent}" CornerRadius="{StaticResource CornerRadius.Pill}" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <ScaleTransform ScaleY="0.45" />
+                            </Border.RenderTransform>
+                        </Border>
+                        <Border x:Name="Surface" Margin="4,0,0,0" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CornerRadius.M}" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="PressScale" />
+                                    <TranslateTransform x:Name="HoverTranslate" />
+                                </TransformGroup>
+                            </Border.RenderTransform>
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="SelectionIndicator" Property="Opacity" Value="1" />
+                            <DataTrigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionIndicator" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource Motion.Duration.Standard}" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionIndicator" Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="1" Duration="{StaticResource Motion.Duration.Deliberate}" EasingFunction="{StaticResource Motion.Easing.Enter}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.EnterActions>
+                            <DataTrigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectionIndicator" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Duration.Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="SelectionIndicator" Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="0.45" Duration="{StaticResource Motion.Duration.Fast}" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </DataTrigger.ExitActions>
+                        </DataTrigger>
+                        <EventTrigger RoutedEvent="MouseEnter">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="HoverTranslate" Storyboard.TargetProperty="X" To="2" Duration="{StaticResource Motion.Duration.Standard}" EasingFunction="{StaticResource Motion.Easing.Enter}" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="MouseLeave">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="HoverTranslate" Storyboard.TargetProperty="X" To="0" Duration="{StaticResource Motion.Duration.Fast}" EasingFunction="{StaticResource Motion.Easing.Exit}" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="PreviewMouseLeftButtonDown">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.985" Duration="{StaticResource Motion.Duration.Instant}" />
+                                    <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.94" Duration="{StaticResource Motion.Duration.Instant}" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="PreviewMouseLeftButtonUp">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="{StaticResource Motion.Duration.Fast}" EasingFunction="{StaticResource Motion.Easing.Enter}" />
+                                    <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{StaticResource Motion.Duration.Fast}" EasingFunction="{StaticResource Motion.Easing.Enter}" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="GotKeyboardFocus">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="FocusGlow" Storyboard.TargetProperty="Opacity" To="1" Duration="{StaticResource Motion.Duration.Fast}" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                        <EventTrigger RoutedEvent="LostKeyboardFocus">
+                            <BeginStoryboard>
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetName="FocusGlow" Storyboard.TargetProperty="Opacity" To="0" Duration="{StaticResource Motion.Duration.Fast}" />
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentSurface}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+            </DataTrigger>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.NavigationHover}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            </Trigger>
+            <MultiDataTrigger>
+                <MultiDataTrigger.Conditions>
+                    <Condition Binding="{Binding IsSelected}" Value="True" />
+                    <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
+                </MultiDataTrigger.Conditions>
+                <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+            </MultiDataTrigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.5" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="Card" TargetType="Border">
         <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
@@ -178,10 +304,10 @@
         <Setter Property="Background" Value="{StaticResource Brush.Border}" />
     </Style>
     <Style x:Key="Page.Enter" TargetType="UserControl">
-        <Setter Property="Opacity" Value="0" />
+        <Setter Property="Opacity" Value="1" />
         <Setter Property="RenderTransform">
             <Setter.Value>
-                <TranslateTransform Y="8" />
+                <TranslateTransform Y="4" />
             </Setter.Value>
         </Setter>
         <Setter Property="RenderTransformOrigin" Value="0.5,0.5" />
@@ -190,14 +316,9 @@
                 <BeginStoryboard>
                     <Storyboard>
                         <DoubleAnimation
-                            Storyboard.TargetProperty="Opacity"
-                            To="1"
-                            Duration="{StaticResource Motion.Duration.Standard}"
-                            EasingFunction="{StaticResource Motion.Easing.Enter}" />
-                        <DoubleAnimation
                             Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)"
                             To="0"
-                            Duration="{StaticResource Motion.Duration.Deliberate}"
+                            Duration="{StaticResource Motion.Duration.Fast}"
                             EasingFunction="{StaticResource Motion.Easing.Enter}" />
                     </Storyboard>
                 </BeginStoryboard>

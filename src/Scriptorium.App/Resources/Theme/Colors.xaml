@@ -14,6 +14,8 @@
     <Color x:Key="Color.AccentStrong">#4F78D8</Color>
     <Color x:Key="Color.AccentSurface">#37435A</Color>
     <Color x:Key="Color.AccentText">#B8CDFF</Color>
+    <Color x:Key="Color.NavigationHover">#272E3A</Color>
+    <Color x:Key="Color.NavigationSelected">#2E3D5B</Color>
     <Color x:Key="Color.Success">#4FCB8D</Color>
     <Color x:Key="Color.SuccessSurface">#1F4938</Color>
     <Color x:Key="Color.Warning">#E5A84B</Color>
@@ -41,6 +43,8 @@
     <SolidColorBrush x:Key="Brush.AccentStrong" Color="{StaticResource Color.AccentStrong}" />
     <SolidColorBrush x:Key="Brush.AccentSurface" Color="{StaticResource Color.AccentSurface}" />
     <SolidColorBrush x:Key="Brush.AccentText" Color="{StaticResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Brush.NavigationHover" Color="{StaticResource Color.NavigationHover}" />
+    <SolidColorBrush x:Key="Brush.NavigationSelected" Color="{StaticResource Color.NavigationSelected}" />
     <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
     <SolidColorBrush x:Key="Brush.SuccessSurface" Color="{StaticResource Color.SuccessSurface}" />
     <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />
