@@ -121,7 +121,39 @@
                         Text="{Binding Title, ElementName=Root}"
                         TextTrimming="CharacterEllipsis"
                         TextWrapping="NoWrap"
-                        ToolTip="{Binding Title, ElementName=Root}" />
+                        ToolTip="{Binding Title, ElementName=Root}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasTitleHighlight, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource Brush.TextPrimary}"
+                        TextTrimming="CharacterEllipsis"
+                        TextWrapping="NoWrap"
+                        ToolTip="{Binding Title, ElementName=Root}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasTitleHighlight, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                        <Run Text="{Binding TitlePrefix, ElementName=Root}" />
+                        <Run Background="{StaticResource Brush.Accent}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding TitleHighlight, ElementName=Root}" />
+                        <Run Text="{Binding TitleSuffix, ElementName=Root}" />
+                    </TextBlock>
                     <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding PrimaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />
                     <TextBlock Margin="0,5,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SecondaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis">
                         <TextBlock.Style>
@@ -284,7 +316,39 @@
                             Text="{Binding Title, ElementName=Root}"
                             TextTrimming="CharacterEllipsis"
                             TextWrapping="NoWrap"
-                            ToolTip="{Binding Title, ElementName=Root}" />
+                            ToolTip="{Binding Title, ElementName=Root}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasTitleHighlight, ElementName=Root}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource Brush.TextPrimary}"
+                            TextTrimming="CharacterEllipsis"
+                            TextWrapping="NoWrap"
+                            ToolTip="{Binding Title, ElementName=Root}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasTitleHighlight, ElementName=Root}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <Run Text="{Binding TitlePrefix, ElementName=Root}" />
+                            <Run Background="{StaticResource Brush.Accent}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding TitleHighlight, ElementName=Root}" />
+                            <Run Text="{Binding TitleSuffix, ElementName=Root}" />
+                        </TextBlock>
                     </StackPanel>
                     <StackPanel Grid.Row="1" Margin="0,10,0,0">
                         <TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding PrimaryMetadata, ElementName=Root}" TextTrimming="CharacterEllipsis" />

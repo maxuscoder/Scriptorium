@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<TutorialDetailsPageViewModel>();
         services.AddTransient<TvShowDetailsPageViewModel>();
         services.AddTransient<MovieDetailsPageViewModel>();
+        services.AddSingleton<SearchPageViewModel>();
         services.AddTransient<FavoritesPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<ShellViewModel>();

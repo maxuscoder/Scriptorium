@@ -12,16 +12,20 @@ namespace Scriptorium.App.ViewModels;
 public sealed class ShellViewModel : ViewModelBase
 {
     private readonly INavigationService _navigationService;
+    private readonly SearchPageViewModel _searchPage;
     private NavigationItem? _selectedNavigationItem;
+    private string _searchQuery = string.Empty;
 
     public ShellViewModel(
         INavigationService navigationService,
         MainWindowViewModel homePage,
         LibraryPageViewModel libraryPage,
         FavoritesPageViewModel favoritesPage,
-        SettingsPageViewModel settingsPage)
+        SettingsPageViewModel settingsPage,
+        SearchPageViewModel searchPage)
     {
         _navigationService = navigationService;
+        _searchPage = searchPage;
         _navigationService.Navigated += OnNavigated;
 
         NavigationItems =
@@ -49,6 +53,25 @@ public sealed class ShellViewModel : ViewModelBase
     public PageViewModel? CurrentPage => _navigationService.CurrentPage;
 
     public string PageTitle => CurrentPage?.Title ?? string.Empty;
+
+    /// <summary>Gets or sets the query entered in the persistent media search field.</summary>
+    public string SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (!SetProperty(ref _searchQuery, value ?? string.Empty))
+            {
+                return;
+            }
+
+            _searchPage.UpdateQuery(_searchQuery);
+            if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                _navigationService.NavigateTo(_searchPage);
+            }
+        }
+    }
 
     private void Navigate(object? parameter)
     {

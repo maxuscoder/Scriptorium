@@ -1,0 +1,147 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Pages.SearchPage"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="{StaticResource Spacing.XL}">
+            <TextBlock
+                FontSize="24"
+                FontWeight="SemiBold"
+                Foreground="{StaticResource Brush.TextPrimary}"
+                Text="Search results" />
+            <TextBlock
+                Margin="0,4,0,0"
+                Foreground="{StaticResource Brush.TextSecondary}"
+                Text="Searches media titles and imported library-folder names across every movie, tutorial lesson, and TV episode." />
+
+            <Grid Margin="0,20,0,0">
+                <TextBlock
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="{Binding ResultCountText}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasQuery}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock
+                    HorizontalAlignment="Right"
+                    Foreground="{StaticResource Brush.TextMuted}"
+                    Text="Searching…">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSearching}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <TextBlock
+                Margin="0,12,0,0"
+                Foreground="{StaticResource Brush.Warning}"
+                Text="{Binding StatusMessage}"
+                TextWrapping="Wrap" />
+
+            <ItemsControl Margin="0,20,0,0" ItemsSource="{Binding Results}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:MediaCard
+                            CardWidth="285"
+                            Margin="0,0,16,16"
+                            ActionCommand="{Binding DataContext.OpenResultCommand, ElementName=Root}"
+                            ActionParameter="{Binding}"
+                            ActionText="Open"
+                            CategoryColor="{Binding CategoryColor}"
+                            CategoryName="{Binding CategoryName}"
+                            FallbackGlyph="{Binding TypeGlyph}"
+                            HasPlaybackProgress="{Binding HasPlaybackProgress}"
+                            IsFavorite="{Binding IsFavorite}"
+                            IsMissing="{Binding IsMissing}"
+                            PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
+                            PlaybackProgressText="{Binding PlaybackProgressText}"
+                            PrimaryMetadata="{Binding Detail}"
+                            SecondaryMetadata="{Binding Runtime}"
+                            Status="{Binding Availability}"
+                            TertiaryMetadata="{Binding Location}"
+                            ThumbnailPath="{Binding ThumbnailPath}"
+                            Title="{Binding Title}"
+                            TitleHighlight="{Binding MatchedTitleText}"
+                            TitlePrefix="{Binding TitlePrefix}"
+                            TitleSuffix="{Binding TitleSuffix}"
+                            TypeLabel="{Binding MediaType}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Margin="0,52,0,0" HorizontalAlignment="Center" MaxWidth="440">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasQuery}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource Text.Display}"
+                    Text="Find something to watch" />
+                <TextBlock
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Center"
+                    Foreground="{StaticResource Brush.TextSecondary}"
+                    Text="Start typing in the search bar above to find any media title in your library."
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Margin="0,52,0,0" HorizontalAlignment="Center" MaxWidth="440">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasQuery}" Value="True" />
+                                    <Condition Binding="{Binding HasResults}" Value="False" />
+                                    <Condition Binding="{Binding IsSearching}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource Text.Display}"
+                    Text="No matching media" />
+                <TextBlock
+                    Margin="0,12,0,0"
+                    HorizontalAlignment="Center"
+                    Foreground="{StaticResource Brush.TextSecondary}"
+                    Text="Try another complete or partial media title or library-folder name."
+                    TextAlignment="Center"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
