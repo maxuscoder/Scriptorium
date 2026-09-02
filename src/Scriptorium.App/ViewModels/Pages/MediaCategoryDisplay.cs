@@ -7,7 +7,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// </summary>
 internal static class MediaCategoryDisplay
 {
-    public const string UncategorizedColor = "#2B3240";
+    public const string UncategorizedColor = "#1A1A1A";
 
     public static string Name(MediaItem mediaItem) =>
         string.IsNullOrWhiteSpace(mediaItem.Category?.Name) ? "Uncategorized" : mediaItem.Category.Name.Trim();

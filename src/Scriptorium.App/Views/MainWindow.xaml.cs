@@ -10,4 +10,21 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
     }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        UpdateAdaptiveChrome(ActualWidth);
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateAdaptiveChrome(e.NewSize.Width);
+    }
+
+    private void UpdateAdaptiveChrome(double width)
+    {
+        var isCompact = width < 1060;
+        SidebarNavigation.IsCompact = isCompact;
+        NavigationColumn.Width = new GridLength(isCompact ? 76 : 256);
+    }
 }

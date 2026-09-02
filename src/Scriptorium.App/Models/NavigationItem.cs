@@ -1,3 +1,4 @@
+using System.Windows.Media;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.ViewModels.Pages;
 
@@ -10,16 +11,17 @@ public sealed class NavigationItem : ViewModelBase
 {
     private bool _isSelected;
 
-    public NavigationItem(string label, string icon, PageViewModel destination)
+    public NavigationItem(string label, string iconPath, PageViewModel destination)
     {
         Label = label;
-        Icon = icon;
+        IconGeometry = Geometry.Parse(iconPath);
         Destination = destination;
     }
 
     public string Label { get; }
 
-    public string Icon { get; }
+    /// <summary>Vector artwork used by the sidebar, sized by the view rather than the source glyph.</summary>
+    public Geometry IconGeometry { get; }
 
     public PageViewModel Destination { get; }
 

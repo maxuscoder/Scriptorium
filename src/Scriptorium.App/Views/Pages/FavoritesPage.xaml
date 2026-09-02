@@ -14,7 +14,7 @@
             <TextBlock
                 Margin="0,12,0,0"
                 HorizontalAlignment="Center"
-                Style="{StaticResource Text.Body}"
+                Style="{StaticResource Text.Body.Center}"
                 Text="Your favorite media will appear here." />
         </StackPanel>
     </Grid>

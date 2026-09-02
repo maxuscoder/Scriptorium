@@ -14,7 +14,7 @@
             <TextBlock
                 Margin="0,12,0,0"
                 HorizontalAlignment="Center"
-                Style="{StaticResource Text.Body}"
+                Style="{StaticResource Text.Body.Center}"
                 Text="Theme and library preferences will be managed here." />
         </StackPanel>
     </Grid>

@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\scriptorium-logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -36,6 +36,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly AsyncRelayCommand _removeFolderCommand;
     private readonly AsyncRelayCommand _reconnectFolderCommand;
     private readonly AsyncRelayCommand _saveDisplayNameCommand;
+    private readonly AsyncRelayCommand _saveFolderChangesCommand;
     private readonly AsyncRelayCommand _changeMediaTypeCommand;
     private readonly AsyncRelayCommand _renameGroupCommand;
     private readonly AsyncRelayCommand _moveMediaToGroupCommand;
@@ -66,6 +67,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _discoveredMediaCount;
     private bool _isListLayout;
     private bool _showFavoritesOnly;
+    private string? _searchQuery;
     private PlaybackFilter _selectedPlaybackFilter;
     private CompletionFilter _selectedCompletionFilter;
     private LibrarySortOrder _selectedSortOrder;
@@ -75,6 +77,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
+    private Task? _initialDataLoadTask;
 
     public LibraryPageViewModel(
         IImportFolderDialog importFolderDialog,
@@ -128,8 +131,18 @@ public sealed class LibraryPageViewModel : PageViewModel
             () => SelectedFolder is { IsValidForScanning: false });
         ReconnectFolderCommand = _reconnectFolderCommand;
         SaveFolderStateCommand = new AsyncRelayCommand(SaveFolderStateAsync);
+        SelectFolderCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is ConfiguredFolderViewModel folder)
+                {
+                    SelectedFolder = folder;
+                }
+            });
         _saveDisplayNameCommand = new AsyncRelayCommand(SaveDisplayNameAsync, () => SelectedFolder is not null);
         SaveDisplayNameCommand = _saveDisplayNameCommand;
+        _saveFolderChangesCommand = new AsyncRelayCommand(SaveFolderChangesAsync, () => SelectedFolder is not null);
+        SaveFolderChangesCommand = _saveFolderChangesCommand;
         _changeMediaTypeCommand = new AsyncRelayCommand(
             ChangeSelectedFolderMediaTypeAsync,
             () => SelectedFolder is not null && SelectedMediaType is { } mediaType && mediaType != SelectedFolder.Folder.MediaType && !IsScanning);
@@ -222,6 +235,25 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     public override string Title => "Library";
 
+    /// <summary>
+    /// Loads the browser data once for the lifetime of this view model. Re-entering the Library
+    /// page must not repeat database work before the navigation view can become interactive.
+    /// </summary>
+    public Task EnsureLibraryDataLoadedAsync()
+    {
+        if (_initialDataLoadTask is { IsCompletedSuccessfully: true })
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_initialDataLoadTask is { IsCompleted: false })
+        {
+            return _initialDataLoadTask;
+        }
+
+        return _initialDataLoadTask = LoadInitialLibraryDataAsync();
+    }
+
     /// <summary>Starts the native picker for a new library folder.</summary>
     public ICommand ImportFolderCommand { get; }
 
@@ -239,6 +271,12 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Saves the optional friendly name for the selected folder.</summary>
     public ICommand SaveDisplayNameCommand { get; }
+
+    /// <summary>Saves the selected folder's display name and media type together.</summary>
+    public ICommand SaveFolderChangesCommand { get; }
+
+    /// <summary>Selects a configured folder so row actions apply to it.</summary>
+    public ICommand SelectFolderCommand { get; }
 
     /// <summary>Saves a configured folder's enabled state.</summary>
     public ICommand SaveFolderStateCommand { get; }
@@ -367,6 +405,20 @@ public sealed class LibraryPageViewModel : PageViewModel
         }
     }
 
+    /// <summary>Gets or sets the free-text query used to quickly narrow the library browser.</summary>
+    public string? SearchQuery
+    {
+        get => _searchQuery;
+        set
+        {
+            if (SetProperty(ref _searchQuery, value))
+            {
+                ApplyFilters();
+                OnPropertyChanged(nameof(ActiveBrowseDescription));
+            }
+        }
+    }
+
     /// <summary>Gets or sets the playback state used to filter displayed media.</summary>
     public PlaybackFilter SelectedPlaybackFilter
     {
@@ -395,6 +447,7 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets whether one or more library filters are active.</summary>
     public bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(SearchQuery) ||
         ShowFavoritesOnly ||
         SelectedPlaybackFilter != PlaybackFilter.All ||
         SelectedCompletionFilter != CompletionFilter.All ||
@@ -432,6 +485,19 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets a concise count suitable for the library browser header.</summary>
     public string MediaCountText => $"{MediaItems.Count} item{(MediaItems.Count == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets a compact, contextual summary shown under the browsing controls.</summary>
+    public string ActiveBrowseDescription => !HasActiveFilters
+        ? "Browse by collection, or search to see every matching item."
+        : string.IsNullOrWhiteSpace(SearchQuery)
+            ? $"Showing {MediaCountText.ToLowerInvariant()} matching your current filters."
+            : $"Showing {MediaCountText.ToLowerInvariant()} matching your search and filters.";
+
+    public bool HasTutorials => Tutorials.Count != 0;
+
+    public bool HasTvShows => TvShows.Count != 0;
+
+    public bool HasMovies => Movies.Count != 0;
 
     /// <summary>Gets the command that opens a tutorial collection's lesson list.</summary>
     public ICommand OpenTutorialCommand { get; }
@@ -486,11 +552,16 @@ public sealed class LibraryPageViewModel : PageViewModel
                 _removeFolderCommand.NotifyCanExecuteChanged();
                 _reconnectFolderCommand.NotifyCanExecuteChanged();
                 _saveDisplayNameCommand.NotifyCanExecuteChanged();
+                _saveFolderChangesCommand.NotifyCanExecuteChanged();
                 CustomDisplayName = value?.Folder.DisplayName;
                 SelectedMediaType = value?.Folder.MediaType;
+                OnPropertyChanged(nameof(SelectedFolderCountText));
             }
         }
     }
+
+    /// <summary>Gets the compact selection summary shown under watched folders.</summary>
+    public string SelectedFolderCountText => SelectedFolder is null ? "0 selected" : "1 selected";
 
     /// <summary>Gets or sets the friendly name being edited for the selected folder.</summary>
     public string? CustomDisplayName
@@ -649,6 +720,19 @@ public sealed class LibraryPageViewModel : PageViewModel
         await RefreshTvShowGroupsAsync();
     }
 
+    private async Task LoadInitialLibraryDataAsync()
+    {
+        try
+        {
+            await RefreshLibraryDataAsync();
+        }
+        catch
+        {
+            _initialDataLoadTask = null;
+            throw;
+        }
+    }
+
     private async Task RefreshCategoryFiltersAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -688,6 +772,7 @@ public sealed class LibraryPageViewModel : PageViewModel
             .ToHashSet();
 
         var filteredMediaItems = _availableMediaItems
+            .Where(mediaItem => MatchesSearchQuery(mediaItem, SearchQuery))
             .Where(mediaItem => selectedMediaTypes.Count == 0 || selectedMediaTypes.Contains(mediaItem.MediaType))
             .Where(mediaItem => selectedCategoryIds.Count == 0 ||
                                 (mediaItem.CategoryId is { } categoryId && selectedCategoryIds.Contains(categoryId)))
@@ -706,6 +791,22 @@ public sealed class LibraryPageViewModel : PageViewModel
             });
 
         return OrderMediaItems(filteredMediaItems).ToArray();
+    }
+
+    private static bool MatchesSearchQuery(MediaItem mediaItem, string? query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return true;
+        }
+
+        var comparison = StringComparison.OrdinalIgnoreCase;
+        var term = query.Trim();
+        return mediaItem.Title.Contains(term, comparison) ||
+               mediaItem.Path.Contains(term, comparison) ||
+               (mediaItem.TVShowTitle?.Contains(term, comparison) ?? false) ||
+               (mediaItem.LibraryFolder?.DisplayNameOrName.Contains(term, comparison) ?? false) ||
+               (mediaItem.Category?.Name.Contains(term, comparison) ?? false);
     }
 
     private void ApplyFilters(bool updateGroupedMedia = false)
@@ -729,6 +830,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         OnPropertyChanged(nameof(EmptyLibraryDescription));
         OnPropertyChanged(nameof(MediaCountText));
         OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(ActiveBrowseDescription));
         _clearFiltersCommand?.NotifyCanExecuteChanged();
     }
 
@@ -746,6 +848,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private void ClearFilters()
     {
         _suppressFilterStateSaving = true;
+        SearchQuery = string.Empty;
         ShowFavoritesOnly = false;
 
         foreach (var filter in MediaTypeFilters)
@@ -882,6 +985,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
 
         OnPropertyChanged(nameof(TutorialCountText));
+        OnPropertyChanged(nameof(HasTutorials));
     }
 
     /// <summary>Reloads television-show collections in alphabetical order.</summary>
@@ -897,6 +1001,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
 
         OnPropertyChanged(nameof(TvShowCountText));
+        OnPropertyChanged(nameof(HasTvShows));
     }
 
     private void RefreshMovies(IEnumerable<MediaItem> mediaItems)
@@ -908,6 +1013,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         }
 
         OnPropertyChanged(nameof(MovieCountText));
+        OnPropertyChanged(nameof(HasMovies));
     }
 
     /// <summary>Reloads manually manageable television-show groups from the database.</summary>
@@ -1093,6 +1199,48 @@ public sealed class LibraryPageViewModel : PageViewModel
         StatusMessage = configuredFolder.Folder.DisplayName is null
             ? "Custom name cleared. The folder name is shown instead."
             : "Custom display name saved.";
+    }
+
+    private async Task SaveFolderChangesAsync()
+    {
+        var configuredFolder = SelectedFolder;
+        if (configuredFolder is null)
+        {
+            return;
+        }
+
+        configuredFolder.Folder.DisplayName = string.IsNullOrWhiteSpace(CustomDisplayName)
+            ? null
+            : CustomDisplayName.Trim();
+
+        MediaType? changedMediaType = null;
+        if (SelectedMediaType is { } mediaType && configuredFolder.Folder.MediaType != mediaType)
+        {
+            configuredFolder.Folder.MediaType = mediaType;
+            changedMediaType = mediaType;
+        }
+
+        await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
+
+        var reclassifiedMediaCount = 0;
+        if (changedMediaType is { } reclassifiedType)
+        {
+            reclassifiedMediaCount = await _mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
+                configuredFolder.Id,
+                reclassifiedType);
+        }
+
+        await RefreshLibraryDataAsync();
+
+        if (changedMediaType is { } savedType)
+        {
+            StatusMessage = $"Folder saved. Media type changed to {GetMediaTypeDisplayName(savedType)}. Reclassified {reclassifiedMediaCount} indexed media file{(reclassifiedMediaCount == 1 ? string.Empty : "s")}.";
+            return;
+        }
+
+        StatusMessage = configuredFolder.Folder.DisplayName is null
+            ? "Folder saved. The folder name is shown instead of a custom name."
+            : "Folder changes saved.";
     }
 
     private async Task ChangeSelectedFolderMediaTypeAsync()
