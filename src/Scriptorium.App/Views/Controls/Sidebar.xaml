@@ -72,25 +72,15 @@
         BorderBrush="{StaticResource Brush.Border}"
         BorderThickness="0,0,1,0">
         <DockPanel Margin="12,18,12,14" LastChildFill="True">
-            <Grid Height="44" Margin="4,0,4,30" DockPanel.Dock="Top">
-                <Border
-                    Width="40"
-                    Height="40"
+            <Grid Height="64" Margin="4,0,4,10" DockPanel.Dock="Top">
+                <Image
+                    Width="64"
+                    Height="64"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
-                    Background="{StaticResource Brush.AccentSurface}"
-                    BorderBrush="{StaticResource Brush.Accent}"
-                    BorderThickness="1"
-                    CornerRadius="{StaticResource CornerRadius.M}">
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        FontSize="19"
-                        FontWeight="Bold"
-                        Foreground="{StaticResource Brush.AccentText}"
-                        Text="S" />
-                </Border>
-                <StackPanel Margin="52,0,0,0" VerticalAlignment="Center">
+                    Source="/Scriptorium.App;component/Assets/scriptorium-logo.png"
+                    Stretch="Uniform" />
+                <StackPanel Margin="76,0,0,0" VerticalAlignment="Center">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Style.Triggers>
