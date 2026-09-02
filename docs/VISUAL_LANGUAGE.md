@@ -38,7 +38,7 @@ Surfaces are ordered from `Brush.Background` to `Brush.Surface`, `Brush.SurfaceE
 
 ## Shape and elevation
 
-Use `CornerRadius.XS` (4 px) for small internal elements, `S` (6 px) for buttons and inputs, `M` (8 px) for cards, `L` (12 px) for dialogs, `XL` (16 px) for prominent feature surfaces, and `Pill` only for badges, tags, or compact filters.
+Use `CornerRadius.XS` (4 px) for small internal elements, `S` (6 px) for buttons, inputs, badges, and tags, `M` (8 px) for cards, `L` (12 px) for dialogs, `XL` (16 px) for prominent feature surfaces, and `Pill` only for switches or slim indicators.
 
 Elevation is a hierarchy signal, not ornament: `Elevation.0` for inline content, `Elevation.1` for cards, `Elevation.2` for transient menus or popovers, and `Elevation.3` for dialogs. Keep one elevation change between adjacent layers where possible. The shared `Card` and `Dialog.Surface` styles already apply the appropriate level.
 
