@@ -62,11 +62,11 @@
                     <Border Background="#44000000" CornerRadius="12,12,0,0" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasUsableThumbnail, ElementName=Root}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-                        <Border Width="52" Height="52" HorizontalAlignment="Center" Background="#5533271E" CornerRadius="26"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Brush.AccentText}" Text="{Binding FallbackGlyph, ElementName=Root}" /></Border>
+                        <Border Width="52" Height="52" HorizontalAlignment="Center" Background="#552B2018" CornerRadius="26"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource Brush.AccentText}" Text="{Binding FallbackGlyph, ElementName=Root}" /></Border>
                         <TextBlock Margin="0,8,0,0" HorizontalAlignment="Center" Foreground="{StaticResource Brush.TextSecondary}" Text="Artwork unavailable" />
                     </StackPanel>
-                    <Border Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#CC181614" CornerRadius="{StaticResource CornerRadius.S}" Padding="8,3"><TextBlock Foreground="{StaticResource Brush.TextPrimary}" FontSize="12" FontWeight="SemiBold" Text="{Binding TypeLabel, ElementName=Root}" /></Border>
-                    <Border Margin="12" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#CC181614" CornerRadius="16" Padding="7,4">
+                    <Border Margin="12" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#CC0F0E0D" CornerRadius="{StaticResource CornerRadius.S}" Padding="8,3"><TextBlock Foreground="{StaticResource Brush.TextPrimary}" FontSize="12" FontWeight="SemiBold" Text="{Binding TypeLabel, ElementName=Root}" /></Border>
+                    <Border Margin="12" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#CC0F0E0D" CornerRadius="16" Padding="7,4">
                         <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsFavorite, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
                         <TextBlock Foreground="{StaticResource Brush.Warning}" Text="&#x2605;" />
                     </Border>
