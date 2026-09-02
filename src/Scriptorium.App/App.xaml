@@ -32,9 +32,6 @@
             <DataTemplate DataType="{x:Type pagesViewModels:SearchPageViewModel}">
                 <pages:SearchPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
-            <DataTemplate DataType="{x:Type pagesViewModels:SearchPageViewModel}">
-                <pages:SearchPage />
-            </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:FavoritesPageViewModel}">
                 <pages:FavoritesPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
