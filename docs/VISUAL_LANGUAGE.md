@@ -1,6 +1,6 @@
 # Scriptorium visual language
 
-Scriptorium is a calm, dark, media-library desktop application. The interface uses a vivid logo-orange accent over warm dark surfaces, clear information hierarchy, and a small set of reusable tokens. New UI must consume these resources rather than introduce literal colors, sizes, radii, or shadows.
+Scriptorium is a calm, dark, media-library desktop application. The interface uses a vivid logo-orange accent over achromatic black and gray surfaces, clear information hierarchy, and a small set of reusable tokens. New UI must consume these resources rather than introduce literal colors, sizes, radii, or shadows.
 
 ## Application shell
 
