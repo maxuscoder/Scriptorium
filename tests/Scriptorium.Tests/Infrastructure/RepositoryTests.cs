@@ -1105,6 +1105,7 @@ public sealed class RepositoryTests
         var expanseSeasonPath = Path.Combine(libraryPath, "The Expanse", "Season 01");
         var foundationSeasonPath = Path.Combine(libraryPath, "Foundation", "S02");
         var extrasPath = Path.Combine(libraryPath, "The Expanse", "Specials");
+        var flatShowPath = Path.Combine(libraryPath, "The Boondocks S01 720p WEB-DL");
         var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
             .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
             .Options;
@@ -1114,16 +1115,19 @@ public sealed class RepositoryTests
             Directory.CreateDirectory(expanseSeasonPath);
             Directory.CreateDirectory(foundationSeasonPath);
             Directory.CreateDirectory(extrasPath);
+            Directory.CreateDirectory(flatShowPath);
             var expanseFilePath = Path.Combine(expanseSeasonPath, "S01E01.mkv");
             var expanseLaterEpisodeFilePath = Path.Combine(expanseSeasonPath, "S01E10.mkv");
             var expanseUnnumberedFilePath = Path.Combine(expanseSeasonPath, "Interview.mkv");
             var foundationFilePath = Path.Combine(foundationSeasonPath, "S02E03.mp4");
             var extrasFilePath = Path.Combine(extrasPath, "behind-the-scenes.avi");
+            var flatShowFilePath = Path.Combine(flatShowPath, "The.Boondocks.S01E01.720p.mkv");
             await File.WriteAllTextAsync(expanseFilePath, "episode");
             await File.WriteAllTextAsync(expanseLaterEpisodeFilePath, "episode");
             await File.WriteAllTextAsync(expanseUnnumberedFilePath, "extra");
             await File.WriteAllTextAsync(foundationFilePath, "episode");
             await File.WriteAllTextAsync(extrasFilePath, "extra");
+            await File.WriteAllTextAsync(flatShowFilePath, "episode");
 
             await using (var context = new ScriptoriumDbContext(options))
             {
@@ -1153,7 +1157,7 @@ public sealed class RepositoryTests
 
             var result = await scanner.ScanAsync();
 
-            Assert.Equal(5, result.DiscoveredMediaCount);
+            Assert.Equal(6, result.DiscoveredMediaCount);
             var expanseMedia = (await mediaItemRepository.GetByPathAsync(expanseFilePath))!;
             Assert.Equal(MediaType.TvShow, expanseMedia.MediaType);
             Assert.Equal("The Expanse", expanseMedia.TVShowTitle);
@@ -1170,6 +1174,10 @@ public sealed class RepositoryTests
             Assert.Null(extrasMedia.TVShowTitle);
             Assert.Null(extrasMedia.SeasonNumber);
             Assert.Null(extrasMedia.EpisodeNumber);
+            var flatShowMedia = (await mediaItemRepository.GetByPathAsync(flatShowFilePath))!;
+            Assert.Equal("The Boondocks", flatShowMedia.TVShowTitle);
+            Assert.Equal(1, flatShowMedia.SeasonNumber);
+            Assert.Equal(1, flatShowMedia.EpisodeNumber);
 
             await using var hierarchyContext = new ScriptoriumDbContext(options);
             var expanseShow = await hierarchyContext.TVShows
@@ -1187,6 +1195,9 @@ public sealed class RepositoryTests
             var foundationShow = await hierarchyContext.TVShows
                 .SingleAsync(show => show.Title == "Foundation");
             Assert.Equal(1, foundationShow.EpisodeCount);
+            var flatShow = await hierarchyContext.TVShows
+                .SingleAsync(show => show.Title == "The Boondocks");
+            Assert.Equal(1, flatShow.EpisodeCount);
         }
         finally
         {

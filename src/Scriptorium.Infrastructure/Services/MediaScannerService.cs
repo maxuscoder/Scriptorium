@@ -1,13 +1,14 @@
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
 /// Coordinates the media scan pipeline. New scan stages belong here after file discovery.
 /// </summary>
-public sealed class MediaScannerService(
+public sealed partial class MediaScannerService(
     ILibraryFolderScanSource libraryFolderScanSource,
     IFileSystemService fileSystemService,
     IMediaFormatService mediaFormatService,
@@ -94,7 +95,8 @@ public sealed class MediaScannerService(
                     var discoveredFile = mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.MediaType, candidate.Path)
                         with { IsSupportedFormat = true };
                     discoveredFiles.Add(ApplyEpisodeInformation(
-                        ApplyTvShowOrganization(discoveredFile, scannedFoldersById)));
+                        ApplyTvShowOrganization(discoveredFile, scannedFoldersById),
+                        scannedFoldersById));
                 }
                 catch (Exception exception) when (CanSkip(exception))
                 {
@@ -158,7 +160,9 @@ public sealed class MediaScannerService(
         return discoveredFile;
     }
 
-    private DiscoveredMediaFile ApplyEpisodeInformation(DiscoveredMediaFile discoveredFile)
+    private DiscoveredMediaFile ApplyEpisodeInformation(
+        DiscoveredMediaFile discoveredFile,
+        IReadOnlyDictionary<Guid, LibraryFolder> scannedFoldersById)
     {
         if (discoveredFile.MediaType != MediaType.TvShow ||
             episodeFileNameParser.Parse(discoveredFile.FileName) is not { } episodeInfo)
@@ -168,6 +172,11 @@ public sealed class MediaScannerService(
 
         return discoveredFile with
         {
+            TVShowTitle = discoveredFile.TVShowTitle ??
+                          (episodeInfo.SeasonNumber is not null &&
+                           scannedFoldersById.TryGetValue(discoveredFile.LibraryFolderId, out var libraryFolder)
+                              ? GetFlatFolderTvShowTitle(discoveredFile, libraryFolder)
+                              : null),
             SeasonNumber = episodeInfo.SeasonNumber ?? discoveredFile.SeasonNumber,
             EpisodeNumber = episodeInfo.EpisodeNumber
         };
@@ -185,4 +194,26 @@ public sealed class MediaScannerService(
         var showFolderName = Path.GetFileName(Path.TrimEndingDirectorySeparator(showFolderPath));
         return string.IsNullOrWhiteSpace(showFolderName) ? libraryFolder.DisplayNameOrName : showFolderName;
     }
+
+    private static string GetFlatFolderTvShowTitle(DiscoveredMediaFile discoveredFile, LibraryFolder libraryFolder)
+    {
+        if (!string.IsNullOrWhiteSpace(libraryFolder.DisplayName))
+        {
+            return libraryFolder.DisplayName;
+        }
+
+        var sourceFolderName = string.Equals(
+            Path.TrimEndingDirectorySeparator(discoveredFile.ContainingFolderPath),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(libraryFolder.Path)),
+            StringComparison.OrdinalIgnoreCase)
+            ? libraryFolder.Name
+            : Path.GetFileName(Path.TrimEndingDirectorySeparator(discoveredFile.ContainingFolderPath));
+
+        var title = SeasonSuffixPattern().Replace(sourceFolderName, string.Empty);
+        title = title.Replace('.', ' ').Replace('_', ' ').Trim(' ', '-', '_', '.');
+        return string.IsNullOrWhiteSpace(title) ? libraryFolder.DisplayNameOrName : title;
+    }
+
+    [GeneratedRegex(@"[\s._-]+(?:s\d{1,2}|season[\s._-]*\d{1,2})(?:[\s._-]+|$).*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex SeasonSuffixPattern();
 }
