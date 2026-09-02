@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:converters="clr-namespace:Scriptorium.App.Converters">
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors" xmlns:converters="clr-namespace:Scriptorium.App.Converters">
     <converters:ComboBoxSelectionDisplayConverter x:Key="ComboBoxSelectionDisplay" />
     <Style x:Key="Button.Base" TargetType="Button">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
@@ -413,23 +413,26 @@
                             AllowsTransparency="True"
                             Focusable="False"
                             IsOpen="{TemplateBinding IsDropDownOpen}"
+                            MaxHeight="360"
+                            MaxWidth="520"
                             Placement="Bottom"
                             PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
                             PopupAnimation="Fade"
-                            StaysOpen="False">
+                            StaysOpen="False"
+                            Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
                             <Border
                                 Margin="0,4,0,0"
                                 Background="{StaticResource Brush.SurfaceElevated}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="{StaticResource CornerRadius.M}"
-                                MaxWidth="520"
-                                Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
+                                HorizontalAlignment="Stretch">
                                 <ScrollViewer
+                                    behaviors:DropdownScrollBehavior.IsEnabled="True"
                                     CanContentScroll="False"
                                     Focusable="True"
                                     HorizontalScrollBarVisibility="Disabled"
-                                    MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                                    MaxHeight="360"
                                     PanningMode="VerticalOnly"
                                     VerticalScrollBarVisibility="Auto">
                                     <ItemsPresenter />

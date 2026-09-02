@@ -1,5 +1,8 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using Scriptorium.App.Behaviors;
 using System.Windows.Threading;
 using Scriptorium.App.ViewModels.Pages;
 
@@ -25,7 +28,65 @@ public partial class LibraryPage : UserControl
 
     private void OnPagePreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        if (FindParentScrollViewer(Mouse.DirectlyOver as DependencyObject) is { } innerScrollViewer &&
+            innerScrollViewer != PageScrollViewer &&
+            DropdownScrollBehavior.GetIsEnabled(innerScrollViewer))
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Delta < 0)
+        {
+            CloseOpenDropdowns();
+        }
+
         PageScrollViewer.ScrollToVerticalOffset(PageScrollViewer.VerticalOffset - e.Delta);
         e.Handled = true;
+    }
+
+    private void CloseOpenDropdowns()
+    {
+        foreach (var comboBox in FindVisualChildren<ComboBox>(this))
+        {
+            if (comboBox.IsDropDownOpen)
+            {
+                comboBox.IsDropDownOpen = false;
+            }
+        }
+    }
+
+    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(root);
+        for (var index = 0; index < childCount; index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var descendant in FindVisualChildren<T>(child))
+            {
+                yield return descendant;
+            }
+        }
+    }
+
+    private static ScrollViewer? FindParentScrollViewer(DependencyObject? element)
+    {
+        while (element is not null)
+        {
+            if (element is ScrollViewer scrollViewer)
+            {
+                return scrollViewer;
+            }
+
+            element = VisualTreeHelper.GetParent(element);
+        }
+
+        return null;
     }
 }
