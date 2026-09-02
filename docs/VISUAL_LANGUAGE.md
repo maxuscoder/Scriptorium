@@ -1,6 +1,6 @@
 # Scriptorium visual language
 
-Scriptorium is a calm, dark, media-library desktop application. The interface uses a restrained blue accent, clear information hierarchy, and a small set of reusable tokens. New UI must consume these resources rather than introduce literal colors, sizes, radii, or shadows.
+Scriptorium is a calm, dark, media-library desktop application. The interface uses a vivid logo-orange accent over warm dark surfaces, clear information hierarchy, and a small set of reusable tokens. New UI must consume these resources rather than introduce literal colors, sizes, radii, or shadows.
 
 ## Application shell
 
@@ -34,7 +34,7 @@ Use `TextPrimary` for headings and important values, `TextSecondary` for normal 
 
 Surfaces are ordered from `Brush.Background` to `Brush.Surface`, `Brush.SurfaceElevated`, and `Brush.SurfaceOverlay`. Use `Brush.SurfaceHeader` only for persistent chrome. Boundaries use `Brush.Border`; reserve `Brush.BorderStrong` for a selected, active, or emphasized boundary.
 
-`Brush.Accent` is the primary action, selection, link, and progress color; `Brush.AccentStrong` is its hover state and `Brush.AccentSurface` is its selected background. Feedback must use semantic brushes: `Success`, `Warning`, or `Danger` with the equivalent `*Surface` brush for a contained status. `Brush.FocusRing` is exclusively for keyboard focus. Never use status colors as decoration or as the sole way to communicate a state.
+`Brush.Accent` is the logo-orange primary action, selection, link, and progress color; `Brush.AccentStrong` is its hover state and `Brush.AccentSurface` is its selected background. Use `Brush.TextOnAccent` for text and glyphs placed directly on the vivid accent. Feedback must use semantic brushes: `Success`, `Warning`, or `Danger` with the equivalent `*Surface` brush for a contained status. `Brush.FocusRing` is exclusively for keyboard focus. Never use status colors as decoration or as the sole way to communicate a state.
 
 ## Shape and elevation
 
