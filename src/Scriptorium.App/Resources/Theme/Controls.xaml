@@ -373,6 +373,7 @@
                             BorderThickness="{TemplateBinding BorderThickness}"
                             Content="{Binding SelectedItem, Converter={StaticResource ComboBoxSelectionDisplay}, RelativeSource={RelativeSource TemplatedParent}}"
                             Foreground="{TemplateBinding Foreground}"
+                            IsEnabled="{TemplateBinding IsEnabled}"
                             IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                             Padding="{TemplateBinding Padding}"
                             ClickMode="Press"
@@ -427,7 +428,6 @@
                                 <ScrollViewer
                                     CanContentScroll="False"
                                     Focusable="True"
-                                    Height="360"
                                     HorizontalScrollBarVisibility="Disabled"
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                     PanningMode="VerticalOnly"
@@ -441,6 +441,9 @@
             </Setter.Value>
         </Setter>
         <Style.Triggers>
+            <Trigger Property="HasItems" Value="False">
+                <Setter Property="IsEnabled" Value="False" />
+            </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
             </Trigger>
