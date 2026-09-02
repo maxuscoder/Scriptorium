@@ -290,7 +290,7 @@
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentSurface}" />
-                <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
             </DataTrigger>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.NavigationHover}" />
@@ -304,6 +304,7 @@
                 </MultiDataTrigger.Conditions>
                 <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
             </MultiDataTrigger>
             <Trigger Property="IsPressed" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />

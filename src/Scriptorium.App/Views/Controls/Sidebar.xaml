@@ -56,6 +56,9 @@
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>

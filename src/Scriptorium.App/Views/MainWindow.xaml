@@ -22,69 +22,9 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Grid.RowDefinitions>
-            <RowDefinition Height="80" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <controls:Sidebar x:Name="SidebarNavigation" Grid.RowSpan="2" />
-
-        <Border
-            Grid.Column="1"
-            Padding="28,0,28,0"
-            Background="{StaticResource Brush.SurfaceHeader}"
-            BorderBrush="{StaticResource Brush.Border}"
-            BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition x:Name="SearchColumn" Width="400" />
-                </Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Style="{StaticResource Text.Caption}" Text="MEDIA LIBRARY" />
-                    <TextBlock
-                        Margin="0,2,0,0"
-                        Style="{StaticResource Text.PageTitle}"
-                        Text="{Binding PageTitle}" />
-                </StackPanel>
-                <Grid Grid.Column="1" Height="40">
-                    <TextBox
-                        x:Name="GlobalSearchBox"
-                        VerticalContentAlignment="Center"
-                        Padding="36,8,12,8"
-                        ToolTip="Search all imported media"
-                        Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
-                        Style="{StaticResource Input.TextBox}" />
-                    <TextBlock
-                        Margin="12,0,0,0"
-                        VerticalAlignment="Center"
-                        FontSize="{StaticResource Icon.Size.Default}"
-                        Foreground="{StaticResource Brush.TextMuted}"
-                        IsHitTestVisible="False"
-                        Text="&#x2315;" />
-                    <TextBlock
-                        Margin="36,0,12,0"
-                        VerticalAlignment="Center"
-                        Foreground="{StaticResource Brush.TextMuted}"
-                        IsHitTestVisible="False"
-                        Text="Search all imported media">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Text, ElementName=GlobalSearchBox}" Value="">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </Grid>
-            </Grid>
-        </Border>
+        <controls:Sidebar x:Name="SidebarNavigation" />
 
         <ContentControl
-            Grid.Row="1"
             Grid.Column="1"
             Margin="0,0,0,0"
             MinWidth="0"

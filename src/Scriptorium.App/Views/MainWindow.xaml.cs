@@ -26,6 +26,5 @@ public partial class MainWindow : Window
         var isCompact = width < 1060;
         SidebarNavigation.IsCompact = isCompact;
         NavigationColumn.Width = new GridLength(isCompact ? 76 : 256);
-        SearchColumn.Width = new GridLength(isCompact ? 260 : 400);
     }
 }
