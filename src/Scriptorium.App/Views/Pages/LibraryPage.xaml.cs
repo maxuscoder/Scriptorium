@@ -28,6 +28,8 @@ public partial class LibraryPage : UserControl
 
     private void OnPagePreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        CloseOpenDropdowns();
+
         if (FindParentScrollViewer(Mouse.DirectlyOver as DependencyObject) is { } innerScrollViewer &&
             innerScrollViewer != PageScrollViewer &&
             DropdownScrollBehavior.GetIsEnabled(innerScrollViewer))
@@ -36,17 +38,22 @@ public partial class LibraryPage : UserControl
             return;
         }
 
-        if (e.Delta < 0)
-        {
-            CloseOpenDropdowns();
-        }
-
         PageScrollViewer.ScrollToVerticalOffset(PageScrollViewer.VerticalOffset - e.Delta);
         e.Handled = true;
     }
 
+    private void OnPageScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (e.VerticalChange != 0 || e.HorizontalChange != 0)
+        {
+            CloseOpenDropdowns();
+        }
+    }
+
     private void CloseOpenDropdowns()
     {
+        FiltersButton.IsChecked = false;
+
         foreach (var comboBox in FindVisualChildren<ComboBox>(this))
         {
             if (comboBox.IsDropDownOpen)
