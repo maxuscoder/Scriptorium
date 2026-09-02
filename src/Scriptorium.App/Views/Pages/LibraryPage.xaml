@@ -5,6 +5,101 @@
         <Style x:Key="Library.FilterToggle" TargetType="ToggleButton"><Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" /><Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" /><Setter Property="Padding" Value="12,7" /><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton"><Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CornerRadius.M}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" /></Trigger><Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.AccentSurface}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" /></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
         <Style x:Key="Library.MediaItems" TargetType="ItemsControl"><Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ContentPresenter"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style></Setter.Value></Setter><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter.Value></Setter></DataTrigger></Style.Triggers></Style>
         <Style x:Key="Library.Section" TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+        <Style x:Key="Library.ManagementCard" BasedOn="{StaticResource Card}" TargetType="Border">
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.L}" />
+            <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+        </Style>
+        <Style x:Key="Library.FolderList" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Margin" Value="0,0,0,8" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Library.FolderRow" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceHeader}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+            <Setter Property="Padding" Value="14,12" />
+        </Style>
+        <Style x:Key="Library.InfoBanner" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Brush.SurfaceHeader}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+            <Setter Property="Padding" Value="12,10" />
+        </Style>
+        <Style x:Key="Library.RowIconButton" BasedOn="{StaticResource Button.Icon}" TargetType="Button">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="MinHeight" Value="32" />
+        </Style>
+        <Style x:Key="Library.RowIconToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="MinHeight" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{StaticResource CornerRadius.S}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
+                    <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+                </Trigger>
+                <Trigger Property="IsKeyboardFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Library.InclusionBadge" BasedOn="{StaticResource Badge}" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Brush.SuccessSurface}" />
+            <Setter Property="Padding" Value="8,3" />
+        </Style>
+        <Style x:Key="Library.Placeholder" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="12,0,32,0" />
+            <Setter Property="Visibility" Value="Collapsed" />
+        </Style>
     </UserControl.Resources>
     <ScrollViewer x:Name="PageScrollViewer" PreviewMouseWheel="OnPagePreviewMouseWheel" VerticalScrollBarVisibility="Auto"><StackPanel Margin="32,28,32,48" MaxWidth="1600">
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Text.PageTitle}" Text="Library" /><Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{StaticResource Brush.AccentSurface}" CornerRadius="{StaticResource CornerRadius.Pill}" Padding="9,3"><TextBlock Foreground="{StaticResource Brush.AccentText}" FontSize="12" FontWeight="SemiBold" Text="{Binding MediaCountText}" /></Border></StackPanel><TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="Your personal collection, organized for the next thing you want to watch." /></StackPanel><WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"><Button Margin="0,0,8,8" Command="{Binding ImportFolderCommand}" Content="Add folder" Style="{StaticResource Button.Secondary}" /><Button Margin="0,0,0,8" Command="{Binding RefreshLibraryCommand}"><Button.Style><Style BasedOn="{StaticResource Button.Primary}" TargetType="Button"><Setter Property="Content" Value="Rescan library" /><Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Content" Value="Scanning…" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></WrapPanel></Grid>
@@ -17,6 +112,308 @@
         <StackPanel Margin="0,28,0,0" Style="{StaticResource Library.Section}"><TextBlock Style="{StaticResource Text.SectionTitle}" Text="Movies" /><ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Movies}" Style="{StaticResource Library.MediaItems}"><ItemsControl.ItemTemplate><DataTemplate><controls:MediaCard CardWidth="280" Margin="0,0,16,16" ActionCommand="{Binding DataContext.OpenMovieCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ActionParameter="{Binding}" ActionText="Open movie" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FallbackGlyph="M" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=UserControl}}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" PrimaryMetadata="{Binding ReleaseYear}" SecondaryMetadata="{Binding Runtime}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="Movie" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
         <StackPanel Margin="0,32,0,0"><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style><Grid><TextBlock Style="{StaticResource Text.SectionTitle}" Text="Browse results" /><TextBlock HorizontalAlignment="Right" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding MediaCountText}" /></Grid><ItemsControl Margin="0,16,0,0" ItemsSource="{Binding MediaItems}" Style="{StaticResource Library.MediaItems}"><ItemsControl.ItemTemplate><DataTemplate><controls:MediaCard CardWidth="260" Margin="0,0,16,16" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FallbackGlyph="{Binding TypeGlyph}" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=UserControl}}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" PrimaryMetadata="{Binding Detail}" SecondaryMetadata="{Binding Runtime}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="{Binding MediaType}" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
         <StackPanel Margin="0,56,0,0" HorizontalAlignment="Center" MaxWidth="420"><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsLibraryEmpty}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Style="{StaticResource Text.Display}" Text="{Binding EmptyLibraryTitle}" /><TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding EmptyLibraryDescription}" /><Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding ImportFolderCommand}" Content="Add library folder" Style="{StaticResource Button.Primary}" /></StackPanel>
-        <Expander Margin="0,48,0,0" Foreground="{StaticResource Brush.TextPrimary}" Header="Library management"><StackPanel Margin="0,16,0,0"><TextBlock Style="{StaticResource Text.Body}" Text="Manage folders and fine-tune automatically detected TV-show groups." /><ListBox Margin="0,16,0,0" Background="{StaticResource Brush.Surface}" ItemsSource="{Binding ConfiguredFolders}" SelectedItem="{Binding SelectedFolder, Mode=TwoWay}"><ListBox.ItemTemplate><DataTemplate><Border Margin="0,0,0,8" Padding="14" Style="{StaticResource Card}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding DisplayName}" /><TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Path}" TextTrimming="CharacterEllipsis" /></StackPanel><CheckBox Grid.Column="1" VerticalAlignment="Center" Command="{Binding DataContext.SaveFolderStateCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Content="Include in scans" IsChecked="{Binding IsEnabled, Mode=TwoWay}" /></Grid></Border></DataTemplate></ListBox.ItemTemplate></ListBox><WrapPanel Margin="0,12,0,0"><Button Margin="0,0,8,8" Command="{Binding RemoveFolderCommand}" Content="Remove selected folder" Style="{StaticResource Button.Secondary}" /><Button Command="{Binding ReconnectFolderCommand}" Content="Reconnect selected folder" Style="{StaticResource Button.Secondary}" /></WrapPanel><Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="300" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox Style="{StaticResource Input.TextBox}" Text="{Binding CustomDisplayName, UpdateSourceTrigger=PropertyChanged}" /><Button Grid.Column="1" Margin="12,0,0,0" Command="{Binding SaveDisplayNameCommand}" Content="Save name" Style="{StaticResource Button.Secondary}" /></Grid><Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="300" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding MediaTypes}" SelectedValue="{Binding SelectedMediaType, Mode=TwoWay}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" /><Button Grid.Column="1" Margin="12,0,0,0" Command="{Binding ChangeMediaTypeCommand}" Content="Apply type" Style="{StaticResource Button.Secondary}" /></Grid><Expander Margin="0,20,0,0" Header="Organize TV-show groups"><StackPanel Margin="0,12,0,0"><TextBlock Style="{StaticResource Text.Label}" Text="Source group" /><ListBox MaxHeight="140" Margin="0,6,0,0" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding SelectedTvShowGroup, Mode=TwoWay}" /><TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Label}" Text="Media in source group" /><ListBox MaxHeight="140" Margin="0,6,0,0" ItemsSource="{Binding SelectedTvShowGroup.Media}" SelectedItem="{Binding SelectedTvShowMedia, Mode=TwoWay}" /><TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Label}" Text="Destination group" /><ComboBox Margin="0,6,0,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding TargetTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" /><TextBox Margin="0,12,0,0" Style="{StaticResource Input.TextBox}" Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}" /><WrapPanel Margin="0,12,0,0"><Button Margin="0,0,8,8" Command="{Binding RenameGroupCommand}" Content="Rename group" Style="{StaticResource Button.Secondary}" /><Button Margin="0,0,8,8" Command="{Binding MoveMediaToGroupCommand}" Content="Move selected media" Style="{StaticResource Button.Secondary}" /><Button Margin="0,0,8,8" Command="{Binding MergeGroupsCommand}" Content="Merge into destination" Style="{StaticResource Button.Secondary}" /><Button Command="{Binding SplitGroupCommand}" Content="Split selected media" Style="{StaticResource Button.Secondary}" /></WrapPanel></StackPanel></Expander><Border Margin="0,20,0,0" Background="{StaticResource Brush.DangerSurface}" BorderBrush="{StaticResource Brush.Danger}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" Padding="14"><Grid><StackPanel><TextBlock FontWeight="SemiBold" Text="Reset library view" /><TextBlock Foreground="{StaticResource Brush.TextSecondary}" Text="Clears saved filters and returns to the default sort. Your media and folders stay intact." /></StackPanel><Button HorizontalAlignment="Right" Command="{Binding ResetLibraryCommand}" Content="Reset" Style="{StaticResource Button.Secondary}" /></Grid></Border></StackPanel></Expander>
+        <Border Margin="0,48,0,0" Style="{StaticResource Library.ManagementCard}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="32" Height="32" VerticalAlignment="Center" Background="{StaticResource Brush.AccentSurface}" CornerRadius="{StaticResource CornerRadius.S}">
+                        <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Fill="{StaticResource Brush.AccentText}" Stretch="Uniform" />
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Library management" />
+                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="Manage folders and fine-tune automatically detected TV-show groups." />
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock FontSize="{StaticResource FontSize.Body}" FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" Text="Watched folders" />
+                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="These folders will be included in scans." />
+                    </StackPanel>
+                    <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding ImportFolderCommand}" Style="{StaticResource Button.Secondary}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Add folder" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <ListBox Margin="0,16,0,0" ItemsSource="{Binding ConfiguredFolders}" SelectedItem="{Binding SelectedFolder, Mode=TwoWay}" Style="{StaticResource Library.FolderList}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Border>
+                                <Border.Style>
+                                    <Style BasedOn="{StaticResource Library.FolderRow}" TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                                                <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="36" Height="36" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceElevated}" CornerRadius="{StaticResource CornerRadius.S}">
+                                        <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Fill="{StaticResource Brush.TextSecondary}" Stretch="Uniform" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                        <TextBlock FontWeight="SemiBold" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,2,0,0" Text="{Binding ValidationWarning}">
+                                            <TextBlock.Style>
+                                                <Style BasedOn="{StaticResource Text.Caption}" TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsValidForScanning}" Value="False">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                                        <Border Margin="0,0,8,0" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style BasedOn="{StaticResource Library.InclusionBadge}" TargetType="Border">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                            <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Width="10" Height="10" Margin="0,0,5,0" VerticalAlignment="Center" Data="M9,16.17 4.83,12 3.41,13.41 9,19 21,7 19.59,5.59Z" Stretch="Uniform">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Fill" Value="{StaticResource Brush.Success}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <TextBlock FontSize="{StaticResource FontSize.Caption}" FontWeight="SemiBold" Text="{Binding InclusionLabel}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                                                    <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Border>
+                                        <Grid>
+                                            <ToggleButton x:Name="EditFolderButton" Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Style="{StaticResource Library.RowIconToggle}" ToolTip="Edit folder">
+                                                <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M20.71,7.04C21.1,6.65 21.1,6.02 20.71,5.63L18.37,3.29C17.98,2.9 17.35,2.9 16.96,3.29L15.12,5.12 18.87,8.87M3,17.25V21H6.75L17.81,9.93 14.06,6.18 3,17.25Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Stretch="Uniform" />
+                                            </ToggleButton>
+                                            <Popup AllowsTransparency="True" IsOpen="{Binding IsChecked, ElementName=EditFolderButton, Mode=TwoWay}" Placement="Bottom" PlacementTarget="{Binding ElementName=EditFolderButton}" StaysOpen="False">
+                                                <Border Width="320" Margin="0,8,0,0" Padding="14" Style="{StaticResource Card}" Effect="{StaticResource Elevation.2}">
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource Text.Label}" Text="Display name" />
+                                                        <TextBox Margin="0,6,0,0" Style="{StaticResource Input.TextBox}" Text="{Binding DataContext.CustomDisplayName, RelativeSource={RelativeSource AncestorType=ListBox}, UpdateSourceTrigger=PropertyChanged}" />
+                                                        <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Label}" Text="Media type" />
+                                                        <ComboBox Margin="0,6,0,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding DataContext.MediaTypes, RelativeSource={RelativeSource AncestorType=ListBox}}" SelectedValue="{Binding DataContext.SelectedMediaType, RelativeSource={RelativeSource AncestorType=ListBox}, Mode=TwoWay}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+                                        <Grid Margin="4,0,0,0">
+                                            <ToggleButton x:Name="FolderMenuButton" Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Style="{StaticResource Library.RowIconToggle}" ToolTip="More actions">
+                                                <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M12,16A2,2 0 0,1 14,18 2,2 0 0,1 12,20 2,2 0 0,1 10,18 2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12 2,2 0 0,1 12,14 2,2 0 0,1 10,12 2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6 2,2 0 0,1 12,8 2,2 0 0,1 10,6 2,2 0 0,1 12,4Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Stretch="Uniform" />
+                                            </ToggleButton>
+                                            <Popup AllowsTransparency="True" IsOpen="{Binding IsChecked, ElementName=FolderMenuButton, Mode=TwoWay}" Placement="Bottom" PlacementTarget="{Binding ElementName=FolderMenuButton}" StaysOpen="False">
+                                                <Border MinWidth="180" Margin="0,8,0,0" Padding="8" Style="{StaticResource Card}" Effect="{StaticResource Elevation.2}">
+                                                    <StackPanel>
+                                                        <Button HorizontalContentAlignment="Left" Command="{Binding DataContext.ReconnectFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Reconnect" Style="{StaticResource Button.Secondary}" />
+                                                        <Button Margin="0,6,0,0" HorizontalContentAlignment="Left" Command="{Binding DataContext.RemoveFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Remove" Style="{StaticResource Button.Secondary}" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </Popup>
+                                        </Grid>
+                                        <CheckBox Margin="8,0,0,0" Command="{Binding DataContext.SaveFolderStateCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" Style="{StaticResource Toggle.Switch}" ToolTip="Include in scans" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <Border Margin="0,4,0,0" Style="{StaticResource Library.InfoBanner}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" VerticalAlignment="Center" Data="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12 10,10 0 0,0 12,22 10,10 0 0,0 22,12 10,10 0 0,0 12,2Z" Fill="{StaticResource Brush.TextMuted}" Stretch="Uniform" />
+                        <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}" Text="Only folders marked as &quot;Included&quot; will be scanned." />
+                    </StackPanel>
+                </Border>
+
+                <Grid Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock VerticalAlignment="Center" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SelectedFolderCountText}" />
+                    <WrapPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
+                        <Button Margin="0,0,8,0" Command="{Binding RemoveFolderCommand}" Style="{StaticResource Button.Secondary}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                                <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Remove" />
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ReconnectFolderCommand}" Style="{StaticResource Button.Secondary}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M12,6V9L16,5 12,1V4A8,8 0 0,0 4,12H6A6,6 0 0,1 12,6M18,12A6,6 0 0,1 12,18V15L8,19 12,23V20A8,8 0 0,0 20,12H18Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                                <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Reconnect" />
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                    <Button Grid.Column="2" Command="{Binding SaveFolderChangesCommand}" Content="Save changes" Style="{StaticResource Button.Primary}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <Border Margin="0,16,0,0" Style="{StaticResource Library.ManagementCard}">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="32" Height="32" VerticalAlignment="Center" Background="{StaticResource Brush.AccentSurface}" CornerRadius="{StaticResource CornerRadius.S}">
+                        <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M21,17H3V5H21M21,3H3C1.89,3 1,3.89 1,5V17A2,2 0 0,0 3,19H8V21H16V19H21A2,2 0 0,0 23,17V5C23,3.89 22.1,3 21,3Z" Fill="{StaticResource Brush.AccentText}" Stretch="Uniform" />
+                    </Border>
+                    <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Organize TV-show groups" />
+                        <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Caption}" Text="Organize and structure your detected TV-show groups." />
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Text.Label}" Text="Source group" />
+                        <Grid Margin="0,6,0,0">
+                            <ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding SelectedTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
+                            <TextBlock Text="Select source group">
+                                <TextBlock.Style>
+                                    <Style BasedOn="{StaticResource Library.Placeholder}" TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedTvShowGroup}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Style="{StaticResource Text.Label}" Text="Media in source group" />
+                        <Grid Margin="0,6,0,0">
+                            <ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding SelectedTvShowGroup.Media}" SelectedItem="{Binding SelectedTvShowMedia, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
+                            <TextBlock Text="Select media">
+                                <TextBlock.Style>
+                                    <Style BasedOn="{StaticResource Library.Placeholder}" TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SelectedTvShowMedia}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.Label}" Text="Destination group" />
+                <Grid Margin="0,6,0,0">
+                    <ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding TargetTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
+                    <TextBlock Text="Select destination group">
+                        <TextBlock.Style>
+                            <Style BasedOn="{StaticResource Library.Placeholder}" TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TargetTvShowGroup}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+
+                <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.Label}" Text="Group name" />
+                <TextBox Margin="0,6,0,0" Style="{StaticResource Input.TextBox}" Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Used when renaming a group or splitting selected media" />
+
+                <Border Margin="0,16,0,0" Style="{StaticResource Library.InfoBanner}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" VerticalAlignment="Center" Data="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12 10,10 0 0,0 12,22 10,10 0 0,0 22,12 10,10 0 0,0 12,2Z" Fill="{StaticResource Brush.TextMuted}" Stretch="Uniform" />
+                        <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Caption}" Text="Choose a source group, select media, and pick a destination group to organize your library." />
+                    </StackPanel>
+                </Border>
+
+                <WrapPanel Margin="0,16,0,0">
+                    <Button Margin="0,0,8,8" Command="{Binding RenameGroupCommand}" Style="{StaticResource Button.Secondary}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M20.71,7.04C21.1,6.65 21.1,6.02 20.71,5.63L18.37,3.29C17.98,2.9 17.35,2.9 16.96,3.29L15.12,5.12 18.87,8.87M3,17.25V21H6.75L17.81,9.93 14.06,6.18 3,17.25Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Rename group" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="0,0,8,8" Command="{Binding MoveMediaToGroupCommand}" Style="{StaticResource Button.Secondary}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M4,11V13H16L10.5,18.5 11.92,19.92 19.84,12 11.92,4.08 10.5,5.5 16,11H4Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Move selected media" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="0,0,8,8" Command="{Binding MergeGroupsCommand}" Style="{StaticResource Button.Secondary}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M7,3H5V9H7V3M19,3H17V9H19V3M12,5L7,10V21H17V10L12,5M12,8.83L15,11.83V19H9V11.83L12,8.83Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Merge into destination" />
+                        </StackPanel>
+                    </Button>
+                    <Button Margin="0,0,0,8" Command="{Binding SplitGroupCommand}" Style="{StaticResource Button.Secondary}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M9,3H7V9H9V3M17,3H15V9H17V3M14,11H10V13H14V11M21,11H19V13H21V11M5,11H3V13H5V11M17,15H7V21H17V15Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Split selected media" />
+                        </StackPanel>
+                    </Button>
+                </WrapPanel>
+
+                <Border Margin="0,8,0,0" Background="{StaticResource Brush.DangerSurface}" BorderBrush="{StaticResource Brush.Danger}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" Padding="16,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,16,0">
+                            <TextBlock FontWeight="SemiBold" Foreground="{StaticResource Brush.Danger}" Text="Reset library view" />
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="Clears saved filters and returns to the default sort. Your media and folders stay intact." />
+                        </StackPanel>
+                        <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding ResetLibraryCommand}" Style="{StaticResource Button.Destructive}">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M12,5V1L7,6 12,11V7A6,6 0 0,1 18,13 6,6 0 0,1 12,19 6,6 0 0,1 6,13H4A8,8 0 0,0 12,21 8,8 0 0,0 20,13 8,8 0 0,0 12,5Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                                <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Reset view" />
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Border>
     </StackPanel></ScrollViewer>
 </UserControl>

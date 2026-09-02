@@ -43,8 +43,12 @@ public sealed class ConfiguredFolderViewModel(
             Folder.IsEnabled = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ScanStatus));
+            OnPropertyChanged(nameof(InclusionLabel));
         }
     }
+
+    /// <summary>Gets the compact inclusion badge shown in library management.</summary>
+    public string InclusionLabel => IsEnabled ? "Included" : "Excluded";
 
     /// <summary>Gets the persisted scan-inclusion state.</summary>
     public string ScanStatus => IsEnabled ? "Enabled" : "Excluded from scans";

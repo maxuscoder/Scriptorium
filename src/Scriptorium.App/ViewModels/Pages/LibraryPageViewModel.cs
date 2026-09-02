@@ -36,6 +36,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly AsyncRelayCommand _removeFolderCommand;
     private readonly AsyncRelayCommand _reconnectFolderCommand;
     private readonly AsyncRelayCommand _saveDisplayNameCommand;
+    private readonly AsyncRelayCommand _saveFolderChangesCommand;
     private readonly AsyncRelayCommand _changeMediaTypeCommand;
     private readonly AsyncRelayCommand _renameGroupCommand;
     private readonly AsyncRelayCommand _moveMediaToGroupCommand;
@@ -130,8 +131,18 @@ public sealed class LibraryPageViewModel : PageViewModel
             () => SelectedFolder is { IsValidForScanning: false });
         ReconnectFolderCommand = _reconnectFolderCommand;
         SaveFolderStateCommand = new AsyncRelayCommand(SaveFolderStateAsync);
+        SelectFolderCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is ConfiguredFolderViewModel folder)
+                {
+                    SelectedFolder = folder;
+                }
+            });
         _saveDisplayNameCommand = new AsyncRelayCommand(SaveDisplayNameAsync, () => SelectedFolder is not null);
         SaveDisplayNameCommand = _saveDisplayNameCommand;
+        _saveFolderChangesCommand = new AsyncRelayCommand(SaveFolderChangesAsync, () => SelectedFolder is not null);
+        SaveFolderChangesCommand = _saveFolderChangesCommand;
         _changeMediaTypeCommand = new AsyncRelayCommand(
             ChangeSelectedFolderMediaTypeAsync,
             () => SelectedFolder is not null && SelectedMediaType is { } mediaType && mediaType != SelectedFolder.Folder.MediaType && !IsScanning);
@@ -260,6 +271,12 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Saves the optional friendly name for the selected folder.</summary>
     public ICommand SaveDisplayNameCommand { get; }
+
+    /// <summary>Saves the selected folder's display name and media type together.</summary>
+    public ICommand SaveFolderChangesCommand { get; }
+
+    /// <summary>Selects a configured folder so row actions apply to it.</summary>
+    public ICommand SelectFolderCommand { get; }
 
     /// <summary>Saves a configured folder's enabled state.</summary>
     public ICommand SaveFolderStateCommand { get; }
@@ -535,11 +552,16 @@ public sealed class LibraryPageViewModel : PageViewModel
                 _removeFolderCommand.NotifyCanExecuteChanged();
                 _reconnectFolderCommand.NotifyCanExecuteChanged();
                 _saveDisplayNameCommand.NotifyCanExecuteChanged();
+                _saveFolderChangesCommand.NotifyCanExecuteChanged();
                 CustomDisplayName = value?.Folder.DisplayName;
                 SelectedMediaType = value?.Folder.MediaType;
+                OnPropertyChanged(nameof(SelectedFolderCountText));
             }
         }
     }
+
+    /// <summary>Gets the compact selection summary shown under watched folders.</summary>
+    public string SelectedFolderCountText => SelectedFolder is null ? "0 selected" : "1 selected";
 
     /// <summary>Gets or sets the friendly name being edited for the selected folder.</summary>
     public string? CustomDisplayName
@@ -1177,6 +1199,48 @@ public sealed class LibraryPageViewModel : PageViewModel
         StatusMessage = configuredFolder.Folder.DisplayName is null
             ? "Custom name cleared. The folder name is shown instead."
             : "Custom display name saved.";
+    }
+
+    private async Task SaveFolderChangesAsync()
+    {
+        var configuredFolder = SelectedFolder;
+        if (configuredFolder is null)
+        {
+            return;
+        }
+
+        configuredFolder.Folder.DisplayName = string.IsNullOrWhiteSpace(CustomDisplayName)
+            ? null
+            : CustomDisplayName.Trim();
+
+        MediaType? changedMediaType = null;
+        if (SelectedMediaType is { } mediaType && configuredFolder.Folder.MediaType != mediaType)
+        {
+            configuredFolder.Folder.MediaType = mediaType;
+            changedMediaType = mediaType;
+        }
+
+        await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
+
+        var reclassifiedMediaCount = 0;
+        if (changedMediaType is { } reclassifiedType)
+        {
+            reclassifiedMediaCount = await _mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
+                configuredFolder.Id,
+                reclassifiedType);
+        }
+
+        await RefreshLibraryDataAsync();
+
+        if (changedMediaType is { } savedType)
+        {
+            StatusMessage = $"Folder saved. Media type changed to {GetMediaTypeDisplayName(savedType)}. Reclassified {reclassifiedMediaCount} indexed media file{(reclassifiedMediaCount == 1 ? string.Empty : "s")}.";
+            return;
+        }
+
+        StatusMessage = configuredFolder.Folder.DisplayName is null
+            ? "Folder saved. The folder name is shown instead of a custom name."
+            : "Folder changes saved.";
     }
 
     private async Task ChangeSelectedFolderMediaTypeAsync()

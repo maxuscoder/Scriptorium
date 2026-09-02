@@ -54,7 +54,7 @@ Use one icon family with an approximately 2 px visual stroke at 20 px. Draw comp
 
 ## Component rules
 
-Start with the shared styles: `Button.Primary` for one main action per context, `Button.Secondary` for alternatives, `Button.Destructive` only after clear consequence, and `Button.Icon` for icon-only actions. Use `Input.TextBox` and `Input.ComboBox` for fields, `Card` for grouped content, `Dialog.Surface` for modal content, `Badge` for compact status labels, and `Divider` to separate dense groups.
+Start with the shared styles: `Button.Primary` for one main action per context, `Button.Secondary` for alternatives, `Button.Destructive` only after clear consequence, and `Button.Icon` for icon-only actions. Use `Toggle.Switch` for binary inclusion or preference states that should read as on/off rather than a labeled checkbox. Use `Input.TextBox` and `Input.ComboBox` for fields, `Card` for grouped content, `Dialog.Surface` for modal content, `Badge` for compact status labels, and `Divider` to separate dense groups.
 
 Components must have default, hover, keyboard-focus, disabled, and (where relevant) selected, error, and loading states. Preserve a 32 px minimum hit target; use 40 px for icon-only controls and comfortable text inputs. Keep the primary action visually unique, communicate disabled states with both opacity and unavailable behavior, and ensure every focusable custom component visibly uses `Brush.FocusRing`.
 

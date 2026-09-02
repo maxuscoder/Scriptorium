@@ -285,6 +285,51 @@
         <Setter Property="Height" Value="1" />
         <Setter Property="Background" Value="{StaticResource Brush.Border}" />
     </Style>
+    <Style x:Key="Toggle.Switch" TargetType="CheckBox">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="MinWidth" Value="{StaticResource Control.MinHitTarget}" />
+        <Setter Property="MinHeight" Value="{StaticResource Control.MinHitTarget}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Grid Width="44" Height="24" Background="Transparent">
+                        <Border
+                            x:Name="Track"
+                            Background="{StaticResource Brush.SurfaceOverlay}"
+                            BorderBrush="{StaticResource Brush.Border}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource CornerRadius.Pill}" />
+                        <Ellipse
+                            x:Name="Thumb"
+                            Width="18"
+                            Height="18"
+                            Margin="3,0,0,0"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Fill="{StaticResource Brush.TextPrimary}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Track" Property="Background" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                            <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Track" Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.55" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <Style x:Key="Page.Enter" TargetType="UserControl">
         <Setter Property="Opacity" Value="1" />
         <Setter Property="RenderTransform">
