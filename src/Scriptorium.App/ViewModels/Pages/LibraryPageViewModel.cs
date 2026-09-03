@@ -369,6 +369,14 @@ public sealed class LibraryPageViewModel : PageViewModel
     /// <summary>Gets the selectable category filters.</summary>
     public ObservableCollection<LibraryFilterOptionViewModel<Guid>> CategoryFilters { get; } = [];
 
+    /// <summary>Gets the category-selection summary used by the filter panel.</summary>
+    public string CategoryFilterSummary => CategoryFilters.Count(filter => filter.IsSelected) switch
+    {
+        0 => "All categories",
+        1 => CategoryFilters.First(filter => filter.IsSelected).DisplayName,
+        var count => $"{count} categories"
+    };
+
     /// <summary>Gets the available playback-state filters.</summary>
     public IReadOnlyList<PlaybackFilterOption> PlaybackFilters { get; }
 
@@ -830,6 +838,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         OnPropertyChanged(nameof(EmptyLibraryDescription));
         OnPropertyChanged(nameof(MediaCountText));
         OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(CategoryFilterSummary));
         OnPropertyChanged(nameof(ActiveBrowseDescription));
         _clearFiltersCommand?.NotifyCanExecuteChanged();
     }
