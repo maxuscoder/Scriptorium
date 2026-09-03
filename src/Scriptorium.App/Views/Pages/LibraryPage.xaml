@@ -309,7 +309,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Label}" Text="Source group" />
                         <Grid Margin="0,6,0,0">
-                            <ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding SelectedTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
+                            <ComboBox HorizontalAlignment="Stretch" MaxWidth="Infinity" DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding SelectedTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
                             <TextBlock Text="Select source group">
                                 <TextBlock.Style>
                                     <Style BasedOn="{StaticResource Library.Placeholder}" TargetType="TextBlock">
@@ -326,7 +326,7 @@
                     <StackPanel Grid.Column="2">
                         <TextBlock Style="{StaticResource Text.Label}" Text="Media in source group" />
                         <Grid Margin="0,6,0,0">
-                            <ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding SelectedTvShowGroup.Media}" SelectedItem="{Binding SelectedTvShowMedia, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
+                            <ComboBox HorizontalAlignment="Stretch" MaxWidth="Infinity" DisplayMemberPath="DisplayName" ItemsSource="{Binding SelectedTvShowGroup.Media}" SelectedItem="{Binding SelectedTvShowMedia, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
                             <TextBlock Text="Select media">
                                 <TextBlock.Style>
                                     <Style BasedOn="{StaticResource Library.Placeholder}" TargetType="TextBlock">
@@ -344,7 +344,7 @@
 
                 <TextBlock Margin="0,16,0,0" Style="{StaticResource Text.Label}" Text="Destination group" />
                 <Grid Margin="0,6,0,0">
-                    <ComboBox DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding TargetTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
+                    <ComboBox HorizontalAlignment="Stretch" MaxWidth="Infinity" DisplayMemberPath="DisplayName" ItemsSource="{Binding TvShowGroups}" SelectedItem="{Binding TargetTvShowGroup, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
                     <TextBlock Text="Select destination group">
                         <TextBlock.Style>
                             <Style BasedOn="{StaticResource Library.Placeholder}" TargetType="TextBlock">
