@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Scriptorium.App.ViewModels;
 
 namespace Scriptorium.App.Views;
@@ -21,6 +22,7 @@ public partial class MainWindow : Window
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         UpdateAdaptiveChrome(ActualWidth);
+        UpdateWindowFrame();
         UpdateMaximizeRestoreGlyph();
     }
 
@@ -49,7 +51,29 @@ public partial class MainWindow : Window
 
     private void OnStateChanged(object? sender, EventArgs e)
     {
+        UpdateWindowFrame();
         UpdateMaximizeRestoreGlyph();
+    }
+
+    private void UpdateWindowFrame()
+    {
+        var isMaximized = WindowState == WindowState.Maximized;
+        WindowFrame.BorderThickness = isMaximized ? new Thickness(0) : new Thickness(1);
+        WindowFrame.CornerRadius = isMaximized ? new CornerRadius(0) : new CornerRadius(8);
+        UpdateWindowFrameClip();
+    }
+
+    private void OnWindowFrameSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateWindowFrameClip();
+    }
+
+    private void UpdateWindowFrameClip()
+    {
+        var radius = WindowFrame.CornerRadius.TopLeft;
+        WindowFrame.Clip = radius > 0 && WindowFrame.ActualWidth > 0 && WindowFrame.ActualHeight > 0
+            ? new RectangleGeometry(new Rect(0, 0, WindowFrame.ActualWidth, WindowFrame.ActualHeight), radius, radius)
+            : null;
     }
 
     private void OnCloseClicked(object sender, RoutedEventArgs e)

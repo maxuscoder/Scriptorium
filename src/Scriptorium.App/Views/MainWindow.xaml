@@ -15,7 +15,8 @@
     MinHeight="500"
     WindowStartupLocation="CenterScreen"
     WindowStyle="None"
-    Background="{StaticResource Brush.Background}"
+    AllowsTransparency="True"
+    Background="Transparent"
     Loaded="OnLoaded"
     SizeChanged="OnSizeChanged"
     StateChanged="OnStateChanged"
@@ -28,7 +29,14 @@
             ResizeBorderThickness="6"
             UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
-    <Grid Background="{StaticResource Brush.Background}">
+    <Border
+        x:Name="WindowFrame"
+        Background="{StaticResource Brush.Background}"
+        BorderBrush="{StaticResource Brush.BorderStrong}"
+        BorderThickness="1"
+        CornerRadius="8"
+        SizeChanged="OnWindowFrameSizeChanged">
+        <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="24" />
             <RowDefinition Height="*" />
@@ -133,4 +141,5 @@
                 Content="{Binding CurrentPage}" />
         </Grid>
     </Grid>
+    </Border>
 </Window>
