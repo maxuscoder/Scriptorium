@@ -186,10 +186,6 @@
                 <Setter Property="Background" Value="{StaticResource Brush.AccentStrong}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentStrong}" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
-                <Setter Property="BorderThickness" Value="2" />
-            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.55" />
             </Trigger>
@@ -205,9 +201,6 @@
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
-            </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.55" />
@@ -246,9 +239,6 @@
                 <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
                 <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
-            </Trigger>
         </Style.Triggers>
     </Style>
     <Style
@@ -281,7 +271,7 @@
         </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
+                <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                 <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
             </DataTrigger>
@@ -439,7 +429,7 @@
         </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
+                <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
                 <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
             </DataTrigger>
@@ -453,7 +443,7 @@
                     <Condition Binding="{Binding IsSelected}" Value="True" />
                     <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True" />
                 </MultiDataTrigger.Conditions>
-                <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
+                <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                 <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
             </MultiDataTrigger>
@@ -510,6 +500,7 @@
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style x:Key="Input.SearchTextBox" TargetType="TextBox">
+        <Setter Property="CaretBrush" Value="{StaticResource Brush.TextMuted}" />
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
         <Setter Property="FontWeight" Value="Normal" />
@@ -643,8 +634,8 @@
                             <Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
-                            <Setter Property="Foreground" Value="{StaticResource Brush.AccentText}" />
+                            <Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
+                            <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

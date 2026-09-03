@@ -12,12 +12,9 @@
     <!-- Brand and feedback colors are semantic: consume the named role, not a hex value. -->
     <Color x:Key="Color.Accent">#CC4B08</Color>
     <Color x:Key="Color.AccentStrong">#B83E06</Color>
-    <!-- Neutral selection surface; the accent remains reserved for emphasis, borders, and glyphs. -->
-    <Color x:Key="Color.AccentSurface">#222222</Color>
-    <!-- Selection and metadata text stay neutral; vivid orange is reserved for primary actions and indicators. -->
-    <Color x:Key="Color.AccentText">#F4F4F4</Color>
+    <!-- Selected states use a neutral surface; orange remains for high-salience accents. -->
+    <Color x:Key="Color.SelectionSurface">#252525</Color>
     <Color x:Key="Color.NavigationHover">#171717</Color>
-    <Color x:Key="Color.NavigationSelected">#252525</Color>
     <Color x:Key="Color.Success">#4FCB8D</Color>
     <Color x:Key="Color.SuccessSurface">#202020</Color>
     <Color x:Key="Color.Warning">#E5A84B</Color>
@@ -43,10 +40,8 @@
     <SolidColorBrush x:Key="Brush.BorderStrong" Color="{StaticResource Color.BorderStrong}" />
     <SolidColorBrush x:Key="Brush.Accent" Color="{StaticResource Color.Accent}" />
     <SolidColorBrush x:Key="Brush.AccentStrong" Color="{StaticResource Color.AccentStrong}" />
-    <SolidColorBrush x:Key="Brush.AccentSurface" Color="{StaticResource Color.AccentSurface}" />
-    <SolidColorBrush x:Key="Brush.AccentText" Color="{StaticResource Color.AccentText}" />
+    <SolidColorBrush x:Key="Brush.SelectionSurface" Color="{StaticResource Color.SelectionSurface}" />
     <SolidColorBrush x:Key="Brush.NavigationHover" Color="{StaticResource Color.NavigationHover}" />
-    <SolidColorBrush x:Key="Brush.NavigationSelected" Color="{StaticResource Color.NavigationSelected}" />
     <SolidColorBrush x:Key="Brush.Success" Color="{StaticResource Color.Success}" />
     <SolidColorBrush x:Key="Brush.SuccessSurface" Color="{StaticResource Color.SuccessSurface}" />
     <SolidColorBrush x:Key="Brush.Warning" Color="{StaticResource Color.Warning}" />

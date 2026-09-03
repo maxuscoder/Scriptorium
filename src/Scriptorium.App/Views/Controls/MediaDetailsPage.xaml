@@ -30,7 +30,7 @@
 
                 <Border
                     Height="300"
-                    Background="{StaticResource Brush.AccentSurface}"
+                    Background="{StaticResource Brush.SurfaceOverlay}"
                     BorderBrush="{StaticResource Brush.Border}"
                     BorderThickness="1"
                     CornerRadius="{StaticResource CornerRadius.M}">
