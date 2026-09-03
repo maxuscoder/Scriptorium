@@ -6,29 +6,131 @@
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
     Title="Scriptorium"
+    Icon="/Scriptorium.App;component/Assets/scriptorium-logo.png"
     Width="1200"
     Height="760"
     MinWidth="800"
     MinHeight="500"
     WindowStartupLocation="CenterScreen"
+    WindowStyle="None"
+    Background="{StaticResource Brush.Background}"
     Loaded="OnLoaded"
     SizeChanged="OnSizeChanged"
+    StateChanged="OnStateChanged"
     mc:Ignorable="d">
+    <WindowChrome.WindowChrome>
+        <shell:WindowChrome
+            CaptionHeight="24"
+            CornerRadius="0"
+            GlassFrameThickness="0"
+            ResizeBorderThickness="6"
+            UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
     <Grid Background="{StaticResource Brush.Background}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="24" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="NavigationColumn" Width="256" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
+        <Border
+            Background="{StaticResource Brush.SurfaceHeader}"
+            BorderBrush="{StaticResource Brush.Border}"
+            BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
 
-        <controls:Sidebar x:Name="SidebarNavigation" />
+                <StackPanel Margin="16,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                    <Image
+                        Width="{StaticResource Logo.Size.TitleBar}"
+                        Height="{StaticResource Logo.Size.TitleBar}"
+                        Source="/Scriptorium.App;component/Assets/scriptorium-logo.png"
+                        Stretch="Uniform" />
+                    <TextBlock
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource Text.Label}"
+                        FontSize="11"
+                        Foreground="{StaticResource Brush.TextPrimary}"
+                        Text="Scriptorium" />
+                    <Border
+                        Width="1"
+                        Height="11"
+                        Margin="12,0"
+                        Background="{StaticResource Brush.BorderStrong}" />
+                    <TextBlock
+                        VerticalAlignment="Center"
+                        Style="{StaticResource Text.Metadata}"
+                        FontSize="11"
+                        Text="Your media library" />
+                </StackPanel>
 
-        <ContentControl
-            Grid.Column="1"
-            Margin="0,0,0,0"
-            MinWidth="0"
-            MinHeight="0"
-            Content="{Binding CurrentPage}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button
+                        Click="OnMinimizeClicked"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                        Style="{StaticResource WindowChrome.MinimizeButton}"
+                        ToolTip="Minimize">
+                        <Path
+                            Width="10"
+                            Height="10"
+                            Data="M5,11H19V13H5Z"
+                            Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                            Stretch="Uniform" />
+                    </Button>
+                    <Button
+                        Click="OnMaximizeRestoreClicked"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                        Style="{StaticResource WindowChrome.MaximizeButton}"
+                        ToolTip="Maximize or restore">
+                        <Grid Width="10" Height="10">
+                            <Rectangle
+                                x:Name="MaximizeGlyph"
+                                Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                StrokeThickness="1.5" />
+                            <Path
+                                x:Name="RestoreGlyph"
+                                Data="M7,3H19V15H17V5H7M5,7H15V17H5Z"
+                                Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                Stretch="Uniform"
+                                Visibility="Collapsed" />
+                        </Grid>
+                    </Button>
+                    <Button
+                        Click="OnCloseClicked"
+                        shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                        Style="{StaticResource WindowChrome.CloseButton}"
+                        ToolTip="Close">
+                        <Path
+                            Width="10"
+                            Height="10"
+                            Data="M6.4,5 5,6.4 10.6,12 5,17.6 6.4,19 12,13.4 17.6,19 19,17.6 13.4,12 19,6.4 17.6,5 12,10.6Z"
+                            Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                            Stretch="Uniform" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="NavigationColumn" Width="256" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <controls:Sidebar x:Name="SidebarNavigation" />
+
+            <ContentControl
+                Grid.Column="1"
+                Margin="0"
+                MinWidth="0"
+                MinHeight="0"
+                Content="{Binding CurrentPage}" />
+        </Grid>
     </Grid>
 </Window>

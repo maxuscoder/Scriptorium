@@ -1,5 +1,152 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors" xmlns:converters="clr-namespace:Scriptorium.App.Converters">
     <converters:ComboBoxSelectionDisplayConverter x:Key="ComboBoxSelectionDisplay" />
+    <Style x:Key="WindowChrome.Button" TargetType="Button">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Height" Value="24" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}">
+                        <ContentPresenter
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            RecognizesAccessKey="True" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="WindowChrome.MinimizeButton" BasedOn="{StaticResource WindowChrome.Button}" TargetType="Button" />
+    <Style x:Key="WindowChrome.MaximizeButton" BasedOn="{StaticResource WindowChrome.Button}" TargetType="Button" />
+    <Style x:Key="WindowChrome.CloseButton" BasedOn="{StaticResource WindowChrome.Button}" TargetType="Button">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.Danger}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="ScrollBar.TrackButton" TargetType="RepeatButton">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Border Background="{TemplateBinding Background}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="ScrollBar.VerticalThumb" TargetType="Thumb">
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Background" Value="{StaticResource Brush.TextMuted}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border
+                        Margin="2"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{StaticResource CornerRadius.XS}" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.TextSecondary}" />
+            </Trigger>
+            <Trigger Property="IsDragging" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.TextPrimary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="ScrollBar.HorizontalThumb" TargetType="Thumb" BasedOn="{StaticResource ScrollBar.VerticalThumb}">
+        <Setter Property="MinWidth" Value="40" />
+        <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <ControlTemplate x:Key="ScrollBar.VerticalTemplate" TargetType="ScrollBar">
+        <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+            <Border
+                Width="14"
+                HorizontalAlignment="Center"
+                Background="{StaticResource Brush.SurfaceElevated}"
+                CornerRadius="{StaticResource CornerRadius.XS}" />
+            <Track x:Name="PART_Track" Width="14" IsDirectionReversed="True">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.PageUpCommand"
+                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                        Style="{StaticResource ScrollBar.TrackButton}" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource ScrollBar.VerticalThumb}" />
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.PageDownCommand"
+                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                        Style="{StaticResource ScrollBar.TrackButton}" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+    <ControlTemplate x:Key="ScrollBar.HorizontalTemplate" TargetType="ScrollBar">
+        <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+            <Border
+                Height="14"
+                VerticalAlignment="Center"
+                Background="{StaticResource Brush.SurfaceElevated}"
+                CornerRadius="{StaticResource CornerRadius.XS}" />
+            <Track x:Name="PART_Track" Height="14" IsDirectionReversed="False">
+                <Track.DecreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.PageLeftCommand"
+                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                        Style="{StaticResource ScrollBar.TrackButton}" />
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                    <Thumb Style="{StaticResource ScrollBar.HorizontalThumb}" />
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                    <RepeatButton
+                        Command="ScrollBar.PageRightCommand"
+                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                        Style="{StaticResource ScrollBar.TrackButton}" />
+                </Track.IncreaseRepeatButton>
+            </Track>
+        </Grid>
+    </ControlTemplate>
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Template" Value="{StaticResource ScrollBar.VerticalTemplate}" />
+        <Setter Property="UseLayoutRounding" Value="True" />
+        <Style.Triggers>
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Template" Value="{StaticResource ScrollBar.HorizontalTemplate}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="Button.Base" TargetType="Button">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />

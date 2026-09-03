@@ -76,13 +76,13 @@
         <DockPanel Margin="12,18,12,14" LastChildFill="True">
             <Grid Height="64" Margin="4,0,4,10" DockPanel.Dock="Top">
                 <Image
-                    Width="64"
-                    Height="64"
+                    Width="{StaticResource Logo.Size.Sidebar}"
+                    Height="{StaticResource Logo.Size.Sidebar}"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
                     Source="/Scriptorium.App;component/Assets/scriptorium-logo.png"
                     Stretch="Uniform" />
-                <StackPanel Margin="76,0,0,0" VerticalAlignment="Center">
+                <StackPanel Margin="56,0,0,0" VerticalAlignment="Center">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
                             <Style.Triggers>
