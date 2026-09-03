@@ -32,13 +32,16 @@
         TargetType="Button">
         <Setter Property="Background" Value="{StaticResource Brush.Accent}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextOnAccent}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.AccentStrong}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentStrong}" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                <Setter Property="BorderThickness" Value="2" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.55" />
