@@ -1,18 +1,31 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Shared type scale. Keep visual hierarchy in named roles rather than local overrides. -->
     <FontFamily x:Key="FontFamily.Application">Segoe UI</FontFamily>
-    <!-- Type scale: reserve larger steps for page hierarchy, not routine labels. -->
-    <sys:Double x:Key="FontSize.Caption">12</sys:Double>
+    <sys:Double x:Key="FontSize.NavigationGroup">12</sys:Double>
+    <sys:Double x:Key="FontSize.Badge">12</sys:Double>
     <sys:Double x:Key="FontSize.Label">13</sys:Double>
-    <sys:Double x:Key="FontSize.BodySmall">14</sys:Double>
-    <sys:Double x:Key="FontSize.Body">15</sys:Double>
-    <sys:Double x:Key="FontSize.Navigation">15</sys:Double>
-    <sys:Double x:Key="FontSize.Subheading">18</sys:Double>
-    <sys:Double x:Key="FontSize.Heading">24</sys:Double>
-    <sys:Double x:Key="FontSize.Display">32</sys:Double>
-    <sys:Double x:Key="FontSize.Hero">40</sys:Double>
+    <sys:Double x:Key="FontSize.Metadata">13</sys:Double>
+    <sys:Double x:Key="FontSize.Body">14</sys:Double>
+    <sys:Double x:Key="FontSize.Control">14</sys:Double>
+    <sys:Double x:Key="FontSize.Navigation">16</sys:Double>
+    <sys:Double x:Key="FontSize.CardTitle">16</sys:Double>
+    <sys:Double x:Key="FontSize.SubsectionTitle">17</sys:Double>
+    <sys:Double x:Key="FontSize.PanelTitle">20</sys:Double>
+    <sys:Double x:Key="FontSize.SectionTitle">22</sys:Double>
+    <sys:Double x:Key="FontSize.PageTitle">28</sys:Double>
     <sys:Double x:Key="FontSize.Brand">22</sys:Double>
+    <sys:Double x:Key="FontSize.ArtworkGlyph.Small">22</sys:Double>
+    <sys:Double x:Key="FontSize.ArtworkGlyph.Medium">24</sys:Double>
+    <sys:Double x:Key="FontSize.ArtworkGlyph.Large">44</sys:Double>
+    <sys:Double x:Key="FontSize.Icon">17</sys:Double>
+
+    <Style TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
 
     <Style x:Key="Text.Brand" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
@@ -22,27 +35,46 @@
     </Style>
     <Style x:Key="Text.PageTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Heading}" />
-        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.PageTitle}" />
+        <Setter Property="FontWeight" Value="Bold" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
     </Style>
     <Style x:Key="Text.SectionTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Subheading}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.SectionTitle}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
     </Style>
-    <Style x:Key="Text.Display" TargetType="TextBlock">
+    <Style x:Key="Text.PanelTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.SectionTitle}">
+        <Setter Property="FontSize" Value="{StaticResource FontSize.PanelTitle}" />
+    </Style>
+    <Style x:Key="Text.SubsectionTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.SectionTitle}">
+        <Setter Property="FontSize" Value="{StaticResource FontSize.SubsectionTitle}" />
+    </Style>
+    <Style x:Key="Text.CardTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Display}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.CardTitle}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
-        <Setter Property="TextAlignment" Value="Center" />
-        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="Text.Navigation" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Navigation}" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style x:Key="Text.Navigation.Selected" TargetType="TextBlock" BasedOn="{StaticResource Text.Navigation}">
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Text.NavigationGroup" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.NavigationGroup}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
     </Style>
     <Style x:Key="Text.Body" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -55,9 +87,46 @@
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
     </Style>
-    <Style x:Key="Text.Caption" TargetType="TextBlock">
+    <Style x:Key="Text.Metadata" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Caption}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Metadata}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" />
     </Style>
+    <Style x:Key="Text.Helper" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+    </Style>
+    <Style x:Key="Text.Control" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
+        <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <Style x:Key="Text.Badge" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Badge}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- These glyphs are artwork fallbacks, not interface labels. -->
+    <Style x:Key="Text.ArtworkGlyph.Small" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.ArtworkGlyph.Small}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Text.ArtworkGlyph.Medium" TargetType="TextBlock" BasedOn="{StaticResource Text.ArtworkGlyph.Small}">
+        <Setter Property="FontSize" Value="{StaticResource FontSize.ArtworkGlyph.Medium}" />
+    </Style>
+    <Style x:Key="Text.ArtworkGlyph.Large" TargetType="TextBlock" BasedOn="{StaticResource Text.ArtworkGlyph.Small}">
+        <Setter Property="FontSize" Value="{StaticResource FontSize.ArtworkGlyph.Large}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style x:Key="Text.Icon" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Icon}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style x:Key="Text.EmptyStateTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.SectionTitle}">
+        <Setter Property="TextAlignment" Value="Center" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="Text.Display" TargetType="TextBlock" BasedOn="{StaticResource Text.EmptyStateTitle}" />
 </ResourceDictionary>

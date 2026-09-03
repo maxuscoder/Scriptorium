@@ -52,12 +52,12 @@
                             </StackPanel.Style>
                             <TextBlock
                                 HorizontalAlignment="Center"
-                                FontSize="44"
+                                Style="{StaticResource Text.ArtworkGlyph.Large}"
                                 Foreground="{StaticResource Brush.Accent}"
                                 Text="{Binding FallbackGlyph, ElementName=Root}" />
                             <TextBlock
                                 Margin="0,8,0,0"
-                                Foreground="{StaticResource Brush.TextSecondary}"
+                                Style="{StaticResource Text.Helper}"
                                 Text="No image available" />
                         </StackPanel>
                     </Grid>
@@ -65,22 +65,19 @@
 
                 <StackPanel Grid.Column="2">
                     <TextBlock
-                        Foreground="{StaticResource Brush.TextMuted}"
+                        Style="{StaticResource Text.Badge}"
                         Text="{Binding TypeLabel, ElementName=Root}" />
                     <TextBlock
                         Margin="0,6,0,0"
-                        FontSize="28"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource Brush.TextPrimary}"
+                        Style="{StaticResource Text.PageTitle}"
                         Text="{Binding Title, ElementName=Root}"
                         TextWrapping="Wrap" />
                     <TextBlock
                         Margin="0,10,0,0"
-                        Foreground="{StaticResource Brush.TextSecondary}"
                         Text="{Binding HeaderMetadata, ElementName=Root}"
                         TextWrapping="Wrap">
                         <TextBlock.Style>
-                            <Style TargetType="TextBlock">
+                            <Style BasedOn="{StaticResource Text.Body}" TargetType="TextBlock">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding HeaderMetadata, ElementName=Root}" Value="">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -91,11 +88,11 @@
                     </TextBlock>
                     <TextBlock
                         Margin="0,8,0,0"
-                        Foreground="{StaticResource Brush.TextMuted}"
+                        Style="{StaticResource Text.Metadata}"
                         Text="{Binding Status, ElementName=Root}" />
                     <TextBlock
                         Margin="0,16,0,0"
-                        Foreground="{StaticResource Brush.TextSecondary}"
+                        Style="{StaticResource Text.Body}"
                         Text="{Binding Description, ElementName=Root}"
                         TextWrapping="Wrap" />
 
@@ -130,7 +127,7 @@
 
             <Border Margin="0,24,0,0" Style="{StaticResource Card}">
                 <StackPanel>
-                    <TextBlock FontWeight="SemiBold" Text="Metadata" />
+                    <TextBlock Style="{StaticResource Text.PanelTitle}" Text="Metadata" />
                     <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding MetadataItems, ElementName=Root}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -140,9 +137,10 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Width="200" Margin="0,0,20,16">
-                                    <TextBlock Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Label}" />
+                                    <TextBlock Style="{StaticResource Text.Label}" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Label}" />
                                     <TextBlock
                                         Margin="0,4,0,0"
+                                        Style="{StaticResource Text.Body}"
                                         Foreground="{StaticResource Brush.TextPrimary}"
                                         Text="{Binding Value}"
                                         TextTrimming="CharacterEllipsis"

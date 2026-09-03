@@ -2,7 +2,7 @@
     <converters:ComboBoxSelectionDisplayConverter x:Key="ComboBoxSelectionDisplay" />
     <Style x:Key="Button.Base" TargetType="Button">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="{StaticResource Padding.Control}" />
@@ -114,6 +114,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Padding" Value="12,9" />
         <Setter Property="Margin" Value="0,3" />
+        <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -334,7 +335,8 @@
         <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="Padding" Value="{StaticResource Padding.Input}" />
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TextBox">
@@ -355,6 +357,16 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    <Style x:Key="Toggle.Filter" TargetType="ToggleButton">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style x:Key="Input.SearchTextBox" TargetType="TextBox">
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
+        <Setter Property="FontWeight" Value="Normal" />
+    </Style>
     <Style x:Key="Input.ComboBox" TargetType="ComboBox">
         <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
         <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
@@ -363,7 +375,8 @@
         <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="Padding" Value="{StaticResource Padding.Input}" />
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="MaxWidth" Value="520" />
         <Setter Property="MaxDropDownHeight" Value="360" />
         <Setter Property="Template">
@@ -460,6 +473,9 @@
         <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
         <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
         <Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextPrimary}" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
+        <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="Template">
             <Setter.Value>

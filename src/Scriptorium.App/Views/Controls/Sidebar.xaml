@@ -50,14 +50,13 @@
                         Grid.Column="1"
                         Margin="12,0,0,0"
                         VerticalAlignment="Center"
-                        FontSize="{StaticResource FontSize.Navigation}"
-                        FontWeight="SemiBold"
                         Text="{Binding Label}">
                         <TextBlock.Style>
-                            <Style TargetType="TextBlock">
+                            <Style BasedOn="{StaticResource Text.Navigation}" TargetType="TextBlock">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                         <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -94,18 +93,17 @@
                         </Style>
                     </StackPanel.Style>
                     <TextBlock Style="{StaticResource Text.Brand}" Text="Scriptorium" />
-                    <TextBlock Margin="1,2,0,0" Style="{StaticResource Text.Caption}" Text="YOUR MEDIA LIBRARY" />
+                    <TextBlock Margin="1,2,0,0" Style="{StaticResource Text.NavigationGroup}" Text="YOUR MEDIA LIBRARY" />
                 </StackPanel>
             </Grid>
 
             <TextBlock
                 DockPanel.Dock="Top"
                 Margin="12,0,0,10"
-                FontWeight="SemiBold"
                 TextOptions.TextFormattingMode="Display"
                 Text="NAVIGATION">
                 <TextBlock.Style>
-                    <Style BasedOn="{StaticResource Text.Caption}" TargetType="TextBlock">
+                    <Style BasedOn="{StaticResource Text.NavigationGroup}" TargetType="TextBlock">
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -134,7 +132,7 @@
                 </Border.Style>
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="Your library" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Caption}" Text="Organized and ready to watch" TextWrapping="Wrap" />
+                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Helper}" Text="Organized and ready to watch" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -150,11 +148,10 @@
                 </StackPanel.Style>
                 <TextBlock
                     Margin="12,0,0,8"
-                    FontWeight="SemiBold"
                     Text="PREFERENCES"
                     TextOptions.TextFormattingMode="Display">
                     <TextBlock.Style>
-                        <Style BasedOn="{StaticResource Text.Caption}" TargetType="TextBlock">
+                        <Style BasedOn="{StaticResource Text.NavigationGroup}" TargetType="TextBlock">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
                                     <Setter Property="Visibility" Value="Collapsed" />
