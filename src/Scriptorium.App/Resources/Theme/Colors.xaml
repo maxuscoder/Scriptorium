@@ -12,8 +12,10 @@
     <!-- Brand and feedback colors are semantic: consume the named role, not a hex value. -->
     <Color x:Key="Color.Accent">#CC4B08</Color>
     <Color x:Key="Color.AccentStrong">#B83E06</Color>
-    <Color x:Key="Color.AccentSurface">#262626</Color>
-    <Color x:Key="Color.AccentText">#FFC38A</Color>
+    <!-- Neutral selection surface; the accent remains reserved for emphasis, borders, and glyphs. -->
+    <Color x:Key="Color.AccentSurface">#222222</Color>
+    <!-- Selection and metadata text stay neutral; vivid orange is reserved for primary actions and indicators. -->
+    <Color x:Key="Color.AccentText">#F4F4F4</Color>
     <Color x:Key="Color.NavigationHover">#171717</Color>
     <Color x:Key="Color.NavigationSelected">#252525</Color>
     <Color x:Key="Color.Success">#4FCB8D</Color>

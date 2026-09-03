@@ -281,7 +281,7 @@
         </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
+                <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
                 <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                 <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
             </DataTrigger>
@@ -440,7 +440,7 @@
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                 <Setter Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.AccentSurface}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
                 <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
             </DataTrigger>
             <Trigger Property="IsMouseOver" Value="True">
@@ -612,7 +612,7 @@
                 <Setter Property="IsEnabled" Value="False" />
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
-                <Setter Property="BorderBrush" Value="{StaticResource Brush.FocusRing}" />
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -640,7 +640,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsHighlighted" Value="True">
-                            <Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.AccentSurface}" />
+                            <Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.NavigationSelected}" />
@@ -660,7 +660,7 @@
         <Setter Property="Effect" Value="{StaticResource Elevation.3}" />
     </Style>
     <Style x:Key="Badge" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
         <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.S}" />
         <Setter Property="Padding" Value="8,3" />
     </Style>

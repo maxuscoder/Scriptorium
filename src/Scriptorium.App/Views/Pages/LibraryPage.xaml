@@ -82,7 +82,7 @@
                     <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                 </Trigger>
                 <Trigger Property="IsChecked" Value="True">
-                    <Setter Property="Background" Value="{StaticResource Brush.AccentSurface}" />
+                    <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
                     <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
                 </Trigger>
                 <Trigger Property="IsKeyboardFocused" Value="True">
