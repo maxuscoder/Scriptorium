@@ -32,8 +32,42 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Button Command="{Binding TogglePlaybackCommand}" Content="{Binding PlayActionText}"
-                            Style="{StaticResource Button.Primary}" MinWidth="80" ToolTip="Play or pause video" />
+                    <Button Command="{Binding TogglePlaybackCommand}"
+                            Width="36" Height="36" MinHeight="36"
+                            Style="{StaticResource Button.Icon}"
+                            ToolTip="Play or pause video"
+                            AutomationProperties.Name="{Binding PlayActionText}">
+                        <Grid Width="16" Height="16">
+                            <Path x:Name="PlayIcon" Data="M3,1 L15,8 L3,15 Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                            <Grid x:Name="PauseIcon">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Rectangle Width="4" Height="14" HorizontalAlignment="Left"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                <Rectangle Width="4" Height="14" HorizontalAlignment="Right"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            </Grid>
+                        </Grid>
+                    </Button>
                     <StackPanel Grid.Column="1" Margin="{StaticResource Spacing.S}" VerticalAlignment="Center">
                         <Slider x:Name="SeekSlider"
                                 Minimum="0"
@@ -52,14 +86,25 @@
                         <TextBlock Text="{Binding Status}" Style="{StaticResource Text.Metadata}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                     <Button Grid.Column="2" Click="OnFullscreenClick"
-                            ToolTip="Toggle fullscreen (F11); exit with Esc">
+                            Width="36" Height="36" MinHeight="36"
+                            ToolTip="Toggle fullscreen (F11); exit with Esc"
+                            AutomationProperties.Name="Toggle fullscreen">
+                        <Path Width="18" Height="18"
+                              Data="M2,7 V2 H7 M11,2 H16 V7 M16,11 V16 H11 M7,16 H2 V11"
+                              Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.8"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" />
                         <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-                                <Setter Property="Content" Value="Fullscreen" />
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                                <Setter Property="Width" Value="36" />
+                                <Setter Property="Height" Value="36" />
+                                <Setter Property="MinHeight" Value="36" />
                                 <Setter Property="IsEnabled" Value="{Binding IsReady}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsFullscreen, ElementName=Root}" Value="True">
-                                        <Setter Property="Content" Value="Exit fullscreen" />
                                         <Setter Property="IsEnabled" Value="True" />
                                     </DataTrigger>
                                 </Style.Triggers>

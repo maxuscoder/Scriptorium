@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -79,7 +80,8 @@ public sealed class VideoPlayerViewTests
             await Task.Delay(500);
             var engine = Assert.Single(factory.Instances);
             var position = engine.Position;
-            var fullscreenButton = Descendants<Button>(inlineView).Single(button => Equals(button.Content, "Fullscreen"));
+            var fullscreenButton = Descendants<Button>(inlineView).Single(button =>
+                AutomationProperties.GetName(button) == "Toggle fullscreen");
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await Task.Delay(200);
             var fullscreen = Assert.Single(window.OwnedWindows.Cast<Window>());
