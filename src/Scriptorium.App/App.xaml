@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages"
              xmlns:pagesViewModels="clr-namespace:Scriptorium.App.ViewModels.Pages"
-             xmlns:viewModels="clr-namespace:Scriptorium.App.ViewModels">
+             xmlns:viewModels="clr-namespace:Scriptorium.App.ViewModels"
+             xmlns:converters="clr-namespace:Scriptorium.App.Converters">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -13,8 +14,9 @@
                 <ResourceDictionary Source="Resources/Theme/Elevation.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Motion.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Controls.xaml" />
-                <ResourceDictionary Source="Resources/Library.xaml" />
+            <ResourceDictionary Source="Resources/Library.xaml" />
             </ResourceDictionary.MergedDictionaries>
+            <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <DataTemplate DataType="{x:Type viewModels:MainWindowViewModel}">
                 <pages:HomePage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
@@ -35,6 +37,9 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:FavoritesPageViewModel}">
                 <pages:FavoritesPage Style="{StaticResource Page.Enter}" />
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type pagesViewModels:CategoriesPageViewModel}">
+                <pages:CategoriesPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:SettingsPageViewModel}">
                 <pages:SettingsPage Style="{StaticResource Page.Enter}" />

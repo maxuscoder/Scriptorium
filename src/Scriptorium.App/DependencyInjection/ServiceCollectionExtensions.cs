@@ -45,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<MovieDetailsPageViewModel>();
         services.AddSingleton<SearchPageViewModel>();
         services.AddTransient<FavoritesPageViewModel>();
+        services.AddTransient<CategoriesPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<ShellViewModel>();
         services.AddTransient<MainWindow>();
