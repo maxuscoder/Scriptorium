@@ -153,17 +153,15 @@ public sealed class CategoriesPageViewModel : PageViewModel
             var selectedCategoryId = SelectedCategory?.Id;
             _availableMediaItems = mediaItemsTask.Result;
 
-            var mediaCounts = _availableMediaItems
-                .Where(mediaItem => mediaItem.CategoryId is not null)
-                .GroupBy(mediaItem => mediaItem.CategoryId!.Value)
-                .ToDictionary(group => group.Key, group => group.Count());
-
             Categories.Clear();
             foreach (var category in categoriesTask.Result.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
             {
+                var assignedMedia = _availableMediaItems
+                    .Where(mediaItem => mediaItem.CategoryId == category.Id)
+                    .ToArray();
                 Categories.Add(new CategoryItemViewModel(
                     category,
-                    mediaCounts.GetValueOrDefault(category.Id)));
+                    assignedMedia));
             }
 
             SelectedCategory = selectedCategoryId is { } categoryId

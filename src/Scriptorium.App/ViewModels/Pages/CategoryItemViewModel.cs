@@ -12,14 +12,18 @@ public sealed class CategoryItemViewModel : ViewModelBase
     private string _color;
     private bool _isSelected;
 
-    public CategoryItemViewModel(Category category, int mediaCount)
+    public CategoryItemViewModel(Category category, IReadOnlyCollection<MediaItem> assignedMedia)
     {
         ArgumentNullException.ThrowIfNull(category);
+        ArgumentNullException.ThrowIfNull(assignedMedia);
 
         Id = category.Id;
         _name = category.Name;
         _color = category.Color;
-        MediaCount = mediaCount;
+        MediaCount = assignedMedia.Count;
+        MovieCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.Movie);
+        TutorialCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.Tutorial);
+        TvEpisodeCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.TvShow);
     }
 
     public Guid Id { get; }
@@ -49,7 +53,43 @@ public sealed class CategoryItemViewModel : ViewModelBase
 
     public int MediaCount { get; }
 
+    public int MovieCount { get; }
+
+    public int TutorialCount { get; }
+
+    public int TvEpisodeCount { get; }
+
     public string MediaCountText => $"{MediaCount} media item{(MediaCount == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets the type breakdown shown with the category's total.</summary>
+    public string MediaTypeSummaryText
+    {
+        get
+        {
+            if (MediaCount == 0)
+            {
+                return "No media assigned yet";
+            }
+
+            var summaries = new List<string>(3);
+            if (MovieCount > 0)
+            {
+                summaries.Add($"\U0001F3AC Movies ({MovieCount})");
+            }
+
+            if (TutorialCount > 0)
+            {
+                summaries.Add($"\U0001F393 Tutorials ({TutorialCount})");
+            }
+
+            if (TvEpisodeCount > 0)
+            {
+                summaries.Add($"\U0001F4FA TV episodes ({TvEpisodeCount})");
+            }
+
+            return string.Join("  ·  ", summaries);
+        }
+    }
 
     /// <summary>Gets or sets whether this category is the active category in the browser.</summary>
     public bool IsSelected

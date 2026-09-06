@@ -114,6 +114,12 @@
                                             Margin="0,3,0,0"
                                             Style="{StaticResource Text.Metadata}"
                                             Text="{Binding MediaCountText}" />
+                                        <TextBlock
+                                            Margin="0,3,0,0"
+                                            Foreground="{StaticResource Brush.TextMuted}"
+                                            Text="{Binding MediaTypeSummaryText}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTip="{Binding MediaTypeSummaryText}" />
                                     </StackPanel>
                                 </Grid>
                             </Button>
@@ -223,6 +229,12 @@
                                             Margin="0,6,0,0"
                                             Style="{StaticResource Text.Metadata}"
                                             Text="{Binding MediaCountText}" />
+                                        <TextBlock
+                                            Margin="0,3,0,0"
+                                            Foreground="{StaticResource Brush.TextMuted}"
+                                            Text="{Binding MediaTypeSummaryText}"
+                                            TextTrimming="CharacterEllipsis"
+                                            ToolTip="{Binding MediaTypeSummaryText}" />
                                     </StackPanel>
                                     <StackPanel
                                         Grid.Column="2"
