@@ -200,7 +200,8 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                     .SetProperty(item => item.PlaybackPositionSeconds, playbackPositionSeconds)
                     .SetProperty(item => item.RuntimeSeconds, durationSeconds)
                     .SetProperty(item => item.LastPlayed, lastWatched)
-                    .SetProperty(item => item.IsCompleted, durationSeconds > 0 && playbackPositionSeconds >= durationSeconds),
+                    .SetProperty(item => item.IsCompleted,
+                        MediaPlaybackProgress.MeetsCompletionThreshold(playbackPositionSeconds, durationSeconds)),
                 cancellationToken);
 
         return affectedRows == 1;

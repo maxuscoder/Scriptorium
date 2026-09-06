@@ -49,6 +49,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         Player.PlaybackStarted += OnPlaybackStarted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         ToggleCompletionCommand = new AsyncRelayCommand(ToggleCompletionAsync, CanToggleCompletion);
+        ResetProgressCommand = new AsyncRelayCommand(ResetProgressAsync, CanResetProgress);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
     }
@@ -126,6 +127,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
     public ICommand ToggleCompletionCommand { get; }
 
+    /// <summary>Clears saved progress and completion state for the loaded movie.</summary>
+    public ICommand ResetProgressCommand { get; }
+
     public ICommand ToggleFavoriteCommand { get; }
 
     public ICommand SaveCategoryCommand { get; }
@@ -152,7 +156,11 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
             MediaCategoryDisplay.Name(movie));
         Description = string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
-        Player.SetMedia(new MediaPlaybackRequest(movie.Path, movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds));
+        Player.SetMedia(new MediaPlaybackRequest(
+            movie.Path,
+            movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds,
+            movie.Id,
+            movie.RuntimeSeconds ?? 0));
         PopulateMetadata(movie);
         NotifyStateChanged();
         return true;
@@ -195,6 +203,29 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
         movie.PlaybackPositionSeconds = position;
         movie.IsCompleted = !movie.IsCompleted;
+        movie.LastPlayed = DateTimeOffset.UtcNow;
+        Availability = movie.IsMissing ? "File unavailable" : "Available";
+        PopulateMetadata(movie);
+        NotifyStateChanged();
+    }
+
+    private async Task ResetProgressAsync()
+    {
+        var movie = _movie;
+        if (movie?.RuntimeSeconds is not > 0)
+        {
+            return;
+        }
+
+        if (!await _playbackProgressService.SaveAsync(movie.Id, new PlaybackProgressUpdate(0, movie.RuntimeSeconds.Value)))
+        {
+            Availability = "Playback progress could not be reset.";
+            return;
+        }
+
+        Player.ResetProgress();
+        movie.PlaybackPositionSeconds = 0;
+        movie.IsCompleted = false;
         movie.LastPlayed = DateTimeOffset.UtcNow;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
         PopulateMetadata(movie);
@@ -270,6 +301,12 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
     private bool CanToggleCompletion() => _movie is { RuntimeSeconds: > 0 };
 
+    private bool CanResetProgress() => _movie is
+    {
+        RuntimeSeconds: > 0,
+        PlaybackPositionSeconds: > 0
+    } or { IsCompleted: true };
+
     private void PopulateMetadata(MediaItem movie)
     {
         MetadataItems.Clear();
@@ -295,6 +332,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(PlaybackProgressText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleCompletionCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)ResetProgressCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
     }

@@ -255,10 +255,25 @@ public sealed class RepositoryTests
             Assert.Equal(70, await playbackProgressService.GetResumePositionAsync(mediaItem.Id));
             Assert.Equal([mediaItem.Id], savedPlaybackIds);
 
-            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(130, 120));
+            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(113, 120));
+            savedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(savedItem);
+            Assert.False(savedItem.IsCompleted);
+
+            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(114, 120));
+            savedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(savedItem);
+            Assert.True(savedItem.IsCompleted);
             Assert.Equal(0, await playbackProgressService.GetResumePositionAsync(mediaItem.Id));
+
+            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(0, 120));
+            savedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(savedItem);
+            Assert.Equal(0, savedItem.PlaybackPositionSeconds);
+            Assert.False(savedItem.IsCompleted);
+
             Assert.False(await playbackProgressService.SaveAsync(Guid.NewGuid(), new PlaybackProgressUpdate(1, 2)));
-            Assert.Equal([mediaItem.Id, mediaItem.Id], savedPlaybackIds);
+            Assert.Equal([mediaItem.Id, mediaItem.Id, mediaItem.Id, mediaItem.Id], savedPlaybackIds);
         }
         finally
         {

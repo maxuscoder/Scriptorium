@@ -2,12 +2,81 @@ using System.IO;
 using System.Windows.Media;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
+using Scriptorium.Core.Services;
 using Xunit;
 
 namespace Scriptorium.App.Tests;
 
 public sealed class VideoPlayerTests
 {
+    [Fact]
+    public Task SavesTheLatestPositionWhenPlaybackIsDeactivated() => StaTest.Run(async () =>
+    {
+        var factory = new FakeFactory();
+        var progressService = new RecordingPlaybackProgressService();
+        var mediaItemId = Guid.NewGuid();
+        var player = new VideoPlayerViewModel(factory, playbackProgressService: progressService);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0, mediaItemId, 60));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+        player.TogglePlaybackCommand.Execute(null);
+        playback.Position = TimeSpan.FromSeconds(23.9);
+
+        await player.DeactivateAsync();
+
+        var saved = Assert.Single(progressService.Updates);
+        Assert.Equal(mediaItemId, saved.MediaItemId);
+        Assert.Equal(new PlaybackProgressUpdate(23, 60), saved.Update);
+    });
+
+    [Fact]
+    public Task SavesChangedPositionPeriodicallyAndThrottlesSamples() => StaTest.Run(async () =>
+    {
+        var factory = new FakeFactory();
+        var progressService = new RecordingPlaybackProgressService();
+        var player = new VideoPlayerViewModel(factory, playbackProgressService: progressService);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0, Guid.NewGuid(), 60));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+        player.TogglePlaybackCommand.Execute(null);
+        playback.Position = TimeSpan.FromSeconds(15);
+
+        await Task.Delay(TimeSpan.FromSeconds(1.5));
+        Assert.Empty(progressService.Updates);
+
+        await WaitUntilAsync(() => progressService.Updates.Count == 1);
+        playback.Position = TimeSpan.FromSeconds(16);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        Assert.Single(progressService.Updates);
+
+        await player.DeactivateAsync();
+        Assert.Equal(2, progressService.Updates.Count);
+    });
+
+    [Fact]
+    public Task SavesTheCompletionPositionWhenPlaybackEnds() => StaTest.Run(async () =>
+    {
+        var factory = new FakeFactory();
+        var progressService = new RecordingPlaybackProgressService();
+        var mediaItemId = Guid.NewGuid();
+        var player = new VideoPlayerViewModel(factory, playbackProgressService: progressService);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0, mediaItemId, 60));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+        player.TogglePlaybackCommand.Execute(null);
+        playback.Position = TimeSpan.FromSeconds(57);
+
+        playback.RaiseEnded();
+        await player.DeactivateAsync();
+
+        Assert.True(player.IsStopped);
+        var saved = Assert.Single(progressService.Updates);
+        Assert.Equal((mediaItemId, new PlaybackProgressUpdate(57, 60)), saved);
+    });
+
     [Fact]
     public Task OpensPausedResumesReplaysAndReleasesEverySession() => StaTest.Run(() =>
     {
@@ -84,6 +153,29 @@ public sealed class VideoPlayerTests
         Assert.True(player.IsReady);
         player.Deactivate();
         return Task.CompletedTask;
+    });
+
+    [Fact]
+    public Task ResetProgressStopsThePlayerAndPersistsZero() => StaTest.Run(async () =>
+    {
+        var factory = new FakeFactory();
+        var progressService = new RecordingPlaybackProgressService();
+        var mediaItemId = Guid.NewGuid();
+        var player = new VideoPlayerViewModel(factory, playbackProgressService: progressService);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0, mediaItemId, 60));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+        player.TogglePlaybackCommand.Execute(null);
+        playback.Position = TimeSpan.FromSeconds(20);
+
+        player.ResetProgress();
+        await player.DeactivateAsync();
+
+        Assert.True(player.IsStopped);
+        Assert.Equal(TimeSpan.Zero, playback.Position);
+        var saved = Assert.Single(progressService.Updates);
+        Assert.Equal((mediaItemId, new PlaybackProgressUpdate(0, 60)), saved);
     });
 
     [Fact]
@@ -226,6 +318,13 @@ public sealed class VideoPlayerTests
         }
     }
 
+    private static async Task WaitUntilAsync(Func<bool> predicate)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(8);
+        while (!predicate() && DateTime.UtcNow < deadline) await Task.Delay(50);
+        Assert.True(predicate(), "Playback progress was not saved periodically.");
+    }
+
     internal sealed class FakePlayback : IVideoPlayback
     {
         public event EventHandler? Opened;
@@ -252,5 +351,24 @@ public sealed class VideoPlayerTests
         public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
         public void RaiseFailed(Exception? exception = null) =>
             Failed?.Invoke(this, exception ?? new InvalidOperationException("Invalid video"));
+    }
+
+    private sealed class RecordingPlaybackProgressService : IPlaybackProgressService
+    {
+        public event Action<Guid>? PlaybackProgressSaved;
+        public List<(Guid MediaItemId, PlaybackProgressUpdate Update)> Updates { get; } = [];
+
+        public Task<bool> SaveAsync(
+            Guid mediaItemId,
+            PlaybackProgressUpdate progressUpdate,
+            CancellationToken cancellationToken = default)
+        {
+            Updates.Add((mediaItemId, progressUpdate));
+            PlaybackProgressSaved?.Invoke(mediaItemId);
+            return Task.FromResult(true);
+        }
+
+        public Task<long?> GetResumePositionAsync(Guid mediaItemId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<long?>(null);
     }
 }
