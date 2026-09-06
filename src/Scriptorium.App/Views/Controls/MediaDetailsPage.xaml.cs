@@ -20,6 +20,9 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty BackCommandProperty =
         DependencyProperty.Register(nameof(BackCommand), typeof(ICommand), typeof(MediaDetailsPage));
 
+    public static readonly DependencyProperty PreviewContentProperty =
+        DependencyProperty.Register(nameof(PreviewContent), typeof(object), typeof(MediaDetailsPage));
+
     public static readonly DependencyProperty ThumbnailPathProperty =
         DependencyProperty.Register(nameof(ThumbnailPath), typeof(string), typeof(MediaDetailsPage), new PropertyMetadata(null, OnThumbnailPathChanged));
 
@@ -78,6 +81,8 @@ public partial class MediaDetailsPage : UserControl
     }
 
     public ICommand? BackCommand { get => (ICommand?)GetValue(BackCommandProperty); set => SetValue(BackCommandProperty, value); }
+
+    public object? PreviewContent { get => GetValue(PreviewContentProperty); set => SetValue(PreviewContentProperty, value); }
 
     public string? ThumbnailPath { get => (string?)GetValue(ThumbnailPathProperty); set => SetValue(ThumbnailPathProperty, value); }
 

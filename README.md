@@ -47,3 +47,5 @@ Supported media:
 ## Documentation
 
 Project architecture, conventions and development guidelines are documented in `WIKI.md`.
+
+Embedded video playback and its verification steps are documented in [Video playback](docs/VIDEO_PLAYBACK.md).

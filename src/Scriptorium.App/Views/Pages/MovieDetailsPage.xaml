@@ -9,8 +9,6 @@
         FallbackGlyph="▶"
         HeaderMetadata="{Binding HeaderMetadata}"
         MetadataItems="{Binding MetadataItems}"
-        PrimaryActionCommand="{Binding PlayCommand}"
-        PrimaryActionText="{Binding PlayActionText}"
         SecondaryActionCommand="{Binding ToggleCompletionCommand}"
         SecondaryActionText="{Binding CompletionActionText}"
         Status="{Binding Availability}"
@@ -19,6 +17,9 @@
         ThumbnailPath="{Binding ThumbnailPath}"
         Title="{Binding Title}"
         TypeLabel="Movie">
+        <controls:MediaDetailsPage.PreviewContent>
+            <controls:VideoPlayer Height="380" Player="{Binding Player}" />
+        </controls:MediaDetailsPage.PreviewContent>
         <controls:MediaDetailsPage.ExtensionContent>
             <StackPanel>
                 <controls:MediaCategoryEditor />
