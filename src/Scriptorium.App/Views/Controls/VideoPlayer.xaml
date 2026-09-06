@@ -12,7 +12,11 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Image Source="{Binding Video}" Stretch="Uniform" AutomationProperties.Name="Video preview" />
+            <Image Source="{Binding Video}" Stretch="Uniform"
+                   MouseLeftButtonUp="OnVideoPreviewMouseLeftButtonUp"
+                   Cursor="Hand"
+                   ToolTip="Click to play or pause"
+                   AutomationProperties.Name="Video preview" />
             <TextBlock Margin="{StaticResource Spacing.L}" VerticalAlignment="Center"
                        HorizontalAlignment="Center" TextWrapping="Wrap" Text="{Binding Status}">
                 <TextBlock.Style>
@@ -25,8 +29,8 @@
                     </Style>
                 </TextBlock.Style>
             </TextBlock>
-            <Border Grid.Row="1" Background="{StaticResource Brush.Surface}" Padding="{StaticResource Spacing.S}">
-                <Grid>
+            <Border Grid.Row="1" Background="{StaticResource Brush.Surface}" Padding="8,0">
+                <Grid VerticalAlignment="Center">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -34,6 +38,7 @@
                     </Grid.ColumnDefinitions>
                     <Button Command="{Binding TogglePlaybackCommand}"
                             Width="36" Height="36" MinHeight="36"
+                            VerticalAlignment="Center"
                             Style="{StaticResource Button.Icon}"
                             ToolTip="Play or pause video"
                             AutomationProperties.Name="{Binding PlayActionText}">
@@ -68,8 +73,17 @@
                             </Grid>
                         </Grid>
                     </Button>
-                    <StackPanel Grid.Column="1" Margin="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                    <Grid Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Margin="0,0,8,0" VerticalAlignment="Center"
+                                   Text="{Binding CurrentPositionText}" Style="{StaticResource Text.Metadata}" />
                         <Slider x:Name="SeekSlider"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
                                 Minimum="0"
                                 Maximum="{Binding DurationSeconds}"
                                 Value="{Binding PositionSeconds, Mode=OneWay}"
@@ -82,11 +96,12 @@
                                 LostKeyboardFocus="OnSeekSliderLostKeyboardFocus"
                                 AutomationProperties.Name="Video playback position"
                                 ToolTip="Drag to seek" />
-                        <TextBlock Text="{Binding PositionText}" Style="{StaticResource Text.Metadata}" />
-                        <TextBlock Text="{Binding Status}" Style="{StaticResource Text.Metadata}" TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                        <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center"
+                                   Text="{Binding DurationText}" Style="{StaticResource Text.Metadata}" />
+                    </Grid>
                     <Button Grid.Column="2" Click="OnFullscreenClick"
                             Width="36" Height="36" MinHeight="36"
+                            VerticalAlignment="Center"
                             ToolTip="Toggle fullscreen (F11); exit with Esc"
                             AutomationProperties.Name="Toggle fullscreen">
                         <Path Width="18" Height="18"

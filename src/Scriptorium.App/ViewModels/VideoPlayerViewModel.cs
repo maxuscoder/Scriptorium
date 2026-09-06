@@ -41,6 +41,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string PlayActionText => IsPlaying ? "Pause" : _hasEnded ? "Replay" : "Play";
     public string PositionText => $"{FormatTime(_position)} / {FormatTime(_duration)}";
+    public string CurrentPositionText => FormatTime(_position);
+    public string DurationText => FormatTime(_duration);
     public double PositionSeconds => Math.Clamp(_position.TotalSeconds, 0, DurationSeconds);
     public double DurationSeconds => Math.Max(0, _duration.TotalSeconds);
     public bool CanSeek => IsReady && DurationSeconds > 0;
@@ -55,6 +57,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         Status = "Loading video...";
         NotifyPositionChanged();
         OnPropertyChanged(nameof(DurationSeconds));
+        OnPropertyChanged(nameof(DurationText));
         if (_active) OpenPlayback();
     }
 
@@ -97,6 +100,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         {
             _duration = _playback.Duration;
             OnPropertyChanged(nameof(DurationSeconds));
+            OnPropertyChanged(nameof(DurationText));
             var resume = Math.Max(0, _request?.ResumePositionSeconds ?? 0);
             _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
             IsReady = true;
@@ -259,6 +263,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private void NotifyPositionChanged()
     {
         OnPropertyChanged(nameof(PositionText));
+        OnPropertyChanged(nameof(CurrentPositionText));
         OnPropertyChanged(nameof(PositionSeconds));
     }
 

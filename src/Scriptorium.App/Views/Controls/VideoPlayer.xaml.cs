@@ -67,6 +67,13 @@ public partial class VideoPlayer : UserControl
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
 
+    private void OnVideoPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs args)
+    {
+        if (Player?.TogglePlaybackCommand.CanExecute(null) != true) return;
+        Player.TogglePlaybackCommand.Execute(null);
+        args.Handled = true;
+    }
+
     private void OnSeekSliderMouseLeftButtonDown(object sender, MouseButtonEventArgs args)
     {
         BeginSeek();
