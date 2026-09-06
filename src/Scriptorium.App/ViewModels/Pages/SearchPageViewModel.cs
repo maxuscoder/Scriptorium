@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -18,6 +20,7 @@ public sealed class SearchPageViewModel : PageViewModel
     private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
     private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
     private readonly MovieDetailsPageViewModel _movieDetailsPage;
+    private readonly IFavoriteService _favoriteService;
     private CancellationTokenSource? _searchCancellationSource;
     private string _query = string.Empty;
     private string? _statusMessage;
@@ -31,7 +34,8 @@ public sealed class SearchPageViewModel : PageViewModel
         INavigationService navigationService,
         TutorialDetailsPageViewModel tutorialDetailsPage,
         TvShowDetailsPageViewModel tvShowDetailsPage,
-        MovieDetailsPageViewModel movieDetailsPage)
+        MovieDetailsPageViewModel movieDetailsPage,
+        IFavoriteService favoriteService)
     {
         _mediaItemRepository = mediaItemRepository;
         _courseRepository = courseRepository;
@@ -40,7 +44,10 @@ public sealed class SearchPageViewModel : PageViewModel
         _tutorialDetailsPage = tutorialDetailsPage;
         _tvShowDetailsPage = tvShowDetailsPage;
         _movieDetailsPage = movieDetailsPage;
+        _favoriteService = favoriteService;
         OpenResultCommand = new AsyncRelayCommand(OpenResultAsync, parameter => parameter is SearchResultViewModel);
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
+        _favoriteService.FavoriteChanged += OnFavoriteChanged;
     }
 
     public override string Title => "Search";
@@ -55,6 +62,8 @@ public sealed class SearchPageViewModel : PageViewModel
     public ObservableCollection<SearchResultViewModel> Results { get; } = [];
 
     public ICommand OpenResultCommand { get; }
+
+    public ICommand ToggleFavoriteCommand { get; }
 
     public bool IsSearching
     {
@@ -194,6 +203,50 @@ public sealed class SearchPageViewModel : PageViewModel
         }
 
         StatusMessage = "This media is no longer available in the library.";
+    }
+
+    private async Task ToggleFavoriteAsync(object? parameter)
+    {
+        if (parameter is not IMediaFavoriteItem item)
+        {
+            return;
+        }
+
+        var isFavorite = !item.IsFavorite;
+        var updated = isFavorite
+            ? await _favoriteService.AddAsync(item.MediaItemId)
+            : await _favoriteService.RemoveAsync(item.MediaItemId);
+        if (updated)
+        {
+            item.SetFavorite(isFavorite);
+        }
+    }
+
+    private void OnFavoriteChanged(Guid mediaItemId)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(() => RefreshFavoriteStateAsync(mediaItemId));
+            return;
+        }
+
+        _ = RefreshFavoriteStateAsync(mediaItemId);
+    }
+
+    private async Task RefreshFavoriteStateAsync(Guid mediaItemId)
+    {
+        var result = Results.FirstOrDefault(candidate => candidate.MediaItemId == mediaItemId);
+        if (result is null)
+        {
+            return;
+        }
+
+        var mediaItem = await _mediaItemRepository.GetByIdAsync(mediaItemId);
+        if (mediaItem is not null)
+        {
+            result.SetFavorite(mediaItem.IsFavorite);
+        }
     }
 
     private void NotifyResultsChanged()

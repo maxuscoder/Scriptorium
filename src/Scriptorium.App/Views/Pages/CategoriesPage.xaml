@@ -161,6 +161,8 @@
                                 Margin="0,0,16,16"
                                 CategoryColor="{Binding CategoryColor}"
                                 CategoryName="{Binding CategoryName}"
+                                FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                FavoriteParameter="{Binding}"
                                 FallbackGlyph="{Binding TypeGlyph}"
                                 HasPlaybackProgress="{Binding HasPlaybackProgress}"
                                 IsFavorite="{Binding IsFavorite}"

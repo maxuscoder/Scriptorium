@@ -18,6 +18,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private readonly ICourseRepository _courseRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
+    private readonly IFavoriteService _favoriteService;
     private readonly INavigationService _navigationService;
     private PageViewModel? _returnPage;
     private string _courseTitle = "Tutorial";
@@ -30,17 +31,20 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         ICourseRepository courseRepository,
         INavigationService navigationService,
         ICategoryRepository categoryRepository,
-        ICategoryService categoryService)
+        ICategoryService categoryService,
+        IFavoriteService favoriteService)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
+        _favoriteService = favoriteService;
         _navigationService = navigationService;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
     }
 
     public override string Title => _courseTitle;
@@ -78,6 +82,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             }
 
             OnPropertyChanged(nameof(SelectedLessonPositionText));
+            OnPropertyChanged(nameof(FavoriteActionText));
             SelectCategory(value?.CategoryId);
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
@@ -109,6 +114,10 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         private set => SetProperty(ref _categoryStatus, value);
     }
 
+    public string FavoriteActionText => SelectedLesson?.IsFavorite == true
+        ? "Remove from favorites"
+        : "Add to favorites";
+
     public ICommand BackCommand { get; }
 
     /// <summary>Gets the command that selects a lesson from the list.</summary>
@@ -121,6 +130,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     public ICommand NextLessonCommand { get; }
 
     public ICommand SaveCategoryCommand { get; }
+
+    public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a tutorial collection before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid courseId, PageViewModel returnPage)
@@ -148,7 +159,27 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(LessonCountText));
         OnPropertyChanged(nameof(TotalDurationText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         return true;
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null)
+        {
+            return;
+        }
+
+        var isFavorite = !lesson.IsFavorite;
+        var updated = isFavorite
+            ? await _favoriteService.AddAsync(lesson.MediaItemId)
+            : await _favoriteService.RemoveAsync(lesson.MediaItemId);
+        if (updated)
+        {
+            lesson.SetFavorite(isFavorite);
+            OnPropertyChanged(nameof(FavoriteActionText));
+        }
     }
 
     private void GoBack()
@@ -237,7 +268,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 }
 
 /// <summary>Displays one ordered tutorial lesson.</summary>
-public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase
+public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMediaFavoriteItem
 {
     public string Title => MediaDisplayText.TitleOrFallback(lesson.Title, "Untitled lesson");
 
@@ -251,6 +282,19 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase
     public string FilePath => lesson.FilePath;
 
     public Guid MediaItemId => lesson.MediaItemId;
+
+    public bool IsFavorite => lesson.MediaItem.IsFavorite;
+
+    public void SetFavorite(bool isFavorite)
+    {
+        if (lesson.MediaItem.IsFavorite == isFavorite)
+        {
+            return;
+        }
+
+        lesson.MediaItem.IsFavorite = isFavorite;
+        OnPropertyChanged(nameof(IsFavorite));
+    }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;
 

@@ -1,21 +1,72 @@
 <UserControl
     x:Class="Scriptorium.App.Views.Pages.FavoritesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid>
-        <StackPanel
-            MaxWidth="520"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center">
-            <TextBlock
-                HorizontalAlignment="Center"
-                Style="{StaticResource Text.PageTitle}"
-                Text="Favorites" />
-            <TextBlock
-                Margin="0,12,0,0"
-                HorizontalAlignment="Center"
-                Style="{StaticResource Text.Body.Center}"
-                Text="Your favorite media will appear here." />
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    Loaded="OnLoaded">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,28,32,48">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Favorites" />
+                        <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
+                            <TextBlock Style="{StaticResource Text.Badge}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding FavoriteCountText}" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="The media you want to find quickly, all in one place." />
+                </StackPanel>
+                <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource Button.Secondary}" />
+            </Grid>
+
+            <TextBlock Margin="0,16,0,0" Foreground="{StaticResource Brush.Warning}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+            <ItemsControl Margin="0,28,0,0" ItemsSource="{Binding MediaItems}" Style="{StaticResource Library.MediaItems}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:MediaCard
+                            CardWidth="280"
+                            Margin="0,0,16,16"
+                            ActionCommand="{Binding DataContext.OpenFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            ActionParameter="{Binding}"
+                            ActionText="Open"
+                            CategoryColor="{Binding CategoryColor}"
+                            CategoryName="{Binding CategoryName}"
+                            FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            FavoriteParameter="{Binding}"
+                            FallbackGlyph="{Binding TypeGlyph}"
+                            HasPlaybackProgress="{Binding HasPlaybackProgress}"
+                            IsFavorite="{Binding IsFavorite}"
+                            IsMissing="{Binding IsMissing}"
+                            PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
+                            PlaybackProgressText="{Binding PlaybackProgressText}"
+                            PrimaryMetadata="{Binding Detail}"
+                            SecondaryMetadata="{Binding Runtime}"
+                            Status="{Binding Availability}"
+                            ThumbnailPath="{Binding ThumbnailPath}"
+                            Title="{Binding Title}"
+                            TypeLabel="{Binding MediaType}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Margin="0,52,0,0" HorizontalAlignment="Center" MaxWidth="440">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasFavorites}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Display}" Text="No favorites yet" />
+                <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center" Style="{StaticResource Text.Body.Center}" Text="Use the star on any media card to keep it close at hand." />
+            </StackPanel>
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </UserControl>

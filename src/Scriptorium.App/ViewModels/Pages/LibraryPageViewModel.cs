@@ -115,6 +115,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         OpenTvShowCommand = _openTvShowCommand;
         _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
         OpenMovieCommand = _openMovieCommand;
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
         _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
         _selectedSortOrder = Enum.TryParse<LibrarySortOrder>(
                 _settingsService.Settings.LibrarySortOrder,
@@ -375,6 +376,9 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets the command that opens a movie's metadata page.</summary>
     public ICommand OpenMovieCommand { get; }
+
+    /// <summary>Gets the command that toggles a media item's favorite state.</summary>
+    public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Gets the command that switches the library to card-grid layout.</summary>
     public ICommand SetGridLayoutCommand { get; }
@@ -908,6 +912,23 @@ public sealed class LibraryPageViewModel : PageViewModel
         }
 
         _navigationService.NavigateTo(_movieDetailsPage);
+    }
+
+    private async Task ToggleFavoriteAsync(object? parameter)
+    {
+        if (parameter is not IMediaFavoriteItem item)
+        {
+            return;
+        }
+
+        var isFavorite = !item.IsFavorite;
+        var updated = isFavorite
+            ? await _favoriteService.AddAsync(item.MediaItemId)
+            : await _favoriteService.RemoveAsync(item.MediaItemId);
+        if (updated)
+        {
+            item.SetFavorite(isFavorite);
+        }
     }
 
     private async Task SetLayoutAsync(bool isListLayout)

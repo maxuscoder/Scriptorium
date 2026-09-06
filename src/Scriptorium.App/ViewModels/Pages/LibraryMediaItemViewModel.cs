@@ -7,7 +7,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Presents an indexed media item in the main library browser.
 /// </summary>
-public sealed class LibraryMediaItemViewModel(MediaItem mediaItem)
+public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBase, IMediaFavoriteItem
 {
     /// <summary>Gets the indexed item represented by this card.</summary>
     public MediaItem MediaItem { get; } = mediaItem;
@@ -51,6 +51,19 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem)
 
     /// <summary>Gets whether this indexed media item is marked as a favorite.</summary>
     public bool IsFavorite => MediaItem.IsFavorite;
+
+    public Guid MediaItemId => MediaItem.Id;
+
+    public void SetFavorite(bool isFavorite)
+    {
+        if (MediaItem.IsFavorite == isFavorite)
+        {
+            return;
+        }
+
+        MediaItem.IsFavorite = isFavorite;
+        OnPropertyChanged(nameof(IsFavorite));
+    }
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(MediaItem);
 

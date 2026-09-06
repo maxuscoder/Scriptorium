@@ -18,6 +18,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     private readonly ITvShowRepository _tvShowRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
+    private readonly IFavoriteService _favoriteService;
     private readonly INavigationService _navigationService;
     private PageViewModel? _returnPage;
     private string _showTitle = "TV show";
@@ -30,17 +31,20 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         ITvShowRepository tvShowRepository,
         INavigationService navigationService,
         ICategoryRepository categoryRepository,
-        ICategoryService categoryService)
+        ICategoryService categoryService,
+        IFavoriteService favoriteService)
     {
         _tvShowRepository = tvShowRepository;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
+        _favoriteService = favoriteService;
         _navigationService = navigationService;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectEpisodeCommand = new RelayCommand(SelectEpisode, episode => episode is TvShowEpisodeViewModel);
         PreviousEpisodeCommand = new RelayCommand(SelectPreviousEpisode, CanSelectPreviousEpisode);
         NextEpisodeCommand = new RelayCommand(SelectNextEpisode, CanSelectNextEpisode);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedEpisode is not null && SelectedCategory is not null);
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
     }
 
     public override string Title => _showTitle;
@@ -73,6 +77,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             }
 
             OnPropertyChanged(nameof(SelectedEpisodePositionText));
+            OnPropertyChanged(nameof(FavoriteActionText));
             SelectCategory(value?.CategoryId);
             ((RelayCommand)PreviousEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextEpisodeCommand).NotifyCanExecuteChanged();
@@ -104,6 +109,10 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         private set => SetProperty(ref _categoryStatus, value);
     }
 
+    public string FavoriteActionText => SelectedEpisode?.IsFavorite == true
+        ? "Remove from favorites"
+        : "Add to favorites";
+
     public ICommand BackCommand { get; }
 
     /// <summary>Gets the command that selects an episode from the list.</summary>
@@ -116,6 +125,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     public ICommand NextEpisodeCommand { get; }
 
     public ICommand SaveCategoryCommand { get; }
+
+    public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a television show before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid showId, PageViewModel returnPage)
@@ -142,7 +153,27 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(EpisodeCountText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         return true;
+    }
+
+    private async Task ToggleFavoriteAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null)
+        {
+            return;
+        }
+
+        var isFavorite = !episode.IsFavorite;
+        var updated = isFavorite
+            ? await _favoriteService.AddAsync(episode.MediaItemId)
+            : await _favoriteService.RemoveAsync(episode.MediaItemId);
+        if (updated)
+        {
+            episode.SetFavorite(isFavorite);
+            OnPropertyChanged(nameof(FavoriteActionText));
+        }
     }
 
     private void GoBack()
@@ -252,7 +283,7 @@ public sealed class TvShowSeasonViewModel(Season season)
 }
 
 /// <summary>Displays one television-show episode.</summary>
-public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : ViewModelBase
+public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : ViewModelBase, IMediaFavoriteItem
 {
     public string Title => MediaDisplayText.TitleOrFallback(episode.Title, "Untitled episode");
 
@@ -265,6 +296,19 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
     public string FilePath => episode.FilePath;
 
     public Guid MediaItemId => episode.MediaItemId;
+
+    public bool IsFavorite => episode.MediaItem.IsFavorite;
+
+    public void SetFavorite(bool isFavorite)
+    {
+        if (episode.MediaItem.IsFavorite == isFavorite)
+        {
+            return;
+        }
+
+        episode.MediaItem.IsFavorite = isFavorite;
+        OnPropertyChanged(nameof(IsFavorite));
+    }
 
     public Guid? CategoryId => episode.MediaItem.CategoryId;
 

@@ -20,6 +20,7 @@ public sealed class CategoriesPageViewModel : PageViewModel
     private readonly IConfirmationDialog _confirmationDialog;
     private readonly ICreateCategoryDialog _createCategoryDialog;
     private readonly IMediaItemRepository _mediaItemRepository;
+    private readonly IFavoriteService _favoriteService;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string _statusMessage = string.Empty;
     private CategoryItemViewModel? _selectedCategory;
@@ -33,19 +34,23 @@ public sealed class CategoriesPageViewModel : PageViewModel
         ICategoryService categoryService,
         IConfirmationDialog confirmationDialog,
         ICreateCategoryDialog createCategoryDialog,
-        IMediaItemRepository mediaItemRepository)
+        IMediaItemRepository mediaItemRepository,
+        IFavoriteService favoriteService)
     {
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _confirmationDialog = confirmationDialog;
         _createCategoryDialog = createCategoryDialog;
         _mediaItemRepository = mediaItemRepository;
+        _favoriteService = favoriteService;
 
         CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
         RenameCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync);
         DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         SelectCategoryCommand = new RelayCommand(SelectCategory, parameter => parameter is CategoryItemViewModel);
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
+        _favoriteService.FavoriteChanged += OnFavoriteChanged;
         _categoryService.CategoriesChanged += OnCategoriesChanged;
     }
 
@@ -63,6 +68,8 @@ public sealed class CategoriesPageViewModel : PageViewModel
 
     /// <summary>Gets the command that changes the category currently shown in the browser.</summary>
     public ICommand SelectCategoryCommand { get; }
+
+    public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Gets the media assigned to the selected category.</summary>
     public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
@@ -187,6 +194,50 @@ public sealed class CategoriesPageViewModel : PageViewModel
         if (parameter is CategoryItemViewModel category && Categories.Contains(category))
         {
             SelectedCategory = category;
+        }
+    }
+
+    private async Task ToggleFavoriteAsync(object? parameter)
+    {
+        if (parameter is not IMediaFavoriteItem item)
+        {
+            return;
+        }
+
+        var isFavorite = !item.IsFavorite;
+        var updated = isFavorite
+            ? await _favoriteService.AddAsync(item.MediaItemId)
+            : await _favoriteService.RemoveAsync(item.MediaItemId);
+        if (updated)
+        {
+            item.SetFavorite(isFavorite);
+        }
+    }
+
+    private void OnFavoriteChanged(Guid mediaItemId)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(() => RefreshFavoriteStateAsync(mediaItemId));
+            return;
+        }
+
+        _ = RefreshFavoriteStateAsync(mediaItemId);
+    }
+
+    private async Task RefreshFavoriteStateAsync(Guid mediaItemId)
+    {
+        var item = MediaItems.FirstOrDefault(candidate => candidate.MediaItemId == mediaItemId);
+        if (item is null)
+        {
+            return;
+        }
+
+        var mediaItem = await _mediaItemRepository.GetByIdAsync(mediaItemId);
+        if (mediaItem is not null)
+        {
+            item.SetFavorite(mediaItem.IsFavorite);
         }
     }
 

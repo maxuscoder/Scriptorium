@@ -57,6 +57,11 @@
                             Command="{Binding NextLessonCommand}"
                             Content="Next lesson"
                             Style="{StaticResource Button.Secondary}" />
+                        <Button
+                            Margin="8,0,0,0"
+                            Command="{Binding ToggleFavoriteCommand}"
+                            Content="{Binding FavoriteActionText}"
+                            Style="{StaticResource Button.Secondary}" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -109,6 +114,18 @@
                                         Style="{StaticResource Text.Metadata}"
                                         Text="{Binding FilePath}"
                                         TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.Warning}" Text="★">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                     <TextBlock
