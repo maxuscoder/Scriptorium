@@ -35,6 +35,19 @@
                     <Button Command="{Binding TogglePlaybackCommand}" Content="{Binding PlayActionText}"
                             Style="{StaticResource Button.Primary}" MinWidth="80" ToolTip="Play or pause video" />
                     <StackPanel Grid.Column="1" Margin="{StaticResource Spacing.S}" VerticalAlignment="Center">
+                        <Slider x:Name="SeekSlider"
+                                Minimum="0"
+                                Maximum="{Binding DurationSeconds}"
+                                Value="{Binding PositionSeconds, Mode=OneWay}"
+                                IsEnabled="{Binding CanSeek}"
+                                ValueChanged="OnSeekSliderValueChanged"
+                                PreviewMouseLeftButtonDown="OnSeekSliderMouseLeftButtonDown"
+                                PreviewMouseLeftButtonUp="OnSeekSliderMouseLeftButtonUp"
+                                PreviewKeyDown="OnSeekSliderPreviewKeyDown"
+                                PreviewKeyUp="OnSeekSliderPreviewKeyUp"
+                                LostKeyboardFocus="OnSeekSliderLostKeyboardFocus"
+                                AutomationProperties.Name="Video playback position"
+                                ToolTip="Drag to seek" />
                         <TextBlock Text="{Binding PositionText}" Style="{StaticResource Text.Metadata}" />
                         <TextBlock Text="{Binding Status}" Style="{StaticResource Text.Metadata}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>

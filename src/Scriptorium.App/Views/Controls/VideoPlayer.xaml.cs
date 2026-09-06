@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using Scriptorium.App.ViewModels;
 
 namespace Scriptorium.App.Views.Controls;
@@ -16,6 +18,7 @@ public partial class VideoPlayer : UserControl
 
     private Window? _fullscreenWindow;
     private Window? _ownerWindow;
+    private bool _isSeeking;
 
     public VideoPlayer()
     {
@@ -63,6 +66,61 @@ public partial class VideoPlayer : UserControl
     }
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
+
+    private void OnSeekSliderMouseLeftButtonDown(object sender, MouseButtonEventArgs args)
+    {
+        BeginSeek();
+        if (!_isSeeking || IsInsideThumb(args.OriginalSource as DependencyObject)) return;
+
+        var track = SeekSlider.Template.FindName("PART_Track", SeekSlider) as Track;
+        if (track is null || track.ActualWidth <= 0) return;
+
+        var fraction = Math.Clamp(args.GetPosition(track).X / track.ActualWidth, 0, 1);
+        if (track.IsDirectionReversed) fraction = 1 - fraction;
+        SeekSlider.Value = SeekSlider.Minimum + ((SeekSlider.Maximum - SeekSlider.Minimum) * fraction);
+        args.Handled = true;
+    }
+
+    private void OnSeekSliderMouseLeftButtonUp(object sender, MouseButtonEventArgs args) => CommitSeek();
+
+    private void OnSeekSliderPreviewKeyDown(object sender, KeyEventArgs args) => BeginSeek();
+
+    private void OnSeekSliderPreviewKeyUp(object sender, KeyEventArgs args) => CommitSeek();
+
+    private void OnSeekSliderLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs args) => CommitSeek();
+
+    private void OnSeekSliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> args)
+    {
+        if (_isSeeking) Player?.PreviewSeek(args.NewValue);
+    }
+
+    private void BeginSeek()
+    {
+        if (_isSeeking) return;
+        Player?.BeginSeek();
+        _isSeeking = Player?.IsSeeking == true;
+    }
+
+    private void CommitSeek()
+    {
+        if (!_isSeeking) return;
+        _isSeeking = false;
+        Player?.CommitSeek(SeekSlider.Value);
+    }
+
+    private static bool IsInsideThumb(DependencyObject? element)
+    {
+        while (element is not null)
+        {
+            if (element is Thumb) return true;
+            element = element switch
+            {
+                Visual => VisualTreeHelper.GetParent(element),
+                _ => LogicalTreeHelper.GetParent(element)
+            };
+        }
+        return false;
+    }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs args)
     {

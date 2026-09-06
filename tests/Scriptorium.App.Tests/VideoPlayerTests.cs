@@ -77,6 +77,33 @@ public sealed class VideoPlayerTests
         return Task.CompletedTask;
     });
 
+    [Fact]
+    public Task ScrubbingUpdatesTheDisplayButSeeksOnlyWhenCommitted() => StaTest.Run(() =>
+    {
+        var factory = new FakeFactory();
+        var player = new VideoPlayerViewModel(factory);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+
+        player.BeginSeek();
+        player.PreviewSeek(15);
+        player.PreviewSeek(35);
+        player.PreviewSeek(45);
+
+        Assert.Equal(TimeSpan.Zero, playback.Position);
+        Assert.Equal(45, player.PositionSeconds);
+        Assert.Equal("00:00:45 / 00:01:00", player.PositionText);
+
+        player.CommitSeek(45);
+
+        Assert.Equal(TimeSpan.FromSeconds(45), playback.Position);
+        Assert.False(player.IsSeeking);
+        player.Deactivate();
+        return Task.CompletedTask;
+    });
+
     internal sealed class FakeFactory : IVideoPlaybackFactory
     {
         public List<FakePlayback> Instances { get; } = [];

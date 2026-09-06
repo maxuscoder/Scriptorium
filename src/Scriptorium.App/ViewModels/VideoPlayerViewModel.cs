@@ -16,6 +16,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private bool _active;
     private bool _isReady;
     private bool _isPlaying;
+    private bool _isSeeking;
     private bool _hasEnded;
     private bool _hasStarted;
     private string _status = "No video selected.";
@@ -40,6 +41,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string PlayActionText => IsPlaying ? "Pause" : _hasEnded ? "Replay" : "Play";
     public string PositionText => $"{FormatTime(_position)} / {FormatTime(_duration)}";
+    public double PositionSeconds => Math.Clamp(_position.TotalSeconds, 0, DurationSeconds);
+    public double DurationSeconds => Math.Max(0, _duration.TotalSeconds);
+    public bool CanSeek => IsReady && DurationSeconds > 0;
+    public bool IsSeeking => _isSeeking;
 
     public void SetMedia(MediaPlaybackRequest request)
     {
@@ -48,7 +53,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
         Status = "Loading video...";
-        OnPropertyChanged(nameof(PositionText));
+        NotifyPositionChanged();
+        OnPropertyChanged(nameof(DurationSeconds));
         if (_active) OpenPlayback();
     }
 
@@ -90,6 +96,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         try
         {
             _duration = _playback.Duration;
+            OnPropertyChanged(nameof(DurationSeconds));
             var resume = Math.Max(0, _request?.ResumePositionSeconds ?? 0);
             _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
             IsReady = true;
@@ -149,6 +156,42 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         NotifyPlaybackChanged();
     }
 
+    /// <summary>Starts a local scrub operation without repeatedly seeking the native player.</summary>
+    public void BeginSeek()
+    {
+        if (!CanSeek) return;
+        _isSeeking = true;
+    }
+
+    /// <summary>Updates the displayed scrub position. Call <see cref="CommitSeek"/> to seek the player.</summary>
+    public void PreviewSeek(double seconds)
+    {
+        if (!_isSeeking || !CanSeek) return;
+        _position = TimeSpan.FromSeconds(BoundSeekPosition(seconds));
+        NotifyPositionChanged();
+    }
+
+    /// <summary>Seeks once to the selected scrub position.</summary>
+    public void CommitSeek(double seconds)
+    {
+        if (!_isSeeking || _playback is null || !CanSeek) return;
+
+        _isSeeking = false;
+        try
+        {
+            _position = TimeSpan.FromSeconds(BoundSeekPosition(seconds));
+            _playback.Position = _position;
+            _hasEnded = _position >= _duration;
+            if (_hasEnded && !IsPlaying) Status = "Playback finished";
+            NotifyPositionChanged();
+            NotifyPlaybackChanged();
+        }
+        catch (Exception exception)
+        {
+            Fail(exception);
+        }
+    }
+
     private void OnFailed(object? sender, Exception exception)
     {
         if (ReferenceEquals(sender, _playback)) Fail(exception);
@@ -164,9 +207,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase
 
     private void UpdatePosition()
     {
-        if (_playback is null) return;
+        if (_playback is null || _isSeeking) return;
         _position = _playback.Position;
-        OnPropertyChanged(nameof(PositionText));
+        NotifyPositionChanged();
     }
 
     private void OnTick(object? sender, EventArgs args)
@@ -196,14 +239,27 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         IsPlaying = false;
         _hasEnded = false;
         _hasStarted = false;
+        _isSeeking = false;
         OnPropertyChanged(nameof(Video));
         NotifyPlaybackChanged();
+        NotifyPositionChanged();
     }
 
     private void NotifyPlaybackChanged()
     {
         OnPropertyChanged(nameof(PlayActionText));
+        OnPropertyChanged(nameof(CanSeek));
         TogglePlaybackCommand.NotifyCanExecuteChanged();
+    }
+
+    private double BoundSeekPosition(double seconds) => double.IsFinite(seconds)
+        ? Math.Clamp(seconds, 0, DurationSeconds)
+        : 0;
+
+    private void NotifyPositionChanged()
+    {
+        OnPropertyChanged(nameof(PositionText));
+        OnPropertyChanged(nameof(PositionSeconds));
     }
 
     private static string FormatTime(TimeSpan time) => $"{(long)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
