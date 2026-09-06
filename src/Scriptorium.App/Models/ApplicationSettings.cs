@@ -17,6 +17,9 @@ public sealed class ApplicationSettings
     /// <summary>Gets or sets the preferred alphabetical ordering for library media.</summary>
     public string LibrarySortOrder { get; set; } = "Ascending";
 
+    /// <summary>Gets or sets whether favorited media is shown before other media.</summary>
+    public bool LibraryFavoritesFirst { get; set; }
+
     /// <summary>Gets or sets the text last entered into the persistent media search field.</summary>
     public string LastSearchQuery { get; set; } = string.Empty;
 

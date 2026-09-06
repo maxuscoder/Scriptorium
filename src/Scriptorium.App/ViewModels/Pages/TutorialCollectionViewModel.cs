@@ -48,4 +48,6 @@ public sealed class TutorialCollectionViewModel(Course course)
         .Select(MediaPlaybackProgress.ProgressPercentage)
         .DefaultIfEmpty(0)
         .Max();
+
+    public bool HasFavorite => MediaItems.Any(mediaItem => mediaItem.IsFavorite);
 }

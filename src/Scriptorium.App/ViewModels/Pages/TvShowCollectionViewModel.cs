@@ -52,6 +52,8 @@ public sealed class TvShowCollectionViewModel(TVShow show)
         .DefaultIfEmpty(0)
         .Max();
 
+    public bool HasFavorite => MediaItems.Any(mediaItem => mediaItem.IsFavorite);
+
     public string CollectionInfo =>
         $"{SeasonCount} season{(SeasonCount == 1 ? string.Empty : "s")} · {EpisodeCount} episode{(EpisodeCount == 1 ? string.Empty : "s")}";
 }
