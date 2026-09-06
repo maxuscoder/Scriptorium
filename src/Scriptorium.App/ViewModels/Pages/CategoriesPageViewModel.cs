@@ -1,7 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Repositories;
@@ -14,29 +13,28 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// </summary>
 public sealed class CategoriesPageViewModel : PageViewModel
 {
-    private const string DefaultCategoryColor = "#CC4B08";
-
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
     private readonly IConfirmationDialog _confirmationDialog;
+    private readonly ICreateCategoryDialog _createCategoryDialog;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
-    private string _newCategoryColor = DefaultCategoryColor;
-    private string _newCategoryName = string.Empty;
     private string _statusMessage = string.Empty;
 
     public CategoriesPageViewModel(
         ICategoryRepository categoryRepository,
         ICategoryService categoryService,
         IConfirmationDialog confirmationDialog,
+        ICreateCategoryDialog createCategoryDialog,
         IMediaItemRepository mediaItemRepository)
     {
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _confirmationDialog = confirmationDialog;
+        _createCategoryDialog = createCategoryDialog;
         _mediaItemRepository = mediaItemRepository;
 
-        CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync, CanCreateCategory);
+        CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
         RenameCategoryCommand = new AsyncRelayCommand(RenameCategoryAsync);
         DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
@@ -54,30 +52,6 @@ public sealed class CategoriesPageViewModel : PageViewModel
     public ICommand DeleteCategoryCommand { get; }
 
     public ICommand RefreshCommand { get; }
-
-    public string NewCategoryName
-    {
-        get => _newCategoryName;
-        set
-        {
-            if (SetProperty(ref _newCategoryName, value ?? string.Empty))
-            {
-                ((AsyncRelayCommand)CreateCategoryCommand).NotifyCanExecuteChanged();
-            }
-        }
-    }
-
-    public string NewCategoryColor
-    {
-        get => _newCategoryColor;
-        set
-        {
-            if (SetProperty(ref _newCategoryColor, value ?? string.Empty))
-            {
-                ((AsyncRelayCommand)CreateCategoryCommand).NotifyCanExecuteChanged();
-            }
-        }
-    }
 
     public string StatusMessage
     {
@@ -125,25 +99,22 @@ public sealed class CategoriesPageViewModel : PageViewModel
         }
     }
 
-    private bool CanCreateCategory() =>
-        !string.IsNullOrWhiteSpace(NewCategoryName) &&
-        TryParseColor(NewCategoryColor, out _);
-
     private async Task CreateCategoryAsync()
     {
-        var name = NewCategoryName.Trim();
-        var color = NewCategoryColor.Trim();
-        if (!CanCreateCategory() || CategoryNameExists(name, null))
+        var dialogResult = _createCategoryDialog.Show(Categories.Select(category => category.Name).ToArray());
+        if (dialogResult is null)
         {
-            StatusMessage = CategoryNameExists(name, null)
-                ? "A category with that name already exists."
-                : "Enter a category name and a valid hex color such as #CC4B08.";
             return;
         }
 
-        await _categoryService.CreateAsync(name, color);
-        NewCategoryName = string.Empty;
-        NewCategoryColor = DefaultCategoryColor;
+        var name = dialogResult.Name.Trim();
+        if (CategoryNameExists(name, null))
+        {
+            StatusMessage = "A category with that name already exists.";
+            return;
+        }
+
+        await _categoryService.CreateAsync(name, dialogResult.Color.Trim());
         StatusMessage = $"Category '{name}' created.";
     }
 
@@ -194,30 +165,6 @@ public sealed class CategoriesPageViewModel : PageViewModel
         return Categories.Any(category =>
             category.Id != excludedCategoryId &&
             string.Equals(category.Name.Trim(), name, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static bool TryParseColor(string value, out Color color)
-    {
-        color = default;
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        try
-        {
-            if (ColorConverter.ConvertFromString(value.Trim()) is Color parsedColor)
-            {
-                color = parsedColor;
-                return true;
-            }
-        }
-        catch (FormatException)
-        {
-            // Invalid user input is handled by the validation message.
-        }
-
-        return false;
     }
 
     private void OnCategoriesChanged()

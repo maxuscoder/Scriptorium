@@ -30,58 +30,22 @@
                         Style="{StaticResource Text.Body}"
                         Text="Create and organize custom labels for your media library." />
                 </StackPanel>
-                <Button
-                    Grid.Column="1"
-                    VerticalAlignment="Center"
-                    Command="{Binding RefreshCommand}"
-                    Content="Refresh"
-                    Style="{StaticResource Button.Secondary}" />
-            </Grid>
-
-            <Border
-                Margin="0,32,0,0"
-                Padding="24"
-                Background="{StaticResource Brush.SurfaceElevated}"
-                BorderBrush="{StaticResource Brush.BorderStrong}"
-                BorderThickness="1"
-                CornerRadius="{StaticResource CornerRadius.L}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Add category" />
-                    <TextBlock
-                        Margin="0,4,0,0"
-                        Style="{StaticResource Text.Body}"
-                        Text="Use a name and hex color to identify a group of media." />
-                    <Grid Margin="0,20,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="16" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox
-                            Grid.Column="0"
-                            MinWidth="180"
-                            Style="{StaticResource Input.TextBox}"
-                            Text="{Binding NewCategoryName, UpdateSourceTrigger=PropertyChanged}"
-                            ToolTip="Category name" />
-                        <TextBox
-                            Grid.Column="2"
-                            Style="{StaticResource Input.TextBox}"
-                            Text="{Binding NewCategoryColor, UpdateSourceTrigger=PropertyChanged}"
-                            ToolTip="Hex color, for example #CC4B08" />
-                        <Button
-                            Grid.Column="4"
-                            Command="{Binding CreateCategoryCommand}"
-                            Content="Add category"
-                            Style="{StaticResource Button.Primary}" />
-                    </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                    <Button
+                        Margin="0,0,8,0"
+                        Command="{Binding RefreshCommand}"
+                        Content="Refresh"
+                        Style="{StaticResource Button.Secondary}" />
+                    <Button
+                        Command="{Binding CreateCategoryCommand}"
+                        Content="Create category"
+                        Style="{StaticResource Button.Primary}" />
                 </StackPanel>
-            </Border>
+            </Grid>
 
             <TextBlock
                 MinHeight="24"
-                Margin="0,16,0,0"
+                Margin="0,32,0,0"
                 Foreground="{StaticResource Brush.TextSecondary}"
                 Text="{Binding StatusMessage}" />
 
