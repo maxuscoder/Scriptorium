@@ -20,18 +20,23 @@ public sealed class VideoPlayerTests
         player.Activate();
         player.Activate();
         var first = Assert.Single(factory.Instances);
+        Assert.Equal(VideoPlaybackState.Stopped, player.PlaybackState);
         Assert.False(player.TogglePlaybackCommand.CanExecute(null));
         first.RaiseOpened();
+        Assert.Equal(VideoPlaybackState.Paused, player.PlaybackState);
         Assert.Equal(TimeSpan.FromSeconds(12), first.Position);
         Assert.False(player.IsPlaying);
         Assert.Equal(0, starts);
         player.TogglePlaybackCommand.Execute(null);
+        Assert.Equal(VideoPlaybackState.Playing, player.PlaybackState);
         first.Position = TimeSpan.FromSeconds(20);
         player.TogglePlaybackCommand.Execute(null);
+        Assert.Equal(VideoPlaybackState.Paused, player.PlaybackState);
         Assert.Equal("Pause,Play,Pause", string.Join(',', first.Calls));
         player.TogglePlaybackCommand.Execute(null);
         Assert.Equal(TimeSpan.FromSeconds(20), first.Position);
         first.RaiseEnded();
+        Assert.Equal(VideoPlaybackState.Ended, player.PlaybackState);
         Assert.Equal("Replay", player.PlayActionText);
         player.TogglePlaybackCommand.Execute(null);
         Assert.Equal(TimeSpan.Zero, first.Position);
@@ -40,6 +45,7 @@ public sealed class VideoPlayerTests
         player.SetMedia(new MediaPlaybackRequest("second.mp4", 999));
         Assert.True(first.Disposed);
         Assert.Equal(0, first.SubscriberCount);
+        Assert.Equal(VideoPlaybackState.Stopped, player.PlaybackState);
         Assert.False(player.IsReady);
         var second = factory.Instances[1];
         second.RaiseOpened();
@@ -47,10 +53,35 @@ public sealed class VideoPlayerTests
         player.Deactivate();
         player.Deactivate();
         Assert.True(second.Disposed);
+        Assert.Equal(VideoPlaybackState.Stopped, player.PlaybackState);
         Assert.Null(player.Video);
         Assert.False(player.IsReady);
         player.Activate();
         Assert.Equal(3, factory.Instances.Count);
+        player.Deactivate();
+        return Task.CompletedTask;
+    });
+
+    [Fact]
+    public Task StopResetsPositionAndExposesStoppedState() => StaTest.Run(() =>
+    {
+        var factory = new FakeFactory();
+        var player = new VideoPlayerViewModel(factory);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+        player.TogglePlaybackCommand.Execute(null);
+        playback.Position = TimeSpan.FromSeconds(20);
+
+        player.Stop();
+
+        Assert.Equal(VideoPlaybackState.Stopped, player.PlaybackState);
+        Assert.True(player.IsStopped);
+        Assert.False(player.IsPlaying);
+        Assert.Equal(TimeSpan.Zero, playback.Position);
+        Assert.Equal("Play", player.PlayActionText);
+        Assert.True(player.IsReady);
         player.Deactivate();
         return Task.CompletedTask;
     });

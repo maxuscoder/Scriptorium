@@ -18,6 +18,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private bool _active;
     private bool _isReady;
     private bool _isPlaying;
+    private VideoPlaybackState _playbackState = VideoPlaybackState.Stopped;
     private bool _isSeeking;
     private bool _isMuted;
     private bool _hasEnded;
@@ -49,8 +50,23 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public ImageSource? Video => _playback?.Video;
-    public bool IsReady { get => _isReady; private set => SetProperty(ref _isReady, value); }
-    public bool IsPlaying { get => _isPlaying; private set => SetProperty(ref _isPlaying, value); }
+    public bool IsReady
+    {
+        get => _isReady;
+        private set
+        {
+            if (SetProperty(ref _isReady, value)) OnPropertyChanged(nameof(IsStatusVisible));
+        }
+    }
+    public bool IsPlaying => _isPlaying;
+    /// <summary>Gets the current lifecycle state of the configured media.</summary>
+    public VideoPlaybackState PlaybackState => _playbackState;
+    /// <summary>Alias for consumers that refer to the playback state simply as state.</summary>
+    public VideoPlaybackState State => PlaybackState;
+    public bool IsPaused => PlaybackState == VideoPlaybackState.Paused;
+    public bool IsStopped => PlaybackState == VideoPlaybackState.Stopped;
+    public bool IsEnded => PlaybackState == VideoPlaybackState.Ended;
+    public bool IsStatusVisible => !IsReady || IsStopped || IsEnded;
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string PlayActionText => IsPlaying ? "Pause" : _hasEnded ? "Replay" : "Play";
     public string PositionText => $"{FormatTime(_position)} / {FormatTime(_duration)}";
@@ -136,6 +152,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             var resume = Math.Max(0, _request?.ResumePositionSeconds ?? 0);
             _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
             IsReady = true;
+            SetPlaybackState(VideoPlaybackState.Paused);
             Status = "Ready to play";
             UpdatePosition();
             NotifyPlaybackChanged();
@@ -153,10 +170,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         var action = VideoPlaybackAction.Play;
         try
         {
-            if (IsPlaying)
+            if (PlaybackState == VideoPlaybackState.Playing)
             {
                 _playback.Pause();
-                IsPlaying = false;
+                SetPlaybackState(VideoPlaybackState.Paused);
                 action = VideoPlaybackAction.Pause;
                 _timer.Stop();
                 Status = "Paused";
@@ -166,7 +183,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
                 if (_hasEnded) _playback.Position = TimeSpan.Zero;
                 _hasEnded = false;
                 _playback.Play();
-                IsPlaying = true;
+                SetPlaybackState(VideoPlaybackState.Playing);
                 notifyStarted = !_hasStarted;
                 _hasStarted = true;
                 _timer.Start();
@@ -188,8 +205,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         if (!ReferenceEquals(sender, _playback)) return;
         _timer.Stop();
-        IsPlaying = false;
         _hasEnded = true;
+        SetPlaybackState(VideoPlaybackState.Ended);
         Status = "Playback finished";
         UpdatePosition();
         NotifyPlaybackChanged();
@@ -257,6 +274,32 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         }
     }
 
+    /// <summary>Stops the current media without releasing the playback engine.</summary>
+    public void Stop()
+    {
+        if (_playback is null)
+        {
+            SetPlaybackState(VideoPlaybackState.Stopped);
+            return;
+        }
+
+        try
+        {
+            _playback.Pause();
+            _playback.Position = TimeSpan.Zero;
+            _position = TimeSpan.Zero;
+            _hasEnded = false;
+            SetPlaybackState(VideoPlaybackState.Stopped);
+            Status = "Stopped";
+            NotifyPositionChanged();
+            NotifyPlaybackChanged();
+        }
+        catch (Exception exception)
+        {
+            Fail(exception);
+        }
+    }
+
     private bool SetPlaybackPosition(double seconds)
     {
         if (_playback is null || !CanSeek) return false;
@@ -266,9 +309,18 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             var changed = Math.Abs(_position.TotalSeconds - bounded) > 0.001;
             _position = TimeSpan.FromSeconds(bounded);
             _playback.Position = _position;
-            _hasEnded = _position >= _duration;
-            if (_hasEnded && !IsPlaying) Status = "Playback finished";
-            else if (!IsPlaying) Status = "Paused";
+            _hasEnded = DurationSeconds > 0 && _position >= _duration;
+            if (_hasEnded)
+            {
+                _timer.Stop();
+                SetPlaybackState(VideoPlaybackState.Ended);
+                Status = "Playback finished";
+            }
+            else if (!IsPlaying)
+            {
+                SetPlaybackState(VideoPlaybackState.Paused);
+                Status = "Paused";
+            }
             NotifyPositionChanged();
             NotifyPlaybackChanged();
             return changed;
@@ -343,7 +395,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             playback.Dispose();
         }
         IsReady = false;
-        IsPlaying = false;
+        SetPlaybackState(VideoPlaybackState.Stopped);
         _hasEnded = false;
         _hasStarted = false;
         _isSeeking = false;
@@ -358,6 +410,26 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanSeek));
         TogglePlaybackCommand.NotifyCanExecuteChanged();
         ToggleMuteCommand.NotifyCanExecuteChanged();
+    }
+
+    private void SetPlaybackState(VideoPlaybackState state)
+    {
+        var stateChanged = SetProperty(ref _playbackState, state, nameof(PlaybackState));
+        if (stateChanged)
+        {
+            OnPropertyChanged(nameof(State));
+            OnPropertyChanged(nameof(IsPaused));
+            OnPropertyChanged(nameof(IsStopped));
+            OnPropertyChanged(nameof(IsEnded));
+            OnPropertyChanged(nameof(IsStatusVisible));
+        }
+
+        var isPlayingChanged = SetProperty(ref _isPlaying, state == VideoPlaybackState.Playing, nameof(IsPlaying));
+        if (stateChanged || isPlayingChanged)
+        {
+            OnPropertyChanged(nameof(PlayActionText));
+            TogglePlaybackCommand.NotifyCanExecuteChanged();
+        }
     }
 
     private void SetMuted(bool value)
@@ -399,4 +471,13 @@ public enum VideoPlaybackAction
     VolumeDown,
     Mute,
     Unmute
+}
+
+/// <summary>Represents the current lifecycle state of a video playback session.</summary>
+public enum VideoPlaybackState
+{
+    Stopped,
+    Paused,
+    Playing,
+    Ended
 }

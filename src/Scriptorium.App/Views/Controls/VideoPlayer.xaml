@@ -33,7 +33,7 @@
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsReady}" Value="True">
+                            <DataTrigger Binding="{Binding IsStatusVisible}" Value="False">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                         </Style.Triggers>
