@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scriptorium.Infrastructure"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scriptorium.Tests", "tests\Scriptorium.Tests\Scriptorium.Tests.csproj", "{582C00FB-515D-4E07-AD69-A4C2AB3427B3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Scriptorium.App.Tests", "tests\Scriptorium.App.Tests\Scriptorium.App.Tests.csproj", "{D661FE3E-0593-4DF8-8DFD-4B63A8BD96D7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,6 +39,10 @@ Global
 		{582C00FB-515D-4E07-AD69-A4C2AB3427B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{582C00FB-515D-4E07-AD69-A4C2AB3427B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{582C00FB-515D-4E07-AD69-A4C2AB3427B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D661FE3E-0593-4DF8-8DFD-4B63A8BD96D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D661FE3E-0593-4DF8-8DFD-4B63A8BD96D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D661FE3E-0593-4DF8-8DFD-4B63A8BD96D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D661FE3E-0593-4DF8-8DFD-4B63A8BD96D7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -46,5 +52,6 @@ Global
 		{6A8E090C-76A2-47A5-95B5-91E2961F427D} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{B08F6F4B-6A14-4DC0-9F8C-AC4370CB8CBB} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{582C00FB-515D-4E07-AD69-A4C2AB3427B3} = {B6A4F289-20AA-4CC7-AB41-D0D5E5E9E3D1}
+		{D661FE3E-0593-4DF8-8DFD-4B63A8BD96D7} = {B6A4F289-20AA-4CC7-AB41-D0D5E5E9E3D1}
 	EndGlobalSection
 EndGlobal

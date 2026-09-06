@@ -1,0 +1,192 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.VideoPlayer"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Focusable="True">
+    <Border Background="{StaticResource Brush.Background}"
+            BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
+            CornerRadius="{StaticResource CornerRadius.M}">
+        <Grid DataContext="{Binding Player, ElementName=Root}" ClipToBounds="True">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Image Source="{Binding Video}" Stretch="Uniform"
+                   MouseLeftButtonUp="OnVideoPreviewMouseLeftButtonUp"
+                   Cursor="Hand"
+                   ToolTip="Click to play or pause"
+                   AutomationProperties.Name="Video preview" />
+            <Border x:Name="ActionFeedback" Width="72" Height="72"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="#C0000000" CornerRadius="36" Visibility="Collapsed"
+                    IsHitTestVisible="False" Panel.ZIndex="1">
+                <Path x:Name="ActionFeedbackIcon" Width="36" Height="36"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Fill="{StaticResource Brush.TextPrimary}"
+                      Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="2"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Stretch="Uniform" />
+            </Border>
+            <TextBlock Margin="{StaticResource Spacing.L}" VerticalAlignment="Center"
+                       HorizontalAlignment="Center" TextWrapping="Wrap" Text="{Binding Status}">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsStatusVisible}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <Border Grid.Row="1" Background="{StaticResource Brush.Surface}" Padding="8,0">
+                <Grid VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Button Command="{Binding TogglePlaybackCommand}"
+                            Width="36" Height="36" MinHeight="36"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource Button.Icon}"
+                            ToolTip="Play or pause video"
+                            AutomationProperties.Name="{Binding PlayActionText}">
+                        <Grid Width="16" Height="16">
+                            <Path x:Name="PlayIcon" Data="M3,1 L15,8 L3,15 Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                            <Grid x:Name="PauseIcon">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Rectangle Width="4" Height="14" HorizontalAlignment="Left"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                                <Rectangle Width="4" Height="14" HorizontalAlignment="Right"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            </Grid>
+                        </Grid>
+                    </Button>
+                    <Grid Grid.Column="1" Margin="8,0" VerticalAlignment="Center">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Margin="0,0,8,0" VerticalAlignment="Center"
+                                   Text="{Binding CurrentPositionText}" Style="{StaticResource Text.Metadata}" />
+                        <Slider x:Name="SeekSlider"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Minimum="0"
+                                Maximum="{Binding DurationSeconds}"
+                                Value="{Binding PositionSeconds, Mode=OneWay}"
+                                IsEnabled="{Binding CanSeek}"
+                                ValueChanged="OnSeekSliderValueChanged"
+                                PreviewMouseLeftButtonDown="OnSeekSliderMouseLeftButtonDown"
+                                PreviewMouseLeftButtonUp="OnSeekSliderMouseLeftButtonUp"
+                                PreviewKeyDown="OnSeekSliderPreviewKeyDown"
+                                PreviewKeyUp="OnSeekSliderPreviewKeyUp"
+                                LostKeyboardFocus="OnSeekSliderLostKeyboardFocus"
+                                AutomationProperties.Name="Video playback position"
+                                ToolTip="Drag to seek" />
+                        <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center"
+                                   Text="{Binding DurationText}" Style="{StaticResource Text.Metadata}" />
+                    </Grid>
+                    <Button Grid.Column="2" Command="{Binding ToggleMuteCommand}"
+                            Width="32" Height="36" MinHeight="36"
+                            VerticalAlignment="Center"
+                            Style="{StaticResource Button.Icon}"
+                            ToolTip="{Binding MuteActionText}"
+                            AutomationProperties.Name="{Binding MuteActionText}">
+                        <Grid Width="18" Height="18">
+                            <Path Data="M2,7 H6 L11,3 V15 L6,11 H2 Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                            <Path Data="M13,6 C15,7.5 15,10.5 13,12 M15,3.5 C19,7 19,11 15,14.5"
+                                  Fill="Transparent"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMutedIconVisible}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                            <Path Data="M2,2 L16,16"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                <Path.Style>
+                                    <Style TargetType="Path">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsMutedIconVisible}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Path.Style>
+                            </Path>
+                        </Grid>
+                    </Button>
+                    <Slider x:Name="VolumeSlider" Grid.Column="3" Width="88" Margin="2,0,8,0" VerticalAlignment="Center"
+                            Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1"
+                            Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            IsEnabled="{Binding IsReady}"
+                            PreviewMouseLeftButtonDown="OnVolumeSliderMouseLeftButtonDown"
+                            AutomationProperties.Name="Volume"
+                            ToolTip="Volume" />
+                    <Button Grid.Column="4" Click="OnFullscreenClick"
+                            Width="36" Height="36" MinHeight="36"
+                            VerticalAlignment="Center"
+                            ToolTip="Toggle fullscreen (F11); exit with Esc"
+                            AutomationProperties.Name="Toggle fullscreen">
+                        <Path Width="18" Height="18"
+                              Data="M2,7 V2 H7 M11,2 H16 V7 M16,11 V16 H11 M7,16 H2 V11"
+                              Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.8"
+                              StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round"
+                              StrokeLineJoin="Round" />
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                                <Setter Property="Width" Value="36" />
+                                <Setter Property="Height" Value="36" />
+                                <Setter Property="MinHeight" Value="36" />
+                                <Setter Property="IsEnabled" Value="{Binding IsReady}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsFullscreen, ElementName=Root}" Value="True">
+                                        <Setter Property="IsEnabled" Value="True" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

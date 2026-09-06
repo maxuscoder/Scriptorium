@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
@@ -21,7 +20,6 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     private readonly INavigationService _navigationService;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly IFavoriteService _favoriteService;
-    private readonly IMediaPlaybackLauncher _mediaPlaybackLauncher;
     private PageViewModel? _returnPage;
     private MediaItem? _movie;
     private string _movieTitle = "Movie";
@@ -39,7 +37,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         INavigationService navigationService,
         IPlaybackProgressService playbackProgressService,
         IFavoriteService favoriteService,
-        IMediaPlaybackLauncher mediaPlaybackLauncher)
+        VideoPlayerViewModel player)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -47,9 +45,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         _navigationService = navigationService;
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
-        _mediaPlaybackLauncher = mediaPlaybackLauncher;
+        Player = player;
+        Player.PlaybackStarted += OnPlaybackStarted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
-        PlayCommand = new AsyncRelayCommand(PlayAsync, CanPlay);
         ToggleCompletionCommand = new AsyncRelayCommand(ToggleCompletionAsync, CanToggleCompletion);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
@@ -104,7 +102,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         private set => SetProperty(ref _categoryStatus, value);
     }
 
-    public string PlayActionText => "Play";
+    public VideoPlayerViewModel Player { get; }
 
     public string CompletionActionText => _movie?.IsCompleted == true ? "Mark as unwatched" : "Mark as watched";
 
@@ -125,8 +123,6 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
             : PlaybackText(_movie);
 
     public ICommand BackCommand { get; }
-
-    public ICommand PlayCommand { get; }
 
     public ICommand ToggleCompletionCommand { get; }
 
@@ -156,27 +152,31 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
             MediaCategoryDisplay.Name(movie));
         Description = string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
+        Player.SetMedia(new MediaPlaybackRequest(movie.Path, movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds));
         PopulateMetadata(movie);
         NotifyStateChanged();
         return true;
     }
 
-    private async Task PlayAsync()
+    private async void OnPlaybackStarted(object? sender, EventArgs args)
     {
         var movie = _movie;
-        if (movie is null)
+        if (movie is null) return;
+        try
         {
-            return;
+            // Preserve the existing playback-history behavior without marking a paused preview as watched.
+            var saved = await _playbackProgressService.SaveAsync(movie.Id,
+                new PlaybackProgressUpdate(movie.PlaybackPositionSeconds, movie.RuntimeSeconds ?? 0));
+            if (saved && ReferenceEquals(movie, _movie))
+            {
+                movie.LastPlayed = DateTimeOffset.UtcNow;
+                PopulateMetadata(movie);
+            }
         }
-
-        // Record that playback was requested while preserving the existing resume position.
-        await _playbackProgressService.SaveAsync(
-            movie.Id,
-            new PlaybackProgressUpdate(movie.PlaybackPositionSeconds, movie.RuntimeSeconds ?? 0));
-
-        var started = await _mediaPlaybackLauncher.LaunchAsync(
-            new MediaPlaybackRequest(movie.Path, movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds));
-        Availability = started ? "Opened in your default media player." : "Media file could not be opened.";
+        catch (Exception)
+        {
+            if (ReferenceEquals(movie, _movie)) Availability = "Playback history could not be saved.";
+        }
     }
 
     private async Task ToggleCompletionAsync()
@@ -268,8 +268,6 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         CategoryStatus = string.Empty;
     }
 
-    private bool CanPlay() => _movie is { IsMissing: false } movie && File.Exists(movie.Path);
-
     private bool CanToggleCompletion() => _movie is { RuntimeSeconds: > 0 };
 
     private void PopulateMetadata(MediaItem movie)
@@ -291,13 +289,11 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     private void NotifyStateChanged()
     {
         OnPropertyChanged(nameof(Title));
-        OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(CompletionActionText));
         OnPropertyChanged(nameof(FavoriteActionText));
         OnPropertyChanged(nameof(PlaybackProgressPercentage));
         OnPropertyChanged(nameof(PlaybackProgressText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
-        ((AsyncRelayCommand)PlayCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleCompletionCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
