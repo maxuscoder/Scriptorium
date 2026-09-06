@@ -3,8 +3,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Scriptorium.App.Behaviors;
-using System.Windows.Threading;
 using Scriptorium.App.ViewModels.Pages;
+using System.Windows.Threading;
 
 namespace Scriptorium.App.Views.Pages;
 
@@ -15,7 +15,7 @@ public partial class LibraryPage : UserControl
         InitializeComponent();
     }
 
-    private async void OnLoaded(object sender, System.Windows.RoutedEventArgs e)
+    private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (DataContext is LibraryPageViewModel viewModel)
         {
@@ -52,7 +52,7 @@ public partial class LibraryPage : UserControl
 
     private void CloseOpenDropdowns()
     {
-        FiltersButton.IsChecked = false;
+        Toolbar.CloseFilterPanel();
 
         foreach (var comboBox in FindVisualChildren<ComboBox>(this))
         {

@@ -9,7 +9,7 @@
             VerticalAlignment="Center">
             <TextBlock
                 HorizontalAlignment="Center"
-                Style="{StaticResource Text.Display}"
+                Style="{StaticResource Text.PageTitle}"
                 Text="Favorites" />
             <TextBlock
                 Margin="0,12,0,0"

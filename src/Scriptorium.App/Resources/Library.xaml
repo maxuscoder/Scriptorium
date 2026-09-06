@@ -1,0 +1,102 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="Library.SearchField" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.ComboBox" BasedOn="{StaticResource Input.ComboBox}" TargetType="ComboBox"><Setter Property="MinHeight" Value="36" /><Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" /><Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" /><Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" /><Setter Property="TextElement.Foreground" Value="{StaticResource Brush.TextPrimary}" /><Setter Property="ItemContainerStyle"><Setter.Value><Style BasedOn="{StaticResource Input.ComboBoxItem}" TargetType="ComboBoxItem"><Setter Property="Padding" Value="12,8" /><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="ItemSurface" Background="{TemplateBinding Background}" CornerRadius="{StaticResource CornerRadius.S}" Padding="{TemplateBinding Padding}"><TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ComboBoxSelectionDisplay}}" TextTrimming="CharacterEllipsis" TextElement.Foreground="{TemplateBinding Foreground}" ToolTip="{Binding Content, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ComboBoxSelectionDisplay}}" /></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{StaticResource Brush.SelectionSurface}" /><Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style></Setter.Value></Setter></Style>
+    <Style x:Key="Library.FilterToggle" BasedOn="{StaticResource Toggle.Filter}" TargetType="ToggleButton"><Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" /><Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" /><Setter Property="Padding" Value="12,7" /><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton"><Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CornerRadius.M}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" /></Trigger><Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="{StaticResource Brush.SelectionSurface}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{StaticResource Brush.Accent}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+    <Style x:Key="Library.MediaItems" TargetType="ItemsControl"><Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ContentPresenter"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style></Setter.Value></Setter><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter.Value></Setter></DataTrigger></Style.Triggers></Style>
+    <Style x:Key="Library.Section" TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+    <Style x:Key="Library.ManagementCard" BasedOn="{StaticResource Card}" TargetType="Border">
+        <Setter Property="Padding" Value="20" />
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.L}" />
+        <Setter Property="Background" Value="{StaticResource Brush.Surface}" />
+    </Style>
+    <Style x:Key="Library.FolderList" TargetType="ListBox">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="ItemContainerStyle">
+            <Setter.Value>
+                <Style TargetType="ListBoxItem">
+                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,8" />
+                    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListBoxItem">
+                                <ContentPresenter />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Library.FolderRow" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceHeader}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+        <Setter Property="Padding" Value="14,12" />
+    </Style>
+    <Style x:Key="Library.InfoBanner" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.SurfaceHeader}" />
+        <Setter Property="BorderBrush" Value="{StaticResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+        <Setter Property="Padding" Value="12,10" />
+    </Style>
+    <Style x:Key="Library.RowIconToggle" TargetType="ToggleButton">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Foreground" Value="{StaticResource Brush.TextSecondary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CornerRadius.S}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+                <Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" />
+                <Setter Property="Foreground" Value="{StaticResource Brush.TextPrimary}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.InclusionBadge" BasedOn="{StaticResource Badge}" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource Brush.SuccessSurface}" />
+        <Setter Property="Padding" Value="8,3" />
+    </Style>
+    <Style x:Key="Library.Placeholder" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+        <Setter Property="IsHitTestVisible" Value="False" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="12,0,32,0" />
+        <Setter Property="Visibility" Value="Collapsed" />
+    </Style>
+</ResourceDictionary>

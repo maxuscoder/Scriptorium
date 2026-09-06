@@ -11,26 +11,24 @@
                 Style="{StaticResource Button.Secondary}" />
             <TextBlock
                 Margin="0,24,0,0"
-                FontSize="28"
-                FontWeight="SemiBold"
-                Foreground="{StaticResource Brush.TextPrimary}"
+                Style="{StaticResource Text.PageTitle}"
                 Text="{Binding Title}"
                 TextWrapping="Wrap" />
             <TextBlock
                 Margin="0,6,0,0"
-                Foreground="{StaticResource Brush.TextSecondary}"
+                Style="{StaticResource Text.Metadata}"
                 Text="{Binding SourceFolder}" />
             <WrapPanel Margin="0,16,0,0">
                 <TextBlock
-                    Foreground="{StaticResource Brush.TextMuted}"
+                    Style="{StaticResource Text.Metadata}"
                     Text="{Binding LessonCountText}" />
                 <TextBlock
                     Margin="16,0,0,0"
-                    Foreground="{StaticResource Brush.TextMuted}"
+                    Style="{StaticResource Text.Metadata}"
                     Text="Total duration:" />
                 <TextBlock
                     Margin="6,0,0,0"
-                    Foreground="{StaticResource Brush.TextMuted}"
+                    Style="{StaticResource Text.Metadata}"
                     Text="{Binding TotalDurationText}" />
             </WrapPanel>
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
@@ -41,11 +39,11 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock
-                            Foreground="{StaticResource Brush.TextMuted}"
+                            Style="{StaticResource Text.Metadata}"
                             Text="{Binding SelectedLessonPositionText}" />
                         <TextBlock
                             Margin="0,4,0,0"
-                            FontWeight="SemiBold"
+                            Style="{StaticResource Text.CardTitle}"
                             Text="{Binding SelectedLesson.Title}" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -82,11 +80,12 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock
+                                        Style="{StaticResource Text.Metadata}"
                                         Foreground="{StaticResource Brush.Accent}"
                                         Text="{Binding Position}" />
-                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Runtime}">
+                                    <TextBlock Margin="0,4,0,0" Text="{Binding Runtime}">
                                         <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Runtime}" Value="">
                                                         <Setter Property="Visibility" Value="Collapsed" />
@@ -98,20 +97,21 @@
                                 </StackPanel>
                                 <StackPanel Grid.Column="1">
                                     <TextBlock
-                                        FontWeight="SemiBold"
+                                        Style="{StaticResource Text.CardTitle}"
                                         Text="{Binding Title}"
                                         TextTrimming="CharacterEllipsis"
                                         TextWrapping="NoWrap"
                                         ToolTip="{Binding Title}" />
                                     <TextBlock
                                         Margin="0,4,0,0"
-                                        Foreground="{StaticResource Brush.TextMuted}"
+                                        Style="{StaticResource Text.Metadata}"
                                         Text="{Binding FilePath}"
                                         TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                     <TextBlock
                                         HorizontalAlignment="Right"
+                                        Style="{StaticResource Text.Metadata}"
                                         Foreground="{StaticResource Brush.TextSecondary}"
                                         Text="{Binding Availability}" />
                                     <Button

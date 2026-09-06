@@ -13,6 +13,7 @@
                 <ResourceDictionary Source="Resources/Theme/Elevation.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Motion.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Controls.xaml" />
+                <ResourceDictionary Source="Resources/Library.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <DataTemplate DataType="{x:Type viewModels:MainWindowViewModel}">
                 <pages:HomePage Style="{StaticResource Page.Enter}" />

@@ -21,7 +21,7 @@
         TypeLabel="Movie">
         <controls:MediaDetailsPage.ExtensionContent>
             <StackPanel>
-                <TextBlock FontWeight="SemiBold" Text="Playback progress" />
+                <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="Playback progress" />
                 <ProgressBar
                     Height="6"
                     Margin="0,12,0,0"

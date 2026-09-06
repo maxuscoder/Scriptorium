@@ -1,0 +1,134 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.Library.WatchedFoldersPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border Margin="0,48,0,0" DataContext="{Binding FolderManagement}" Style="{StaticResource Library.ManagementCard}">
+        <StackPanel>
+            <StackPanel Orientation="Horizontal">
+                <Border Width="32" Height="32" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}">
+                    <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Fill="{StaticResource Brush.TextPrimary}" Stretch="Uniform" />
+                </Border>
+                <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Library management" />
+                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Helper}" Text="Manage folders and fine-tune automatically detected TV-show groups." />
+                </StackPanel>
+            </StackPanel>
+
+            <Grid Margin="0,20,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="Watched folders" />
+                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Helper}" Text="These folders will be included in scans." />
+                </StackPanel>
+                <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding ImportFolderCommand}" Style="{StaticResource Button.Secondary}">
+                    <StackPanel Orientation="Horizontal">
+                        <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                        <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Add folder" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <ListBox Margin="0,16,0,0" ItemsSource="{Binding ConfiguredFolders}" SelectedItem="{Binding SelectedFolder, Mode=TwoWay}" Style="{StaticResource Library.FolderList}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Border>
+                            <Border.Style>
+                                <Style BasedOn="{StaticResource Library.FolderRow}" TargetType="Border">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                            <Setter Property="BorderBrush" Value="{StaticResource Brush.BorderStrong}" />
+                                            <Setter Property="Background" Value="{StaticResource Brush.SurfaceElevated}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceElevated}" CornerRadius="{StaticResource CornerRadius.S}">
+                                    <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Fill="{StaticResource Brush.TextSecondary}" Stretch="Uniform" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource Text.CardTitle}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,2,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,2,0,0" Text="{Binding ValidationWarning}">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Helper}" TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers><DataTrigger Binding="{Binding IsValidForScanning}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal">
+                                    <Border Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Border.Style>
+                                            <Style BasedOn="{StaticResource Library.InclusionBadge}" TargetType="Border">
+                                                <Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Background" Value="{StaticResource Brush.SurfaceOverlay}" /></DataTrigger></Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Width="10" Height="10" Margin="0,0,5,0" VerticalAlignment="Center" Data="M9,16.17 4.83,12 3.41,13.41 9,19 21,7 19.59,5.59Z" Stretch="Uniform">
+                                                <Path.Style>
+                                                    <Style TargetType="Path"><Setter Property="Fill" Value="{StaticResource Brush.Success}" /><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
+                                                </Path.Style>
+                                            </Path>
+                                            <TextBlock Text="{Binding InclusionLabel}">
+                                                <TextBlock.Style>
+                                                    <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock"><Setter Property="Foreground" Value="{StaticResource Brush.Success}" /><Style.Triggers><DataTrigger Binding="{Binding IsEnabled}" Value="False"><Setter Property="Foreground" Value="{StaticResource Brush.TextMuted}" /></DataTrigger></Style.Triggers></Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                    <Grid>
+                                        <ToggleButton x:Name="EditFolderButton" Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Style="{StaticResource Library.RowIconToggle}" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" ToolTip="Edit folder">
+                                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M20.71,7.04C21.1,6.65 21.1,6.02 20.71,5.63L18.37,3.29C17.98,2.9 17.35,2.9 16.96,3.29L15.12,5.12 18.87,8.87M3,17.25V21H6.75L17.81,9.93 14.06,6.18 3,17.25Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Stretch="Uniform" />
+                                        </ToggleButton>
+                                        <Popup AllowsTransparency="True" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" IsOpen="{Binding IsChecked, ElementName=EditFolderButton, Mode=TwoWay}" Placement="Bottom" PlacementTarget="{Binding ElementName=EditFolderButton}" StaysOpen="False">
+                                            <Border Width="320" Margin="0,8,0,0" Padding="14" Style="{StaticResource Card}" Effect="{StaticResource Elevation.2}">
+                                                <StackPanel>
+                                                    <TextBlock Style="{StaticResource Text.Label}" Text="Display name" />
+                                                    <TextBox Margin="0,6,0,0" Style="{StaticResource Input.TextBox}" Text="{Binding CustomDisplayName, UpdateSourceTrigger=PropertyChanged}" />
+                                                    <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Label}" Text="Media type" />
+                                                    <ComboBox Margin="0,6,0,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding MediaTypes}" SelectedValue="{Binding SelectedMediaType, Mode=TwoWay}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                    <Grid Margin="4,0,0,0">
+                                        <ToggleButton x:Name="FolderMenuButton" Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" Style="{StaticResource Library.RowIconToggle}" Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" ToolTip="More actions">
+                                            <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M12,16A2,2 0 0,1 14,18 2,2 0 0,1 12,20 2,2 0 0,1 10,18 2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12 2,2 0 0,1 12,14 2,2 0 0,1 10,12 2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6 2,2 0 0,1 12,8 2,2 0 0,1 10,6 2,2 0 0,1 12,4Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" Stretch="Uniform" />
+                                        </ToggleButton>
+                                        <Popup AllowsTransparency="True" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}" IsOpen="{Binding IsChecked, ElementName=FolderMenuButton, Mode=TwoWay}" Placement="Bottom" PlacementTarget="{Binding ElementName=FolderMenuButton}" StaysOpen="False">
+                                            <Border MinWidth="180" Margin="0,8,0,0" Padding="8" Style="{StaticResource Card}" Effect="{StaticResource Elevation.2}">
+                                                <StackPanel>
+                                                    <Button HorizontalContentAlignment="Left" Command="{Binding ReconnectFolderCommand}" Content="Reconnect" Style="{StaticResource Button.Secondary}" />
+                                                    <Button Margin="0,6,0,0" HorizontalContentAlignment="Left" Command="{Binding RemoveFolderCommand}" Content="Remove" Style="{StaticResource Button.Secondary}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
+                                    </Grid>
+                                    <CheckBox Margin="8,0,0,0" Command="{Binding DataContext.SaveFolderStateCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" CommandParameter="{Binding}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" Style="{StaticResource Toggle.Switch}" ToolTip="Include in scans" />
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <Border Margin="0,4,0,0" Style="{StaticResource Library.InfoBanner}">
+                <StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" VerticalAlignment="Center" Data="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12 10,10 0 0,0 12,22 10,10 0 0,0 22,12 10,10 0 0,0 12,2Z" Fill="{StaticResource Brush.TextMuted}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="Only folders marked as &quot;Included&quot; will be scanned." /></StackPanel>
+            </Border>
+
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding SelectedFolderCountText}" />
+                <WrapPanel Grid.Column="1" Margin="16,0,16,0" VerticalAlignment="Center">
+                    <Button Margin="0,0,8,0" Command="{Binding RemoveFolderCommand}" Style="{StaticResource Button.Secondary}"><StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Remove" /></StackPanel></Button>
+                    <Button Command="{Binding ReconnectFolderCommand}" Style="{StaticResource Button.Secondary}"><StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M12,6V9L16,5 12,1V4A8,8 0 0,0 4,12H6A6,6 0 0,1 12,6M18,12A6,6 0 0,1 12,18V15L8,19 12,23V20A8,8 0 0,0 20,12H18Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Reconnect" /></StackPanel></Button>
+                </WrapPanel>
+                <Button Grid.Column="2" Command="{Binding SaveFolderChangesCommand}" Content="Save changes" Style="{StaticResource Button.Primary}" />
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>
