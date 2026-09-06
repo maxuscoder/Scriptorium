@@ -142,6 +142,12 @@ public partial class MediaCard : UserControl
     public static readonly DependencyProperty ActionTextProperty =
         DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
 
+    public static readonly DependencyProperty FavoriteCommandProperty =
+        DependencyProperty.Register(nameof(FavoriteCommand), typeof(ICommand), typeof(MediaCard));
+
+    public static readonly DependencyProperty FavoriteParameterProperty =
+        DependencyProperty.Register(nameof(FavoriteParameter), typeof(object), typeof(MediaCard));
+
     public static readonly DependencyProperty HasUsableThumbnailProperty = HasUsableThumbnailPropertyKey.DependencyProperty;
 
     public static readonly DependencyProperty ThumbnailSourceProperty = ThumbnailSourcePropertyKey.DependencyProperty;
@@ -306,6 +312,19 @@ public partial class MediaCard : UserControl
     {
         get => (string)GetValue(ActionTextProperty);
         set => SetValue(ActionTextProperty, value);
+    }
+
+    /// <summary>Gets or sets the command used to toggle this item's favorite state.</summary>
+    public ICommand? FavoriteCommand
+    {
+        get => (ICommand?)GetValue(FavoriteCommandProperty);
+        set => SetValue(FavoriteCommandProperty, value);
+    }
+
+    public object? FavoriteParameter
+    {
+        get => GetValue(FavoriteParameterProperty);
+        set => SetValue(FavoriteParameterProperty, value);
     }
 
     public bool HasUsableThumbnail => (bool)GetValue(HasUsableThumbnailProperty);

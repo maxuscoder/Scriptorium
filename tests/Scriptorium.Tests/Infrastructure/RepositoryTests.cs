@@ -84,8 +84,14 @@ public sealed class RepositoryTests
             var category = await categoryService.CreateAsync("Learning", "#6B46C1");
             Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, category.Id));
             Assert.Single(await categoryService.GetAssignmentsAsync(category.Id));
+            Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, null));
+            Assert.Empty(await categoryService.GetAssignmentsAsync(category.Id));
+            Assert.Null((await mediaItemRepository.GetByIdAsync(mediaItem.Id))!.CategoryId);
+            Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, category.Id));
             Assert.True(await categoryService.RenameAsync(category.Id, "Courses"));
             Assert.Equal("Courses", (await categoryRepository.GetByIdAsync(category.Id))!.Name);
+            Assert.True(await categoryService.UpdateAsync(category.Id, "Courses", "#2563EB"));
+            Assert.Equal("#2563EB", (await categoryRepository.GetByIdAsync(category.Id))!.Color);
 
             Assert.True(await favoriteService.AddAsync(mediaItem.Id));
             Assert.True(await favoriteService.AddAsync(mediaItem.Id));
@@ -99,6 +105,101 @@ public sealed class RepositoryTests
             Assert.NotNull(unassignedItem);
             Assert.Null(unassignedItem.CategoryId);
             Assert.Null(unassignedItem.Category);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Category_names_are_unique_when_created_or_renamed()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var categoryRepository = new CategoryRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var categoryService = new CategoryService(categoryRepository, mediaItemRepository);
+
+            var category = await categoryService.CreateAsync("Learning", "#6B46C1");
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                categoryService.CreateAsync(" learning ", "#CC4B08"));
+
+            var otherCategory = await categoryService.CreateAsync("Reference", "#CC4B08");
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                categoryService.RenameAsync(otherCategory.Id, "LEARNING"));
+
+            Assert.Equal("Learning", (await categoryRepository.GetByIdAsync(category.Id))!.Name);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Deleting_a_category_clears_all_media_assignments_before_removing_it()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var categoryRepository = new CategoryRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var categoryService = new CategoryService(categoryRepository, mediaItemRepository);
+            var folder = new LibraryFolder { Name = "Media", Path = "C:\\Media" };
+            await folderRepository.AddAsync(folder);
+            var mediaItems = new[]
+            {
+                new MediaItem
+                {
+                    Title = "One",
+                    Path = "C:\\Media\\one.mp4",
+                    LibraryFolderId = folder.Id,
+                    LibraryFolder = null!,
+                    MediaType = MediaType.Movie
+                },
+                new MediaItem
+                {
+                    Title = "Two",
+                    Path = "C:\\Media\\two.mp4",
+                    LibraryFolderId = folder.Id,
+                    LibraryFolder = null!,
+                    MediaType = MediaType.Movie
+                }
+            };
+            await mediaItemRepository.AddRangeAsync(mediaItems);
+            var category = await categoryService.CreateAsync("To remove", "#6B46C1");
+            Assert.True(await categoryService.AssignToMediaAsync(mediaItems[0].Id, category.Id));
+            Assert.True(await categoryService.AssignToMediaAsync(mediaItems[1].Id, category.Id));
+
+            Assert.True(await categoryService.DeleteAsync(category.Id));
+
+            Assert.Null((await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.CategoryId);
+            Assert.Null((await mediaItemRepository.GetByIdAsync(mediaItems[1].Id))!.CategoryId);
+            Assert.Null(await categoryRepository.GetByIdAsync(category.Id));
         }
         finally
         {

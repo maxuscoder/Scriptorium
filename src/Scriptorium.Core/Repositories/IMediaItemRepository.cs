@@ -35,6 +35,11 @@ public interface IMediaItemRepository : IRepository<MediaItem>
         Guid categoryId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Clears the category assignment from all media items in a category.</summary>
+    Task<int> ClearCategoryAssignmentsAsync(
+        Guid categoryId,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Searches media titles, library-folder names, and assigned category names.
     /// A query matching "Uncategorized" also returns media without an assigned category.

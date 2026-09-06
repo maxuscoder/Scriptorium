@@ -21,6 +21,8 @@
         TypeLabel="Movie">
         <controls:MediaDetailsPage.ExtensionContent>
             <StackPanel>
+                <controls:MediaCategoryEditor />
+                <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
                 <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="Playback progress" />
                 <ProgressBar
                     Height="6"

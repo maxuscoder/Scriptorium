@@ -14,10 +14,13 @@ public sealed class CategoryRepository(IDbContextFactory<ScriptoriumDbContext> c
     public async Task<Category?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var normalizedName = name.Trim();
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         return await context.Categories
             .AsNoTracking()
-            .SingleOrDefaultAsync(category => category.Name == name, cancellationToken);
+            .FirstOrDefaultAsync(
+                category => EF.Functions.Collate(category.Name, "NOCASE") == normalizedName,
+                cancellationToken);
     }
 }

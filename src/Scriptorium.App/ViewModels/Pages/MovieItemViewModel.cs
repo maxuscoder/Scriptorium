@@ -5,9 +5,13 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Presents an indexed movie in the library browser.
 /// </summary>
-public sealed class MovieItemViewModel(MediaItem movie)
+public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem
 {
+    public MediaItem MediaItem => movie;
+
     public Guid Id => movie.Id;
+
+    public Guid MediaItemId => movie.Id;
 
     public string Title => MediaDisplayText.TitleOrFallback(movie.Title, "Untitled movie");
 
@@ -25,6 +29,17 @@ public sealed class MovieItemViewModel(MediaItem movie)
 
     /// <summary>Gets whether this movie is marked as a favorite.</summary>
     public bool IsFavorite => movie.IsFavorite;
+
+    public void SetFavorite(bool isFavorite)
+    {
+        if (movie.IsFavorite == isFavorite)
+        {
+            return;
+        }
+
+        movie.IsFavorite = isFavorite;
+        OnPropertyChanged(nameof(IsFavorite));
+    }
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(movie);
 

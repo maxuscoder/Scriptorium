@@ -33,4 +33,15 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Page Update="Views\CreateCategoryDialog.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Update="Views\CreateCategoryDialog.xaml.cs">
+      <DependentUpon>CreateCategoryDialog.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
 </Project>

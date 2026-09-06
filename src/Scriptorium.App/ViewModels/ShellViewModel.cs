@@ -23,6 +23,7 @@ public sealed class ShellViewModel : ViewModelBase
         MainWindowViewModel homePage,
         LibraryPageViewModel libraryPage,
         FavoritesPageViewModel favoritesPage,
+        CategoriesPageViewModel categoriesPage,
         SettingsPageViewModel settingsPage,
         SearchPageViewModel searchPage,
         ISearchQueryResetService searchQueryResetService,
@@ -39,7 +40,8 @@ public sealed class ShellViewModel : ViewModelBase
         [
             new NavigationItem("Home", "M3,10.75 12,3 21,10.75V21H14.5V14H9.5V21H3V10.75Z", homePage),
             new NavigationItem("Library", "M4,4H20V20H4V4ZM6,6V18H18V6H6ZM8,8H10V10H8V8ZM12,8H16V10H12V8ZM8,12H10V14H8V12ZM12,12H16V14H12V12ZM8,16H10V18H8V16ZM12,16H16V18H12V16Z", libraryPage),
-            new NavigationItem("Favorites", "M12,20.5 10.55,19.18C5.4,14.5 2,11.42 2,7.65 2,4.58 4.42,2.25 7.42,2.25 9.12,2.25 10.75,3.05 12,4.31 13.25,3.05 14.88,2.25 16.58,2.25 19.58,2.25 22,4.58 22,7.65 22,11.42 18.6,14.5 13.45,19.19L12,20.5Z", favoritesPage)
+            new NavigationItem("Favorites", "M12,20.5 10.55,19.18C5.4,14.5 2,11.42 2,7.65 2,4.58 4.42,2.25 7.42,2.25 9.12,2.25 10.75,3.05 12,4.31 13.25,3.05 14.88,2.25 16.58,2.25 19.58,2.25 22,4.58 22,7.65 22,11.42 18.6,14.5 13.45,19.19L12,20.5Z", favoritesPage),
+            new NavigationItem("Categories", "M4,4H20V8H4V4ZM4,10H20V14H4V10ZM4,16H20V20H4V16ZM6,5V7H8V5H6ZM6,11V13H8V11H6ZM6,17V19H8V17H6Z", categoriesPage)
         ];
 
         SecondaryNavigationItems =

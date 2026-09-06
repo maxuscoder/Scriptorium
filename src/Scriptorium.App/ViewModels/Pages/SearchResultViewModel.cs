@@ -5,7 +5,7 @@ using MediaKind = Scriptorium.Core.Models.MediaType;
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>Provides display metadata for one media item in the global search results.</summary>
-public sealed class SearchResultViewModel
+public sealed class SearchResultViewModel : ViewModelBase, IMediaFavoriteItem
 {
     public SearchResultViewModel(MediaItem mediaItem, string query)
     {
@@ -74,6 +74,19 @@ public sealed class SearchResultViewModel
     public string CategoryColor => MediaCategoryDisplay.Color(MediaItem);
 
     public bool IsFavorite => MediaItem.IsFavorite;
+
+    public Guid MediaItemId => MediaItem.Id;
+
+    public void SetFavorite(bool isFavorite)
+    {
+        if (MediaItem.IsFavorite == isFavorite)
+        {
+            return;
+        }
+
+        MediaItem.IsFavorite = isFavorite;
+        OnPropertyChanged(nameof(IsFavorite));
+    }
 
     public bool IsMissing => MediaItem.IsMissing;
 

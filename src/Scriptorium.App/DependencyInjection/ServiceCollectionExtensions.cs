@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
+        services.AddSingleton<ICreateCategoryDialog, CreateCategoryDialogService>();
         services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ISearchQueryResetService, SearchQueryResetService>();
@@ -45,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<MovieDetailsPageViewModel>();
         services.AddSingleton<SearchPageViewModel>();
         services.AddTransient<FavoritesPageViewModel>();
+        services.AddTransient<CategoriesPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();
         services.AddTransient<ShellViewModel>();
         services.AddTransient<MainWindow>();

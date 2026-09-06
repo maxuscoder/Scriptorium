@@ -1,0 +1,4 @@
+{
+  "dotnet.defaultSolution": "Scriptorium.sln",
+  "dotnet.enableXamlTools": true
+}

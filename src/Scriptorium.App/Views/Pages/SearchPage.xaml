@@ -68,6 +68,8 @@
                             ActionText="Open"
                             CategoryColor="{Binding CategoryColor}"
                             CategoryName="{Binding CategoryName}"
+                            FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}"
+                            FavoriteParameter="{Binding}"
                             FallbackGlyph="{Binding TypeGlyph}"
                             HasPlaybackProgress="{Binding HasPlaybackProgress}"
                             IsFavorite="{Binding IsFavorite}"

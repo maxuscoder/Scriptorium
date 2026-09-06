@@ -223,6 +223,21 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+    <Style x:Key="CategoryColorSwatch" BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Margin" Value="0,0,8,8" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="BorderBrush" Value="{Binding Tag, RelativeSource={RelativeSource Self}}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="15" />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <Style
         x:Key="Button.Icon"
         BasedOn="{StaticResource Button.Base}"

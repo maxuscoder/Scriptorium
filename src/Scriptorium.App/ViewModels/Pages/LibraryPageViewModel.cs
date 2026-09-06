@@ -44,6 +44,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _discoveredMediaCount;
     private bool _isListLayout;
     private bool _showFavoritesOnly;
+    private bool _favoritesFirst;
     private string? _searchQuery;
     private PlaybackFilter _selectedPlaybackFilter;
     private CompletionFilter _selectedCompletionFilter;
@@ -115,6 +116,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         OpenTvShowCommand = _openTvShowCommand;
         _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
         OpenMovieCommand = _openMovieCommand;
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
         _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
         _selectedSortOrder = Enum.TryParse<LibrarySortOrder>(
                 _settingsService.Settings.LibrarySortOrder,
@@ -124,6 +126,7 @@ public sealed class LibraryPageViewModel : PageViewModel
             ? savedSortOrder
             : LibrarySortOrder.Ascending;
         _showFavoritesOnly = _settingsService.Settings.LibraryShowFavoritesOnly;
+        _favoritesFirst = _settingsService.Settings.LibraryFavoritesFirst;
         _selectedPlaybackFilter = ParseFilter(_settingsService.Settings.LibraryPlaybackFilter, PlaybackFilter.All);
         _selectedCompletionFilter = ParseFilter(_settingsService.Settings.LibraryCompletionFilter, CompletionFilter.All);
         foreach (var categoryFilterId in _settingsService.Settings.LibraryCategoryFilterIds)
@@ -375,6 +378,9 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets the command that opens a movie's metadata page.</summary>
     public ICommand OpenMovieCommand { get; }
+
+    /// <summary>Gets the command that toggles a media item's favorite state.</summary>
+    public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Gets the command that switches the library to card-grid layout.</summary>
     public ICommand SetGridLayoutCommand { get; }
@@ -675,6 +681,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     {
         _searchQueryResetService.Clear();
         ClearFilters();
+        FavoritesFirst = false;
         SelectedSortOrder = LibrarySortOrder.Ascending;
         await RefreshLibraryDataAsync();
     }
@@ -910,6 +917,37 @@ public sealed class LibraryPageViewModel : PageViewModel
         _navigationService.NavigateTo(_movieDetailsPage);
     }
 
+    /// <summary>Gets or sets whether favorite media is displayed before other media.</summary>
+    public bool FavoritesFirst
+    {
+        get => _favoritesFirst;
+        set
+        {
+            if (SetProperty(ref _favoritesFirst, value))
+            {
+                ApplyFilters(updateGroupedMedia: true);
+                _ = SaveFavoritesFirstAsync();
+            }
+        }
+    }
+
+    private async Task ToggleFavoriteAsync(object? parameter)
+    {
+        if (parameter is not IMediaFavoriteItem item)
+        {
+            return;
+        }
+
+        var isFavorite = !item.IsFavorite;
+        var updated = isFavorite
+            ? await _favoriteService.AddAsync(item.MediaItemId)
+            : await _favoriteService.RemoveAsync(item.MediaItemId);
+        if (updated)
+        {
+            item.SetFavorite(isFavorite);
+        }
+    }
+
     private async Task SetLayoutAsync(bool isListLayout)
     {
         if (IsListLayout == isListLayout)
@@ -931,7 +969,8 @@ public sealed class LibraryPageViewModel : PageViewModel
             mediaItem => mediaItem.LastPlayed,
             mediaItem => mediaItem.LastPlayed,
             MediaPlaybackProgress.ProgressPercentage,
-            MediaPlaybackProgress.ProgressPercentage);
+            MediaPlaybackProgress.ProgressPercentage,
+            mediaItem => mediaItem.IsFavorite);
 
     private IEnumerable<TutorialCollectionViewModel> OrderTutorials(IEnumerable<TutorialCollectionViewModel> tutorials) =>
         OrderLibraryItems(
@@ -942,7 +981,8 @@ public sealed class LibraryPageViewModel : PageViewModel
             tutorial => tutorial.EarliestPlayback,
             tutorial => tutorial.LatestPlayback,
             tutorial => tutorial.LowestPlaybackProgress,
-            tutorial => tutorial.HighestPlaybackProgress);
+            tutorial => tutorial.HighestPlaybackProgress,
+            tutorial => tutorial.HasFavorite);
 
     private IEnumerable<TvShowCollectionViewModel> OrderTvShows(IEnumerable<TvShowCollectionViewModel> tvShows) =>
         OrderLibraryItems(
@@ -953,7 +993,8 @@ public sealed class LibraryPageViewModel : PageViewModel
             tvShow => tvShow.EarliestPlayback,
             tvShow => tvShow.LatestPlayback,
             tvShow => tvShow.LowestPlaybackProgress,
-            tvShow => tvShow.HighestPlaybackProgress);
+            tvShow => tvShow.HighestPlaybackProgress,
+            tvShow => tvShow.HasFavorite);
 
     private IEnumerable<T> OrderLibraryItems<T>(
         IEnumerable<T> items,
@@ -963,8 +1004,10 @@ public sealed class LibraryPageViewModel : PageViewModel
         Func<T, DateTimeOffset?> earliestPlaybackSelector,
         Func<T, DateTimeOffset?> latestPlaybackSelector,
         Func<T, double> lowestProgressSelector,
-        Func<T, double> highestProgressSelector) =>
-        SelectedSortOrder switch
+        Func<T, double> highestProgressSelector,
+        Func<T, bool> favoriteSelector)
+    {
+        var orderedItems = SelectedSortOrder switch
         {
             LibrarySortOrder.Descending => items
                 .OrderByDescending(titleSelector, StringComparer.OrdinalIgnoreCase),
@@ -991,6 +1034,11 @@ public sealed class LibraryPageViewModel : PageViewModel
             _ => items.OrderBy(titleSelector, StringComparer.OrdinalIgnoreCase)
         };
 
+        return FavoritesFirst
+            ? orderedItems.OrderByDescending(favoriteSelector)
+            : orderedItems;
+    }
+
     private static void SortDisplayedGroups<T>(ObservableCollection<T> groups, IEnumerable<T> orderedGroups)
     {
         var reorderedGroups = orderedGroups.ToArray();
@@ -1004,6 +1052,12 @@ public sealed class LibraryPageViewModel : PageViewModel
     private async Task SaveSortOrderAsync()
     {
         _settingsService.Settings.LibrarySortOrder = SelectedSortOrder.ToString();
+        await _settingsService.SaveAsync();
+    }
+
+    private async Task SaveFavoritesFirstAsync()
+    {
+        _settingsService.Settings.LibraryFavoritesFirst = FavoritesFirst;
         await _settingsService.SaveAsync();
     }
 

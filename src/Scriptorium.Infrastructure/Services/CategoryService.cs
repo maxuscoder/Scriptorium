@@ -18,7 +18,13 @@ public sealed class CategoryService(
     public async Task<Category> CreateAsync(string name, string color, CancellationToken cancellationToken = default)
     {
         Validate(name, color);
-        var category = new Category { Id = Guid.NewGuid(), Name = name, Color = color };
+        var normalizedName = name.Trim();
+        if (await categoryRepository.GetByNameAsync(normalizedName, cancellationToken) is not null)
+        {
+            throw new InvalidOperationException("A category with that name already exists.");
+        }
+
+        var category = new Category { Id = Guid.NewGuid(), Name = normalizedName, Color = color.Trim() };
         await categoryRepository.AddAsync(category, cancellationToken);
         CategoriesChanged?.Invoke();
         return category;
@@ -34,10 +40,19 @@ public sealed class CategoryService(
             return false;
         }
 
-        category.Name = name;
-        await categoryRepository.UpdateAsync(category, cancellationToken);
-        CategoriesChanged?.Invoke();
-        return true;
+        return await UpdateCategoryAsync(category, name, category.Color, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> UpdateAsync(
+        Guid categoryId,
+        string name,
+        string color,
+        CancellationToken cancellationToken = default)
+    {
+        Validate(name, color);
+        var category = await categoryRepository.GetByIdAsync(categoryId, cancellationToken);
+        return category is not null && await UpdateCategoryAsync(category, name, color, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -48,6 +63,7 @@ public sealed class CategoryService(
             return false;
         }
 
+        await mediaItemRepository.ClearCategoryAssignmentsAsync(categoryId, cancellationToken);
         await categoryRepository.DeleteAsync(categoryId, cancellationToken);
         CategoriesChanged?.Invoke();
         return true;
@@ -81,5 +97,26 @@ public sealed class CategoryService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(color);
+    }
+
+    private async Task<bool> UpdateCategoryAsync(
+        Category category,
+        string name,
+        string color,
+        CancellationToken cancellationToken)
+    {
+        Validate(name, color);
+        var normalizedName = name.Trim();
+        if (await categoryRepository.GetByNameAsync(normalizedName, cancellationToken) is { } existingCategory &&
+            existingCategory.Id != category.Id)
+        {
+            throw new InvalidOperationException("A category with that name already exists.");
+        }
+
+        category.Name = normalizedName;
+        category.Color = color.Trim();
+        await categoryRepository.UpdateAsync(category, cancellationToken);
+        CategoriesChanged?.Invoke();
+        return true;
     }
 }

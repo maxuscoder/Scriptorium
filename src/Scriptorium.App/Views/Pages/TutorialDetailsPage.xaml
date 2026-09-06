@@ -1,7 +1,8 @@
 <UserControl
     x:Class="Scriptorium.App.Views.Pages.TutorialDetailsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="{StaticResource Spacing.XL}" MaxWidth="800">
             <Button
@@ -56,9 +57,15 @@
                             Command="{Binding NextLessonCommand}"
                             Content="Next lesson"
                             Style="{StaticResource Button.Secondary}" />
+                        <Button
+                            Margin="8,0,0,0"
+                            Command="{Binding ToggleFavoriteCommand}"
+                            Content="{Binding FavoriteActionText}"
+                            Style="{StaticResource Button.Secondary}" />
                     </StackPanel>
                 </Grid>
             </Border>
+            <controls:MediaCategoryEditor Margin="0,16,0,0" />
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Lessons}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -107,6 +114,18 @@
                                         Style="{StaticResource Text.Metadata}"
                                         Text="{Binding FilePath}"
                                         TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.Warning}" Text="★">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
                                     <TextBlock
