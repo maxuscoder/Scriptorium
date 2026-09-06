@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
+using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
 using Scriptorium.Core.Services;
 
@@ -20,6 +22,11 @@ public sealed class CategoriesPageViewModel : PageViewModel
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string _statusMessage = string.Empty;
+    private CategoryItemViewModel? _selectedCategory;
+    private IReadOnlyList<MediaItem> _availableMediaItems = [];
+    private bool _isRefreshing;
+    private int _isCategoryRefreshQueued;
+    private int _isCategoryRefreshRequested;
 
     public CategoriesPageViewModel(
         ICategoryRepository categoryRepository,
@@ -38,6 +45,7 @@ public sealed class CategoriesPageViewModel : PageViewModel
         RenameCategoryCommand = new AsyncRelayCommand(RenameCategoryAsync);
         DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
+        SelectCategoryCommand = new RelayCommand(SelectCategory, parameter => parameter is CategoryItemViewModel);
         _categoryService.CategoriesChanged += OnCategoriesChanged;
     }
 
@@ -53,6 +61,66 @@ public sealed class CategoriesPageViewModel : PageViewModel
 
     public ICommand RefreshCommand { get; }
 
+    /// <summary>Gets the command that changes the category currently shown in the browser.</summary>
+    public ICommand SelectCategoryCommand { get; }
+
+    /// <summary>Gets the media assigned to the selected category.</summary>
+    public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
+
+    /// <summary>Gets the category whose media is currently displayed.</summary>
+    public CategoryItemViewModel? SelectedCategory
+    {
+        get => _selectedCategory;
+        private set
+        {
+            var previousCategory = _selectedCategory;
+            if (!SetProperty(ref _selectedCategory, value))
+            {
+                return;
+            }
+
+            if (previousCategory is not null)
+            {
+                previousCategory.PropertyChanged -= OnSelectedCategoryPropertyChanged;
+            }
+
+            if (value is not null)
+            {
+                value.PropertyChanged += OnSelectedCategoryPropertyChanged;
+            }
+
+            foreach (var category in Categories)
+            {
+                category.IsSelected = ReferenceEquals(category, value);
+            }
+
+            RefreshSelectedCategoryMedia();
+            OnPropertyChanged(nameof(HasSelectedCategory));
+            OnPropertyChanged(nameof(SelectedCategoryName));
+            OnPropertyChanged(nameof(SelectedCategoryMediaCountText));
+            OnPropertyChanged(nameof(SelectedCategoryEmptyTitle));
+            OnPropertyChanged(nameof(SelectedCategoryEmptyDescription));
+        }
+    }
+
+    /// <summary>Gets whether a category is active in the browser.</summary>
+    public bool HasSelectedCategory => SelectedCategory is not null;
+
+    public string SelectedCategoryName => SelectedCategory?.Name ?? string.Empty;
+
+    public string SelectedCategoryMediaCountText => SelectedCategory is null
+        ? string.Empty
+        : $"{MediaItems.Count} media item{(MediaItems.Count == 1 ? string.Empty : "s")}";
+
+    public bool HasMediaItems => MediaItems.Count != 0;
+
+    /// <summary>Gets whether category data is being loaded.</summary>
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        private set => SetProperty(ref _isRefreshing, value);
+    }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -63,17 +131,29 @@ public sealed class CategoriesPageViewModel : PageViewModel
 
     public bool HasCategories => Categories.Count != 0;
 
+    public string SelectedCategoryEmptyTitle => SelectedCategory is null
+        ? "Select a category"
+        : $"{SelectedCategory.Name} is empty";
+
+    public string SelectedCategoryEmptyDescription => SelectedCategory is null
+        ? "Choose a category above to browse its media."
+        : "Media assigned to this category will appear here.";
+
     /// <summary>Loads the current categories and their assigned-media counts.</summary>
     public async Task RefreshAsync()
     {
         await _refreshGate.WaitAsync();
+        IsRefreshing = true;
         try
         {
             var categoriesTask = _categoryRepository.GetAllAsync();
             var mediaItemsTask = _mediaItemRepository.GetAllAsync();
             await Task.WhenAll(categoriesTask, mediaItemsTask);
 
-            var mediaCounts = mediaItemsTask.Result
+            var selectedCategoryId = SelectedCategory?.Id;
+            _availableMediaItems = mediaItemsTask.Result;
+
+            var mediaCounts = _availableMediaItems
                 .Where(mediaItem => mediaItem.CategoryId is not null)
                 .GroupBy(mediaItem => mediaItem.CategoryId!.Value)
                 .ToDictionary(group => group.Key, group => group.Count());
@@ -86,6 +166,10 @@ public sealed class CategoriesPageViewModel : PageViewModel
                     mediaCounts.GetValueOrDefault(category.Id)));
             }
 
+            SelectedCategory = selectedCategoryId is { } categoryId
+                ? Categories.FirstOrDefault(category => category.Id == categoryId) ?? Categories.FirstOrDefault()
+                : Categories.FirstOrDefault();
+
             OnPropertyChanged(nameof(CategoryCountText));
             OnPropertyChanged(nameof(HasCategories));
         }
@@ -95,8 +179,46 @@ public sealed class CategoriesPageViewModel : PageViewModel
         }
         finally
         {
+            IsRefreshing = false;
             _refreshGate.Release();
         }
+    }
+
+    private void SelectCategory(object? parameter)
+    {
+        if (parameter is CategoryItemViewModel category && Categories.Contains(category))
+        {
+            SelectedCategory = category;
+        }
+    }
+
+    private void RefreshSelectedCategoryMedia()
+    {
+        MediaItems.Clear();
+
+        if (SelectedCategory is not null)
+        {
+            foreach (var mediaItem in _availableMediaItems
+                         .Where(mediaItem => mediaItem.CategoryId == SelectedCategory.Id)
+                         .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
+            {
+                MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
+            }
+        }
+
+        OnPropertyChanged(nameof(HasMediaItems));
+        OnPropertyChanged(nameof(SelectedCategoryMediaCountText));
+    }
+
+    private void OnSelectedCategoryPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+    {
+        if (!ReferenceEquals(sender, SelectedCategory) || eventArgs.PropertyName != nameof(CategoryItemViewModel.Name))
+        {
+            return;
+        }
+
+        OnPropertyChanged(nameof(SelectedCategoryName));
+        OnPropertyChanged(nameof(SelectedCategoryEmptyTitle));
     }
 
     private async Task CreateCategoryAsync()
@@ -184,13 +306,38 @@ public sealed class CategoriesPageViewModel : PageViewModel
 
     private void OnCategoriesChanged()
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
+        Volatile.Write(ref _isCategoryRefreshRequested, 1);
+        if (Interlocked.Exchange(ref _isCategoryRefreshQueued, 1) != 0)
         {
-            _ = dispatcher.InvokeAsync(RefreshAsync);
             return;
         }
 
-        _ = RefreshAsync();
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterCategoryChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterCategoryChangeAsync();
+    }
+
+    private async Task RefreshAfterCategoryChangeAsync()
+    {
+        try
+        {
+            while (Interlocked.Exchange(ref _isCategoryRefreshRequested, 0) != 0)
+            {
+                await RefreshAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isCategoryRefreshQueued, 0);
+            if (Volatile.Read(ref _isCategoryRefreshRequested) != 0)
+            {
+                OnCategoriesChanged();
+            }
+        }
     }
 }

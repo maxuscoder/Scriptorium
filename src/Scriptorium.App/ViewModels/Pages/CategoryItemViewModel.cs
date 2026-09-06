@@ -9,6 +9,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class CategoryItemViewModel : ViewModelBase
 {
     private string _name;
+    private bool _isSelected;
 
     public CategoryItemViewModel(Category category, int mediaCount)
     {
@@ -35,6 +36,13 @@ public sealed class CategoryItemViewModel : ViewModelBase
     public int MediaCount { get; }
 
     public string MediaCountText => $"{MediaCount} media item{(MediaCount == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets or sets whether this category is the active category in the browser.</summary>
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set => SetProperty(ref _isSelected, value);
+    }
 
     private static Brush CreateColorBrush(string color)
     {
