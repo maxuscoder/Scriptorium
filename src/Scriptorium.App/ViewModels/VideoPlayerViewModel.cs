@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Threading;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 
@@ -10,6 +11,7 @@ namespace Scriptorium.App.ViewModels;
 public sealed class VideoPlayerViewModel : ViewModelBase
 {
     private readonly IVideoPlaybackFactory _factory;
+    private readonly ILogger<VideoPlayerViewModel>? _logger;
     private readonly DispatcherTimer _timer;
     private IVideoPlayback? _playback;
     private MediaPlaybackRequest? _request;
@@ -26,9 +28,12 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private double _volume = 1;
     private double _volumeBeforeMute = 1;
 
-    public VideoPlayerViewModel(IVideoPlaybackFactory factory)
+    public VideoPlayerViewModel(
+        IVideoPlaybackFactory factory,
+        ILogger<VideoPlayerViewModel>? logger = null)
     {
         _factory = factory;
+        _logger = logger;
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
         ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -282,11 +287,30 @@ public sealed class VideoPlayerViewModel : ViewModelBase
 
     private void Fail(Exception exception)
     {
+        var kind = ClassifyFailure(exception);
+        _logger?.LogError(
+            exception,
+            "Video playback failed. FailureKind: {FailureKind}; FilePath: {FilePath}.",
+            kind,
+            _request?.FilePath ?? "(none)");
         ReleasePlayback();
-        Status = exception is FileNotFoundException or DirectoryNotFoundException
-            ? "Video file unavailable. Check that the file or drive is connected."
-            : "This video could not be played. Check the file and its installed Windows codecs.";
+        Status = kind switch
+        {
+            MediaPlaybackFailureKind.MissingFile =>
+                "Video file unavailable. Check that the file or drive is connected.",
+            MediaPlaybackFailureKind.UnsupportedFormat =>
+                "This video could not be played because its format or codec isn't supported by the configured player.",
+            _ => "This video could not be played. Check the file and player configuration."
+        };
     }
+
+    private static MediaPlaybackFailureKind ClassifyFailure(Exception exception) => exception switch
+    {
+        MediaPlaybackException playbackException => playbackException.Kind,
+        FileNotFoundException or DirectoryNotFoundException => MediaPlaybackFailureKind.MissingFile,
+        NotSupportedException => MediaPlaybackFailureKind.UnsupportedFormat,
+        _ => MediaPlaybackFailureKind.Unknown
+    };
 
     private void UpdatePosition()
     {

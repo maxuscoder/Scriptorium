@@ -14,6 +14,7 @@ public sealed class WpfVideoPlayback : IVideoPlayback
 {
     private readonly MediaPlayer _player = new() { ScrubbingEnabled = true };
     private readonly VideoDrawing _drawing;
+    private string? _filePath;
     private bool _disposed;
 
     public WpfVideoPlayback()
@@ -36,12 +37,15 @@ public sealed class WpfVideoPlayback : IVideoPlayback
     public void Open(string filePath)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!Path.IsPathFullyQualified(filePath) || !File.Exists(filePath))
+        if (!Path.IsPathFullyQualified(filePath))
         {
             throw new FileNotFoundException("The video file is unavailable.", filePath);
         }
 
-        _player.Open(new Uri(Path.GetFullPath(filePath), UriKind.Absolute));
+        _filePath = Path.GetFullPath(filePath);
+        // MediaPlayer.Open is asynchronous. Do not probe the file synchronously here:
+        // library paths can point at slow or temporarily unavailable network drives.
+        _player.Open(new Uri(_filePath, UriKind.Absolute));
         // Scrubbing displays the initial frame without starting audio or advancing playback.
         _player.Pause();
     }
@@ -53,7 +57,10 @@ public sealed class WpfVideoPlayback : IVideoPlayback
     {
         if (!_player.HasVideo)
         {
-            Failed?.Invoke(this, new NotSupportedException("The file has no playable video stream."));
+            Failed?.Invoke(this, new MediaPlaybackException(
+                MediaPlaybackFailureKind.UnsupportedFormat,
+                _filePath ?? string.Empty,
+                "The file has no playable video stream."));
             return;
         }
 
@@ -62,7 +69,29 @@ public sealed class WpfVideoPlayback : IVideoPlayback
     }
 
     private void OnEnded(object? sender, EventArgs args) => Ended?.Invoke(this, EventArgs.Empty);
-    private void OnFailed(object? sender, ExceptionEventArgs args) => Failed?.Invoke(this, args.ErrorException);
+    private async void OnFailed(object? sender, ExceptionEventArgs args)
+    {
+        var filePath = _filePath;
+        if (_disposed || filePath is null) return;
+
+        // WPF can report a missing local file as a generic native/COM exception.
+        // Resolve that ambiguity away from the dispatcher so failure handling stays responsive.
+        var kind = args.ErrorException is FileNotFoundException or DirectoryNotFoundException
+            ? MediaPlaybackFailureKind.MissingFile
+            : await DetermineFailureKindAsync(filePath);
+
+        if (_disposed) return;
+        Failed?.Invoke(this, new MediaPlaybackException(
+            kind,
+            filePath,
+            "The configured media player rejected the file.",
+            args.ErrorException));
+    }
+
+    private static Task<MediaPlaybackFailureKind> DetermineFailureKindAsync(string filePath) =>
+        Task.Run(() => File.Exists(filePath)
+            ? MediaPlaybackFailureKind.UnsupportedFormat
+            : MediaPlaybackFailureKind.MissingFile);
 
     public void Dispose()
     {
@@ -73,5 +102,6 @@ public sealed class WpfVideoPlayback : IVideoPlayback
         _player.MediaFailed -= OnFailed;
         _drawing.Player = null;
         _player.Close();
+        _filePath = null;
     }
 }

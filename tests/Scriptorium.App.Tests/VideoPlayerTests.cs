@@ -78,6 +78,28 @@ public sealed class VideoPlayerTests
     });
 
     [Fact]
+    public Task UnsupportedFormatFailureExplainsTheCodecProblem() => StaTest.Run(() =>
+    {
+        var factory = new FakeFactory();
+        var player = new VideoPlayerViewModel(factory);
+        player.SetMedia(new MediaPlaybackRequest("unsupported.mkv", 0));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+
+        playback.RaiseFailed(new MediaPlaybackException(
+            MediaPlaybackFailureKind.UnsupportedFormat,
+            "unsupported.mkv",
+            "Native decoder rejected the stream.",
+            new InvalidOperationException("decoder error")));
+
+        Assert.Contains("format or codec", player.Status);
+        Assert.False(player.IsReady);
+        Assert.False(player.TogglePlaybackCommand.CanExecute(null));
+        Assert.True(playback.Disposed);
+        return Task.CompletedTask;
+    });
+
+    [Fact]
     public Task ScrubbingUpdatesTheDisplayButSeeksOnlyWhenCommitted() => StaTest.Run(() =>
     {
         var factory = new FakeFactory();
@@ -197,6 +219,7 @@ public sealed class VideoPlayerTests
         public void Dispose() => Disposed = true;
         public void RaiseOpened() => Opened?.Invoke(this, EventArgs.Empty);
         public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
-        public void RaiseFailed() => Failed?.Invoke(this, new InvalidOperationException("Invalid video"));
+        public void RaiseFailed(Exception? exception = null) =>
+            Failed?.Invoke(this, exception ?? new InvalidOperationException("Invalid video"));
     }
 }
