@@ -29,9 +29,13 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
+                        .UseCollation("NOCASE")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Categories", (string)null);
                 });

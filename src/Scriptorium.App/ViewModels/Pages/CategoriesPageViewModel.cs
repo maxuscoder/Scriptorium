@@ -114,8 +114,15 @@ public sealed class CategoriesPageViewModel : PageViewModel
             return;
         }
 
-        await _categoryService.CreateAsync(name, dialogResult.Color.Trim());
-        StatusMessage = $"Category '{name}' created.";
+        try
+        {
+            await _categoryService.CreateAsync(name, dialogResult.Color.Trim());
+            StatusMessage = $"Category '{name}' created.";
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusMessage = "A category with that name already exists.";
+        }
     }
 
     private async Task RenameCategoryAsync(object? parameter)
@@ -138,9 +145,16 @@ public sealed class CategoriesPageViewModel : PageViewModel
             return;
         }
 
-        if (await _categoryService.RenameAsync(category.Id, name))
+        try
         {
-            StatusMessage = $"Category renamed to '{name}'.";
+            if (await _categoryService.RenameAsync(category.Id, name))
+            {
+                StatusMessage = $"Category renamed to '{name}'.";
+            }
+        }
+        catch (InvalidOperationException exception) when (exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+        {
+            StatusMessage = "A category with that name already exists.";
         }
     }
 
@@ -154,9 +168,10 @@ public sealed class CategoriesPageViewModel : PageViewModel
             return;
         }
 
+        var categoryName = category.Name;
         if (await _categoryService.DeleteAsync(category.Id))
         {
-            StatusMessage = $"Category '{category.Name}' deleted.";
+            StatusMessage = $"Category '{categoryName}' deleted.";
         }
     }
 

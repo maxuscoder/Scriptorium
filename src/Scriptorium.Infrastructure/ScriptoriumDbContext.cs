@@ -133,8 +133,11 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
         {
             entity.ToTable("Categories");
             entity.HasKey(category => category.Id);
-            entity.Property(category => category.Name).IsRequired();
+            entity.Property(category => category.Name)
+                .UseCollation("NOCASE")
+                .IsRequired();
             entity.Property(category => category.Color).IsRequired();
+            entity.HasIndex(category => category.Name).IsUnique();
         });
 
         modelBuilder.Entity<MediaItem>(entity =>

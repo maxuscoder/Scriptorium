@@ -18,7 +18,13 @@ public sealed class CategoryService(
     public async Task<Category> CreateAsync(string name, string color, CancellationToken cancellationToken = default)
     {
         Validate(name, color);
-        var category = new Category { Id = Guid.NewGuid(), Name = name, Color = color };
+        var normalizedName = name.Trim();
+        if (await categoryRepository.GetByNameAsync(normalizedName, cancellationToken) is not null)
+        {
+            throw new InvalidOperationException("A category with that name already exists.");
+        }
+
+        var category = new Category { Id = Guid.NewGuid(), Name = normalizedName, Color = color.Trim() };
         await categoryRepository.AddAsync(category, cancellationToken);
         CategoriesChanged?.Invoke();
         return category;
@@ -28,13 +34,20 @@ public sealed class CategoryService(
     public async Task<bool> RenameAsync(Guid categoryId, string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var normalizedName = name.Trim();
         var category = await categoryRepository.GetByIdAsync(categoryId, cancellationToken);
         if (category is null)
         {
             return false;
         }
 
-        category.Name = name;
+        if (await categoryRepository.GetByNameAsync(normalizedName, cancellationToken) is { } existingCategory &&
+            existingCategory.Id != categoryId)
+        {
+            throw new InvalidOperationException("A category with that name already exists.");
+        }
+
+        category.Name = normalizedName;
         await categoryRepository.UpdateAsync(category, cancellationToken);
         CategoriesChanged?.Invoke();
         return true;
@@ -48,6 +61,7 @@ public sealed class CategoryService(
             return false;
         }
 
+        await mediaItemRepository.ClearCategoryAssignmentsAsync(categoryId, cancellationToken);
         await categoryRepository.DeleteAsync(categoryId, cancellationToken);
         CategoriesChanged?.Invoke();
         return true;

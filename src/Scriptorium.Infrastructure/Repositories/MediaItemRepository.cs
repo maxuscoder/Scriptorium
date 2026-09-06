@@ -127,6 +127,19 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<int> ClearCategoryAssignmentsAsync(
+        Guid categoryId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems
+            .Where(item => item.CategoryId == categoryId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(item => item.CategoryId, (Guid?)null),
+                cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> SearchAsync(
         string query,
         CancellationToken cancellationToken = default)
