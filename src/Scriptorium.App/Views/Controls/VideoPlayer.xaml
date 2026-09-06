@@ -17,6 +17,17 @@
                    Cursor="Hand"
                    ToolTip="Click to play or pause"
                    AutomationProperties.Name="Video preview" />
+            <Border x:Name="ActionFeedback" Width="72" Height="72"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Background="#C0000000" CornerRadius="36" Visibility="Collapsed"
+                    IsHitTestVisible="False" Panel.ZIndex="1">
+                <Path x:Name="ActionFeedbackIcon" Width="36" Height="36"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Fill="{StaticResource Brush.TextPrimary}"
+                      Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="2"
+                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                      Stretch="Uniform" />
+            </Border>
             <TextBlock Margin="{StaticResource Spacing.L}" VerticalAlignment="Center"
                        HorizontalAlignment="Center" TextWrapping="Wrap" Text="{Binding Status}">
                 <TextBlock.Style>

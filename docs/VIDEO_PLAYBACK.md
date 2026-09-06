@@ -1,6 +1,18 @@
 # Embedded video playback
 
-Movie details now show a paused video preview above the title. Play/Pause resumes the current session, Replay restarts a finished video, and Fullscreen opens the same session in a borderless window. Use the exit button or Escape to return; F11 toggles fullscreen while the player has keyboard focus.
+Movie details now show a paused video preview above the title. Play/Pause resumes the current session, Replay restarts a finished video, and Fullscreen opens the same session in a borderless window. Use the exit button or Escape to return; F11 toggles fullscreen while the player has keyboard focus. A brief centered icon confirms playback, seek, volume, and mute actions.
+
+## Keyboard shortcuts
+
+When the player has focus, these shortcuts are available. They do not run while focus is in a text-entry control.
+
+| Key | Action |
+| --- | --- |
+| Space | Play or pause |
+| Left / Right | Seek backward / forward 5 seconds |
+| Up / Down | Increase / decrease volume by 5% |
+| F or F11 | Toggle fullscreen |
+| M | Mute or restore audio |
 
 ## Implementation
 
@@ -8,7 +20,7 @@ The player uses WPF's built-in `MediaPlayer` and `VideoDrawing`. This adds no na
 
 - `IVideoPlayback` / `WpfVideoPlayback` isolate the native engine, local-path validation, video drawing, media events, and resource release.
 - `VideoPlayerViewModel` owns loading, play/pause/replay, status, elapsed time, and commands. `SetMedia` binds a path and saved starting position; `Activate` opens it when the view loads; `Deactivate` stops the timer, detaches events, and closes the engine. Changing media disposes the previous engine before creating another.
-- `VideoPlayer` is the reusable presentation control. Code-behind handles only view lifecycle and fullscreen window management. Closing fullscreen preserves playback; unloading the owning inline control or closing the application window releases it.
+- `VideoPlayer` is the reusable presentation control. Code-behind handles view lifecycle, keyboard input, transient action feedback, and fullscreen window management. Closing fullscreen preserves playback; unloading the owning inline control or closing the application window releases it.
 - `MovieDetailsPageViewModel` supplies the current movie. Loading a preview does not update playback history. First playback retains the existing last-played update, and saved positions are respected (completed movies start at zero). Saving new playback positions continuously is outside this initial player feature.
 
 The implementation currently connects the player to movie details. The control and engine can also be bound to lesson or episode selection in later work.

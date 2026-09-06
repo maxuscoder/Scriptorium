@@ -38,6 +38,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     /// <summary>Raised once when this media session first starts, never for preview loading.</summary>
     public event EventHandler? PlaybackStarted;
 
+    /// <summary>Raised after a user-visible playback action completes.</summary>
+    public event EventHandler<VideoPlaybackAction>? PlaybackActionPerformed;
+
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public ImageSource? Video => _playback?.Video;
@@ -61,11 +64,13 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         set
         {
             var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
+            var previous = _volume;
             if (!SetProperty(ref _volume, bounded)) return;
             if (IsMuted) IsMuted = false;
             if (bounded > 0) _volumeBeforeMute = bounded;
             OnPropertyChanged(nameof(IsMutedIconVisible));
             ApplyVolume();
+            NotifyPlaybackAction(bounded > previous ? VideoPlaybackAction.VolumeUp : VideoPlaybackAction.VolumeDown);
         }
     }
 
@@ -140,12 +145,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         if (!IsReady || _playback is null) return;
         var notifyStarted = false;
+        var action = VideoPlaybackAction.Play;
         try
         {
             if (IsPlaying)
             {
                 _playback.Pause();
                 IsPlaying = false;
+                action = VideoPlaybackAction.Pause;
                 _timer.Stop();
                 Status = "Paused";
             }
@@ -168,6 +175,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             Fail(exception);
             return;
         }
+        NotifyPlaybackAction(action);
         if (notifyStarted) PlaybackStarted?.Invoke(this, EventArgs.Empty);
     }
 
@@ -192,6 +200,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             {
                 _volume = _volumeBeforeMute;
                 OnPropertyChanged(nameof(Volume));
+                OnPropertyChanged(nameof(IsMutedIconVisible));
             }
         }
         else
@@ -200,6 +209,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             IsMuted = true;
         }
         ApplyVolume();
+        NotifyPlaybackAction(IsMuted ? VideoPlaybackAction.Mute : VideoPlaybackAction.Unmute);
     }
 
     /// <summary>Starts a local scrub operation without repeatedly seeking the native player.</summary>
@@ -222,19 +232,46 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         if (!_isSeeking || _playback is null || !CanSeek) return;
 
+        var startingPosition = PositionSeconds;
         _isSeeking = false;
+        if (SetPlaybackPosition(seconds))
+        {
+            NotifyPlaybackAction(PositionSeconds < startingPosition
+                ? VideoPlaybackAction.SeekBackward
+                : VideoPlaybackAction.SeekForward);
+        }
+    }
+
+    /// <summary>Seeks forward or backward by a bounded number of seconds.</summary>
+    public void SeekBy(double seconds)
+    {
+        if (!CanSeek || seconds == 0) return;
+        if (SetPlaybackPosition(PositionSeconds + seconds))
+        {
+            NotifyPlaybackAction(seconds < 0 ? VideoPlaybackAction.SeekBackward : VideoPlaybackAction.SeekForward);
+        }
+    }
+
+    private bool SetPlaybackPosition(double seconds)
+    {
+        if (_playback is null || !CanSeek) return false;
         try
         {
-            _position = TimeSpan.FromSeconds(BoundSeekPosition(seconds));
+            var bounded = BoundSeekPosition(seconds);
+            var changed = Math.Abs(_position.TotalSeconds - bounded) > 0.001;
+            _position = TimeSpan.FromSeconds(bounded);
             _playback.Position = _position;
             _hasEnded = _position >= _duration;
             if (_hasEnded && !IsPlaying) Status = "Playback finished";
+            else if (!IsPlaying) Status = "Paused";
             NotifyPositionChanged();
             NotifyPlaybackChanged();
+            return changed;
         }
         catch (Exception exception)
         {
             Fail(exception);
+            return false;
         }
     }
 
@@ -311,6 +348,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         if (_playback is not null) _playback.Volume = IsMuted ? 0 : Volume;
     }
 
+    private void NotifyPlaybackAction(VideoPlaybackAction action) => PlaybackActionPerformed?.Invoke(this, action);
+
     private double BoundSeekPosition(double seconds) => double.IsFinite(seconds)
         ? Math.Clamp(seconds, 0, DurationSeconds)
         : 0;
@@ -323,4 +362,17 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     }
 
     private static string FormatTime(TimeSpan time) => $"{(long)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
+}
+
+/// <summary>Represents a playback action shown as transient feedback by the view.</summary>
+public enum VideoPlaybackAction
+{
+    Play,
+    Pause,
+    SeekBackward,
+    SeekForward,
+    VolumeUp,
+    VolumeDown,
+    Mute,
+    Unmute
 }

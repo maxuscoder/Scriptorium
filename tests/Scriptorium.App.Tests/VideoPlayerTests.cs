@@ -137,6 +137,30 @@ public sealed class VideoPlayerTests
         return Task.CompletedTask;
     });
 
+    [Fact]
+    public Task PlaybackActionsAreReportedForControlsAndKeyboardShortcuts() => StaTest.Run(() =>
+    {
+        var factory = new FakeFactory();
+        var player = new VideoPlayerViewModel(factory);
+        var actions = new List<VideoPlaybackAction>();
+        player.PlaybackActionPerformed += (_, action) => actions.Add(action);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+
+        player.TogglePlaybackCommand.Execute(null);
+        player.SeekBy(5);
+        player.Volume = 0.75;
+        player.ToggleMuteCommand.Execute(null);
+
+        Assert.Equal(
+            [VideoPlaybackAction.Play, VideoPlaybackAction.SeekForward, VideoPlaybackAction.VolumeDown, VideoPlaybackAction.Mute],
+            actions);
+        player.Deactivate();
+        return Task.CompletedTask;
+    });
+
     internal sealed class FakeFactory : IVideoPlaybackFactory
     {
         public List<FakePlayback> Instances { get; } = [];

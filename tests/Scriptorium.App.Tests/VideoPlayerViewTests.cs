@@ -77,6 +77,8 @@ public sealed class VideoPlayerViewTests
             using (var output = File.Create(Path.Combine(AppContext.BaseDirectory, "movie-preview.png"))) encoder.Save(output);
 
             player.TogglePlaybackCommand.Execute(null);
+            var actionFeedback = Assert.IsType<Border>(inlineView.FindName("ActionFeedback"));
+            Assert.Equal(Visibility.Visible, actionFeedback.Visibility);
             await Task.Delay(500);
             var engine = Assert.Single(factory.Instances);
             var position = engine.Position;
