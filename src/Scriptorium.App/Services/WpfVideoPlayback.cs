@@ -31,6 +31,7 @@ public sealed class WpfVideoPlayback : IVideoPlayback
     public ImageSource Video { get; }
     public TimeSpan Position { get => _player.Position; set => _player.Position = value; }
     public TimeSpan Duration => _player.NaturalDuration.HasTimeSpan ? _player.NaturalDuration.TimeSpan : TimeSpan.Zero;
+    public double Volume { get => _player.Volume; set => _player.Volume = Math.Clamp(value, 0, 1); }
 
     public void Open(string filePath)
     {

@@ -78,14 +78,13 @@ public partial class VideoPlayer : UserControl
     {
         BeginSeek();
         if (!_isSeeking || IsInsideThumb(args.OriginalSource as DependencyObject)) return;
+        if (SetSliderValueFromPointer(SeekSlider, args)) args.Handled = true;
+    }
 
-        var track = SeekSlider.Template.FindName("PART_Track", SeekSlider) as Track;
-        if (track is null || track.ActualWidth <= 0) return;
-
-        var fraction = Math.Clamp(args.GetPosition(track).X / track.ActualWidth, 0, 1);
-        if (track.IsDirectionReversed) fraction = 1 - fraction;
-        SeekSlider.Value = SeekSlider.Minimum + ((SeekSlider.Maximum - SeekSlider.Minimum) * fraction);
-        args.Handled = true;
+    private void OnVolumeSliderMouseLeftButtonDown(object sender, MouseButtonEventArgs args)
+    {
+        if (!VolumeSlider.IsEnabled || IsInsideThumb(args.OriginalSource as DependencyObject)) return;
+        if (SetSliderValueFromPointer(VolumeSlider, args)) args.Handled = true;
     }
 
     private void OnSeekSliderMouseLeftButtonUp(object sender, MouseButtonEventArgs args) => CommitSeek();
@@ -127,6 +126,17 @@ public partial class VideoPlayer : UserControl
             };
         }
         return false;
+    }
+
+    private static bool SetSliderValueFromPointer(Slider slider, MouseButtonEventArgs args)
+    {
+        var track = slider.Template.FindName("PART_Track", slider) as Track;
+        if (track is null || track.ActualWidth <= 0) return false;
+
+        var fraction = Math.Clamp(args.GetPosition(track).X / track.ActualWidth, 0, 1);
+        if (track.IsDirectionReversed) fraction = 1 - fraction;
+        slider.Value = slider.Minimum + ((slider.Maximum - slider.Minimum) * fraction);
+        return true;
     }
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs args)

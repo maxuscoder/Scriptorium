@@ -104,6 +104,39 @@ public sealed class VideoPlayerTests
         return Task.CompletedTask;
     });
 
+    [Fact]
+    public Task VolumeUpdatesImmediatelyAndMuteRestoresThePreviousLevel() => StaTest.Run(() =>
+    {
+        var factory = new FakeFactory();
+        var player = new VideoPlayerViewModel(factory);
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+
+        player.Volume = 0.35;
+        Assert.Equal(0.35, playback.Volume, 3);
+
+        player.Volume = 0;
+        Assert.True(player.IsMutedIconVisible);
+        player.Volume = 0.35;
+
+        var changedProperties = new List<string?>();
+        player.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
+        player.ToggleMuteCommand.Execute(null);
+        Assert.True(player.IsMuted);
+        Assert.Contains(nameof(VideoPlayerViewModel.IsMuted), changedProperties);
+        Assert.Equal("Unmute", player.MuteActionText);
+        Assert.Equal(0, playback.Volume);
+
+        player.ToggleMuteCommand.Execute(null);
+        Assert.False(player.IsMuted);
+        Assert.Equal("Mute", player.MuteActionText);
+        Assert.Equal(0.35, playback.Volume, 3);
+        player.Deactivate();
+        return Task.CompletedTask;
+    });
+
     internal sealed class FakeFactory : IVideoPlaybackFactory
     {
         public List<FakePlayback> Instances { get; } = [];
@@ -124,6 +157,7 @@ public sealed class VideoPlayerTests
         public ImageSource Video { get; } = new DrawingImage();
         public TimeSpan Position { get; set; }
         public TimeSpan Duration => TimeSpan.FromSeconds(60);
+        public double Volume { get; set; }
         public bool Disposed { get; private set; }
         public Exception? OpenException { get; init; }
         public List<string> Calls { get; } = [];

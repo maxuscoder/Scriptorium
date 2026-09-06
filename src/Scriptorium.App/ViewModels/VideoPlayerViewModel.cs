@@ -17,16 +17,20 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private bool _isReady;
     private bool _isPlaying;
     private bool _isSeeking;
+    private bool _isMuted;
     private bool _hasEnded;
     private bool _hasStarted;
     private string _status = "No video selected.";
     private TimeSpan _position;
     private TimeSpan _duration;
+    private double _volume = 1;
+    private double _volumeBeforeMute = 1;
 
     public VideoPlayerViewModel(IVideoPlaybackFactory factory)
     {
         _factory = factory;
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
+        ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _timer.Tick += OnTick;
     }
@@ -35,6 +39,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public event EventHandler? PlaybackStarted;
 
     public RelayCommand TogglePlaybackCommand { get; }
+    public RelayCommand ToggleMuteCommand { get; }
     public ImageSource? Video => _playback?.Video;
     public bool IsReady { get => _isReady; private set => SetProperty(ref _isReady, value); }
     public bool IsPlaying { get => _isPlaying; private set => SetProperty(ref _isPlaying, value); }
@@ -47,6 +52,22 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public double DurationSeconds => Math.Max(0, _duration.TotalSeconds);
     public bool CanSeek => IsReady && DurationSeconds > 0;
     public bool IsSeeking => _isSeeking;
+    public bool IsMuted { get => _isMuted; private set => SetMuted(value); }
+    public bool IsMutedIconVisible => IsMuted || Volume <= 0;
+    public string MuteActionText => IsMuted ? "Unmute" : "Mute";
+    public double Volume
+    {
+        get => _volume;
+        set
+        {
+            var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
+            if (!SetProperty(ref _volume, bounded)) return;
+            if (IsMuted) IsMuted = false;
+            if (bounded > 0) _volumeBeforeMute = bounded;
+            OnPropertyChanged(nameof(IsMutedIconVisible));
+            ApplyVolume();
+        }
+    }
 
     public void SetMedia(MediaPlaybackRequest request)
     {
@@ -84,6 +105,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             _playback.Opened += OnOpened;
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
+            ApplyVolume();
             OnPropertyChanged(nameof(Video));
             _playback.Open(_request.FilePath);
         }
@@ -158,6 +180,26 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         Status = "Playback finished";
         UpdatePosition();
         NotifyPlaybackChanged();
+    }
+
+    private void ToggleMute()
+    {
+        if (!IsReady) return;
+        if (IsMuted)
+        {
+            IsMuted = false;
+            if (Volume <= 0 && _volumeBeforeMute > 0)
+            {
+                _volume = _volumeBeforeMute;
+                OnPropertyChanged(nameof(Volume));
+            }
+        }
+        else
+        {
+            if (Volume > 0) _volumeBeforeMute = Volume;
+            IsMuted = true;
+        }
+        ApplyVolume();
     }
 
     /// <summary>Starts a local scrub operation without repeatedly seeking the native player.</summary>
@@ -254,6 +296,19 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(CanSeek));
         TogglePlaybackCommand.NotifyCanExecuteChanged();
+        ToggleMuteCommand.NotifyCanExecuteChanged();
+    }
+
+    private void SetMuted(bool value)
+    {
+        if (!SetProperty(ref _isMuted, value, nameof(IsMuted))) return;
+        OnPropertyChanged(nameof(IsMutedIconVisible));
+        OnPropertyChanged(nameof(MuteActionText));
+    }
+
+    private void ApplyVolume()
+    {
+        if (_playback is not null) _playback.Volume = IsMuted ? 0 : Volume;
     }
 
     private double BoundSeekPosition(double seconds) => double.IsFinite(seconds)

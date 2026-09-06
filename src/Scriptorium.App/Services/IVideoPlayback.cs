@@ -11,6 +11,7 @@ public interface IVideoPlayback : IDisposable
     ImageSource Video { get; }
     TimeSpan Position { get; set; }
     TimeSpan Duration { get; }
+    double Volume { get; set; }
     void Open(string filePath);
     void Play();
     void Pause();
