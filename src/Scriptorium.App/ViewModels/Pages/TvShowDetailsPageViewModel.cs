@@ -5,6 +5,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -13,23 +14,33 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// </summary>
 public sealed class TvShowDetailsPageViewModel : PageViewModel
 {
+    private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly ITvShowRepository _tvShowRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly ICategoryService _categoryService;
     private readonly INavigationService _navigationService;
     private PageViewModel? _returnPage;
     private string _showTitle = "TV show";
     private string _sourceFolder = string.Empty;
     private TvShowEpisodeViewModel? _selectedEpisode;
+    private MediaCategoryOptionViewModel? _selectedCategory;
+    private string _categoryStatus = string.Empty;
 
     public TvShowDetailsPageViewModel(
         ITvShowRepository tvShowRepository,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        ICategoryRepository categoryRepository,
+        ICategoryService categoryService)
     {
         _tvShowRepository = tvShowRepository;
+        _categoryRepository = categoryRepository;
+        _categoryService = categoryService;
         _navigationService = navigationService;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectEpisodeCommand = new RelayCommand(SelectEpisode, episode => episode is TvShowEpisodeViewModel);
         PreviousEpisodeCommand = new RelayCommand(SelectPreviousEpisode, CanSelectPreviousEpisode);
         NextEpisodeCommand = new RelayCommand(SelectNextEpisode, CanSelectNextEpisode);
+        SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedEpisode is not null && SelectedCategory is not null);
     }
 
     public override string Title => _showTitle;
@@ -62,6 +73,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             }
 
             OnPropertyChanged(nameof(SelectedEpisodePositionText));
+            SelectCategory(value?.CategoryId);
             ((RelayCommand)PreviousEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextEpisodeCommand).NotifyCanExecuteChanged();
         }
@@ -71,6 +83,26 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     public string SelectedEpisodePositionText => SelectedEpisode is null
         ? "No episodes available"
         : $"Episode {EpisodesInOrder().ToList().IndexOf(SelectedEpisode) + 1} of {EpisodesInOrder().Count()}";
+
+    public ObservableCollection<MediaCategoryOptionViewModel> CategoryOptions { get; } = [];
+
+    public MediaCategoryOptionViewModel? SelectedCategory
+    {
+        get => _selectedCategory;
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value))
+            {
+                ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string CategoryStatus
+    {
+        get => _categoryStatus;
+        private set => SetProperty(ref _categoryStatus, value);
+    }
 
     public ICommand BackCommand { get; }
 
@@ -82,6 +114,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
 
     /// <summary>Gets the command that selects the following episode.</summary>
     public ICommand NextEpisodeCommand { get; }
+
+    public ICommand SaveCategoryCommand { get; }
 
     /// <summary>Loads a television show before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid showId, PageViewModel returnPage)
@@ -103,6 +137,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             Seasons.Add(new TvShowSeasonViewModel(season));
         }
 
+        await RefreshCategoryOptionsAsync();
         SelectedEpisode = EpisodesInOrder().FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(EpisodeCountText));
@@ -161,6 +196,50 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         var selectedIndex = SelectedEpisode is null ? -1 : episodes.IndexOf(SelectedEpisode);
         return selectedIndex >= 0 && selectedIndex < episodes.Count - 1;
     }
+
+    private async Task SaveCategoryAsync()
+    {
+        var episode = SelectedEpisode;
+        var category = SelectedCategory;
+        if (episode is null || category is null)
+        {
+            return;
+        }
+
+        if (episode.CategoryId == category.Id)
+        {
+            CategoryStatus = "No category changes to save.";
+            return;
+        }
+
+        if (!await _categoryService.AssignToMediaAsync(episode.MediaItemId, category.Id))
+        {
+            CategoryStatus = "The category assignment could not be saved.";
+            return;
+        }
+
+        episode.SetCategory(category);
+        CategoryStatus = category.Id is null
+            ? "Category assignment removed."
+            : $"Category '{category.Name}' assigned.";
+    }
+
+    private async Task RefreshCategoryOptionsAsync()
+    {
+        var categories = await _categoryRepository.GetAllAsync();
+        CategoryOptions.Clear();
+        CategoryOptions.Add(UncategorizedOption);
+        foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            CategoryOptions.Add(new MediaCategoryOptionViewModel(category.Id, category.Name, category));
+        }
+    }
+
+    private void SelectCategory(Guid? categoryId)
+    {
+        SelectedCategory = CategoryOptions.FirstOrDefault(option => option.Id == categoryId) ?? UncategorizedOption;
+        CategoryStatus = string.Empty;
+    }
 }
 
 /// <summary>Displays one television-show season and its ordered episodes.</summary>
@@ -185,6 +264,10 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string FilePath => episode.FilePath;
 
+    public Guid MediaItemId => episode.MediaItemId;
+
+    public Guid? CategoryId => episode.MediaItem.CategoryId;
+
     public bool IsMissing => episode.MediaItem.IsMissing;
 
     public string Availability => IsMissing ? "File unavailable" : "Available";
@@ -196,5 +279,12 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
     {
         get => _isSelected;
         internal set => SetProperty(ref _isSelected, value);
+    }
+
+    internal void SetCategory(MediaCategoryOptionViewModel category)
+    {
+        episode.MediaItem.CategoryId = category.Id;
+        episode.MediaItem.Category = category.Category;
+        OnPropertyChanged(nameof(CategoryId));
     }
 }

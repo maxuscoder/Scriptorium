@@ -5,6 +5,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -13,23 +14,33 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// </summary>
 public sealed class TutorialDetailsPageViewModel : PageViewModel
 {
+    private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly ICourseRepository _courseRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly ICategoryService _categoryService;
     private readonly INavigationService _navigationService;
     private PageViewModel? _returnPage;
     private string _courseTitle = "Tutorial";
     private string _sourceFolder = string.Empty;
     private TutorialLessonViewModel? _selectedLesson;
+    private MediaCategoryOptionViewModel? _selectedCategory;
+    private string _categoryStatus = string.Empty;
 
     public TutorialDetailsPageViewModel(
         ICourseRepository courseRepository,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        ICategoryRepository categoryRepository,
+        ICategoryService categoryService)
     {
         _courseRepository = courseRepository;
+        _categoryRepository = categoryRepository;
+        _categoryService = categoryService;
         _navigationService = navigationService;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
+        SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
     }
 
     public override string Title => _courseTitle;
@@ -67,6 +78,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             }
 
             OnPropertyChanged(nameof(SelectedLessonPositionText));
+            SelectCategory(value?.CategoryId);
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
         }
@@ -76,6 +88,26 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     public string SelectedLessonPositionText => SelectedLesson is null
         ? "No lessons available"
         : $"Lesson {Lessons.IndexOf(SelectedLesson) + 1} of {Lessons.Count}";
+
+    public ObservableCollection<MediaCategoryOptionViewModel> CategoryOptions { get; } = [];
+
+    public MediaCategoryOptionViewModel? SelectedCategory
+    {
+        get => _selectedCategory;
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value))
+            {
+                ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string CategoryStatus
+    {
+        get => _categoryStatus;
+        private set => SetProperty(ref _categoryStatus, value);
+    }
 
     public ICommand BackCommand { get; }
 
@@ -87,6 +119,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
     /// <summary>Gets the command that selects the following lesson.</summary>
     public ICommand NextLessonCommand { get; }
+
+    public ICommand SaveCategoryCommand { get; }
 
     /// <summary>Loads a tutorial collection before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid courseId, PageViewModel returnPage)
@@ -108,6 +142,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             Lessons.Add(new TutorialLessonViewModel(lesson));
         }
 
+        await RefreshCategoryOptionsAsync();
         SelectedLesson = Lessons.FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(LessonCountText));
@@ -155,6 +190,50 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
     private bool CanSelectNextLesson() =>
         SelectedLesson is not null && Lessons.IndexOf(SelectedLesson) < Lessons.Count - 1;
+
+    private async Task SaveCategoryAsync()
+    {
+        var lesson = SelectedLesson;
+        var category = SelectedCategory;
+        if (lesson is null || category is null)
+        {
+            return;
+        }
+
+        if (lesson.CategoryId == category.Id)
+        {
+            CategoryStatus = "No category changes to save.";
+            return;
+        }
+
+        if (!await _categoryService.AssignToMediaAsync(lesson.MediaItemId, category.Id))
+        {
+            CategoryStatus = "The category assignment could not be saved.";
+            return;
+        }
+
+        lesson.SetCategory(category);
+        CategoryStatus = category.Id is null
+            ? "Category assignment removed."
+            : $"Category '{category.Name}' assigned.";
+    }
+
+    private async Task RefreshCategoryOptionsAsync()
+    {
+        var categories = await _categoryRepository.GetAllAsync();
+        CategoryOptions.Clear();
+        CategoryOptions.Add(UncategorizedOption);
+        foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            CategoryOptions.Add(new MediaCategoryOptionViewModel(category.Id, category.Name, category));
+        }
+    }
+
+    private void SelectCategory(Guid? categoryId)
+    {
+        SelectedCategory = CategoryOptions.FirstOrDefault(option => option.Id == categoryId) ?? UncategorizedOption;
+        CategoryStatus = string.Empty;
+    }
 }
 
 /// <summary>Displays one ordered tutorial lesson.</summary>
@@ -171,6 +250,10 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase
 
     public string FilePath => lesson.FilePath;
 
+    public Guid MediaItemId => lesson.MediaItemId;
+
+    public Guid? CategoryId => lesson.MediaItem.CategoryId;
+
     public bool IsMissing => lesson.MediaItem.IsMissing;
 
     public string Availability => IsMissing ? "File unavailable" : "Available";
@@ -182,5 +265,12 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase
     {
         get => _isSelected;
         internal set => SetProperty(ref _isSelected, value);
+    }
+
+    internal void SetCategory(MediaCategoryOptionViewModel category)
+    {
+        lesson.MediaItem.CategoryId = category.Id;
+        lesson.MediaItem.Category = category.Category;
+        OnPropertyChanged(nameof(CategoryId));
     }
 }

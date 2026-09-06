@@ -84,6 +84,10 @@ public sealed class RepositoryTests
             var category = await categoryService.CreateAsync("Learning", "#6B46C1");
             Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, category.Id));
             Assert.Single(await categoryService.GetAssignmentsAsync(category.Id));
+            Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, null));
+            Assert.Empty(await categoryService.GetAssignmentsAsync(category.Id));
+            Assert.Null((await mediaItemRepository.GetByIdAsync(mediaItem.Id))!.CategoryId);
+            Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, category.Id));
             Assert.True(await categoryService.RenameAsync(category.Id, "Courses"));
             Assert.Equal("Courses", (await categoryRepository.GetByIdAsync(category.Id))!.Name);
 

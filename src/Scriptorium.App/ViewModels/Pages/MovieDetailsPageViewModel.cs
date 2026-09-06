@@ -14,7 +14,10 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// </summary>
 public sealed class MovieDetailsPageViewModel : PageViewModel
 {
+    private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly IMediaItemRepository _mediaItemRepository;
+    private readonly ICategoryRepository _categoryRepository;
+    private readonly ICategoryService _categoryService;
     private readonly INavigationService _navigationService;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly IFavoriteService _favoriteService;
@@ -26,15 +29,21 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     private string _headerMetadata = string.Empty;
     private string _description = "No description available.";
     private string _availability = string.Empty;
+    private MediaCategoryOptionViewModel? _selectedCategory;
+    private string _categoryStatus = string.Empty;
 
     public MovieDetailsPageViewModel(
         IMediaItemRepository mediaItemRepository,
+        ICategoryRepository categoryRepository,
+        ICategoryService categoryService,
         INavigationService navigationService,
         IPlaybackProgressService playbackProgressService,
         IFavoriteService favoriteService,
         IMediaPlaybackLauncher mediaPlaybackLauncher)
     {
         _mediaItemRepository = mediaItemRepository;
+        _categoryRepository = categoryRepository;
+        _categoryService = categoryService;
         _navigationService = navigationService;
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
@@ -43,6 +52,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         PlayCommand = new AsyncRelayCommand(PlayAsync, CanPlay);
         ToggleCompletionCommand = new AsyncRelayCommand(ToggleCompletionAsync, CanToggleCompletion);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
+        SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
     }
 
     public override string Title => _movieTitle;
@@ -74,6 +84,26 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     /// <summary>Gets the metadata rendered by the shared details page.</summary>
     public ObservableCollection<MediaDetailsMetadataItem> MetadataItems { get; } = [];
 
+    public ObservableCollection<MediaCategoryOptionViewModel> CategoryOptions { get; } = [];
+
+    public MediaCategoryOptionViewModel? SelectedCategory
+    {
+        get => _selectedCategory;
+        set
+        {
+            if (SetProperty(ref _selectedCategory, value))
+            {
+                ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string CategoryStatus
+    {
+        get => _categoryStatus;
+        private set => SetProperty(ref _categoryStatus, value);
+    }
+
     public string PlayActionText => "Play";
 
     public string CompletionActionText => _movie?.IsCompleted == true ? "Mark as unwatched" : "Mark as watched";
@@ -102,6 +132,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
     public ICommand ToggleFavoriteCommand { get; }
 
+    public ICommand SaveCategoryCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -115,6 +147,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
         _returnPage = returnPage;
         _movie = movie;
+        await RefreshCategoryOptionsAsync(movie.CategoryId);
         _movieTitle = MediaDisplayText.TitleOrFallback(movie.Title, "Untitled movie");
         ThumbnailPath = movie.ThumbnailPath;
         HeaderMetadata = JoinMetadata(
@@ -188,6 +221,53 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(FavoriteActionText));
     }
 
+    private async Task SaveCategoryAsync()
+    {
+        var movie = _movie;
+        var selectedCategory = SelectedCategory;
+        if (movie is null || selectedCategory is null)
+        {
+            return;
+        }
+
+        if (movie.CategoryId == selectedCategory.Id)
+        {
+            CategoryStatus = "No category changes to save.";
+            return;
+        }
+
+        if (!await _categoryService.AssignToMediaAsync(movie.Id, selectedCategory.Id))
+        {
+            CategoryStatus = "The category assignment could not be saved.";
+            return;
+        }
+
+        movie.CategoryId = selectedCategory.Id;
+        movie.Category = selectedCategory.Category;
+        CategoryStatus = selectedCategory.Id is null
+            ? "Category assignment removed."
+            : $"Category '{selectedCategory.Name}' assigned.";
+        HeaderMetadata = JoinMetadata(
+            movie.ReleaseYear?.ToString(),
+            MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
+            MediaCategoryDisplay.Name(movie));
+        PopulateMetadata(movie);
+    }
+
+    private async Task RefreshCategoryOptionsAsync(Guid? selectedCategoryId)
+    {
+        var categories = await _categoryRepository.GetAllAsync();
+        CategoryOptions.Clear();
+        CategoryOptions.Add(UncategorizedOption);
+        foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            CategoryOptions.Add(new MediaCategoryOptionViewModel(category.Id, category.Name, category));
+        }
+
+        SelectedCategory = CategoryOptions.FirstOrDefault(option => option.Id == selectedCategoryId) ?? UncategorizedOption;
+        CategoryStatus = string.Empty;
+    }
+
     private bool CanPlay() => _movie is { IsMissing: false } movie && File.Exists(movie.Path);
 
     private bool CanToggleCompletion() => _movie is { RuntimeSeconds: > 0 };
@@ -220,6 +300,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         ((AsyncRelayCommand)PlayCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleCompletionCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
     }
 
     private void GoBack()
