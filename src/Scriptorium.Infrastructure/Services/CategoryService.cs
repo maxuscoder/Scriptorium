@@ -34,23 +34,25 @@ public sealed class CategoryService(
     public async Task<bool> RenameAsync(Guid categoryId, string name, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        var normalizedName = name.Trim();
         var category = await categoryRepository.GetByIdAsync(categoryId, cancellationToken);
         if (category is null)
         {
             return false;
         }
 
-        if (await categoryRepository.GetByNameAsync(normalizedName, cancellationToken) is { } existingCategory &&
-            existingCategory.Id != categoryId)
-        {
-            throw new InvalidOperationException("A category with that name already exists.");
-        }
+        return await UpdateCategoryAsync(category, name, category.Color, cancellationToken);
+    }
 
-        category.Name = normalizedName;
-        await categoryRepository.UpdateAsync(category, cancellationToken);
-        CategoriesChanged?.Invoke();
-        return true;
+    /// <inheritdoc />
+    public async Task<bool> UpdateAsync(
+        Guid categoryId,
+        string name,
+        string color,
+        CancellationToken cancellationToken = default)
+    {
+        Validate(name, color);
+        var category = await categoryRepository.GetByIdAsync(categoryId, cancellationToken);
+        return category is not null && await UpdateCategoryAsync(category, name, color, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -95,5 +97,26 @@ public sealed class CategoryService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(color);
+    }
+
+    private async Task<bool> UpdateCategoryAsync(
+        Category category,
+        string name,
+        string color,
+        CancellationToken cancellationToken)
+    {
+        Validate(name, color);
+        var normalizedName = name.Trim();
+        if (await categoryRepository.GetByNameAsync(normalizedName, cancellationToken) is { } existingCategory &&
+            existingCategory.Id != category.Id)
+        {
+            throw new InvalidOperationException("A category with that name already exists.");
+        }
+
+        category.Name = normalizedName;
+        category.Color = color.Trim();
+        await categoryRepository.UpdateAsync(category, cancellationToken);
+        CategoriesChanged?.Invoke();
+        return true;
     }
 }

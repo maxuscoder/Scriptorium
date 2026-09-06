@@ -1,0 +1,65 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.CategoryColorPicker"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Button
+            Width="38"
+            Height="38"
+            Padding="4"
+            Click="OnOpenPicker"
+            Style="{StaticResource Button.Secondary}"
+            ToolTip="Choose category color">
+            <Border Background="{Binding PreviewBrush, ElementName=Root}" CornerRadius="15" />
+        </Button>
+        <Popup
+            x:Name="PickerPopup"
+            AllowsTransparency="True"
+            Placement="Bottom"
+            PlacementTarget="{Binding ElementName=Root}"
+            StaysOpen="True">
+            <Border
+                Width="280"
+                Margin="0,6,0,0"
+                Padding="14"
+                Background="{StaticResource Brush.SurfaceElevated}"
+                BorderBrush="{StaticResource Brush.BorderStrong}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Label}" Text="Choose a color" />
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Background="#CC4B08" BorderBrush="#CC4B08" Tag="#CC4B08" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#CC4B08" />
+                        <Button Background="#D97706" BorderBrush="#D97706" Tag="#D97706" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#D97706" />
+                        <Button Background="#CA8A04" BorderBrush="#CA8A04" Tag="#CA8A04" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#CA8A04" />
+                        <Button Background="#65A30D" BorderBrush="#65A30D" Tag="#65A30D" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#65A30D" />
+                        <Button Background="#16A34A" BorderBrush="#16A34A" Tag="#16A34A" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#16A34A" />
+                        <Button Background="#0D9488" BorderBrush="#0D9488" Tag="#0D9488" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#0D9488" />
+                        <Button Background="#0284C7" BorderBrush="#0284C7" Tag="#0284C7" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#0284C7" />
+                        <Button Background="#2563EB" BorderBrush="#2563EB" Tag="#2563EB" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#2563EB" />
+                        <Button Background="#4F46E5" BorderBrush="#4F46E5" Tag="#4F46E5" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#4F46E5" />
+                        <Button Background="#7C3AED" BorderBrush="#7C3AED" Tag="#7C3AED" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#7C3AED" />
+                        <Button Background="#C026D3" BorderBrush="#C026D3" Tag="#C026D3" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#C026D3" />
+                        <Button Background="#DB2777" BorderBrush="#DB2777" Tag="#DB2777" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#DB2777" />
+                    </WrapPanel>
+                    <TextBlock Margin="0,14,0,6" Style="{StaticResource Text.Label}" Text="Hex color" />
+                    <TextBox
+                        Style="{StaticResource Input.TextBox}"
+                        Text="{Binding SelectedColor, ElementName=Root, UpdateSourceTrigger=PropertyChanged}"
+                        ToolTip="Hex color, for example #CC4B08" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Foreground="{StaticResource Brush.Danger}"
+                        Text="{Binding ValidationMessage, ElementName=Root}" />
+                    <Button
+                        Margin="0,12,0,0"
+                        HorizontalAlignment="Right"
+                        Click="OnClosePicker"
+                        Content="Done"
+                        Style="{StaticResource Button.Secondary}" />
+                </StackPanel>
+            </Border>
+        </Popup>
+    </Grid>
+</UserControl>

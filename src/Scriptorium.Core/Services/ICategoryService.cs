@@ -16,6 +16,13 @@ public interface ICategoryService
     /// <summary>Renames a category and returns false when it does not exist.</summary>
     Task<bool> RenameAsync(Guid categoryId, string name, CancellationToken cancellationToken = default);
 
+    /// <summary>Updates a category's name and color and returns false when it does not exist.</summary>
+    Task<bool> UpdateAsync(
+        Guid categoryId,
+        string name,
+        string color,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Deletes a category and clears its media assignments.</summary>
     Task<bool> DeleteAsync(Guid categoryId, CancellationToken cancellationToken = default);
 

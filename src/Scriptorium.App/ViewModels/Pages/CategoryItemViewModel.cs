@@ -9,6 +9,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class CategoryItemViewModel : ViewModelBase
 {
     private string _name;
+    private string _color;
     private bool _isSelected;
 
     public CategoryItemViewModel(Category category, int mediaCount)
@@ -17,7 +18,7 @@ public sealed class CategoryItemViewModel : ViewModelBase
 
         Id = category.Id;
         _name = category.Name;
-        Color = category.Color;
+        _color = category.Color;
         MediaCount = mediaCount;
     }
 
@@ -29,7 +30,20 @@ public sealed class CategoryItemViewModel : ViewModelBase
         set => SetProperty(ref _name, value ?? string.Empty);
     }
 
-    public string Color { get; }
+    public string Color
+    {
+        get => _color;
+        set
+        {
+            if (SetProperty(ref _color, value ?? string.Empty))
+            {
+                OnPropertyChanged(nameof(ColorBrush));
+                OnPropertyChanged(nameof(IsValidColor));
+            }
+        }
+    }
+
+    public bool IsValidColor => TryParseColor(Color, out _);
 
     public Brush ColorBrush => CreateColorBrush(Color);
 
@@ -61,5 +75,29 @@ public sealed class CategoryItemViewModel : ViewModelBase
         }
 
         return new SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 75, 8));
+    }
+
+    private static bool TryParseColor(string value, out Color color)
+    {
+        color = default;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (ColorConverter.ConvertFromString(value.Trim()) is Color parsedColor)
+            {
+                color = parsedColor;
+                return true;
+            }
+        }
+        catch (FormatException)
+        {
+            // Invalid values are shown with the neutral fallback brush.
+        }
+
+        return false;
     }
 }

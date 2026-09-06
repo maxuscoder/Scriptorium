@@ -42,7 +42,7 @@ public sealed class CategoriesPageViewModel : PageViewModel
         _mediaItemRepository = mediaItemRepository;
 
         CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
-        RenameCategoryCommand = new AsyncRelayCommand(RenameCategoryAsync);
+        RenameCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync);
         DeleteCategoryCommand = new AsyncRelayCommand(DeleteCategoryAsync);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         SelectCategoryCommand = new RelayCommand(SelectCategory, parameter => parameter is CategoryItemViewModel);
@@ -247,7 +247,7 @@ public sealed class CategoriesPageViewModel : PageViewModel
         }
     }
 
-    private async Task RenameCategoryAsync(object? parameter)
+    private async Task SaveCategoryAsync(object? parameter)
     {
         if (parameter is not CategoryItemViewModel category)
         {
@@ -261,6 +261,12 @@ public sealed class CategoriesPageViewModel : PageViewModel
             return;
         }
 
+        if (!category.IsValidColor)
+        {
+            StatusMessage = "Enter a valid color such as #CC4B08.";
+            return;
+        }
+
         if (CategoryNameExists(name, category.Id))
         {
             StatusMessage = "A category with that name already exists.";
@@ -269,9 +275,9 @@ public sealed class CategoriesPageViewModel : PageViewModel
 
         try
         {
-            if (await _categoryService.RenameAsync(category.Id, name))
+            if (await _categoryService.UpdateAsync(category.Id, name, category.Color.Trim()))
             {
-                StatusMessage = $"Category renamed to '{name}'.";
+                StatusMessage = $"Category '{name}' saved.";
             }
         }
         catch (InvalidOperationException exception) when (exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))

@@ -90,6 +90,8 @@ public sealed class RepositoryTests
             Assert.True(await categoryService.AssignToMediaAsync(mediaItem.Id, category.Id));
             Assert.True(await categoryService.RenameAsync(category.Id, "Courses"));
             Assert.Equal("Courses", (await categoryRepository.GetByIdAsync(category.Id))!.Name);
+            Assert.True(await categoryService.UpdateAsync(category.Id, "Courses", "#2563EB"));
+            Assert.Equal("#2563EB", (await categoryRepository.GetByIdAsync(category.Id))!.Color);
 
             Assert.True(await favoriteService.AddAsync(mediaItem.Id));
             Assert.True(await favoriteService.AddAsync(mediaItem.Id));
