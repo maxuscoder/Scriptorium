@@ -140,6 +140,29 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaItem>> GetRecentlyWatchedAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCount);
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        var recentlyWatchedMedia = await context.MediaItems
+            .AsNoTracking()
+            .Include(item => item.LibraryFolder)
+            .Include(item => item.Category)
+            .Where(item => item.LastPlayed != null)
+            .ToListAsync(cancellationToken);
+
+        // SQLite cannot order DateTimeOffset values, so order after materialization.
+        return recentlyWatchedMedia
+            .OrderByDescending(item => item.LastPlayed)
+            .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
+            .Take(maximumCount)
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> GetByCategoryIdAsync(
         Guid categoryId,
         CancellationToken cancellationToken = default)

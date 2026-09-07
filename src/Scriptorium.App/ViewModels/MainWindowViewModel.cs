@@ -12,6 +12,7 @@ namespace Scriptorium.App.ViewModels;
 
 public sealed class MainWindowViewModel : PageViewModel
 {
+    private const int RecentlyWatchedMaximumCount = 10;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaPlaybackLauncher _mediaPlaybackLauncher;
@@ -44,9 +45,13 @@ public sealed class MainWindowViewModel : PageViewModel
 
     public ObservableCollection<LibraryMediaItemViewModel> IncompleteMedia { get; } = [];
 
+    public ObservableCollection<LibraryMediaItemViewModel> RecentlyWatchedMedia { get; } = [];
+
     public bool HasIncompleteMedia => IncompleteMedia.Count != 0;
 
     public string IncompleteMediaCountText => $"{IncompleteMedia.Count} item{(IncompleteMedia.Count == 1 ? string.Empty : "s")}";
+
+    public bool HasRecentlyWatchedMedia => RecentlyWatchedMedia.Count != 0;
 
     public string? StatusMessage { get => _statusMessage; private set => SetProperty(ref _statusMessage, value); }
 
@@ -65,21 +70,33 @@ public sealed class MainWindowViewModel : PageViewModel
         IsRefreshing = true;
         try
         {
-            var incompleteMedia = await _mediaItemRepository.GetIncompleteAsync();
+            var incompleteMediaTask = _mediaItemRepository.GetIncompleteAsync();
+            var recentlyWatchedMediaTask = _mediaItemRepository.GetRecentlyWatchedAsync(RecentlyWatchedMaximumCount);
+            await Task.WhenAll(incompleteMediaTask, recentlyWatchedMediaTask);
+            var incompleteMedia = await incompleteMediaTask;
+            var recentlyWatchedMedia = await recentlyWatchedMediaTask;
+
             IncompleteMedia.Clear();
             foreach (var mediaItem in incompleteMedia)
             {
                 IncompleteMedia.Add(new LibraryMediaItemViewModel(mediaItem));
             }
 
+            RecentlyWatchedMedia.Clear();
+            foreach (var mediaItem in recentlyWatchedMedia)
+            {
+                RecentlyWatchedMedia.Add(new LibraryMediaItemViewModel(mediaItem));
+            }
+
             StatusMessage = null;
             OnPropertyChanged(nameof(HasIncompleteMedia));
             OnPropertyChanged(nameof(IncompleteMediaCountText));
+            OnPropertyChanged(nameof(HasRecentlyWatchedMedia));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             _logger.LogWarning(exception, "Incomplete media could not be loaded.");
-            StatusMessage = "Continue watching could not be loaded. Try refreshing again.";
+            StatusMessage = "Homepage media could not be loaded. Try refreshing again.";
         }
         finally
         {
@@ -98,7 +115,7 @@ public sealed class MainWindowViewModel : PageViewModel
         var media = item.MediaItem;
         var launched = await _mediaPlaybackLauncher.LaunchAsync(new MediaPlaybackRequest(
             media.Path,
-            media.PlaybackPositionSeconds,
+            media.IsCompleted ? 0 : media.PlaybackPositionSeconds,
             media.Id,
             media.RuntimeSeconds ?? 0));
         if (!launched)

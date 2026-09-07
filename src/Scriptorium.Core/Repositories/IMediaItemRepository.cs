@@ -35,6 +35,11 @@ public interface IMediaItemRepository : IRepository<MediaItem>
     /// </summary>
     Task<IReadOnlyList<MediaItem>> GetIncompleteAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Gets the most recently watched media, capped at the requested number of items.</summary>
+    Task<IReadOnlyList<MediaItem>> GetRecentlyWatchedAsync(
+        int maximumCount,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets media items assigned to a category.</summary>
     Task<IReadOnlyList<MediaItem>> GetByCategoryIdAsync(
         Guid categoryId,

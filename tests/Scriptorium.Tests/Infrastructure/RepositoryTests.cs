@@ -332,15 +332,17 @@ public sealed class RepositoryTests
                 Path = "C:\\Media\\completed.mp4",
                 RuntimeSeconds = 120,
                 PlaybackPositionSeconds = 120,
-                LastPlayed = newerWatch,
+                LastPlayed = newerWatch.AddMinutes(1),
                 IsCompleted = true,
                 MediaType = MediaType.Movie
             };
             await repository.AddRangeAsync([older, newer, notStarted, completed]);
 
             var incomplete = await repository.GetIncompleteAsync();
+            var recentlyWatched = await repository.GetRecentlyWatchedAsync(2);
 
             Assert.Equal([newer.Id, older.Id], incomplete.Select(item => item.Id));
+            Assert.Equal([completed.Id, newer.Id], recentlyWatched.Select(item => item.Id));
         }
         finally
         {
