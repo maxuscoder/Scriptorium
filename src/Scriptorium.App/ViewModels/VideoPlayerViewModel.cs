@@ -63,6 +63,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     /// <summary>Raised once when this media session first starts, never for preview loading.</summary>
     public event EventHandler? PlaybackStarted;
 
+    /// <summary>Raised after a playback snapshot, including its viewing timestamp, has been persisted.</summary>
+    public event EventHandler<PlaybackProgressSavedEventArgs>? PlaybackProgressPersisted;
+
     /// <summary>Raised after a user-visible playback action completes.</summary>
     public event EventHandler<VideoPlaybackAction>? PlaybackActionPerformed;
 
@@ -223,6 +226,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
                 _hasStarted = true;
                 _timer.Start();
                 Status = "Playing";
+                QueuePlaybackProgressSave(force: true);
             }
             UpdatePosition();
             NotifyPlaybackChanged();
@@ -337,11 +341,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         }
     }
 
-    /// <summary>Stops playback at the beginning and persists the cleared position when a media item is attached.</summary>
-    public void ResetProgress()
+    /// <summary>Stops playback at the beginning and can persist the cleared position when a media item is attached.</summary>
+    public void ResetProgress(bool saveProgress = true)
     {
         Stop();
-        QueuePlaybackProgressSave(force: true);
+        if (saveProgress)
+        {
+            QueuePlaybackProgressSave(force: true);
+        }
     }
 
     private bool SetPlaybackPosition(double seconds)
@@ -499,12 +506,22 @@ public sealed class VideoPlayerViewModel : ViewModelBase
 
             if (await _playbackProgressService!.SaveAsync(
                     snapshot.MediaItemId,
-                    new PlaybackProgressUpdate(snapshot.PositionSeconds, snapshot.DurationSeconds))
+                    new PlaybackProgressUpdate(
+                        snapshot.PositionSeconds,
+                        snapshot.DurationSeconds,
+                        snapshot.LastWatched))
                 .ConfigureAwait(false))
             {
                 _lastSavedMediaItemId = snapshot.MediaItemId;
                 _lastSavedPositionSeconds = snapshot.PositionSeconds;
                 _lastSavedDurationSeconds = snapshot.DurationSeconds;
+                PlaybackProgressPersisted?.Invoke(
+                    this,
+                    new PlaybackProgressSavedEventArgs(
+                        snapshot.MediaItemId,
+                        snapshot.PositionSeconds,
+                        snapshot.DurationSeconds,
+                        snapshot.LastWatched));
             }
         }
         catch (Exception exception)
@@ -539,7 +556,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         }
 
         var positionSeconds = Math.Max(0, (long)Math.Floor(Math.Clamp(currentPositionSeconds, 0, durationSeconds)));
-        return new PlaybackProgressSnapshot(mediaItemId, positionSeconds, durationSeconds);
+        return new PlaybackProgressSnapshot(
+            mediaItemId,
+            positionSeconds,
+            durationSeconds,
+            DateTimeOffset.UtcNow);
     }
 
     private void ResetProgressSaveTracking()
@@ -553,7 +574,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private sealed record PlaybackProgressSnapshot(
         Guid MediaItemId,
         long PositionSeconds,
-        long DurationSeconds);
+        long DurationSeconds,
+        DateTimeOffset LastWatched);
 
     private void NotifyPlaybackChanged()
     {
@@ -609,6 +631,19 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     }
 
     private static string FormatTime(TimeSpan time) => $"{(long)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
+}
+
+/// <summary>Describes a persisted playback snapshot and the moment the media was last viewed.</summary>
+public sealed class PlaybackProgressSavedEventArgs(
+    Guid mediaItemId,
+    long positionSeconds,
+    long durationSeconds,
+    DateTimeOffset lastWatched) : EventArgs
+{
+    public Guid MediaItemId { get; } = mediaItemId;
+    public long PositionSeconds { get; } = positionSeconds;
+    public long DurationSeconds { get; } = durationSeconds;
+    public DateTimeOffset LastWatched { get; } = lastWatched;
 }
 
 /// <summary>Represents a playback action shown as transient feedback by the view.</summary>

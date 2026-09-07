@@ -16,6 +16,8 @@ public sealed class VideoPlayerTests
         var progressService = new RecordingPlaybackProgressService();
         var mediaItemId = Guid.NewGuid();
         var player = new VideoPlayerViewModel(factory, playbackProgressService: progressService);
+        PlaybackProgressSavedEventArgs? persisted = null;
+        player.PlaybackProgressPersisted += (_, args) => persisted = args;
         player.SetMedia(new MediaPlaybackRequest("video.mp4", 0, mediaItemId, 60));
         player.Activate();
         var playback = Assert.Single(factory.Instances);
@@ -25,9 +27,14 @@ public sealed class VideoPlayerTests
 
         await player.DeactivateAsync();
 
-        var saved = Assert.Single(progressService.Updates);
+        Assert.Equal(2, progressService.Updates.Count);
+        var saved = progressService.Updates[^1];
         Assert.Equal(mediaItemId, saved.MediaItemId);
-        Assert.Equal(new PlaybackProgressUpdate(23, 60), saved.Update);
+        Assert.Equal(23, saved.Update.PositionSeconds);
+        Assert.Equal(60, saved.Update.DurationSeconds);
+        Assert.NotNull(saved.Update.LastWatched);
+        Assert.NotNull(persisted);
+        Assert.Equal(saved.Update.LastWatched, persisted.LastWatched);
     });
 
     [Fact]
@@ -44,15 +51,17 @@ public sealed class VideoPlayerTests
         playback.Position = TimeSpan.FromSeconds(15);
 
         await Task.Delay(TimeSpan.FromSeconds(1.5));
-        Assert.Empty(progressService.Updates);
+        var initial = Assert.Single(progressService.Updates);
+        Assert.Equal(0, initial.Update.PositionSeconds);
+        Assert.NotNull(initial.Update.LastWatched);
 
-        await WaitUntilAsync(() => progressService.Updates.Count == 1);
+        await WaitUntilAsync(() => progressService.Updates.Count == 2);
         playback.Position = TimeSpan.FromSeconds(16);
         await Task.Delay(TimeSpan.FromSeconds(1));
-        Assert.Single(progressService.Updates);
+        Assert.Equal(2, progressService.Updates.Count);
 
         await player.DeactivateAsync();
-        Assert.Equal(2, progressService.Updates.Count);
+        Assert.Equal(3, progressService.Updates.Count);
     });
 
     [Fact]
@@ -73,8 +82,12 @@ public sealed class VideoPlayerTests
         await player.DeactivateAsync();
 
         Assert.True(player.IsStopped);
-        var saved = Assert.Single(progressService.Updates);
-        Assert.Equal((mediaItemId, new PlaybackProgressUpdate(57, 60)), saved);
+        Assert.Equal(2, progressService.Updates.Count);
+        var saved = progressService.Updates[^1];
+        Assert.Equal(mediaItemId, saved.MediaItemId);
+        Assert.Equal(57, saved.Update.PositionSeconds);
+        Assert.Equal(60, saved.Update.DurationSeconds);
+        Assert.NotNull(saved.Update.LastWatched);
     });
 
     [Fact]
@@ -175,7 +188,10 @@ public sealed class VideoPlayerTests
         Assert.True(player.IsStopped);
         Assert.Equal(TimeSpan.Zero, playback.Position);
         var saved = Assert.Single(progressService.Updates);
-        Assert.Equal((mediaItemId, new PlaybackProgressUpdate(0, 60)), saved);
+        Assert.Equal(mediaItemId, saved.MediaItemId);
+        Assert.Equal(0, saved.Update.PositionSeconds);
+        Assert.Equal(60, saved.Update.DurationSeconds);
+        Assert.NotNull(saved.Update.LastWatched);
     });
 
     [Fact]
