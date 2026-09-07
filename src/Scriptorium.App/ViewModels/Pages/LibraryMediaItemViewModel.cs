@@ -22,7 +22,6 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
 
     public string MediaType => MediaItem.MediaType switch
     {
-        MediaKind.Tutorial => "Tutorial",
         MediaKind.TvShow => "TV show",
         MediaKind.Movie => "Movie",
         _ => MediaItem.MediaType.ToString()
@@ -30,7 +29,6 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
 
     public string TypeGlyph => MediaItem.MediaType switch
     {
-        MediaKind.Tutorial => "◆",
         MediaKind.TvShow => "▤",
         MediaKind.Movie => "▶",
         _ => "•"

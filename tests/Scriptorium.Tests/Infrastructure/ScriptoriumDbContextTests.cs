@@ -29,9 +29,9 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("TVShows", tableNames);
             Assert.Contains("Seasons", tableNames);
             Assert.Contains("Episodes", tableNames);
-            Assert.Contains("Courses", tableNames);
-            Assert.Contains("Lessons", tableNames);
-            Assert.Equal(11, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.DoesNotContain("Courses", tableNames);
+            Assert.DoesNotContain("Lessons", tableNames);
+            Assert.Equal(12, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -117,7 +117,7 @@ public sealed class ScriptoriumDbContextTests
                 "TVShow_Description" TEXT NULL, "TVShow_ReleaseYear" INTEGER NULL);
             CREATE TABLE "Favorites" ("MediaId" TEXT NOT NULL PRIMARY KEY, "DateAdded" TEXT NOT NULL);
             INSERT INTO "MediaItems" ("Id", "Title", "Path", "DateAdded", "IsFavorite", "MediaType", "Runtime")
-            VALUES ('11111111-1111-1111-1111-111111111111', 'Example', 'C:\\Example.mp4', '2026-01-01T00:00:00+00:00', 0, 0, 120000000);
+            VALUES ('11111111-1111-1111-1111-111111111111', 'Example', 'C:\\Example.mp4', '2026-01-01T00:00:00+00:00', 0, 2, 120000000);
             INSERT INTO "Favorites" ("MediaId", "DateAdded")
             VALUES ('11111111-1111-1111-1111-111111111111', '2026-01-02T00:00:00+00:00');
             """;

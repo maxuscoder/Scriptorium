@@ -5,7 +5,6 @@ namespace Scriptorium.Core.Models;
 /// </summary>
 public enum MediaType
 {
-    Tutorial,
-    TvShow,
-    Movie
+    TvShow = 1,
+    Movie = 2
 }

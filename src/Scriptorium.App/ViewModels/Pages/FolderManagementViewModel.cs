@@ -100,7 +100,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
     public IReadOnlyList<MediaTypeChoice> MediaTypes { get; } =
     [
-        new(MediaType.Tutorial, "Tutorials"),
         new(MediaType.TvShow, "TV shows"),
         new(MediaType.Movie, "Movies")
     ];
@@ -348,7 +347,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
     private static string GetMediaTypeDisplayName(MediaType mediaType) => mediaType switch
     {
-        MediaType.Tutorial => "Tutorials",
         MediaType.TvShow => "TV shows",
         MediaType.Movie => "Movies",
         _ => mediaType.ToString()
