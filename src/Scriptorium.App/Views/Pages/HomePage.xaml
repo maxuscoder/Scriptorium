@@ -1,40 +1,94 @@
 <UserControl
     x:Class="Scriptorium.App.Views.Pages.HomePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid>
-        <StackPanel
-            MaxWidth="640"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center">
-            <TextBlock
-                HorizontalAlignment="Center"
-                Style="{StaticResource Text.Display}"
-                Text="{Binding WelcomeMessage}" />
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    Loaded="OnLoaded">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,28,32,48">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Continue watching" />
+                        <Border
+                            Margin="12,0,0,0"
+                            VerticalAlignment="Center"
+                            Background="{StaticResource Brush.SurfaceOverlay}"
+                            CornerRadius="{StaticResource CornerRadius.S}"
+                            Padding="9,3">
+                            <TextBlock
+                                Style="{StaticResource Text.Badge}"
+                                Foreground="{StaticResource Brush.TextPrimary}"
+                                Text="{Binding IncompleteMediaCountText}" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        Style="{StaticResource Text.Body}"
+                        Text="Pick up where you left off. Your most recently watched media appears first." />
+                </StackPanel>
+                <Button
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Command="{Binding RefreshCommand}"
+                    Content="Refresh"
+                    Style="{StaticResource Button.Secondary}" />
+            </Grid>
 
             <TextBlock
-                Margin="0,12,0,24"
-                HorizontalAlignment="Center"
-                Style="{StaticResource Text.Body.Center}"
-                Text="{Binding StatusMessage}" />
+                Margin="0,16,0,0"
+                Foreground="{StaticResource Brush.Warning}"
+                Text="{Binding StatusMessage}"
+                TextWrapping="Wrap" />
 
-            <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                <Button
-                    MinWidth="120"
-                    Height="32"
-                    Margin="0,0,8,0"
-                    Style="{StaticResource Button.Secondary}"
-                    Command="{Binding UpdateWelcomeMessageCommand}">
-                    Update message
-                </Button>
-                <Button
-                    MinWidth="170"
-                    Height="32"
-                    Style="{StaticResource Button.Primary}"
-                    Command="{Binding UpdateWelcomeMessageAsyncCommand}">
-                    Update asynchronously
-                </Button>
+            <ItemsControl Margin="0,28,0,0" ItemsSource="{Binding IncompleteMedia}" Style="{StaticResource Library.MediaItems}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <controls:MediaCard
+                            CardWidth="280"
+                            Margin="0,0,16,16"
+                            ActionCommand="{Binding DataContext.ResumePlaybackCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            ActionParameter="{Binding}"
+                            ActionText="Resume"
+                            CategoryColor="{Binding CategoryColor}"
+                            CategoryName="{Binding CategoryName}"
+                            FallbackGlyph="{Binding TypeGlyph}"
+                            HasPlaybackProgress="{Binding HasPlaybackProgress}"
+                            IsMissing="{Binding IsMissing}"
+                            PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
+                            PlaybackProgressText="{Binding PlaybackProgressText}"
+                            PrimaryMetadata="{Binding Detail}"
+                            SecondaryMetadata="{Binding Runtime}"
+                            Status="{Binding Availability}"
+                            ThumbnailPath="{Binding ThumbnailPath}"
+                            Title="{Binding Title}"
+                            TypeLabel="{Binding MediaType}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Margin="0,52,0,0" HorizontalAlignment="Center" MaxWidth="440">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasIncompleteMedia}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Display}" Text="Nothing to resume" />
+                <TextBlock
+                    Margin="0,10,0,0"
+                    HorizontalAlignment="Center"
+                    Style="{StaticResource Text.Body.Center}"
+                    Text="Media you start but do not finish will appear here automatically." />
             </StackPanel>
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </UserControl>

@@ -116,6 +116,30 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaItem>> GetIncompleteAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        var incompleteMedia = await context.MediaItems
+            .AsNoTracking()
+            .Include(item => item.LibraryFolder)
+            .Include(item => item.Category)
+            .Where(item =>
+                !item.IsCompleted &&
+                item.LastPlayed != null &&
+                item.RuntimeSeconds > 0 &&
+                item.PlaybackPositionSeconds > 0 &&
+                item.PlaybackPositionSeconds < item.RuntimeSeconds)
+            .ToListAsync(cancellationToken);
+
+        // SQLite cannot order DateTimeOffset values, so retain the database filter
+        // and perform the small, display-ready ordering after materialization.
+        return incompleteMedia
+            .OrderByDescending(item => item.LastPlayed)
+            .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> GetByCategoryIdAsync(
         Guid categoryId,
         CancellationToken cancellationToken = default)

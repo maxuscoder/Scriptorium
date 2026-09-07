@@ -282,6 +282,73 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Incomplete_media_is_limited_to_resumable_items_and_sorted_by_last_watched()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var repository = new MediaItemRepository(new TestDbContextFactory(options));
+            var olderWatch = new DateTimeOffset(2026, 8, 10, 12, 0, 0, TimeSpan.Zero);
+            var newerWatch = olderWatch.AddMinutes(5);
+            var older = new MediaItem
+            {
+                Title = "Older incomplete",
+                Path = "C:\\Media\\older.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 20,
+                LastPlayed = olderWatch,
+                MediaType = MediaType.Movie
+            };
+            var newer = new MediaItem
+            {
+                Title = "Newer incomplete",
+                Path = "C:\\Media\\newer.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 20,
+                LastPlayed = newerWatch,
+                MediaType = MediaType.Movie
+            };
+            var notStarted = new MediaItem
+            {
+                Title = "Not started",
+                Path = "C:\\Media\\not-started.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 0,
+                LastPlayed = newerWatch,
+                MediaType = MediaType.Movie
+            };
+            var completed = new MediaItem
+            {
+                Title = "Completed",
+                Path = "C:\\Media\\completed.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 120,
+                LastPlayed = newerWatch,
+                IsCompleted = true,
+                MediaType = MediaType.Movie
+            };
+            await repository.AddRangeAsync([older, newer, notStarted, completed]);
+
+            var incomplete = await repository.GetIncompleteAsync();
+
+            Assert.Equal([newer.Id, older.Id], incomplete.Select(item => item.Id));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public void Media_playback_progress_only_shows_resumable_items()
     {
         var inProgress = new MediaItem

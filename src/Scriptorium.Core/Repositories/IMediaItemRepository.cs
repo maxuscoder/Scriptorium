@@ -30,6 +30,11 @@ public interface IMediaItemRepository : IRepository<MediaItem>
     /// <summary>Gets favorited media items.</summary>
     Task<IReadOnlyList<MediaItem>> GetFavoritesAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets media with saved, incomplete playback progress, ordered from most recently watched.
+    /// </summary>
+    Task<IReadOnlyList<MediaItem>> GetIncompleteAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Gets media items assigned to a category.</summary>
     Task<IReadOnlyList<MediaItem>> GetByCategoryIdAsync(
         Guid categoryId,
