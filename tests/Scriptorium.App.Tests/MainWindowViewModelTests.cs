@@ -139,6 +139,7 @@ public sealed class MainWindowViewModelTests
             var favoriteService = new FavoriteService(mediaRepository);
             var progressService = new PlaybackProgressService(mediaRepository);
             var navigationService = new NavigationService(NullLogger<NavigationService>.Instance);
+            var tutorialPlayer = new VideoPlayerViewModel(new UnusedVideoPlaybackFactory(), progressService);
             var tutorialDetails = new TutorialDetailsPageViewModel(
                 courseRepository,
                 navigationService,
@@ -146,7 +147,8 @@ public sealed class MainWindowViewModelTests
                 categoryService,
                 favoriteService,
                 tutorialCourseSynchronizer,
-                progressService);
+                progressService,
+                tutorialPlayer);
             var tvShowDetails = new TvShowDetailsPageViewModel(
                 tvShowRepository,
                 navigationService,

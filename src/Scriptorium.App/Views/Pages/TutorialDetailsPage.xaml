@@ -41,6 +41,24 @@
                     Minimum="0"
                     Value="{Binding CourseProgressPercentage, Mode=OneWay}" />
             </StackPanel>
+            <Button
+                Margin="0,12,0,0"
+                HorizontalAlignment="Left"
+                Command="{Binding ContinueLearningCommand}"
+                Content="{Binding ContinueLearningText}"
+                Style="{StaticResource Button.Secondary}" />
+            <Border Margin="0,16,0,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLessons}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <controls:VideoPlayer Height="380" Player="{Binding Player}" />
+            </Border>
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <Grid>
                     <Grid.ColumnDefinitions>

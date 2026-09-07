@@ -23,6 +23,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
+    private readonly VideoPlayerViewModel _player;
     private PageViewModel? _returnPage;
     private Guid? _courseId;
     private int _isCourseRefreshQueued;
@@ -39,7 +40,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         ICategoryService categoryService,
         IFavoriteService favoriteService,
         ITutorialCourseSynchronizer tutorialCourseSynchronizer,
-        IPlaybackProgressService playbackProgressService)
+        IPlaybackProgressService playbackProgressService,
+        VideoPlayerViewModel player)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -48,14 +50,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         _playbackProgressService = playbackProgressService;
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
+        _player = player;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
+        ContinueLearningCommand = new RelayCommand(ContinueLearning, CanContinueLearning);
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
+        _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
+        _player.PlaybackCompleted += OnPlaybackCompleted;
     }
 
     public override string Title => _courseTitle;
@@ -92,6 +98,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         ? "No lessons available"
         : $"{CompletedLessonCount} of {Lessons.Count} lessons completed";
 
+    /// <summary>Gets whether every lesson in the course has been completed.</summary>
+    public bool IsCourseCompleted => Lessons.Count > 0 && CompletedLessonCount == Lessons.Count;
+
+    /// <summary>Gets whether the course has a lesson that can be resumed.</summary>
+    public bool HasIncompleteLessons => Lessons.Any(lesson => !lesson.IsCompleted);
+
+    public string ContinueLearningText => IsCourseCompleted
+        ? "Course completed"
+        : HasIncompleteLessons
+            ? "Continue learning"
+            : "No lessons available";
+
     /// <summary>Gets the lesson currently selected for sequential navigation.</summary>
     public TutorialLessonViewModel? SelectedLesson
     {
@@ -111,10 +129,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             OnPropertyChanged(nameof(SelectedLessonPositionText));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
+            OpenSelectedLesson();
             SelectCategory(value?.CategoryId);
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
+            ((RelayCommand)ContinueLearningCommand).NotifyCanExecuteChanged();
         }
     }
 
@@ -162,6 +182,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     /// <summary>Gets the command that selects the following lesson.</summary>
     public ICommand NextLessonCommand { get; }
 
+    /// <summary>Selects the first lesson that has not been completed.</summary>
+    public ICommand ContinueLearningCommand { get; }
+
+    /// <summary>Gets the player for the currently selected lesson.</summary>
+    public VideoPlayerViewModel Player => _player;
+
     /// <summary>Marks the selected lesson complete or incomplete.</summary>
     public ICommand ToggleLessonCompletionCommand { get; }
 
@@ -203,11 +229,15 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
         await RefreshCategoryOptionsAsync();
         SelectedLesson = Lessons.FirstOrDefault(lesson => lesson.MediaItemId == selectedLessonMediaItemId)
+            ?? Lessons.FirstOrDefault(lesson => !lesson.IsCompleted)
             ?? Lessons.FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(LessonCountText));
         OnPropertyChanged(nameof(HasLessons));
         OnPropertyChanged(nameof(TotalDurationText));
+        OnPropertyChanged(nameof(IsCourseCompleted));
+        OnPropertyChanged(nameof(HasIncompleteLessons));
+        OnPropertyChanged(nameof(ContinueLearningText));
         RefreshCourseProgress();
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
@@ -288,13 +318,113 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         RefreshCourseProgress();
     }
 
+    private void ContinueLearning()
+    {
+        var nextLesson = Lessons.FirstOrDefault(lesson => !lesson.IsCompleted);
+        if (nextLesson is not null)
+        {
+            SelectedLesson = nextLesson;
+        }
+    }
+
+    private bool CanContinueLearning() => HasIncompleteLessons;
+
+    private void OpenSelectedLesson()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null)
+        {
+            return;
+        }
+
+        _player.SetMedia(new MediaPlaybackRequest(
+            lesson.FilePath,
+            lesson.IsCompleted ? 0 : lesson.PlaybackPositionSeconds,
+            lesson.MediaItemId,
+            lesson.RuntimeSeconds));
+    }
+
+    private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(() =>
+            {
+                if (Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId) is { } lesson)
+                {
+                    var wasCompleted = lesson.IsCompleted;
+                    lesson.SetPlaybackProgress(args);
+                    RefreshCourseProgress();
+                    if (!wasCompleted && lesson.IsCompleted)
+                    {
+                        SelectFirstIncompleteLessonOrKeepCurrent();
+                    }
+                }
+            });
+            return;
+        }
+
+        if (Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId) is { } currentLesson)
+        {
+            var wasCompleted = currentLesson.IsCompleted;
+            currentLesson.SetPlaybackProgress(args);
+            RefreshCourseProgress();
+            if (!wasCompleted && currentLesson.IsCompleted)
+            {
+                SelectFirstIncompleteLessonOrKeepCurrent();
+            }
+        }
+    }
+
+    private async void OnPlaybackCompleted(object? sender, PlaybackCompletedEventArgs args)
+    {
+        try
+        {
+            var lesson = Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
+            if (lesson is null)
+            {
+                return;
+            }
+
+            if (!lesson.IsCompleted)
+            {
+                if (!await _playbackProgressService.SetCompletionAsync(args.MediaItemId, true))
+                {
+                    return;
+                }
+
+                lesson.SetCompletion(true);
+            }
+
+            RefreshCourseProgress();
+            SelectFirstIncompleteLessonOrKeepCurrent();
+        }
+        catch
+        {
+            // Playback completion must not take down the UI if the media is removed while playing.
+        }
+    }
+
+    private void SelectFirstIncompleteLessonOrKeepCurrent()
+    {
+        if (Lessons.FirstOrDefault(lesson => !lesson.IsCompleted) is { } nextLesson)
+        {
+            SelectedLesson = nextLesson;
+        }
+    }
+
     private void RefreshCourseProgress()
     {
         OnPropertyChanged(nameof(CompletedLessonCount));
         OnPropertyChanged(nameof(CourseProgressPercentage));
         OnPropertyChanged(nameof(CourseProgressText));
+        OnPropertyChanged(nameof(IsCourseCompleted));
+        OnPropertyChanged(nameof(HasIncompleteLessons));
+        OnPropertyChanged(nameof(ContinueLearningText));
         OnPropertyChanged(nameof(CompletionActionText));
         ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
+        ((RelayCommand)ContinueLearningCommand).NotifyCanExecuteChanged();
     }
 
     private void GoBack()
@@ -394,6 +524,9 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     /// <summary>Gets the known duration in seconds, or zero when it is unavailable.</summary>
     public long RuntimeSeconds => lesson.MediaItem.RuntimeSeconds.GetValueOrDefault();
 
+    /// <summary>Gets the saved playback position in seconds.</summary>
+    public long PlaybackPositionSeconds => lesson.MediaItem.PlaybackPositionSeconds;
+
     public string FilePath => lesson.FilePath;
 
     public Guid MediaItemId => lesson.MediaItemId;
@@ -403,7 +536,11 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     /// <summary>Gets whether the learner has completed this lesson.</summary>
     public bool IsCompleted => lesson.MediaItem.IsCompleted;
 
-    public string CompletionStatus => IsCompleted ? "Completed" : "Not started";
+    public string CompletionStatus => IsCompleted
+        ? "Completed"
+        : MediaPlaybackProgress.HasPartialProgress(lesson.MediaItem)
+            ? MediaPlaybackProgress.DisplayText(lesson.MediaItem)
+            : "Not started";
 
     public void SetFavorite(bool isFavorite)
     {
@@ -428,6 +565,20 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
             ? lesson.MediaItem.RuntimeSeconds.GetValueOrDefault()
             : 0;
         lesson.MediaItem.LastPlayed = DateTimeOffset.UtcNow;
+        OnPropertyChanged(nameof(IsCompleted));
+        OnPropertyChanged(nameof(CompletionStatus));
+    }
+
+    internal void SetPlaybackProgress(PlaybackProgressSavedEventArgs args)
+    {
+        lesson.MediaItem.PlaybackPositionSeconds = args.PositionSeconds;
+        lesson.MediaItem.RuntimeSeconds = args.DurationSeconds;
+        lesson.MediaItem.IsCompleted = MediaPlaybackProgress.MeetsCompletionThreshold(
+            args.PositionSeconds,
+            args.DurationSeconds);
+        lesson.MediaItem.LastPlayed = args.LastWatched;
+        OnPropertyChanged(nameof(PlaybackPositionSeconds));
+        OnPropertyChanged(nameof(RuntimeSeconds));
         OnPropertyChanged(nameof(IsCompleted));
         OnPropertyChanged(nameof(CompletionStatus));
     }

@@ -78,6 +78,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     /// <summary>Raised after a playback snapshot, including its viewing timestamp, has been persisted.</summary>
     public event EventHandler<PlaybackProgressSavedEventArgs>? PlaybackProgressPersisted;
 
+    /// <summary>Raised when the current media reaches its natural end.</summary>
+    public event EventHandler<PlaybackCompletedEventArgs>? PlaybackCompleted;
+
     /// <summary>Raised after a user-visible playback action completes.</summary>
     public event EventHandler<VideoPlaybackAction>? PlaybackActionPerformed;
 
@@ -282,6 +285,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         UpdatePosition();
         QueuePlaybackProgressSave(force: true);
         NotifyPlaybackChanged();
+        if (_request?.MediaItemId is { } mediaItemId)
+        {
+            PlaybackCompleted?.Invoke(this, new PlaybackCompletedEventArgs(mediaItemId));
+        }
     }
 
     private void ToggleMute()
@@ -742,6 +749,12 @@ public sealed class PlaybackProgressSavedEventArgs(
     public long PositionSeconds { get; } = positionSeconds;
     public long DurationSeconds { get; } = durationSeconds;
     public DateTimeOffset LastWatched { get; } = lastWatched;
+}
+
+/// <summary>Identifies the media item that reached the end of playback.</summary>
+public sealed class PlaybackCompletedEventArgs(Guid mediaItemId) : EventArgs
+{
+    public Guid MediaItemId { get; } = mediaItemId;
 }
 
 /// <summary>Represents a playback action shown as transient feedback by the view.</summary>
