@@ -29,8 +29,8 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("TEXT")
-                        .UseCollation("NOCASE");
+                        .UseCollation("NOCASE")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
@@ -38,6 +38,27 @@ namespace Scriptorium.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Categories", (string)null);
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.Course", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("LibraryFolderId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LibraryFolderId")
+                        .IsUnique();
+
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.Episode", b =>
@@ -79,6 +100,42 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.ToTable("Episodes", (string)null);
                 });
 
+            modelBuilder.Entity("Scriptorium.Core.Models.Lesson", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("LessonNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MediaItemId")
+                        .IsUnique();
+
+                    b.HasIndex("CourseId", "SortOrder");
+
+                    b.ToTable("Lessons", (string)null);
+                });
+
             modelBuilder.Entity("Scriptorium.Core.Models.LibraryFolder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -110,7 +167,7 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.ToTable("LibraryFolders", null, t =>
                         {
-                            t.HasCheckConstraint("CK_LibraryFolders_MediaType", "\"MediaType\" IN (1, 2)");
+                            t.HasCheckConstraint("CK_LibraryFolders_MediaType", "\"MediaType\" IN (0, 1, 2)");
                         });
                 });
 
@@ -254,6 +311,17 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.ToTable("TVShows", (string)null);
                 });
 
+            modelBuilder.Entity("Scriptorium.Core.Models.Course", b =>
+                {
+                    b.HasOne("Scriptorium.Core.Models.LibraryFolder", "LibraryFolder")
+                        .WithOne("Course")
+                        .HasForeignKey("Scriptorium.Core.Models.Course", "LibraryFolderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LibraryFolder");
+                });
+
             modelBuilder.Entity("Scriptorium.Core.Models.Episode", b =>
                 {
                     b.HasOne("Scriptorium.Core.Models.MediaItem", "MediaItem")
@@ -271,6 +339,25 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Navigation("MediaItem");
 
                     b.Navigation("Season");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.Lesson", b =>
+                {
+                    b.HasOne("Scriptorium.Core.Models.Course", "Course")
+                        .WithMany("Lessons")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Scriptorium.Core.Models.MediaItem", "MediaItem")
+                        .WithOne()
+                        .HasForeignKey("Scriptorium.Core.Models.Lesson", "MediaItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+
+                    b.Navigation("MediaItem");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.MediaItem", b =>
@@ -316,8 +403,15 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Navigation("MediaItems");
                 });
 
+            modelBuilder.Entity("Scriptorium.Core.Models.Course", b =>
+                {
+                    b.Navigation("Lessons");
+                });
+
             modelBuilder.Entity("Scriptorium.Core.Models.LibraryFolder", b =>
                 {
+                    b.Navigation("Course");
+
                     b.Navigation("MediaItems");
 
                     b.Navigation("TVShows");

@@ -14,8 +14,10 @@ public sealed class SearchPageViewModel : PageViewModel
 {
     private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(250);
     private readonly IMediaItemRepository _mediaItemRepository;
+    private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
     private readonly INavigationService _navigationService;
+    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
     private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
     private readonly MovieDetailsPageViewModel _movieDetailsPage;
     private readonly IFavoriteService _favoriteService;
@@ -27,15 +29,19 @@ public sealed class SearchPageViewModel : PageViewModel
 
     public SearchPageViewModel(
         IMediaItemRepository mediaItemRepository,
+        ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
         INavigationService navigationService,
+        TutorialDetailsPageViewModel tutorialDetailsPage,
         TvShowDetailsPageViewModel tvShowDetailsPage,
         MovieDetailsPageViewModel movieDetailsPage,
         IFavoriteService favoriteService)
     {
         _mediaItemRepository = mediaItemRepository;
+        _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
+        _tutorialDetailsPage = tutorialDetailsPage;
         _tvShowDetailsPage = tvShowDetailsPage;
         _movieDetailsPage = movieDetailsPage;
         _favoriteService = favoriteService;
@@ -171,6 +177,15 @@ public sealed class SearchPageViewModel : PageViewModel
                 if (await _movieDetailsPage.LoadAsync(result.MediaItem.Id, this))
                 {
                     _navigationService.NavigateTo(_movieDetailsPage);
+                    return;
+                }
+                break;
+            case MediaType.Tutorial:
+                var course = (await _courseRepository.GetAllAsync())
+                    .FirstOrDefault(candidate => candidate.Lessons.Any(lesson => lesson.MediaItemId == result.MediaItem.Id));
+                if (course is not null && await _tutorialDetailsPage.LoadAsync(course.Id, this))
+                {
+                    _navigationService.NavigateTo(_tutorialDetailsPage);
                     return;
                 }
                 break;

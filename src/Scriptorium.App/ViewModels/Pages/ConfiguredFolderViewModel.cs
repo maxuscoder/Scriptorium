@@ -23,6 +23,7 @@ public sealed class ConfiguredFolderViewModel(
     /// <summary>Gets the classification applied to files scanned from this folder.</summary>
     public string MediaType => Folder.MediaType switch
     {
+        Scriptorium.Core.Models.MediaType.Tutorial => "Tutorials",
         Scriptorium.Core.Models.MediaType.TvShow => "TV shows",
         Scriptorium.Core.Models.MediaType.Movie => "Movies",
         _ => Folder.MediaType.ToString()

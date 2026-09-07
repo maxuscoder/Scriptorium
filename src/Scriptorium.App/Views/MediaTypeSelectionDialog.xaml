@@ -25,6 +25,7 @@
                 ItemContainerStyle="{StaticResource Input.ComboBoxItem}"
                 Style="{StaticResource Input.ComboBox}"
                 SelectionChanged="OnMediaTypeSelectionChanged">
+                <ComboBoxItem Tag="{x:Static models:MediaType.Tutorial}">Tutorials</ComboBoxItem>
                 <ComboBoxItem Tag="{x:Static models:MediaType.TvShow}">TV shows</ComboBoxItem>
                 <ComboBoxItem Tag="{x:Static models:MediaType.Movie}">Movies</ComboBoxItem>
             </ComboBox>

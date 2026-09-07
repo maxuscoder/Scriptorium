@@ -20,6 +20,7 @@ public sealed class RepositoryTests
 
         using var provider = services.BuildServiceProvider(validateScopes: true);
         Assert.IsType<MediaItemRepository>(provider.GetRequiredService<IMediaItemRepository>());
+        Assert.IsType<CourseRepository>(provider.GetRequiredService<ICourseRepository>());
         Assert.IsType<TvShowRepository>(provider.GetRequiredService<ITvShowRepository>());
         Assert.IsType<CategoryRepository>(provider.GetRequiredService<ICategoryRepository>());
         Assert.IsType<LibraryFolderRepository>(provider.GetRequiredService<ILibraryFolderRepository>());
@@ -29,11 +30,13 @@ public sealed class RepositoryTests
         Assert.IsType<MediaFormatService>(provider.GetRequiredService<IMediaFormatService>());
         Assert.IsType<SeasonFolderDetector>(provider.GetRequiredService<ISeasonFolderDetector>());
         Assert.IsType<EpisodeFileNameParser>(provider.GetRequiredService<IEpisodeFileNameParser>());
+        Assert.IsType<LessonFileNameParser>(provider.GetRequiredService<ILessonFileNameParser>());
         Assert.IsType<MediaDuplicateDetector>(provider.GetRequiredService<IMediaDuplicateDetector>());
         Assert.IsType<TagLibMediaDurationReader>(provider.GetRequiredService<IMediaDurationReader>());
         Assert.IsType<MediaMetadataReader>(provider.GetRequiredService<IMediaMetadataReader>());
         Assert.IsType<MediaLibrarySynchronizer>(provider.GetRequiredService<IMediaLibrarySynchronizer>());
         Assert.IsType<TvShowHierarchySynchronizer>(provider.GetRequiredService<ITvShowHierarchySynchronizer>());
+        Assert.IsType<TutorialCourseSynchronizer>(provider.GetRequiredService<ITutorialCourseSynchronizer>());
         Assert.IsType<MediaGroupingService>(provider.GetRequiredService<IMediaGroupingService>());
         Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
@@ -74,7 +77,7 @@ public sealed class RepositoryTests
                 Path = "C:\\Media\\lesson.mp4",
                 LibraryFolderId = folder.Id,
                 LibraryFolder = null!,
-                MediaType = MediaType.Movie
+                MediaType = MediaType.Tutorial
             };
             await mediaItemRepository.AddAsync(mediaItem);
 
@@ -234,7 +237,7 @@ public sealed class RepositoryTests
                 Path = "C:\\Media\\lesson.mp4",
                 LibraryFolderId = folder.Id,
                 LibraryFolder = null!,
-                MediaType = MediaType.Movie
+                MediaType = MediaType.Tutorial
             };
             await mediaItemRepository.AddAsync(mediaItem);
 
@@ -401,7 +404,7 @@ public sealed class RepositoryTests
                 "C:\\Media\\intro.mp4",
                 "Introduction",
                 "C:\\Media\\intro.jpg",
-                MediaType.Movie,
+                MediaType.Tutorial,
                 RuntimeSeconds: 60,
                 FileSize: 1024));
 
@@ -410,7 +413,7 @@ public sealed class RepositoryTests
                 "C:\\MEDIA\\INTRO.MP4",
                 "Updated introduction",
                 "C:\\Media\\updated.jpg",
-                MediaType.Movie,
+                MediaType.Tutorial,
                 RuntimeSeconds: 90,
                 FileSize: 2048));
 
@@ -470,7 +473,7 @@ public sealed class RepositoryTests
             var mediaItemRepository = new MediaItemRepository(contextFactory);
 
             var folder = new LibraryFolder { Name = "Media", Path = "C:\\Media" };
-            var category = new Category { Name = "Film", Color = "#6B46C1" };
+            var category = new Category { Name = "Tutorial", Color = "#6B46C1" };
             await folderRepository.AddAsync(folder);
             await categoryRepository.AddAsync(category);
 
@@ -481,7 +484,7 @@ public sealed class RepositoryTests
                 LibraryFolderId = folder.Id,
                 LibraryFolder = null!,
                 CategoryId = category.Id,
-                MediaType = MediaType.Movie
+                MediaType = MediaType.Tutorial
             };
             await mediaItemRepository.AddAsync(mediaItem);
 
@@ -542,7 +545,7 @@ public sealed class RepositoryTests
                 {
                     Title = "Untitled lesson",
                     Path = "C:\\Media\\lesson.mp4",
-                    MediaType = MediaType.Movie
+                    MediaType = MediaType.Tutorial
                 }
             ]);
 
@@ -585,7 +588,7 @@ public sealed class RepositoryTests
                 Title = "Lesson",
                 Path = "C:\\Media\\lesson.mp4",
                 LibraryFolderId = folder.Id,
-                MediaType = MediaType.Movie
+                MediaType = MediaType.Tutorial
             };
             await mediaItemRepository.AddAsync(mediaItem);
 
@@ -707,9 +710,9 @@ public sealed class RepositoryTests
             var mediaItemRepository = new MediaItemRepository(contextFactory);
             var reclassifiedFolder = new LibraryFolder
             {
-                Name = "Movies",
-                Path = "C:\\Movies",
-                MediaType = MediaType.Movie
+                Name = "Tutorials",
+                Path = "C:\\Tutorials",
+                MediaType = MediaType.Tutorial
             };
             var unaffectedFolder = new LibraryFolder { Name = "Movies", Path = "C:\\Movies" };
             await folderRepository.AddAsync(reclassifiedFolder);
@@ -719,9 +722,9 @@ public sealed class RepositoryTests
                 new MediaItem
                 {
                     Title = "First lesson",
-                    Path = "C:\\Movies\\first.mp4",
+                    Path = "C:\\Tutorials\\first.mp4",
                     LibraryFolderId = reclassifiedFolder.Id,
-                    MediaType = MediaType.Movie,
+                    MediaType = MediaType.Tutorial,
                     TVShowTitle = "Stale show",
                     SeasonNumber = 1,
                     EpisodeNumber = 1
@@ -729,9 +732,9 @@ public sealed class RepositoryTests
                 new MediaItem
                 {
                     Title = "Second lesson",
-                    Path = "C:\\Movies\\second.mp4",
+                    Path = "C:\\Tutorials\\second.mp4",
                     LibraryFolderId = reclassifiedFolder.Id,
-                    MediaType = MediaType.Movie
+                    MediaType = MediaType.Tutorial
                 },
                 new MediaItem
                 {
@@ -1005,7 +1008,7 @@ public sealed class RepositoryTests
             }
 
             var repository = new LibraryFolderRepository(new TestDbContextFactory(options));
-            var enabledFolder = new LibraryFolder { Name = "Enabled", Path = enabledFolderPath, MediaType = MediaType.Movie };
+            var enabledFolder = new LibraryFolder { Name = "Enabled", Path = enabledFolderPath, MediaType = MediaType.Tutorial };
             await repository.AddAsync(enabledFolder);
             await repository.AddAsync(new LibraryFolder { Name = "Disabled", Path = disabledFolderPath, IsEnabled = false });
             var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
@@ -1030,7 +1033,8 @@ public sealed class RepositoryTests
                 new MediaDuplicateDetector(),
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
                 new MediaLibrarySynchronizer(mediaItemRepository),
-                new TvShowHierarchySynchronizer(new TestDbContextFactory(options)));
+                new TvShowHierarchySynchronizer(new TestDbContextFactory(options)),
+                new TutorialCourseSynchronizer(new TestDbContextFactory(options), new LessonFileNameParser()));
 
             var progress = new CapturingProgress();
             var scanResult = await scanner.ScanAsync(progress: progress);
@@ -1053,18 +1057,18 @@ public sealed class RepositoryTests
             Assert.Equal(nestedFolderPath, nestedFile.ContainingFolderPath);
             Assert.Equal("nested", nestedFile.DisplayTitle);
             Assert.Equal(enabledFolder.Id, nestedFile.LibraryFolderId);
-            Assert.Equal(MediaType.Movie, nestedFile.MediaType);
+            Assert.Equal(MediaType.Tutorial, nestedFile.MediaType);
 
             var savedMedia = await mediaItemRepository.GetByPathAsync(nestedFileFullPath);
             Assert.NotNull(savedMedia);
             Assert.Equal(enabledFolder.Id, savedMedia.LibraryFolderId);
             Assert.Equal("nested", savedMedia.Title);
-            Assert.Equal(MediaType.Movie, savedMedia.MediaType);
+            Assert.Equal(MediaType.Tutorial, savedMedia.MediaType);
             Assert.Equal(nestedFile.FileSize, savedMedia.FileSize);
 
             var synchronizedRoot = (await mediaItemRepository.GetByPathAsync(rootFilePath))!;
             Assert.Equal("root", synchronizedRoot.Title);
-            Assert.Equal(MediaType.Movie, synchronizedRoot.MediaType);
+            Assert.Equal(MediaType.Tutorial, synchronizedRoot.MediaType);
             Assert.True(synchronizedRoot.IsFavorite);
             Assert.Equal(90, synchronizedRoot.PlaybackPositionSeconds);
             Assert.Equal("C:\\Media\\custom-thumbnail.jpg", synchronizedRoot.ThumbnailPath);
@@ -1119,7 +1123,8 @@ public sealed class RepositoryTests
             new ThrowingDuplicateDetector(),
             new ThrowingMetadataReader(),
             new ThrowingSynchronizer(),
-            new ThrowingHierarchySynchronizer());
+            new ThrowingHierarchySynchronizer(),
+            new ThrowingCourseSynchronizer());
         using var cancellationSource = new CancellationTokenSource();
         cancellationSource.Cancel();
 
@@ -1182,6 +1187,101 @@ public sealed class RepositoryTests
         Assert.Null(parser.Parse(fileName));
     }
 
+    [Theory]
+    [InlineData("01 - Introduction.mp4", 1)]
+    [InlineData("Lesson 02 - Components.mkv", 2)]
+    [InlineData("Part 10 - Advanced Patterns.avi", 10)]
+    [InlineData("Welcome.mp4", null)]
+    public void Lesson_file_name_parser_detects_leading_lesson_numbers(string fileName, int? expectedLessonNumber)
+    {
+        var parser = new LessonFileNameParser();
+
+        Assert.Equal(expectedLessonNumber, parser.ParseLessonNumber(fileName));
+    }
+
+    [Fact]
+    public async Task Tutorial_course_synchronizer_creates_one_course_per_folder_and_orders_lessons()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var folderRepository = new LibraryFolderRepository(new TestDbContextFactory(options));
+            var reactFolder = new LibraryFolder
+            {
+                Name = "React Course",
+                Path = "C:\\Tutorials\\React Course",
+                MediaType = MediaType.Tutorial
+            };
+            var emptyFolder = new LibraryFolder
+            {
+                Name = "Empty Course",
+                Path = "C:\\Tutorials\\Empty Course",
+                MediaType = MediaType.Tutorial
+            };
+            await folderRepository.AddAsync(reactFolder);
+            await folderRepository.AddAsync(emptyFolder);
+            var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
+            var lessons = new[]
+            {
+                new MediaItem
+                {
+                    Title = "10 - Advanced Patterns",
+                    Path = "C:\\Tutorials\\React Course\\10 - Advanced Patterns.mp4",
+                    LibraryFolderId = reactFolder.Id,
+                    MediaType = MediaType.Tutorial
+                },
+                new MediaItem
+                {
+                    Title = "02 - Components",
+                    Path = "C:\\Tutorials\\React Course\\02 - Components.mp4",
+                    LibraryFolderId = reactFolder.Id,
+                    MediaType = MediaType.Tutorial
+                },
+                new MediaItem
+                {
+                    Title = "Welcome",
+                    Path = "C:\\Tutorials\\React Course\\Welcome.mp4",
+                    LibraryFolderId = reactFolder.Id,
+                    MediaType = MediaType.Tutorial
+                }
+            };
+            await mediaItemRepository.AddRangeAsync(lessons);
+
+            var synchronizer = new TutorialCourseSynchronizer(
+                new TestDbContextFactory(options),
+                new LessonFileNameParser());
+            await synchronizer.SynchronizeAsync([reactFolder, emptyFolder], lessons);
+
+            await using var hierarchyContext = new ScriptoriumDbContext(options);
+            var reactCourse = await hierarchyContext.Courses
+                .Include(course => course.Lessons)
+                .SingleAsync(course => course.LibraryFolderId == reactFolder.Id);
+            Assert.Equal("React Course", reactCourse.Title);
+            Assert.Collection(
+                reactCourse.Lessons.OrderBy(lesson => lesson.SortOrder),
+                lesson => Assert.Equal(2, lesson.LessonNumber),
+                lesson => Assert.Equal(10, lesson.LessonNumber),
+                lesson => Assert.Null(lesson.LessonNumber));
+            var emptyCourse = await hierarchyContext.Courses
+                .Include(course => course.Lessons)
+                .SingleAsync(course => course.LibraryFolderId == emptyFolder.Id);
+            Assert.Empty(emptyCourse.Lessons);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
     [Fact]
     public async Task Library_scanner_associates_detected_season_folders_with_their_tv_shows()
     {
@@ -1237,7 +1337,8 @@ public sealed class RepositoryTests
                 new MediaDuplicateDetector(),
                 new MediaMetadataReader(new TagLibMediaDurationReader()),
                 new MediaLibrarySynchronizer(mediaItemRepository),
-                new TvShowHierarchySynchronizer(new TestDbContextFactory(options)));
+                new TvShowHierarchySynchronizer(new TestDbContextFactory(options)),
+                new TutorialCourseSynchronizer(new TestDbContextFactory(options), new LessonFileNameParser()));
 
             var result = await scanner.ScanAsync();
 
@@ -1322,14 +1423,14 @@ public sealed class RepositoryTests
             await File.WriteAllTextAsync(normalizedFilePath, "metadata");
             var mediaMetadataReader = new MediaMetadataReader(new FixedDurationReader(TimeSpan.FromMilliseconds(1500)));
 
-            var metadata = mediaMetadataReader.Read(Guid.NewGuid(), MediaType.Movie, filePath);
+            var metadata = mediaMetadataReader.Read(Guid.NewGuid(), MediaType.Tutorial, filePath);
 
             Assert.Equal(normalizedFilePath, metadata.Path);
             Assert.Equal("Example.MKV", metadata.FileName);
             Assert.Equal(".mkv", metadata.Extension);
             Assert.Equal(folderPath, metadata.ContainingFolderPath);
             Assert.Equal("Example", metadata.DisplayTitle);
-            Assert.Equal(MediaType.Movie, metadata.MediaType);
+            Assert.Equal(MediaType.Tutorial, metadata.MediaType);
             Assert.Equal(2, metadata.RuntimeSeconds);
             Assert.Equal(new FileInfo(normalizedFilePath).Length, metadata.FileSize);
             Assert.NotNull(metadata.CreatedDate);
@@ -1399,6 +1500,15 @@ public sealed class RepositoryTests
     {
         public Task SynchronizeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not organize television media.");
+    }
+
+    private sealed class ThrowingCourseSynchronizer : ITutorialCourseSynchronizer
+    {
+        public Task SynchronizeAsync(
+            IEnumerable<LibraryFolder> libraryFolders,
+            IEnumerable<MediaItem> mediaItems,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("The cancelled scan should not organize tutorial media.");
     }
 
     private sealed class FixedDurationReader(TimeSpan? duration) : IMediaDurationReader

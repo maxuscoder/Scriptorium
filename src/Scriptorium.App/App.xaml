@@ -23,6 +23,9 @@
             <DataTemplate DataType="{x:Type pagesViewModels:LibraryPageViewModel}">
                 <pages:LibraryPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>
+            <DataTemplate DataType="{x:Type pagesViewModels:TutorialDetailsPageViewModel}">
+                <pages:TutorialDetailsPage Style="{StaticResource Page.Enter}" />
+            </DataTemplate>
             <DataTemplate DataType="{x:Type pagesViewModels:TvShowDetailsPageViewModel}">
                 <pages:TvShowDetailsPage Style="{StaticResource Page.Enter}" />
             </DataTemplate>

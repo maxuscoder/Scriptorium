@@ -19,12 +19,15 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly ISettingsService _settingsService;
     private readonly ISearchQueryResetService _searchQueryResetService;
     private readonly ICategoryRepository _categoryRepository;
+    private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
     private readonly INavigationService _navigationService;
+    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
     private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
     private readonly MovieDetailsPageViewModel _movieDetailsPage;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
+    private readonly AsyncRelayCommand _openTutorialCommand;
     private readonly AsyncRelayCommand _openTvShowCommand;
     private readonly AsyncRelayCommand _openMovieCommand;
     private readonly AsyncRelayCommand _setGridLayoutCommand;
@@ -68,8 +71,10 @@ public sealed class LibraryPageViewModel : PageViewModel
         ISettingsService settingsService,
         ISearchQueryResetService searchQueryResetService,
         ICategoryRepository categoryRepository,
+        ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
         INavigationService navigationService,
+        TutorialDetailsPageViewModel tutorialDetailsPage,
         TvShowDetailsPageViewModel tvShowDetailsPage,
         MovieDetailsPageViewModel movieDetailsPage)
     {
@@ -81,8 +86,10 @@ public sealed class LibraryPageViewModel : PageViewModel
         _settingsService = settingsService;
         _searchQueryResetService = searchQueryResetService;
         _categoryRepository = categoryRepository;
+        _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
+        _tutorialDetailsPage = tutorialDetailsPage;
         _tvShowDetailsPage = tvShowDetailsPage;
         _movieDetailsPage = movieDetailsPage;
         FolderManagement = new FolderManagementViewModel(
@@ -103,6 +110,8 @@ public sealed class LibraryPageViewModel : PageViewModel
         RefreshLibraryCommand = _refreshLibraryCommand;
         _cancelScanCommand = new RelayCommand(CancelScan, () => IsScanning);
         CancelScanCommand = _cancelScanCommand;
+        _openTutorialCommand = new AsyncRelayCommand(OpenTutorialAsync, parameter => parameter is TutorialCollectionViewModel);
+        OpenTutorialCommand = _openTutorialCommand;
         _openTvShowCommand = new AsyncRelayCommand(OpenTvShowAsync, parameter => parameter is TvShowCollectionViewModel);
         OpenTvShowCommand = _openTvShowCommand;
         _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
@@ -137,6 +146,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         ResetLibraryCommand = _resetLibraryCommand;
         MediaTypeFilters =
         [
+            new LibraryFilterOptionViewModel<MediaType>(MediaType.Tutorial, "Tutorials", ApplyFiltersAndSaveFilterState),
             new LibraryFilterOptionViewModel<MediaType>(MediaType.TvShow, "TV shows", ApplyFiltersAndSaveFilterState),
             new LibraryFilterOptionViewModel<MediaType>(MediaType.Movie, "Movies", ApplyFiltersAndSaveFilterState)
         ];
@@ -321,6 +331,9 @@ public sealed class LibraryPageViewModel : PageViewModel
     /// <summary>Clears library state and restores the default presentation without changing the view mode.</summary>
     public ICommand ResetLibraryCommand { get; }
 
+    /// <summary>Gets the tutorial collections available in the library.</summary>
+    public ObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
+
     /// <summary>Gets the television-show collections available in the library.</summary>
     public ObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
 
@@ -351,9 +364,14 @@ public sealed class LibraryPageViewModel : PageViewModel
             ? $"Showing {MediaCountText.ToLowerInvariant()} matching your current filters."
             : $"Showing {MediaCountText.ToLowerInvariant()} matching your search and filters.";
 
+    public bool HasTutorials => Tutorials.Count != 0;
+
     public bool HasTvShows => TvShows.Count != 0;
 
     public bool HasMovies => Movies.Count != 0;
+
+    /// <summary>Gets the command that opens a tutorial collection's lesson list.</summary>
+    public ICommand OpenTutorialCommand { get; }
 
     /// <summary>Gets the command that opens a television show's seasons and episodes.</summary>
     public ICommand OpenTvShowCommand { get; }
@@ -387,6 +405,9 @@ public sealed class LibraryPageViewModel : PageViewModel
 
     /// <summary>Gets whether media is currently displayed as a card grid.</summary>
     public bool IsGridLayout => !IsListLayout;
+
+    /// <summary>Gets the count shown in the tutorials section header.</summary>
+    public string TutorialCountText => $"{Tutorials.Count} collection{(Tutorials.Count == 1 ? string.Empty : "s")}";
 
     /// <summary>Gets the count shown in the TV shows section header.</summary>
     public string TvShowCountText => $"{TvShows.Count} show{(TvShows.Count == 1 ? string.Empty : "s")}";
@@ -502,6 +523,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         IndexedMediaCount = mediaItems.Count;
         MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
         RefreshMovies(mediaItems);
+        await RefreshTutorialsAsync();
         await RefreshTvShowsAsync();
         await TvShowGroupManagement.RefreshAsync();
     }
@@ -606,6 +628,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         if (updateGroupedMedia)
         {
             RefreshMovies(_availableMediaItems);
+            SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
             SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
         }
 
@@ -759,6 +782,22 @@ public sealed class LibraryPageViewModel : PageViewModel
         }
     }
 
+    /// <summary>Reloads tutorial collections in alphabetical order.</summary>
+    public async Task RefreshTutorialsAsync()
+    {
+        var courses = await _courseRepository.GetAllAsync();
+        Tutorials.Clear();
+        foreach (var course in courses)
+        {
+            Tutorials.Add(new TutorialCollectionViewModel(course));
+        }
+
+        SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
+
+        OnPropertyChanged(nameof(TutorialCountText));
+        OnPropertyChanged(nameof(HasTutorials));
+    }
+
     /// <summary>Reloads television-show collections in alphabetical order.</summary>
     public async Task RefreshTvShowsAsync()
     {
@@ -842,6 +881,18 @@ public sealed class LibraryPageViewModel : PageViewModel
         StatusMessage = "Stopping library scan…";
     }
 
+    private async Task OpenTutorialAsync(object? parameter)
+    {
+        if (parameter is not TutorialCollectionViewModel tutorial ||
+            !await _tutorialDetailsPage.LoadAsync(tutorial.Id, this))
+        {
+            StatusMessage = "This tutorial collection is no longer available.";
+            return;
+        }
+
+        _navigationService.NavigateTo(_tutorialDetailsPage);
+    }
+
     private async Task OpenTvShowAsync(object? parameter)
     {
         if (parameter is not TvShowCollectionViewModel show ||
@@ -920,6 +971,18 @@ public sealed class LibraryPageViewModel : PageViewModel
             MediaPlaybackProgress.ProgressPercentage,
             MediaPlaybackProgress.ProgressPercentage,
             mediaItem => mediaItem.IsFavorite);
+
+    private IEnumerable<TutorialCollectionViewModel> OrderTutorials(IEnumerable<TutorialCollectionViewModel> tutorials) =>
+        OrderLibraryItems(
+            tutorials,
+            tutorial => tutorial.Title,
+            tutorial => tutorial.OldestImportDate,
+            tutorial => tutorial.NewestImportDate,
+            tutorial => tutorial.EarliestPlayback,
+            tutorial => tutorial.LatestPlayback,
+            tutorial => tutorial.LowestPlaybackProgress,
+            tutorial => tutorial.HighestPlaybackProgress,
+            tutorial => tutorial.HasFavorite);
 
     private IEnumerable<TvShowCollectionViewModel> OrderTvShows(IEnumerable<TvShowCollectionViewModel> tvShows) =>
         OrderLibraryItems(

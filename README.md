@@ -4,7 +4,7 @@ A native Windows application for organizing personal media libraries.
 
 ## Vision
 
-Scriptorium is a local-first media organizer for TV shows, movies, and other personal media.
+Scriptorium is a local-first media organizer for tutorials, TV shows, movies and other personal media.
 
 The application indexes media without modifying the original files, allowing users to browse, search and track their library through a modern interface.
 
@@ -21,6 +21,7 @@ The application indexes media without modifying the original files, allowing use
 
 Supported media:
 
+- Tutorials
 - TV Shows
 - Movies
 

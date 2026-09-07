@@ -4,7 +4,7 @@
 
 Scriptorium is a native Windows application for organizing personal media into a unified local library.
 
-The application manages TV shows and movies stored on the user's computer. Metadata is stored separately from the original media files, allowing the existing folder structure to remain untouched.
+The application manages tutorials, TV shows and movies stored on the user's computer. Metadata is stored separately from the original media files, allowing the existing folder structure to remain untouched.
 
 The application follows a **local-first** philosophy and is designed to work completely offline.
 
@@ -99,7 +99,8 @@ The SQLite schema is configured in `ScriptoriumDbContext`. Every entity has an a
 | Table | Primary key | Foreign keys | Purpose |
 | --- | --- | --- | --- |
 | `LibraryFolders` | `Id` | — | Imported source folders. `Path` is unique. |
-| `MediaItems` | `Id` | `LibraryFolderId` → `LibraryFolders.Id` (optional) | Common metadata for movies and TV shows. `Path` is unique. |
+| `MediaItems` | `Id` | `LibraryFolderId` → `LibraryFolders.Id` (optional) | Common metadata for tutorials, movies, and TV shows. `Path` is unique. |
+| `Tutorials` | `Id` | `Id` → `MediaItems.Id` | Tutorial subtype table. |
 | `Movies` | `Id` | `Id` → `MediaItems.Id` | Movie-specific metadata; this is a one-to-one TPT subtype table. |
 | `TVShows` | `Id` | `Id` → `MediaItems.Id` | TV-show-specific metadata; this is a one-to-one TPT subtype table. |
 | `Seasons` | `Id` | `TVShowId` → `TVShows.Id` | A show’s seasons; show/season number is unique. |

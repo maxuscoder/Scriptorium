@@ -22,6 +22,7 @@ public sealed class CategoryItemViewModel : ViewModelBase
         _color = category.Color;
         MediaCount = assignedMedia.Count;
         MovieCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.Movie);
+        TutorialCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.Tutorial);
         TvEpisodeCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.TvShow);
     }
 
@@ -54,6 +55,8 @@ public sealed class CategoryItemViewModel : ViewModelBase
 
     public int MovieCount { get; }
 
+    public int TutorialCount { get; }
+
     public int TvEpisodeCount { get; }
 
     public string MediaCountText => $"{MediaCount} media item{(MediaCount == 1 ? string.Empty : "s")}";
@@ -72,6 +75,11 @@ public sealed class CategoryItemViewModel : ViewModelBase
             if (MovieCount > 0)
             {
                 summaries.Add($"\U0001F3AC Movies ({MovieCount})");
+            }
+
+            if (TutorialCount > 0)
+            {
+                summaries.Add($"\U0001F393 Tutorials ({TutorialCount})");
             }
 
             if (TvEpisodeCount > 0)

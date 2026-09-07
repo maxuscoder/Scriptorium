@@ -12,8 +12,10 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class FavoritesPageViewModel : PageViewModel
 {
     private readonly IFavoriteService _favoriteService;
+    private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
     private readonly INavigationService _navigationService;
+    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
     private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
     private readonly MovieDetailsPageViewModel _movieDetailsPage;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
@@ -22,14 +24,18 @@ public sealed class FavoritesPageViewModel : PageViewModel
 
     public FavoritesPageViewModel(
         IFavoriteService favoriteService,
+        ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
         INavigationService navigationService,
+        TutorialDetailsPageViewModel tutorialDetailsPage,
         TvShowDetailsPageViewModel tvShowDetailsPage,
         MovieDetailsPageViewModel movieDetailsPage)
     {
         _favoriteService = favoriteService;
+        _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
+        _tutorialDetailsPage = tutorialDetailsPage;
         _tvShowDetailsPage = tvShowDetailsPage;
         _movieDetailsPage = movieDetailsPage;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
@@ -122,6 +128,15 @@ public sealed class FavoritesPageViewModel : PageViewModel
                 if (await _movieDetailsPage.LoadAsync(item.MediaItemId, this))
                 {
                     _navigationService.NavigateTo(_movieDetailsPage);
+                    return;
+                }
+                break;
+            case MediaType.Tutorial:
+                var course = (await _courseRepository.GetAllAsync())
+                    .FirstOrDefault(candidate => candidate.Lessons.Any(lesson => lesson.MediaItemId == item.MediaItemId));
+                if (course is not null && await _tutorialDetailsPage.LoadAsync(course.Id, this))
+                {
+                    _navigationService.NavigateTo(_tutorialDetailsPage);
                     return;
                 }
                 break;

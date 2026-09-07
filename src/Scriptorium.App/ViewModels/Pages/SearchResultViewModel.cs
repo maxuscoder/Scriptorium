@@ -46,6 +46,7 @@ public sealed class SearchResultViewModel : ViewModelBase, IMediaFavoriteItem
 
     public string MediaType => MediaItem.MediaType switch
     {
+        MediaKind.Tutorial => "Tutorial lesson",
         MediaKind.TvShow => "TV episode",
         MediaKind.Movie => "Movie",
         _ => MediaItem.MediaType.ToString()
@@ -53,6 +54,7 @@ public sealed class SearchResultViewModel : ViewModelBase, IMediaFavoriteItem
 
     public string TypeGlyph => MediaItem.MediaType switch
     {
+        MediaKind.Tutorial => "T",
         MediaKind.TvShow => "TV",
         MediaKind.Movie => "M",
         _ => "•"
