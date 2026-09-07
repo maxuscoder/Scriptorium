@@ -40,7 +40,19 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        context.MediaItems.UpdateRange(items);
+        var itemIds = items.Select(item => item.Id).Distinct().ToArray();
+        var trackedItems = await context.MediaItems
+            .Where(item => itemIds.Contains(item.Id))
+            .ToDictionaryAsync(item => item.Id, cancellationToken);
+
+        foreach (var item in items)
+        {
+            if (trackedItems.TryGetValue(item.Id, out var trackedItem))
+            {
+                context.Entry(trackedItem).CurrentValues.SetValues(item);
+            }
+        }
+
         await context.SaveChangesAsync(cancellationToken);
     }
 

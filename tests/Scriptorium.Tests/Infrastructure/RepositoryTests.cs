@@ -453,6 +453,65 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Updating_media_that_share_a_folder_does_not_track_duplicate_folder_instances()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var folder = new LibraryFolder
+            {
+                Name = "Tutorials",
+                Path = "C:\\Tutorials",
+                MediaType = MediaType.Tutorial
+            };
+            await folderRepository.AddAsync(folder);
+            await mediaItemRepository.AddRangeAsync(
+            [
+                new MediaItem
+                {
+                    Title = "First",
+                    Path = "C:\\Tutorials\\first.mp4",
+                    LibraryFolderId = folder.Id,
+                    MediaType = MediaType.Tutorial
+                },
+                new MediaItem
+                {
+                    Title = "Second",
+                    Path = "C:\\Tutorials\\second.mp4",
+                    LibraryFolderId = folder.Id,
+                    MediaType = MediaType.Tutorial
+                }
+            ]);
+
+            var detachedItems = await mediaItemRepository.GetAllAsync();
+            Assert.NotSame(detachedItems[0].LibraryFolder, detachedItems[1].LibraryFolder);
+            detachedItems[0].Title = "Updated first";
+            detachedItems[1].Title = "Updated second";
+
+            await mediaItemRepository.UpdateRangeAsync(detachedItems);
+
+            var updatedItems = await mediaItemRepository.GetAllAsync();
+            Assert.Equal(["Updated first", "Updated second"], updatedItems.Select(item => item.Title));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Repositories_perform_crud_and_load_media_relationships()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
@@ -1012,18 +1071,29 @@ public sealed class RepositoryTests
             await repository.AddAsync(enabledFolder);
             await repository.AddAsync(new LibraryFolder { Name = "Disabled", Path = disabledFolderPath, IsEnabled = false });
             var mediaItemRepository = new MediaItemRepository(new TestDbContextFactory(options));
-            await mediaItemRepository.AddAsync(new MediaItem
-            {
-                Title = "Already indexed",
-                Path = storedRootFilePath,
-                LibraryFolderId = enabledFolder.Id,
-                LibraryFolder = null!,
-                MediaType = MediaType.Movie,
-                IsFavorite = true,
-                PlaybackPositionSeconds = 90,
-                LastPlayed = DateTimeOffset.UtcNow,
-                ThumbnailPath = "C:\\Media\\custom-thumbnail.jpg"
-            });
+            await mediaItemRepository.AddRangeAsync(
+            [
+                new MediaItem
+                {
+                    Title = "Already indexed",
+                    Path = storedRootFilePath,
+                    LibraryFolderId = enabledFolder.Id,
+                    LibraryFolder = null!,
+                    MediaType = MediaType.Movie,
+                    IsFavorite = true,
+                    PlaybackPositionSeconds = 90,
+                    LastPlayed = DateTimeOffset.UtcNow,
+                    ThumbnailPath = "C:\\Media\\custom-thumbnail.jpg"
+                },
+                new MediaItem
+                {
+                    Title = "Previously indexed nested file",
+                    Path = nestedFilePath,
+                    LibraryFolderId = enabledFolder.Id,
+                    LibraryFolder = null!,
+                    MediaType = MediaType.Movie
+                }
+            ]);
             var scanner = new MediaScannerService(
                 new LibraryFolderScanSource(repository, new LibraryFolderValidator()),
                 new FileSystemService(),
@@ -1074,6 +1144,14 @@ public sealed class RepositoryTests
             Assert.Equal("C:\\Media\\custom-thumbnail.jpg", synchronizedRoot.ThumbnailPath);
             Assert.Equal(new FileInfo(rootFilePath).Length, synchronizedRoot.FileSize);
             Assert.NotNull(synchronizedRoot.ModifiedDate);
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var course = await context.Courses
+                    .Include(candidate => candidate.Lessons)
+                    .SingleAsync(candidate => candidate.LibraryFolderId == enabledFolder.Id);
+                Assert.Equal(2, course.Lessons.Count);
+            }
 
             Assert.Equal(2, (await scanner.ScanAsync()).DiscoveredFiles.Count);
             Assert.Equal(2, (await mediaItemRepository.GetAllAsync()).Count);

@@ -51,9 +51,9 @@
                         <controls:MediaCard
                             CardWidth="280"
                             Margin="0,0,16,16"
-                            ActionCommand="{Binding DataContext.ResumePlaybackCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             ActionParameter="{Binding}"
-                            ActionText="Resume"
+                            ActionText="Open"
                             CategoryColor="{Binding CategoryColor}"
                             CategoryName="{Binding CategoryName}"
                             FallbackGlyph="{Binding TypeGlyph}"
@@ -103,9 +103,9 @@
                             <controls:MediaCard
                                 CardWidth="280"
                                 Margin="0,0,16,16"
-                                ActionCommand="{Binding DataContext.ResumePlaybackCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 ActionParameter="{Binding}"
-                                ActionText="Play"
+                                ActionText="Open"
                                 CategoryColor="{Binding CategoryColor}"
                                 CategoryName="{Binding CategoryName}"
                                 FallbackGlyph="{Binding TypeGlyph}"

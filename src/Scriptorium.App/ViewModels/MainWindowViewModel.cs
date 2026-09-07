@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels.Pages;
+using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
 using Scriptorium.Core.Services;
 
@@ -15,7 +16,12 @@ public sealed class MainWindowViewModel : PageViewModel
     private const int RecentlyWatchedMaximumCount = 10;
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IMediaItemRepository _mediaItemRepository;
-    private readonly IMediaPlaybackLauncher _mediaPlaybackLauncher;
+    private readonly ICourseRepository _courseRepository;
+    private readonly ITvShowRepository _tvShowRepository;
+    private readonly INavigationService _navigationService;
+    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
+    private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
+    private readonly MovieDetailsPageViewModel _movieDetailsPage;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string? _statusMessage;
@@ -23,23 +29,38 @@ public sealed class MainWindowViewModel : PageViewModel
 
     public MainWindowViewModel(
         IMediaItemRepository mediaItemRepository,
-        IMediaPlaybackLauncher mediaPlaybackLauncher,
+        ICourseRepository courseRepository,
+        ITvShowRepository tvShowRepository,
+        INavigationService navigationService,
+        TutorialDetailsPageViewModel tutorialDetailsPage,
+        TvShowDetailsPageViewModel tvShowDetailsPage,
+        MovieDetailsPageViewModel movieDetailsPage,
         IPlaybackProgressService playbackProgressService,
         ILogger<MainWindowViewModel> logger)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
-        ArgumentNullException.ThrowIfNull(mediaPlaybackLauncher);
+        ArgumentNullException.ThrowIfNull(courseRepository);
+        ArgumentNullException.ThrowIfNull(tvShowRepository);
+        ArgumentNullException.ThrowIfNull(navigationService);
+        ArgumentNullException.ThrowIfNull(tutorialDetailsPage);
+        ArgumentNullException.ThrowIfNull(tvShowDetailsPage);
+        ArgumentNullException.ThrowIfNull(movieDetailsPage);
         ArgumentNullException.ThrowIfNull(playbackProgressService);
         ArgumentNullException.ThrowIfNull(logger);
 
         _logger = logger;
         _mediaItemRepository = mediaItemRepository;
-        _mediaPlaybackLauncher = mediaPlaybackLauncher;
+        _courseRepository = courseRepository;
+        _tvShowRepository = tvShowRepository;
+        _navigationService = navigationService;
+        _tutorialDetailsPage = tutorialDetailsPage;
+        _tvShowDetailsPage = tvShowDetailsPage;
+        _movieDetailsPage = movieDetailsPage;
         _playbackProgressService = playbackProgressService;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
-        ResumePlaybackCommand = new AsyncRelayCommand(
-            ResumePlaybackAsync,
-            parameter => parameter is LibraryMediaItemViewModel { IsMissing: false });
+        OpenMediaCommand = new AsyncRelayCommand(
+            OpenMediaAsync,
+            parameter => parameter is LibraryMediaItemViewModel);
         _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
     }
 
@@ -59,7 +80,7 @@ public sealed class MainWindowViewModel : PageViewModel
 
     public ICommand RefreshCommand { get; }
 
-    public ICommand ResumePlaybackCommand { get; }
+    public ICommand OpenMediaCommand { get; }
 
     public override string Title => "Home";
 
@@ -105,23 +126,45 @@ public sealed class MainWindowViewModel : PageViewModel
         }
     }
 
-    private async Task ResumePlaybackAsync(object? parameter)
+    private async Task OpenMediaAsync(object? parameter)
     {
-        if (parameter is not LibraryMediaItemViewModel { IsMissing: false } item)
+        if (parameter is not LibraryMediaItemViewModel item)
         {
             return;
         }
 
-        var media = item.MediaItem;
-        var launched = await _mediaPlaybackLauncher.LaunchAsync(new MediaPlaybackRequest(
-            media.Path,
-            media.IsCompleted ? 0 : media.PlaybackPositionSeconds,
-            media.Id,
-            media.RuntimeSeconds ?? 0));
-        if (!launched)
+        switch (item.MediaItem.MediaType)
         {
-            StatusMessage = $"{item.Title} could not be opened for playback.";
+            case MediaType.Movie:
+                if (await _movieDetailsPage.LoadAsync(item.MediaItemId, this))
+                {
+                    _navigationService.NavigateTo(_movieDetailsPage);
+                    return;
+                }
+                break;
+            case MediaType.Tutorial:
+                var course = (await _courseRepository.GetAllAsync())
+                    .FirstOrDefault(candidate => candidate.Lessons.Any(lesson => lesson.MediaItemId == item.MediaItemId));
+                if (course is not null && await _tutorialDetailsPage.LoadAsync(course.Id, this))
+                {
+                    _navigationService.NavigateTo(_tutorialDetailsPage);
+                    return;
+                }
+                break;
+            case MediaType.TvShow:
+                var show = (await _tvShowRepository.GetAllAsync())
+                    .FirstOrDefault(candidate => candidate.Seasons
+                        .SelectMany(season => season.Episodes)
+                        .Any(episode => episode.MediaItemId == item.MediaItemId));
+                if (show is not null && await _tvShowDetailsPage.LoadAsync(show.Id, this))
+                {
+                    _navigationService.NavigateTo(_tvShowDetailsPage);
+                    return;
+                }
+                break;
         }
+
+        StatusMessage = "This media is no longer available in the library.";
     }
 
     private void OnPlaybackProgressSaved(Guid mediaItemId)
