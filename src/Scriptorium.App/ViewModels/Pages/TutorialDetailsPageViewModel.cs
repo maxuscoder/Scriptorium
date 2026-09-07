@@ -90,6 +90,24 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             ? duration
             : "Unknown";
 
+    /// <summary>Gets the summed duration of lessons that have not been completed.</summary>
+    public string RemainingDurationText
+    {
+        get
+        {
+            if (!HasIncompleteLessons)
+            {
+                return "0m";
+            }
+
+            return MediaRuntimeFormatter.Format(
+                       Lessons.Where(lesson => !lesson.IsCompleted).Sum(lesson => lesson.RuntimeSeconds))
+                   is { Length: > 0 } duration
+                ? duration
+                : "Unknown";
+        }
+    }
+
     /// <summary>Gets the number of lessons the learner has completed.</summary>
     public int CompletedLessonCount => Lessons.Count(lesson => lesson.IsCompleted);
 
@@ -326,6 +344,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             return;
         }
 
+        await _player.FlushPendingProgressSaveAsync();
         var isCompleted = !lesson.IsCompleted;
         if (!await _playbackProgressService.SetCompletionAsync(lesson.MediaItemId, isCompleted))
         {
@@ -333,6 +352,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         }
 
         lesson.SetCompletion(isCompleted);
+        _player.SynchronizeCompletion(lesson.MediaItemId, isCompleted);
         RefreshCourseProgress();
     }
 
@@ -467,6 +487,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     {
         try
         {
+            await _player.FlushPendingProgressSaveAsync();
             var lesson = Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
             if (lesson is null)
             {
@@ -483,6 +504,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
                 lesson.SetCompletion(true);
             }
 
+            _player.SynchronizeCompletion(args.MediaItemId, true);
             RefreshCourseProgress();
             SelectFirstIncompleteLessonOrKeepCurrent();
         }
@@ -505,6 +527,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(CompletedLessonCount));
         OnPropertyChanged(nameof(CourseProgressPercentage));
         OnPropertyChanged(nameof(CourseProgressText));
+        OnPropertyChanged(nameof(RemainingDurationText));
         OnPropertyChanged(nameof(IsCourseCompleted));
         OnPropertyChanged(nameof(HasIncompleteLessons));
         OnPropertyChanged(nameof(ContinueLearningText));

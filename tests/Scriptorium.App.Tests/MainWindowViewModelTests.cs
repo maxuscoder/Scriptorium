@@ -183,6 +183,7 @@ public sealed class MainWindowViewModelTests
             Assert.Equal("Tutorial", tutorialDetails.SourceFolder);
             Assert.Equal("2 lessons", tutorialDetails.LessonCountText);
             Assert.Equal("3m", tutorialDetails.TotalDurationText);
+            Assert.Equal("3m", tutorialDetails.RemainingDurationText);
             Assert.True(tutorialDetails.HasLessons);
             Assert.Equal("Lesson 2", tutorialDetails.SelectedLesson!.Title);
             Assert.True(tutorialDetails.SelectedLesson.IsSelected);
@@ -245,6 +246,7 @@ public sealed class MainWindowViewModelTests
             Assert.Equal(1, tutorialDetails.CompletedLessonCount);
             Assert.Equal(100d / 3d, tutorialDetails.CourseProgressPercentage, 5);
             Assert.Equal("1 of 3 lessons completed", tutorialDetails.CourseProgressText);
+            Assert.Equal("2m", tutorialDetails.RemainingDurationText);
             Assert.Equal("Mark incomplete", tutorialDetails.CompletionActionText);
             var savedLesson = await mediaRepository.GetByIdAsync(tutorialMedia.Id);
             Assert.NotNull(savedLesson);
@@ -256,6 +258,7 @@ public sealed class MainWindowViewModelTests
             Assert.False(tutorialDetails.SelectedLesson.IsCompleted);
             Assert.Equal(0, tutorialDetails.CompletedLessonCount);
             Assert.Equal(0, tutorialDetails.CourseProgressPercentage);
+            Assert.Equal("3m", tutorialDetails.RemainingDurationText);
             savedLesson = await mediaRepository.GetByIdAsync(tutorialMedia.Id);
             Assert.NotNull(savedLesson);
             Assert.False(savedLesson.IsCompleted);

@@ -41,6 +41,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private Guid? _lastSavedMediaItemId;
     private long? _lastSavedPositionSeconds;
     private long? _lastSavedDurationSeconds;
+    private Guid? _completionOverrideMediaItemId;
+    private bool _completionOverride;
 
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
@@ -155,6 +157,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
+        _completionOverrideMediaItemId = null;
         _request = request;
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
@@ -164,6 +167,30 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         OnPropertyChanged(nameof(DurationSeconds));
         OnPropertyChanged(nameof(DurationText));
         if (_active) OpenPlayback();
+    }
+
+    /// <summary>Waits for any playback snapshot already queued for persistence.</summary>
+    public async Task FlushPendingProgressSaveAsync()
+    {
+        Task progressSaveTask;
+        lock (_progressSaveGate)
+        {
+            progressSaveTask = _progressSaveTask;
+        }
+
+        await progressSaveTask.ConfigureAwait(true);
+    }
+
+    /// <summary>Synchronizes an explicit completion change made outside the player.</summary>
+    public void SynchronizeCompletion(Guid mediaItemId, bool isCompleted)
+    {
+        if (_request?.MediaItemId != mediaItemId)
+        {
+            return;
+        }
+
+        _completionOverrideMediaItemId = mediaItemId;
+        _completionOverride = isCompleted;
     }
 
     public void Activate()
@@ -253,6 +280,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             else
             {
                 if (_hasEnded) _playback.Position = TimeSpan.Zero;
+                if (_completionOverrideMediaItemId == _request?.MediaItemId)
+                {
+                    _completionOverrideMediaItemId = null;
+                }
                 _hasEnded = false;
                 _playback.Play();
                 SetPlaybackState(VideoPlaybackState.Playing);
@@ -537,6 +568,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         try
         {
+            if (_completionOverrideMediaItemId == snapshot.MediaItemId && _completionOverride)
+            {
+                return;
+            }
+
             if (snapshot.MediaItemId == _lastSavedMediaItemId &&
                 snapshot.PositionSeconds == _lastSavedPositionSeconds &&
                 snapshot.DurationSeconds == _lastSavedDurationSeconds)

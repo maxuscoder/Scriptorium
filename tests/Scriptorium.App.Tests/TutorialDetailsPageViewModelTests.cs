@@ -226,6 +226,7 @@ public sealed class TutorialDetailsPageViewModelTests
 
         Assert.True(viewModel.IsCourseCompleted);
         Assert.False(viewModel.HasIncompleteLessons);
+        Assert.Equal("0m", viewModel.RemainingDurationText);
         Assert.Equal("Course completed", viewModel.ContinueLearningText);
         Assert.False(viewModel.ContinueLearningCommand.CanExecute(null));
     });
