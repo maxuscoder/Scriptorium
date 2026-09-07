@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
@@ -46,9 +47,10 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
         Player = player;
-        Player.PlaybackStarted += OnPlaybackStarted;
+        Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         ToggleCompletionCommand = new AsyncRelayCommand(ToggleCompletionAsync, CanToggleCompletion);
+        ResetProgressCommand = new AsyncRelayCommand(ResetProgressAsync, CanResetProgress);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
     }
@@ -126,6 +128,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
     public ICommand ToggleCompletionCommand { get; }
 
+    /// <summary>Clears saved progress and completion state for the loaded movie.</summary>
+    public ICommand ResetProgressCommand { get; }
+
     public ICommand ToggleFavoriteCommand { get; }
 
     public ICommand SaveCategoryCommand { get; }
@@ -152,31 +157,32 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
             MediaCategoryDisplay.Name(movie));
         Description = string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
-        Player.SetMedia(new MediaPlaybackRequest(movie.Path, movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds));
+        Player.SetMedia(new MediaPlaybackRequest(
+            movie.Path,
+            movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds,
+            movie.Id,
+            movie.RuntimeSeconds ?? 0));
         PopulateMetadata(movie);
         NotifyStateChanged();
         return true;
     }
 
-    private async void OnPlaybackStarted(object? sender, EventArgs args)
+    private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)
     {
         var movie = _movie;
-        if (movie is null) return;
-        try
+        if (movie?.Id != args.MediaItemId)
         {
-            // Preserve the existing playback-history behavior without marking a paused preview as watched.
-            var saved = await _playbackProgressService.SaveAsync(movie.Id,
-                new PlaybackProgressUpdate(movie.PlaybackPositionSeconds, movie.RuntimeSeconds ?? 0));
-            if (saved && ReferenceEquals(movie, _movie))
-            {
-                movie.LastPlayed = DateTimeOffset.UtcNow;
-                PopulateMetadata(movie);
-            }
+            return;
         }
-        catch (Exception)
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
         {
-            if (ReferenceEquals(movie, _movie)) Availability = "Playback history could not be saved.";
+            _ = dispatcher.InvokeAsync(() => SynchronizePlayback(movie, args));
+            return;
         }
+
+        SynchronizePlayback(movie, args);
     }
 
     private async Task ToggleCompletionAsync()
@@ -188,14 +194,43 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         }
 
         var position = movie.IsCompleted ? 0 : movie.RuntimeSeconds.Value;
-        if (!await _playbackProgressService.SaveAsync(movie.Id, new PlaybackProgressUpdate(position, movie.RuntimeSeconds.Value)))
+        var lastWatched = DateTimeOffset.UtcNow;
+        if (!await _playbackProgressService.SaveAsync(
+                movie.Id,
+                new PlaybackProgressUpdate(position, movie.RuntimeSeconds.Value, lastWatched)))
         {
             return;
         }
 
         movie.PlaybackPositionSeconds = position;
         movie.IsCompleted = !movie.IsCompleted;
-        movie.LastPlayed = DateTimeOffset.UtcNow;
+        movie.LastPlayed = lastWatched;
+        Availability = movie.IsMissing ? "File unavailable" : "Available";
+        PopulateMetadata(movie);
+        NotifyStateChanged();
+    }
+
+    private async Task ResetProgressAsync()
+    {
+        var movie = _movie;
+        if (movie?.RuntimeSeconds is not > 0)
+        {
+            return;
+        }
+
+        var lastWatched = DateTimeOffset.UtcNow;
+        if (!await _playbackProgressService.SaveAsync(
+                movie.Id,
+                new PlaybackProgressUpdate(0, movie.RuntimeSeconds.Value, lastWatched)))
+        {
+            Availability = "Playback progress could not be reset.";
+            return;
+        }
+
+        Player.ResetProgress(saveProgress: false);
+        movie.PlaybackPositionSeconds = 0;
+        movie.IsCompleted = false;
+        movie.LastPlayed = lastWatched;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
         PopulateMetadata(movie);
         NotifyStateChanged();
@@ -270,6 +305,29 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
 
     private bool CanToggleCompletion() => _movie is { RuntimeSeconds: > 0 };
 
+    private bool CanResetProgress() => _movie is
+    {
+        RuntimeSeconds: > 0,
+        PlaybackPositionSeconds: > 0
+    } or { IsCompleted: true };
+
+    private void SynchronizePlayback(MediaItem movie, PlaybackProgressSavedEventArgs args)
+    {
+        if (!ReferenceEquals(movie, _movie))
+        {
+            return;
+        }
+
+        movie.PlaybackPositionSeconds = args.PositionSeconds;
+        movie.RuntimeSeconds = args.DurationSeconds;
+        movie.IsCompleted = MediaPlaybackProgress.MeetsCompletionThreshold(
+            args.PositionSeconds,
+            args.DurationSeconds);
+        movie.LastPlayed = args.LastWatched;
+        PopulateMetadata(movie);
+        NotifyStateChanged();
+    }
+
     private void PopulateMetadata(MediaItem movie)
     {
         MetadataItems.Clear();
@@ -279,7 +337,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         AddMetadata("Runtime", MediaRuntimeFormatter.Format(movie.RuntimeSeconds) is { Length: > 0 } runtime ? runtime : "Unknown");
         AddMetadata("Playback", PlaybackText(movie));
         AddMetadata("Added", FormatDate(movie.DateAdded));
-        AddMetadata("Last played", movie.LastPlayed is { } lastPlayed ? FormatDate(lastPlayed) : "Never");
+        AddMetadata("Last watched", movie.LastPlayed is { } lastPlayed ? FormatDate(lastPlayed) : "Never");
         AddMetadata("File size", movie.FileSize is { } fileSize ? FormatFileSize(fileSize) : "Unknown");
         AddMetadata("File path", movie.Path);
     }
@@ -295,6 +353,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(PlaybackProgressText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleCompletionCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)ResetProgressCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
     }

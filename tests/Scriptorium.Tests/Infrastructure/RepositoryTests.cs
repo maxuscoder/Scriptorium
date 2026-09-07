@@ -255,10 +255,94 @@ public sealed class RepositoryTests
             Assert.Equal(70, await playbackProgressService.GetResumePositionAsync(mediaItem.Id));
             Assert.Equal([mediaItem.Id], savedPlaybackIds);
 
-            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(130, 120));
+            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(113, 120));
+            savedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(savedItem);
+            Assert.False(savedItem.IsCompleted);
+
+            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(114, 120));
+            savedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(savedItem);
+            Assert.True(savedItem.IsCompleted);
             Assert.Equal(0, await playbackProgressService.GetResumePositionAsync(mediaItem.Id));
+
+            await playbackProgressService.SaveAsync(mediaItem.Id, new PlaybackProgressUpdate(0, 120));
+            savedItem = await mediaItemRepository.GetByIdAsync(mediaItem.Id);
+            Assert.NotNull(savedItem);
+            Assert.Equal(0, savedItem.PlaybackPositionSeconds);
+            Assert.False(savedItem.IsCompleted);
+
             Assert.False(await playbackProgressService.SaveAsync(Guid.NewGuid(), new PlaybackProgressUpdate(1, 2)));
-            Assert.Equal([mediaItem.Id, mediaItem.Id], savedPlaybackIds);
+            Assert.Equal([mediaItem.Id, mediaItem.Id, mediaItem.Id, mediaItem.Id], savedPlaybackIds);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Incomplete_media_is_limited_to_resumable_items_and_sorted_by_last_watched()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var repository = new MediaItemRepository(new TestDbContextFactory(options));
+            var olderWatch = new DateTimeOffset(2026, 8, 10, 12, 0, 0, TimeSpan.Zero);
+            var newerWatch = olderWatch.AddMinutes(5);
+            var older = new MediaItem
+            {
+                Title = "Older incomplete",
+                Path = "C:\\Media\\older.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 20,
+                LastPlayed = olderWatch,
+                MediaType = MediaType.Movie
+            };
+            var newer = new MediaItem
+            {
+                Title = "Newer incomplete",
+                Path = "C:\\Media\\newer.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 20,
+                LastPlayed = newerWatch,
+                MediaType = MediaType.Movie
+            };
+            var notStarted = new MediaItem
+            {
+                Title = "Not started",
+                Path = "C:\\Media\\not-started.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 0,
+                LastPlayed = newerWatch,
+                MediaType = MediaType.Movie
+            };
+            var completed = new MediaItem
+            {
+                Title = "Completed",
+                Path = "C:\\Media\\completed.mp4",
+                RuntimeSeconds = 120,
+                PlaybackPositionSeconds = 120,
+                LastPlayed = newerWatch.AddMinutes(1),
+                IsCompleted = true,
+                MediaType = MediaType.Movie
+            };
+            await repository.AddRangeAsync([older, newer, notStarted, completed]);
+
+            var incomplete = await repository.GetIncompleteAsync();
+            var recentlyWatched = await repository.GetRecentlyWatchedAsync(2);
+
+            Assert.Equal([newer.Id, older.Id], incomplete.Select(item => item.Id));
+            Assert.Equal([completed.Id, newer.Id], recentlyWatched.Select(item => item.Id));
         }
         finally
         {

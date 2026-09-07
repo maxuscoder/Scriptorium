@@ -4,15 +4,22 @@ using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels;
 
 /// <summary>Owns one preview session. Views only attach/detach and present its commands.</summary>
 public sealed class VideoPlayerViewModel : ViewModelBase
 {
+    private static readonly TimeSpan ProgressSaveInterval = TimeSpan.FromSeconds(5);
     private readonly IVideoPlaybackFactory _factory;
+    private readonly IPlaybackProgressService? _playbackProgressService;
+    private readonly ISettingsService? _settingsService;
     private readonly ILogger<VideoPlayerViewModel>? _logger;
     private readonly DispatcherTimer _timer;
+    private readonly object _progressSaveGate = new();
+    private readonly object _preferenceSaveGate = new();
+    private Task _progressSaveTask = Task.CompletedTask;
     private IVideoPlayback? _playback;
     private MediaPlaybackRequest? _request;
     private bool _active;
@@ -28,27 +35,55 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private TimeSpan _duration;
     private double _volume = 1;
     private double _volumeBeforeMute = 1;
+    private double _playbackSpeed = 1;
+    private CancellationTokenSource? _preferenceSaveCancellationSource;
+    private DateTimeOffset _lastProgressSaveRequested = DateTimeOffset.MinValue;
+    private Guid? _lastSavedMediaItemId;
+    private long? _lastSavedPositionSeconds;
+    private long? _lastSavedDurationSeconds;
 
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
-        ILogger<VideoPlayerViewModel>? logger = null)
+        ILogger<VideoPlayerViewModel>? logger = null,
+        IPlaybackProgressService? playbackProgressService = null,
+        ISettingsService? settingsService = null)
     {
         _factory = factory;
+        _playbackProgressService = playbackProgressService;
+        _settingsService = settingsService;
         _logger = logger;
+        if (settingsService is not null)
+        {
+            _volume = NormalizeVolume(settingsService.Settings.PlaybackVolume);
+            _volumeBeforeMute = _volume;
+            _playbackSpeed = NormalizePlaybackSpeed(settingsService.Settings.PlaybackSpeed);
+        }
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
         ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _timer.Tick += OnTick;
     }
 
+    /// <summary>Creates a player with playback persistence without configuring a logger.</summary>
+    public VideoPlayerViewModel(
+        IVideoPlaybackFactory factory,
+        IPlaybackProgressService playbackProgressService)
+        : this(factory, logger: null, playbackProgressService: playbackProgressService, settingsService: null)
+    {
+    }
+
     /// <summary>Raised once when this media session first starts, never for preview loading.</summary>
     public event EventHandler? PlaybackStarted;
+
+    /// <summary>Raised after a playback snapshot, including its viewing timestamp, has been persisted.</summary>
+    public event EventHandler<PlaybackProgressSavedEventArgs>? PlaybackProgressPersisted;
 
     /// <summary>Raised after a user-visible playback action completes.</summary>
     public event EventHandler<VideoPlaybackAction>? PlaybackActionPerformed;
 
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
+    public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
     public ImageSource? Video => _playback?.Video;
     public bool IsReady
     {
@@ -91,16 +126,36 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             if (bounded > 0) _volumeBeforeMute = bounded;
             OnPropertyChanged(nameof(IsMutedIconVisible));
             ApplyVolume();
+            QueuePlaybackPreferenceSave();
             NotifyPlaybackAction(bounded > previous ? VideoPlaybackAction.VolumeUp : VideoPlaybackAction.VolumeDown);
+        }
+    }
+
+    /// <summary>Gets or sets the playback rate for the current and future media sessions.</summary>
+    public double PlaybackSpeed
+    {
+        get => _playbackSpeed;
+        set
+        {
+            var bounded = NormalizePlaybackSpeed(value);
+            if (!SetProperty(ref _playbackSpeed, bounded))
+            {
+                return;
+            }
+
+            ApplyPlaybackSpeed();
+            QueuePlaybackPreferenceSave();
         }
     }
 
     public void SetMedia(MediaPlaybackRequest request)
     {
+        QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
         _request = request;
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
+        ResetProgressSaveTracking();
         Status = "Loading video...";
         NotifyPositionChanged();
         OnPropertyChanged(nameof(DurationSeconds));
@@ -118,7 +173,20 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public void Deactivate()
     {
         _active = false;
+        QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
+    }
+
+    /// <summary>Releases the player and waits for its final progress snapshot to be persisted.</summary>
+    public async Task DeactivateAsync()
+    {
+        _active = false;
+        QueuePlaybackProgressSave(force: true);
+        ReleasePlayback();
+
+        Task progressSaveTask;
+        lock (_progressSaveGate) progressSaveTask = _progressSaveTask;
+        await progressSaveTask.ConfigureAwait(true);
     }
 
     private void OpenPlayback()
@@ -132,6 +200,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
             ApplyVolume();
+            ApplyPlaybackSpeed();
             OnPropertyChanged(nameof(Video));
             _playback.Open(_request.FilePath);
         }
@@ -184,10 +253,12 @@ public sealed class VideoPlayerViewModel : ViewModelBase
                 _hasEnded = false;
                 _playback.Play();
                 SetPlaybackState(VideoPlaybackState.Playing);
+                _lastProgressSaveRequested = DateTimeOffset.UtcNow;
                 notifyStarted = !_hasStarted;
                 _hasStarted = true;
                 _timer.Start();
                 Status = "Playing";
+                QueuePlaybackProgressSave(force: true);
             }
             UpdatePosition();
             NotifyPlaybackChanged();
@@ -209,6 +280,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         SetPlaybackState(VideoPlaybackState.Ended);
         Status = "Playback finished";
         UpdatePosition();
+        QueuePlaybackProgressSave(force: true);
         NotifyPlaybackChanged();
     }
 
@@ -277,6 +349,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     /// <summary>Stops the current media without releasing the playback engine.</summary>
     public void Stop()
     {
+        _timer.Stop();
         if (_playback is null)
         {
             SetPlaybackState(VideoPlaybackState.Stopped);
@@ -297,6 +370,16 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         catch (Exception exception)
         {
             Fail(exception);
+        }
+    }
+
+    /// <summary>Stops playback at the beginning and can persist the cleared position when a media item is attached.</summary>
+    public void ResetProgress(bool saveProgress = true)
+    {
+        Stop();
+        if (saveProgress)
+        {
+            QueuePlaybackProgressSave(force: true);
         }
     }
 
@@ -345,6 +428,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             "Video playback failed. FailureKind: {FailureKind}; FilePath: {FilePath}.",
             kind,
             _request?.FilePath ?? "(none)");
+        QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
         Status = kind switch
         {
@@ -376,6 +460,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         try
         {
             UpdatePosition();
+            QueuePlaybackProgressSave(force: false);
         }
         catch (Exception exception)
         {
@@ -403,6 +488,126 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         NotifyPlaybackChanged();
         NotifyPositionChanged();
     }
+
+    private void QueuePlaybackProgressSave(bool force)
+    {
+        var snapshot = CaptureProgressSnapshot();
+        if (snapshot is null || _playbackProgressService is null)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (!force && now - _lastProgressSaveRequested < ProgressSaveInterval)
+        {
+            return;
+        }
+
+        if (!force &&
+            snapshot.PositionSeconds == _lastSavedPositionSeconds &&
+            snapshot.DurationSeconds == _lastSavedDurationSeconds &&
+            snapshot.MediaItemId == _lastSavedMediaItemId)
+        {
+            return;
+        }
+
+        _lastProgressSaveRequested = now;
+        lock (_progressSaveGate)
+        {
+            var previous = _progressSaveTask;
+            _progressSaveTask = previous
+                .ContinueWith(
+                    _ => SaveProgressSnapshotAsync(snapshot),
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default)
+                .Unwrap();
+        }
+    }
+
+    private async Task SaveProgressSnapshotAsync(PlaybackProgressSnapshot snapshot)
+    {
+        try
+        {
+            if (snapshot.MediaItemId == _lastSavedMediaItemId &&
+                snapshot.PositionSeconds == _lastSavedPositionSeconds &&
+                snapshot.DurationSeconds == _lastSavedDurationSeconds)
+            {
+                return;
+            }
+
+            if (await _playbackProgressService!.SaveAsync(
+                    snapshot.MediaItemId,
+                    new PlaybackProgressUpdate(
+                        snapshot.PositionSeconds,
+                        snapshot.DurationSeconds,
+                        snapshot.LastWatched))
+                .ConfigureAwait(false))
+            {
+                _lastSavedMediaItemId = snapshot.MediaItemId;
+                _lastSavedPositionSeconds = snapshot.PositionSeconds;
+                _lastSavedDurationSeconds = snapshot.DurationSeconds;
+                PlaybackProgressPersisted?.Invoke(
+                    this,
+                    new PlaybackProgressSavedEventArgs(
+                        snapshot.MediaItemId,
+                        snapshot.PositionSeconds,
+                        snapshot.DurationSeconds,
+                        snapshot.LastWatched));
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(
+                exception,
+                "Playback progress could not be saved for media item {MediaItemId}.",
+                snapshot.MediaItemId);
+        }
+    }
+
+    private PlaybackProgressSnapshot? CaptureProgressSnapshot()
+    {
+        if (!_isReady || _request?.MediaItemId is not { } mediaItemId)
+        {
+            return null;
+        }
+
+        var durationSeconds = _duration.TotalSeconds > 0
+            ? Convert.ToInt64(Math.Round(_duration.TotalSeconds, MidpointRounding.AwayFromZero))
+            : Math.Max(0, _request.DurationSeconds);
+        double currentPositionSeconds;
+        try
+        {
+            currentPositionSeconds = _isSeeking || _playback is null
+                ? _position.TotalSeconds
+                : _playback.Position.TotalSeconds;
+        }
+        catch
+        {
+            currentPositionSeconds = _position.TotalSeconds;
+        }
+
+        var positionSeconds = Math.Max(0, (long)Math.Floor(Math.Clamp(currentPositionSeconds, 0, durationSeconds)));
+        return new PlaybackProgressSnapshot(
+            mediaItemId,
+            positionSeconds,
+            durationSeconds,
+            DateTimeOffset.UtcNow);
+    }
+
+    private void ResetProgressSaveTracking()
+    {
+        _lastProgressSaveRequested = DateTimeOffset.MinValue;
+        _lastSavedMediaItemId = null;
+        _lastSavedPositionSeconds = null;
+        _lastSavedDurationSeconds = null;
+    }
+
+    private sealed record PlaybackProgressSnapshot(
+        Guid MediaItemId,
+        long PositionSeconds,
+        long DurationSeconds,
+        DateTimeOffset LastWatched);
 
     private void NotifyPlaybackChanged()
     {
@@ -444,6 +649,72 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         if (_playback is not null) _playback.Volume = IsMuted ? 0 : Volume;
     }
 
+    private void ApplyPlaybackSpeed()
+    {
+        if (_playback is not null) _playback.PlaybackSpeed = PlaybackSpeed;
+    }
+
+    private void QueuePlaybackPreferenceSave()
+    {
+        var settingsService = _settingsService;
+        if (settingsService is null)
+        {
+            return;
+        }
+
+        settingsService.Settings.PlaybackVolume = Volume;
+        settingsService.Settings.PlaybackSpeed = PlaybackSpeed;
+
+        CancellationTokenSource cancellationSource;
+        lock (_preferenceSaveGate)
+        {
+            cancellationSource = new CancellationTokenSource();
+            _preferenceSaveCancellationSource?.Cancel();
+            _preferenceSaveCancellationSource = cancellationSource;
+        }
+
+        _ = SavePlaybackPreferencesAfterDelayAsync(settingsService, cancellationSource);
+    }
+
+    private async Task SavePlaybackPreferencesAfterDelayAsync(
+        ISettingsService settingsService,
+        CancellationTokenSource cancellationSource)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationSource.Token);
+            await settingsService.SaveAsync(cancellationSource.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A more recent playback preference superseded this pending save.
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Playback preferences could not be saved.");
+        }
+        finally
+        {
+            lock (_preferenceSaveGate)
+            {
+                if (ReferenceEquals(_preferenceSaveCancellationSource, cancellationSource))
+                {
+                    _preferenceSaveCancellationSource = null;
+                }
+            }
+
+            cancellationSource.Dispose();
+        }
+    }
+
+    private static double NormalizeVolume(double value) => double.IsFinite(value)
+        ? Math.Clamp(value, 0, 1)
+        : 1;
+
+    private static double NormalizePlaybackSpeed(double value) => double.IsFinite(value)
+        ? Math.Clamp(value, 0.5, 2)
+        : 1;
+
     private void NotifyPlaybackAction(VideoPlaybackAction action) => PlaybackActionPerformed?.Invoke(this, action);
 
     private double BoundSeekPosition(double seconds) => double.IsFinite(seconds)
@@ -458,6 +729,19 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     }
 
     private static string FormatTime(TimeSpan time) => $"{(long)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
+}
+
+/// <summary>Describes a persisted playback snapshot and the moment the media was last viewed.</summary>
+public sealed class PlaybackProgressSavedEventArgs(
+    Guid mediaItemId,
+    long positionSeconds,
+    long durationSeconds,
+    DateTimeOffset lastWatched) : EventArgs
+{
+    public Guid MediaItemId { get; } = mediaItemId;
+    public long PositionSeconds { get; } = positionSeconds;
+    public long DurationSeconds { get; } = durationSeconds;
+    public DateTimeOffset LastWatched { get; } = lastWatched;
 }
 
 /// <summary>Represents a playback action shown as transient feedback by the view.</summary>

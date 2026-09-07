@@ -63,7 +63,7 @@ public partial class VideoPlayer : UserControl
         Player?.Activate();
     }
 
-    private void OnUnloaded(object sender, RoutedEventArgs args)
+    private async void OnUnloaded(object sender, RoutedEventArgs args)
     {
         if (Player is { } player) player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
         _actionFeedbackTimer.Stop();
@@ -71,15 +71,15 @@ public partial class VideoPlayer : UserControl
         CloseFullscreen();
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
         _ownerWindow = null;
-        Player?.Deactivate();
+        if (Player is { } playerToDeactivate) await playerToDeactivate.DeactivateAsync();
     }
 
-    private void OnOwnerClosed(object? sender, EventArgs args)
+    private async void OnOwnerClosed(object? sender, EventArgs args)
     {
         CloseFullscreen();
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
         _ownerWindow = null;
-        Player?.Deactivate();
+        if (Player is { } playerToDeactivate) await playerToDeactivate.DeactivateAsync();
     }
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();

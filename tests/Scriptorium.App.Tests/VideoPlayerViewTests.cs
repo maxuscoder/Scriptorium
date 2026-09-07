@@ -48,6 +48,7 @@ public sealed class VideoPlayerViewTests
                 Availability = "Available", HeaderMetadata = "Local video", ThumbnailPath = (string?)null,
                 MetadataItems = Array.Empty<object>(), BackCommand = (ICommand?)null,
                 ToggleCompletionCommand = (ICommand?)null, CompletionActionText = "Mark as watched",
+                ResetProgressCommand = (ICommand?)null,
                 ToggleFavoriteCommand = (ICommand?)null, FavoriteActionText = "Add to favorites",
                 CategoryOptions = Array.Empty<object>(), SelectedCategory = (object?)null,
                 SaveCategoryCommand = (ICommand?)null, CategoryStatus = "",
@@ -156,6 +157,7 @@ public sealed class VideoPlayerViewTests
         public ICommand? BackCommand { get; init; }
         public ICommand? ToggleCompletionCommand { get; init; }
         public string? CompletionActionText { get; init; }
+        public ICommand? ResetProgressCommand { get; init; }
         public ICommand? ToggleFavoriteCommand { get; init; }
         public string? FavoriteActionText { get; init; }
         public object[]? CategoryOptions { get; init; }

@@ -12,6 +12,7 @@ public interface IVideoPlayback : IDisposable
     TimeSpan Position { get; set; }
     TimeSpan Duration { get; }
     double Volume { get; set; }
+    double PlaybackSpeed { get; set; }
     void Open(string filePath);
     void Play();
     void Pause();

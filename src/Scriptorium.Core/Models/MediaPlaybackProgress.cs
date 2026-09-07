@@ -5,6 +5,22 @@ namespace Scriptorium.Core.Models;
 /// </summary>
 public static class MediaPlaybackProgress
 {
+    /// <summary>The portion of known runtime that counts as completed playback.</summary>
+    public const double CompletionThreshold = 0.95;
+
+    /// <summary>
+    /// Gets whether the recorded position is sufficiently close to the end of a known-duration item
+    /// to count as completed.
+    /// </summary>
+    public static bool MeetsCompletionThreshold(long playbackPositionSeconds, long durationSeconds)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(playbackPositionSeconds);
+        ArgumentOutOfRangeException.ThrowIfNegative(durationSeconds);
+
+        return durationSeconds > 0 &&
+               playbackPositionSeconds >= Math.Ceiling(durationSeconds * CompletionThreshold);
+    }
+
     /// <summary>
     /// Gets an item's total playback progress as a percentage.
     /// Completed media is reported as 100%; media with no usable duration is reported as 0%.
