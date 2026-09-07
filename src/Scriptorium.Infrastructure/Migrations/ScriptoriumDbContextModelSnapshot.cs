@@ -49,6 +49,10 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<Guid>("LibraryFolderId")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsOrderCustomized")
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");

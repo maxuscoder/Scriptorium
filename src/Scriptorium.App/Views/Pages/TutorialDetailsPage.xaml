@@ -31,7 +31,42 @@
                     Margin="6,0,0,0"
                     Style="{StaticResource Text.Metadata}"
                     Text="{Binding TotalDurationText}" />
+                <TextBlock
+                    Margin="16,0,0,0"
+                    Style="{StaticResource Text.Metadata}"
+                    Text="Remaining time:" />
+                <TextBlock
+                    Margin="6,0,0,0"
+                    Style="{StaticResource Text.Metadata}"
+                    Text="{Binding RemainingDurationText}" />
             </WrapPanel>
+            <StackPanel Margin="0,10,0,0">
+                <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding CourseProgressText}" />
+                <ProgressBar
+                    Height="6"
+                    Margin="0,6,0,0"
+                    Maximum="100"
+                    Minimum="0"
+                    Value="{Binding CourseProgressPercentage, Mode=OneWay}" />
+            </StackPanel>
+            <Button
+                Margin="0,12,0,0"
+                HorizontalAlignment="Left"
+                Command="{Binding ContinueLearningCommand}"
+                Content="{Binding ContinueLearningText}"
+                Style="{StaticResource Button.Secondary}" />
+            <Border Margin="0,16,0,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLessons}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <controls:VideoPlayer Height="380" Player="{Binding Player}" />
+            </Border>
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -59,6 +94,11 @@
                             Style="{StaticResource Button.Secondary}" />
                         <Button
                             Margin="8,0,0,0"
+                            Command="{Binding ToggleLessonCompletionCommand}"
+                            Content="{Binding CompletionActionText}"
+                            Style="{StaticResource Button.Secondary}" />
+                        <Button
+                            Margin="8,0,0,0"
                             Command="{Binding ToggleFavoriteCommand}"
                             Content="{Binding FavoriteActionText}"
                             Style="{StaticResource Button.Secondary}" />
@@ -66,6 +106,21 @@
                 </Grid>
             </Border>
             <controls:MediaCategoryEditor Margin="0,16,0,0" />
+            <TextBlock Margin="0,16,0,0" Foreground="{StaticResource Brush.Accent}" Text="{Binding OrderStatus}">
+                <TextBlock.Style>
+                    <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding OrderStatus}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding OrderStatus}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Lessons}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -74,6 +129,7 @@
                                 <Style BasedOn="{StaticResource Card}" TargetType="Border">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
                                             <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -133,18 +189,76 @@
                                         Style="{StaticResource Text.Metadata}"
                                         Foreground="{StaticResource Brush.TextSecondary}"
                                         Text="{Binding Availability}" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        HorizontalAlignment="Right"
+                                        Text="{Binding CompletionStatus}">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        HorizontalAlignment="Right"
+                                        Foreground="{StaticResource Brush.Accent}"
+                                        Text="Current lesson">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <Button
                                         Margin="0,8,0,0"
                                         Command="{Binding DataContext.SelectLessonCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding}"
                                         Content="Select"
                                         Style="{StaticResource Button.Secondary}" />
+                                    <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Command="{Binding DataContext.MoveLessonUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Content="Move up"
+                                            Style="{StaticResource Button.Secondary}" />
+                                        <Button
+                                            Command="{Binding DataContext.MoveLessonDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Content="Move down"
+                                            Style="{StaticResource Button.Secondary}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <TextBlock
+                Margin="0,16,0,0"
+                HorizontalAlignment="Center"
+                Text="No lessons have been found in this course yet.">
+                <TextBlock.Style>
+                    <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLessons}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

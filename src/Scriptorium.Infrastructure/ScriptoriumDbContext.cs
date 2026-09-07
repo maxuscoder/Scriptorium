@@ -72,6 +72,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.ToTable("Courses");
             entity.HasKey(course => course.Id);
             entity.Property(course => course.Title).IsRequired();
+            entity.Property(course => course.IsOrderCustomized).HasDefaultValue(false);
             entity.HasIndex(course => course.LibraryFolderId).IsUnique();
             entity.HasOne(course => course.LibraryFolder)
                 .WithOne(folder => folder.Course)

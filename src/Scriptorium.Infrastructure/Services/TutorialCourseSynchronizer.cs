@@ -5,12 +5,15 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
-/// Persists a course per tutorial folder and orders its lessons using filename metadata when available.
+/// Persists a course per tutorial folder and orders its lessons using filename metadata until a learner-defined order exists.
 /// </summary>
 public sealed class TutorialCourseSynchronizer(
     IDbContextFactory<ScriptoriumDbContext> contextFactory,
     ILessonFileNameParser lessonFileNameParser) : ITutorialCourseSynchronizer
 {
+    /// <inheritdoc />
+    public event Action? CoursesChanged;
+
     /// <inheritdoc />
     public async Task SynchronizeAsync(
         IEnumerable<LibraryFolder> libraryFolders,
@@ -42,6 +45,7 @@ public sealed class TutorialCourseSynchronizer(
                 .Where(lesson => tutorialMediaItems.Select(item => item.Id).Contains(lesson.MediaItemId))
                 .ToListAsync(cancellationToken))
             .ToDictionary(lesson => lesson.MediaItemId);
+        var newLessonIds = new HashSet<Guid>();
         var affectedCourses = new HashSet<Course>();
 
         foreach (var folder in tutorialFolders)
@@ -80,6 +84,7 @@ public sealed class TutorialCourseSynchronizer(
                         FilePath = mediaItem.Path
                     };
                     lessonsByMediaItemId.Add(mediaItem.Id, lesson);
+                    newLessonIds.Add(lesson.Id);
                     context.Lessons.Add(lesson);
                 }
 
@@ -91,7 +96,7 @@ public sealed class TutorialCourseSynchronizer(
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        var changeCount = await context.SaveChangesAsync(cancellationToken);
 
         var affectedCourseIds = affectedCourses.Select(course => course.Id).ToArray();
         var lessonsToOrder = await context.Lessons
@@ -100,16 +105,34 @@ public sealed class TutorialCourseSynchronizer(
         foreach (var courseLessons in lessonsToOrder.GroupBy(lesson => lesson.CourseId))
         {
             var sortOrder = 0;
-            foreach (var lesson in courseLessons
-                         .OrderBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
-                         .ThenBy(lesson => lesson.LessonNumber)
-                         .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
-                         .ThenBy(lesson => lesson.Id))
+            var course = coursesByFolderId.Values.Single(candidate => candidate.Id == courseLessons.Key);
+            var orderedLessons = course.IsOrderCustomized
+                ? courseLessons
+                    .Where(lesson => !newLessonIds.Contains(lesson.Id))
+                    .OrderBy(lesson => lesson.SortOrder)
+                    .ThenBy(lesson => lesson.Id)
+                    .Concat(courseLessons
+                        .Where(lesson => newLessonIds.Contains(lesson.Id))
+                        .OrderBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
+                        .ThenBy(lesson => lesson.LessonNumber)
+                        .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(lesson => lesson.Id))
+                : courseLessons
+                    .OrderBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
+                    .ThenBy(lesson => lesson.LessonNumber)
+                    .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(lesson => lesson.Id);
+
+            foreach (var lesson in orderedLessons)
             {
                 lesson.SortOrder = sortOrder++;
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        changeCount += await context.SaveChangesAsync(cancellationToken);
+        if (changeCount > 0)
+        {
+            CoursesChanged?.Invoke();
+        }
     }
 }

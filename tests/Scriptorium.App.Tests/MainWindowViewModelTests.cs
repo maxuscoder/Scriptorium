@@ -1,4 +1,5 @@
 using System.IO;
+using System.ComponentModel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Scriptorium.App.Commands;
@@ -6,6 +7,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.Core.Models;
+using Scriptorium.Core.Services;
 using Scriptorium.Infrastructure;
 using Scriptorium.Infrastructure.Repositories;
 using Scriptorium.Infrastructure.Services;
@@ -35,7 +37,15 @@ public sealed class MainWindowViewModelTests
             {
                 Title = "Lesson 1",
                 Path = @"C:\Tutorial\lesson-1.mp4",
-                MediaType = MediaType.Tutorial
+                MediaType = MediaType.Tutorial,
+                RuntimeSeconds = 60
+            };
+            var secondTutorialMedia = new MediaItem
+            {
+                Title = "Lesson 2",
+                Path = @"C:\Tutorial\lesson-2.mp4",
+                MediaType = MediaType.Tutorial,
+                RuntimeSeconds = 120
             };
             var episodeMedia = new MediaItem
             {
@@ -54,6 +64,8 @@ public sealed class MainWindowViewModelTests
                     Path = @"C:\Tutorial",
                     MediaType = MediaType.Tutorial
                 };
+                tutorialMedia.LibraryFolderId = tutorialFolder.Id;
+                secondTutorialMedia.LibraryFolderId = tutorialFolder.Id;
                 var course = new Course
                 {
                     Title = "Tutorial",
@@ -66,9 +78,19 @@ public sealed class MainWindowViewModelTests
                     Course = course,
                     MediaItemId = tutorialMedia.Id,
                     MediaItem = tutorialMedia,
-                    SortOrder = 0,
+                    SortOrder = 1,
                     Title = tutorialMedia.Title,
                     FilePath = tutorialMedia.Path
+                });
+                course.Lessons.Add(new Lesson
+                {
+                    CourseId = course.Id,
+                    Course = course,
+                    MediaItemId = secondTutorialMedia.Id,
+                    MediaItem = secondTutorialMedia,
+                    SortOrder = 0,
+                    Title = secondTutorialMedia.Title,
+                    FilePath = secondTutorialMedia.Path
                 });
 
                 var tvFolder = new LibraryFolder
@@ -110,18 +132,23 @@ public sealed class MainWindowViewModelTests
             var contextFactory = new TestDbContextFactory(options);
             var mediaRepository = new MediaItemRepository(contextFactory);
             var courseRepository = new CourseRepository(contextFactory);
+            var tutorialCourseSynchronizer = new TutorialCourseSynchronizer(contextFactory, new LessonFileNameParser());
             var tvShowRepository = new TvShowRepository(contextFactory);
             var categoryRepository = new CategoryRepository(contextFactory);
             var categoryService = new CategoryService(categoryRepository, mediaRepository);
             var favoriteService = new FavoriteService(mediaRepository);
             var progressService = new PlaybackProgressService(mediaRepository);
             var navigationService = new NavigationService(NullLogger<NavigationService>.Instance);
+            var tutorialPlayer = new VideoPlayerViewModel(new UnusedVideoPlaybackFactory(), progressService);
             var tutorialDetails = new TutorialDetailsPageViewModel(
                 courseRepository,
                 navigationService,
                 categoryRepository,
                 categoryService,
-                favoriteService);
+                favoriteService,
+                tutorialCourseSynchronizer,
+                progressService,
+                tutorialPlayer);
             var tvShowDetails = new TvShowDetailsPageViewModel(
                 tvShowRepository,
                 navigationService,
@@ -152,6 +179,90 @@ public sealed class MainWindowViewModelTests
 
             await OpenAsync(viewModel, tutorialMedia);
             Assert.Same(tutorialDetails, navigationService.CurrentPage);
+            Assert.Equal("Tutorial", tutorialDetails.Title);
+            Assert.Equal("Tutorial", tutorialDetails.SourceFolder);
+            Assert.Equal("2 lessons", tutorialDetails.LessonCountText);
+            Assert.Equal("3m", tutorialDetails.TotalDurationText);
+            Assert.Equal("3m", tutorialDetails.RemainingDurationText);
+            Assert.True(tutorialDetails.HasLessons);
+            Assert.Equal("Lesson 2", tutorialDetails.SelectedLesson!.Title);
+            Assert.True(tutorialDetails.SelectedLesson.IsSelected);
+            Assert.False(tutorialDetails.PreviousLessonCommand.CanExecute(null));
+            Assert.True(tutorialDetails.NextLessonCommand.CanExecute(null));
+
+            tutorialDetails.NextLessonCommand.Execute(null);
+
+            Assert.Equal("Lesson 1", tutorialDetails.SelectedLesson!.Title);
+            Assert.True(tutorialDetails.SelectedLesson.IsSelected);
+            Assert.False(tutorialDetails.Lessons[0].IsSelected);
+            Assert.True(tutorialDetails.PreviousLessonCommand.CanExecute(null));
+            Assert.False(tutorialDetails.NextLessonCommand.CanExecute(null));
+
+            var refreshed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            PropertyChangedEventHandler refreshObserver = (_, args) =>
+            {
+                if (args.PropertyName == nameof(TutorialDetailsPageViewModel.LessonCountText))
+                {
+                    refreshed.TrySetResult();
+                }
+            };
+            tutorialDetails.PropertyChanged += refreshObserver;
+            try
+            {
+                var thirdTutorialMedia = new MediaItem
+                {
+                    Title = "Lesson 3",
+                    Path = @"C:\Tutorial\03 - Conclusion.mp4",
+                    MediaType = MediaType.Tutorial,
+                    LibraryFolderId = tutorialMedia.LibraryFolderId
+                };
+                await mediaRepository.AddAsync(thirdTutorialMedia);
+                await tutorialCourseSynchronizer.SynchronizeAsync(
+                    [new LibraryFolder
+                    {
+                        Id = tutorialMedia.LibraryFolderId!.Value,
+                        Name = "Tutorial",
+                        Path = @"C:\Tutorial",
+                        MediaType = MediaType.Tutorial
+                    }],
+                    [tutorialMedia, secondTutorialMedia, thirdTutorialMedia]);
+                await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            }
+            finally
+            {
+                tutorialDetails.PropertyChanged -= refreshObserver;
+            }
+
+            Assert.Equal(3, tutorialDetails.Lessons.Count);
+            Assert.Equal("Lesson 1", tutorialDetails.SelectedLesson!.Title);
+            Assert.Equal("Lesson 1", tutorialDetails.Lessons[0].Title);
+            Assert.Equal(0, tutorialDetails.CompletedLessonCount);
+            Assert.Equal("Complete lesson", tutorialDetails.CompletionActionText);
+
+            await ((AsyncRelayCommand)tutorialDetails.ToggleLessonCompletionCommand).ExecuteAsync();
+
+            Assert.True(tutorialDetails.SelectedLesson.IsCompleted);
+            Assert.Equal("Completed", tutorialDetails.SelectedLesson.CompletionStatus);
+            Assert.Equal(1, tutorialDetails.CompletedLessonCount);
+            Assert.Equal(100d / 3d, tutorialDetails.CourseProgressPercentage, 5);
+            Assert.Equal("1 of 3 lessons completed", tutorialDetails.CourseProgressText);
+            Assert.Equal("2m", tutorialDetails.RemainingDurationText);
+            Assert.Equal("Mark incomplete", tutorialDetails.CompletionActionText);
+            var savedLesson = await mediaRepository.GetByIdAsync(tutorialMedia.Id);
+            Assert.NotNull(savedLesson);
+            Assert.True(savedLesson.IsCompleted);
+            Assert.Equal(60, savedLesson.PlaybackPositionSeconds);
+
+            await ((AsyncRelayCommand)tutorialDetails.ToggleLessonCompletionCommand).ExecuteAsync();
+
+            Assert.False(tutorialDetails.SelectedLesson.IsCompleted);
+            Assert.Equal(0, tutorialDetails.CompletedLessonCount);
+            Assert.Equal(0, tutorialDetails.CourseProgressPercentage);
+            Assert.Equal("3m", tutorialDetails.RemainingDurationText);
+            savedLesson = await mediaRepository.GetByIdAsync(tutorialMedia.Id);
+            Assert.NotNull(savedLesson);
+            Assert.False(savedLesson.IsCompleted);
+            Assert.Equal(0, savedLesson.PlaybackPositionSeconds);
 
             await OpenAsync(viewModel, episodeMedia);
             Assert.Same(tvShowDetails, navigationService.CurrentPage);

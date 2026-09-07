@@ -430,6 +430,12 @@ public sealed class VideoPlayerTests
             return Task.FromResult(true);
         }
 
+        public Task<bool> SetCompletionAsync(
+            Guid mediaItemId,
+            bool isCompleted,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+
         public Task<long?> GetResumePositionAsync(Guid mediaItemId, CancellationToken cancellationToken = default) =>
             Task.FromResult<long?>(null);
     }

@@ -41,6 +41,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private Guid? _lastSavedMediaItemId;
     private long? _lastSavedPositionSeconds;
     private long? _lastSavedDurationSeconds;
+    private Guid? _completionOverrideMediaItemId;
+    private bool _completionOverride;
 
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
@@ -77,6 +79,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase
 
     /// <summary>Raised after a playback snapshot, including its viewing timestamp, has been persisted.</summary>
     public event EventHandler<PlaybackProgressSavedEventArgs>? PlaybackProgressPersisted;
+
+    /// <summary>Raised when the current media reaches its natural end.</summary>
+    public event EventHandler<PlaybackCompletedEventArgs>? PlaybackCompleted;
 
     /// <summary>Raised after a user-visible playback action completes.</summary>
     public event EventHandler<VideoPlaybackAction>? PlaybackActionPerformed;
@@ -152,6 +157,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
+        _completionOverrideMediaItemId = null;
         _request = request;
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
@@ -161,6 +167,30 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         OnPropertyChanged(nameof(DurationSeconds));
         OnPropertyChanged(nameof(DurationText));
         if (_active) OpenPlayback();
+    }
+
+    /// <summary>Waits for any playback snapshot already queued for persistence.</summary>
+    public async Task FlushPendingProgressSaveAsync()
+    {
+        Task progressSaveTask;
+        lock (_progressSaveGate)
+        {
+            progressSaveTask = _progressSaveTask;
+        }
+
+        await progressSaveTask.ConfigureAwait(true);
+    }
+
+    /// <summary>Synchronizes an explicit completion change made outside the player.</summary>
+    public void SynchronizeCompletion(Guid mediaItemId, bool isCompleted)
+    {
+        if (_request?.MediaItemId != mediaItemId)
+        {
+            return;
+        }
+
+        _completionOverrideMediaItemId = mediaItemId;
+        _completionOverride = isCompleted;
     }
 
     public void Activate()
@@ -250,6 +280,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             else
             {
                 if (_hasEnded) _playback.Position = TimeSpan.Zero;
+                if (_completionOverrideMediaItemId == _request?.MediaItemId)
+                {
+                    _completionOverrideMediaItemId = null;
+                }
                 _hasEnded = false;
                 _playback.Play();
                 SetPlaybackState(VideoPlaybackState.Playing);
@@ -275,6 +309,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private void OnEnded(object? sender, EventArgs args)
     {
         if (!ReferenceEquals(sender, _playback)) return;
+        var completedMediaItemId = _request?.MediaItemId;
         _timer.Stop();
         _hasEnded = true;
         SetPlaybackState(VideoPlaybackState.Ended);
@@ -282,6 +317,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         UpdatePosition();
         QueuePlaybackProgressSave(force: true);
         NotifyPlaybackChanged();
+        if (completedMediaItemId is { } mediaItemId)
+        {
+            PlaybackCompleted?.Invoke(this, new PlaybackCompletedEventArgs(mediaItemId));
+        }
     }
 
     private void ToggleMute()
@@ -529,6 +568,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         try
         {
+            if (_completionOverrideMediaItemId == snapshot.MediaItemId && _completionOverride)
+            {
+                return;
+            }
+
             if (snapshot.MediaItemId == _lastSavedMediaItemId &&
                 snapshot.PositionSeconds == _lastSavedPositionSeconds &&
                 snapshot.DurationSeconds == _lastSavedDurationSeconds)
@@ -742,6 +786,12 @@ public sealed class PlaybackProgressSavedEventArgs(
     public long PositionSeconds { get; } = positionSeconds;
     public long DurationSeconds { get; } = durationSeconds;
     public DateTimeOffset LastWatched { get; } = lastWatched;
+}
+
+/// <summary>Identifies the media item that reached the end of playback.</summary>
+public sealed class PlaybackCompletedEventArgs(Guid mediaItemId) : EventArgs
+{
+    public Guid MediaItemId { get; } = mediaItemId;
 }
 
 /// <summary>Represents a playback action shown as transient feedback by the view.</summary>
