@@ -19,4 +19,7 @@ public class Course
 
     /// <summary>Gets the lessons in this course.</summary>
     public List<Lesson> Lessons { get; set; } = [];
+
+    /// <summary>Gets or sets whether lesson order was explicitly arranged by the learner.</summary>
+    public bool IsOrderCustomized { get; set; }
 }

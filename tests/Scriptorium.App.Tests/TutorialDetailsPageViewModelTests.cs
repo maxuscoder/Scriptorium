@@ -2,6 +2,7 @@ using System.Windows.Media;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.ViewModels.Pages;
@@ -103,6 +104,49 @@ public sealed class TutorialDetailsPageViewModelTests
         Assert.Equal("Lesson 1", viewModel.SelectedLesson!.Title);
         Assert.Equal("30% watched", viewModel.SelectedLesson.CompletionStatus);
 
+        await ((AsyncRelayCommand)viewModel.MoveLessonDownCommand).ExecuteAsync(viewModel.Lessons[0]);
+        Assert.Equal(["Lesson 2", "Lesson 1", "Lesson 3"], viewModel.Lessons.Select(lesson => lesson.Title));
+        Assert.Equal("Lesson order saved.", viewModel.OrderStatus);
+
+        await ((AsyncRelayCommand)viewModel.MoveLessonUpCommand).ExecuteAsync(viewModel.Lessons[1]);
+        Assert.Equal(["Lesson 1", "Lesson 2", "Lesson 3"], viewModel.Lessons.Select(lesson => lesson.Title));
+
+        var persistedCourse = await courseRepository.GetByIdAsync(courseId);
+        Assert.Equal(
+            ["Lesson 1", "Lesson 2", "Lesson 3"],
+            persistedCourse!.Lessons.OrderBy(lesson => lesson.SortOrder).Select(lesson => lesson.Title));
+
+        var fourth = new MediaItem
+        {
+            Title = "Lesson 4",
+            Path = @"C:\Course\04-new.mp4",
+            MediaType = MediaType.Tutorial,
+            LibraryFolderId = persistedCourse.LibraryFolderId,
+            RuntimeSeconds = 60
+        };
+        await mediaRepository.AddAsync(fourth);
+        var lessonViewModelBeforeRefresh = viewModel.SelectedLesson;
+        await synchronizer.SynchronizeAsync(
+            [new LibraryFolder
+            {
+                Id = persistedCourse.LibraryFolderId,
+                Name = "Course",
+                Path = @"C:\Course",
+                MediaType = MediaType.Tutorial
+            }],
+            await mediaRepository.GetAllAsync());
+        await WaitUntilAsync(() =>
+            viewModel.Lessons.Count == 4 &&
+            viewModel.SelectedLesson?.Title == "Lesson 1" &&
+            !ReferenceEquals(viewModel.SelectedLesson, lessonViewModelBeforeRefresh));
+
+        Assert.Equal(
+            ["Lesson 1", "Lesson 2", "Lesson 3", "Lesson 4"],
+            viewModel.Lessons.Select(lesson => lesson.Title));
+        Assert.Equal(
+            [false, true, false, false],
+            viewModel.Lessons.Select(lesson => lesson.IsCompleted));
+
         player.Activate();
         var playback = Assert.Single(playerFactory.Instances);
         playback.RaiseOpened();
@@ -113,7 +157,8 @@ public sealed class TutorialDetailsPageViewModelTests
         playback.RaiseEnded();
         await WaitUntilAsync(() => viewModel.SelectedLesson?.Title == "Lesson 3");
 
-        var completed = await mediaRepository.GetByIdAsync(viewModel.Lessons[0].MediaItemId);
+        var completed = await mediaRepository.GetByIdAsync(
+            viewModel.Lessons.Single(lesson => lesson.Title == "Lesson 1").MediaItemId);
         Assert.True(completed!.IsCompleted);
         Assert.Equal("Lesson 3", viewModel.SelectedLesson!.Title);
         player.Deactivate();

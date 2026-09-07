@@ -24,6 +24,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
     private readonly VideoPlayerViewModel _player;
+    private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
     private PageViewModel? _returnPage;
     private Guid? _courseId;
     private int _isCourseRefreshQueued;
@@ -32,6 +33,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private TutorialLessonViewModel? _selectedLesson;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private string _orderStatus = string.Empty;
+    private bool _isReordering;
 
     public TutorialDetailsPageViewModel(
         ICourseRepository courseRepository,
@@ -54,6 +57,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         ContinueLearningCommand = new RelayCommand(ContinueLearning, CanContinueLearning);
+        MoveLessonUpCommand = new AsyncRelayCommand(MoveLessonUpAsync, CanMoveLessonUp);
+        MoveLessonDownCommand = new AsyncRelayCommand(MoveLessonDownAsync, CanMoveLessonDown);
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
@@ -163,6 +168,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         private set => SetProperty(ref _categoryStatus, value);
     }
 
+    public string OrderStatus
+    {
+        get => _orderStatus;
+        private set => SetProperty(ref _orderStatus, value);
+    }
+
     public string FavoriteActionText => SelectedLesson?.IsFavorite == true
         ? "Remove from favorites"
         : "Add to favorites";
@@ -181,6 +192,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
     /// <summary>Gets the command that selects the following lesson.</summary>
     public ICommand NextLessonCommand { get; }
+
+    /// <summary>Moves a lesson one position earlier in the course.</summary>
+    public ICommand MoveLessonUpCommand { get; }
+
+    /// <summary>Moves a lesson one position later in the course.</summary>
+    public ICommand MoveLessonDownCommand { get; }
 
     /// <summary>Selects the first lesson that has not been completed.</summary>
     public ICommand ContinueLearningCommand { get; }
@@ -241,6 +258,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         RefreshCourseProgress();
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
+        NotifyLessonOrderCommands();
     }
 
     private void OnCoursesChanged()
@@ -328,6 +346,74 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     }
 
     private bool CanContinueLearning() => HasIncompleteLessons;
+
+    private async Task MoveLessonUpAsync(object? parameter) => await MoveLessonAsync(parameter, -1);
+
+    private async Task MoveLessonDownAsync(object? parameter) => await MoveLessonAsync(parameter, 1);
+
+    private bool CanMoveLessonUp(object? parameter) =>
+        !_isReordering && parameter is TutorialLessonViewModel lesson && Lessons.IndexOf(lesson) > 0;
+
+    private bool CanMoveLessonDown(object? parameter) =>
+        !_isReordering && parameter is TutorialLessonViewModel lesson &&
+        Lessons.IndexOf(lesson) >= 0 &&
+        Lessons.IndexOf(lesson) < Lessons.Count - 1;
+
+    private async Task MoveLessonAsync(object? parameter, int offset)
+    {
+        if (parameter is not TutorialLessonViewModel lesson)
+        {
+            return;
+        }
+
+        await _lessonOrderGate.WaitAsync();
+        _isReordering = true;
+        NotifyLessonOrderCommands();
+        try
+        {
+            if (_courseId is not { } courseId)
+            {
+                return;
+            }
+
+            var currentIndex = Lessons.IndexOf(lesson);
+            var newIndex = currentIndex + offset;
+            if (currentIndex < 0 || newIndex < 0 || newIndex >= Lessons.Count)
+            {
+                return;
+            }
+
+            var orderedLessonIds = Lessons.Select(candidate => candidate.LessonId).ToList();
+            (orderedLessonIds[currentIndex], orderedLessonIds[newIndex]) =
+                (orderedLessonIds[newIndex], orderedLessonIds[currentIndex]);
+            if (!await _courseRepository.UpdateLessonOrderAsync(courseId, orderedLessonIds))
+            {
+                OrderStatus = "The lesson order could not be saved.";
+                return;
+            }
+
+            Lessons.Move(currentIndex, newIndex);
+            for (var index = 0; index < Lessons.Count; index++)
+            {
+                Lessons[index].SetSortOrder(index);
+            }
+
+            OrderStatus = "Lesson order saved.";
+            OnPropertyChanged(nameof(SelectedLessonPositionText));
+        }
+        finally
+        {
+            _isReordering = false;
+            _lessonOrderGate.Release();
+            NotifyLessonOrderCommands();
+        }
+    }
+
+    private void NotifyLessonOrderCommands()
+    {
+        ((AsyncRelayCommand)MoveLessonUpCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)MoveLessonDownCommand).NotifyCanExecuteChanged();
+    }
 
     private void OpenSelectedLesson()
     {
@@ -515,6 +601,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 /// <summary>Displays one ordered tutorial lesson.</summary>
 public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMediaFavoriteItem
 {
+    public Guid LessonId => lesson.Id;
+
     public string Title => MediaDisplayText.TitleOrFallback(lesson.Title, "Untitled lesson");
 
     public string Position => lesson.LessonNumber is { } number ? $"Lesson {number}" : $"Lesson {lesson.SortOrder + 1}";
@@ -581,6 +669,17 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(RuntimeSeconds));
         OnPropertyChanged(nameof(IsCompleted));
         OnPropertyChanged(nameof(CompletionStatus));
+    }
+
+    internal void SetSortOrder(int sortOrder)
+    {
+        if (lesson.SortOrder == sortOrder)
+        {
+            return;
+        }
+
+        lesson.SortOrder = sortOrder;
+        OnPropertyChanged(nameof(Position));
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;

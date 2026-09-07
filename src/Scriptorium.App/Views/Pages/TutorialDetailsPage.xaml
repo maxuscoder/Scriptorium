@@ -98,6 +98,21 @@
                 </Grid>
             </Border>
             <controls:MediaCategoryEditor Margin="0,16,0,0" />
+            <TextBlock Margin="0,16,0,0" Foreground="{StaticResource Brush.Accent}" Text="{Binding OrderStatus}">
+                <TextBlock.Style>
+                    <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding OrderStatus}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding OrderStatus}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Lessons}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
@@ -202,6 +217,19 @@
                                         CommandParameter="{Binding}"
                                         Content="Select"
                                         Style="{StaticResource Button.Secondary}" />
+                                    <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                                        <Button
+                                            Margin="0,0,6,0"
+                                            Command="{Binding DataContext.MoveLessonUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Content="Move up"
+                                            Style="{StaticResource Button.Secondary}" />
+                                        <Button
+                                            Command="{Binding DataContext.MoveLessonDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Content="Move down"
+                                            Style="{StaticResource Button.Secondary}" />
+                                    </StackPanel>
                                 </StackPanel>
                             </Grid>
                         </Border>

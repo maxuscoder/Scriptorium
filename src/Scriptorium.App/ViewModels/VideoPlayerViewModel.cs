@@ -278,6 +278,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private void OnEnded(object? sender, EventArgs args)
     {
         if (!ReferenceEquals(sender, _playback)) return;
+        var completedMediaItemId = _request?.MediaItemId;
         _timer.Stop();
         _hasEnded = true;
         SetPlaybackState(VideoPlaybackState.Ended);
@@ -285,7 +286,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         UpdatePosition();
         QueuePlaybackProgressSave(force: true);
         NotifyPlaybackChanged();
-        if (_request?.MediaItemId is { } mediaItemId)
+        if (completedMediaItemId is { } mediaItemId)
         {
             PlaybackCompleted?.Invoke(this, new PlaybackCompletedEventArgs(mediaItemId));
         }
