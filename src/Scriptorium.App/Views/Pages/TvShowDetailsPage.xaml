@@ -4,70 +4,87 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="{StaticResource Spacing.XL}" MaxWidth="800">
-            <Button
-                HorizontalAlignment="Left"
-                Command="{Binding BackCommand}"
-                Content="Back to library"
-                Style="{StaticResource Button.Secondary}" />
-            <TextBlock
-                Margin="0,24,0,0"
-                Style="{StaticResource Text.PageTitle}"
-                Text="{Binding Title}"
-                TextWrapping="Wrap" />
-            <TextBlock
-                Margin="0,6,0,0"
-                Style="{StaticResource Text.Metadata}"
-                Text="{Binding SourceFolder}" />
-            <TextBlock
-                Margin="0,16,0,0"
-                Style="{StaticResource Text.Metadata}"
-                Text="{Binding EpisodeCountText}" />
+        <StackPanel Margin="{StaticResource Spacing.XL}" MaxWidth="840">
+            <Button HorizontalAlignment="Left" Command="{Binding BackCommand}" Content="Back to library" Style="{StaticResource Button.Secondary}" />
+            <TextBlock Margin="0,24,0,0" Style="{StaticResource Text.PageTitle}" Text="{Binding Title}" TextWrapping="Wrap" />
+            <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding SourceFolder}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SourceFolder}" />
+
+            <WrapPanel Margin="0,16,0,0">
+                <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SeasonCountText}" />
+                <TextBlock Margin="16,0,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding EpisodeCountText}" />
+                <TextBlock Margin="16,0,0,0" Style="{StaticResource Text.Metadata}" Text="Total runtime:" />
+                <TextBlock Margin="6,0,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding TotalDurationText}" />
+                <TextBlock Margin="16,0,0,0" Style="{StaticResource Text.Metadata}" Text="Remaining:" />
+                <TextBlock Margin="6,0,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding RemainingDurationText}" />
+            </WrapPanel>
+
+            <Border Margin="0,16,0,0" Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="Viewing progress" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding ShowProgressText}" />
+                    </Grid>
+                    <ProgressBar Height="7" Margin="0,12,0,0" Background="{StaticResource Brush.Border}" Foreground="{StaticResource Brush.Accent}" Maximum="100" Minimum="0" Value="{Binding ShowProgressPercentage, Mode=OneWay}" />
+                </StackPanel>
+            </Border>
+            <Button Margin="0,12,0,0" HorizontalAlignment="Left" Command="{Binding ContinueWatchingCommand}" Content="{Binding ContinueWatchingText}" Style="{StaticResource Button.Secondary}" />
+
+            <Border Margin="0,16,0,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasEpisodes}" Value="False">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <controls:VideoPlayer Height="380" Player="{Binding Player}" />
+            </Border>
+
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <StackPanel>
-                        <TextBlock
-                            Style="{StaticResource Text.Metadata}"
-                            Text="{Binding SelectedEpisodePositionText}" />
-                        <TextBlock
-                            Margin="0,4,0,0"
-                            Style="{StaticResource Text.CardTitle}"
-                            Text="{Binding SelectedEpisode.Title}" />
-                        <TextBlock
-                            Margin="0,4,0,0"
-                            Style="{StaticResource Text.Metadata}"
-                            Text="{Binding SelectedEpisode.SeasonAndPosition}" />
+                        <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisodePositionText}" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.CardTitle}" Text="{Binding SelectedEpisode.Title}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisode.SeasonAndPosition}" />
                     </StackPanel>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <Button
-                            Margin="0,0,8,0"
-                            Command="{Binding PreviousEpisodeCommand}"
-                            Content="Previous episode"
-                            Style="{StaticResource Button.Secondary}" />
-                        <Button
-                            Command="{Binding NextEpisodeCommand}"
-                            Content="Next episode"
-                            Style="{StaticResource Button.Secondary}" />
-                        <Button
-                            Margin="8,0,0,0"
-                            Command="{Binding ToggleFavoriteCommand}"
-                            Content="{Binding FavoriteActionText}"
-                            Style="{StaticResource Button.Secondary}" />
-                    </StackPanel>
+                    <WrapPanel Grid.Row="1" Margin="0,14,0,0">
+                        <Button Margin="0,0,8,0" Command="{Binding PreviousEpisodeCommand}" Content="Previous episode" Style="{StaticResource Button.Secondary}" />
+                        <Button Margin="0,0,8,0" Command="{Binding NextEpisodeCommand}" Content="Next episode" Style="{StaticResource Button.Secondary}" />
+                        <Button Margin="0,0,8,0" Command="{Binding ToggleEpisodeCompletionCommand}" Content="{Binding CompletionActionText}" Style="{StaticResource Button.Secondary}" />
+                        <Button Margin="0,0,8,0" Command="{Binding ResetProgressCommand}" Content="Reset progress" Style="{StaticResource Button.Secondary}" />
+                        <Button Command="{Binding ToggleFavoriteCommand}" Content="{Binding FavoriteActionText}" Style="{StaticResource Button.Secondary}" />
+                    </WrapPanel>
                 </Grid>
             </Border>
+
             <controls:MediaCategoryEditor Margin="0,16,0,0" />
+
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Seasons}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <StackPanel Margin="0,0,0,24">
-                            <TextBlock
-                                Style="{StaticResource Text.SubsectionTitle}"
-                                Text="{Binding Title}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="{Binding Title}" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding EpisodeCountText}" />
+                                    <TextBlock Margin="16,0,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding ProgressText}" />
+                                </StackPanel>
+                            </Grid>
+                            <ProgressBar Height="4" Margin="0,8,0,0" Background="{StaticResource Brush.Border}" Foreground="{StaticResource Brush.Accent}" Maximum="100" Minimum="0" Value="{Binding ProgressPercentage, Mode=OneWay}" />
                             <ItemsControl Margin="0,10,0,0" ItemsSource="{Binding Episodes}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -76,6 +93,7 @@
                                                 <Style BasedOn="{StaticResource Card}" TargetType="Border">
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
                                                             <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
@@ -88,10 +106,7 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock
-                                                        Style="{StaticResource Text.Metadata}"
-                                                        Foreground="{StaticResource Brush.Accent}"
-                                                        Text="{Binding Position}" />
+                                                    <TextBlock Style="{StaticResource Text.Metadata}" Foreground="{StaticResource Brush.Accent}" Text="{Binding Position}" />
                                                     <TextBlock Margin="0,4,0,0" Text="{Binding Runtime}">
                                                         <TextBlock.Style>
                                                             <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
@@ -105,42 +120,40 @@
                                                     </TextBlock>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="1">
-                                                    <TextBlock
-                                                        Style="{StaticResource Text.CardTitle}"
-                                                        Text="{Binding Title}"
-                                                        TextTrimming="CharacterEllipsis"
-                                                        TextWrapping="NoWrap"
-                                                        ToolTip="{Binding Title}" />
-                                    <TextBlock
-                                        Margin="0,4,0,0"
-                                        Style="{StaticResource Text.Metadata}"
-                                        Text="{Binding FilePath}"
-                                        TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.Warning}" Text="★">
-                                        <TextBlock.Style>
-                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
-                                                <Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsFavorite}" Value="True">
-                                                        <Setter Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
+                                                    <TextBlock Style="{StaticResource Text.CardTitle}" Text="{Binding Title}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Title}" />
+                                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding FilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding FilePath}" />
+                                                    <ProgressBar Height="4" Margin="0,8,16,0" Background="{StaticResource Brush.Border}" Foreground="{StaticResource Brush.Accent}" Maximum="100" Minimum="0" Value="{Binding PlaybackProgressPercentage, Mode=OneWay}" />
+                                                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackProgressText}" />
+                                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.Warning}" Text="&#x2605;">
+                                                        <TextBlock.Style>
+                                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                                 <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                                                    <TextBlock
-                                                        HorizontalAlignment="Right"
-                                                        Style="{StaticResource Text.Metadata}"
-                                                        Foreground="{StaticResource Brush.TextSecondary}"
-                                                        Text="{Binding Availability}" />
-                                                    <Button
-                                                        Margin="0,8,0,0"
-                                                        Command="{Binding DataContext.SelectEpisodeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Content="Select"
-                                                        Style="{StaticResource Button.Secondary}" />
+                                                    <TextBlock HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding Availability}" />
+                                                    <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Text="Current episode">
+                                                        <TextBlock.Style>
+                                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                    <TextBlock Margin="0,4,0,0" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding CompletionStatus}" />
+                                                    <Button Margin="0,8,0,0" Command="{Binding DataContext.SelectEpisodeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" Content="Select" Style="{StaticResource Button.Secondary}" />
                                                 </StackPanel>
                                             </Grid>
                                         </Border>
@@ -151,6 +164,19 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" Text="No episodes have been found in this show yet.">
+                <TextBlock.Style>
+                    <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasEpisodes}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
