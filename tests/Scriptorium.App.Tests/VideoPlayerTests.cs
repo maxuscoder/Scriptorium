@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows.Media;
+using Scriptorium.App.Models;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.Core.Services;
@@ -322,6 +323,36 @@ public sealed class VideoPlayerTests
         return Task.CompletedTask;
     });
 
+    [Fact]
+    public Task PlaybackPreferencesRestoreAndUpdateAutomatically() => StaTest.Run(async () =>
+    {
+        var settings = new RecordingSettingsService
+        {
+            Settings = new ApplicationSettings { PlaybackVolume = 0.4, PlaybackSpeed = 1.5, SubtitlesEnabled = true }
+        };
+        var factory = new FakeFactory();
+        var player = new VideoPlayerViewModel(factory, settingsService: settings);
+
+        Assert.Equal(0.4, player.Volume);
+        Assert.Equal(1.5, player.PlaybackSpeed);
+        Assert.True(settings.Settings.SubtitlesEnabled);
+
+        player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
+        player.Activate();
+        var playback = Assert.Single(factory.Instances);
+        playback.RaiseOpened();
+        Assert.Equal(0.4, playback.Volume);
+        Assert.Equal(1.5, playback.PlaybackSpeed);
+
+        player.Volume = 0.7;
+        player.PlaybackSpeed = 1.25;
+        await WaitUntilAsync(() => settings.SaveCount == 1);
+
+        Assert.Equal(0.7, settings.Settings.PlaybackVolume);
+        Assert.Equal(1.25, settings.Settings.PlaybackSpeed);
+        player.Deactivate();
+    });
+
     internal sealed class FakeFactory : IVideoPlaybackFactory
     {
         public List<FakePlayback> Instances { get; } = [];
@@ -350,6 +381,7 @@ public sealed class VideoPlayerTests
         public TimeSpan Position { get; set; }
         public TimeSpan Duration => TimeSpan.FromSeconds(60);
         public double Volume { get; set; }
+        public double PlaybackSpeed { get; set; } = 1;
         public bool Disposed { get; private set; }
         public Exception? OpenException { get; init; }
         public List<string> Calls { get; } = [];
@@ -367,6 +399,20 @@ public sealed class VideoPlayerTests
         public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
         public void RaiseFailed(Exception? exception = null) =>
             Failed?.Invoke(this, exception ?? new InvalidOperationException("Invalid video"));
+    }
+
+    private sealed class RecordingSettingsService : ISettingsService
+    {
+        public ApplicationSettings Settings { get; set; } = new();
+        public int SaveCount { get; private set; }
+
+        public Task LoadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task SaveAsync(CancellationToken cancellationToken = default)
+        {
+            SaveCount++;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class RecordingPlaybackProgressService : IPlaybackProgressService

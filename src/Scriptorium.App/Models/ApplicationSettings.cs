@@ -37,4 +37,16 @@ public sealed class ApplicationSettings
 
     /// <summary>Gets or sets the selected playback-completion filter.</summary>
     public string LibraryCompletionFilter { get; set; } = "All";
+
+    /// <summary>Gets or sets the volume used for newly opened media, from 0 to 1.</summary>
+    public double PlaybackVolume { get; set; } = 1;
+
+    /// <summary>Gets or sets the playback rate used for newly opened media.</summary>
+    public double PlaybackSpeed { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the preferred subtitle state. It is retained now so it can be applied when
+    /// subtitle-track support is added to the playback engine.
+    /// </summary>
+    public bool SubtitlesEnabled { get; set; }
 }

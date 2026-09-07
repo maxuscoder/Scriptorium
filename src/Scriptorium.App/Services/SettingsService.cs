@@ -155,6 +155,12 @@ public sealed class SettingsService : ISettingsService
         settings.LibraryCompletionFilter = string.IsNullOrWhiteSpace(settings.LibraryCompletionFilter)
             ? "All"
             : settings.LibraryCompletionFilter;
+        settings.PlaybackVolume = double.IsFinite(settings.PlaybackVolume)
+            ? Math.Clamp(settings.PlaybackVolume, 0, 1)
+            : 1;
+        settings.PlaybackSpeed = double.IsFinite(settings.PlaybackSpeed)
+            ? Math.Clamp(settings.PlaybackSpeed, 0.5, 2)
+            : 1;
         return settings;
     }
 }

@@ -14,9 +14,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private static readonly TimeSpan ProgressSaveInterval = TimeSpan.FromSeconds(5);
     private readonly IVideoPlaybackFactory _factory;
     private readonly IPlaybackProgressService? _playbackProgressService;
+    private readonly ISettingsService? _settingsService;
     private readonly ILogger<VideoPlayerViewModel>? _logger;
     private readonly DispatcherTimer _timer;
     private readonly object _progressSaveGate = new();
+    private readonly object _preferenceSaveGate = new();
     private Task _progressSaveTask = Task.CompletedTask;
     private IVideoPlayback? _playback;
     private MediaPlaybackRequest? _request;
@@ -33,6 +35,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private TimeSpan _duration;
     private double _volume = 1;
     private double _volumeBeforeMute = 1;
+    private double _playbackSpeed = 1;
+    private CancellationTokenSource? _preferenceSaveCancellationSource;
     private DateTimeOffset _lastProgressSaveRequested = DateTimeOffset.MinValue;
     private Guid? _lastSavedMediaItemId;
     private long? _lastSavedPositionSeconds;
@@ -41,11 +45,19 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
         ILogger<VideoPlayerViewModel>? logger = null,
-        IPlaybackProgressService? playbackProgressService = null)
+        IPlaybackProgressService? playbackProgressService = null,
+        ISettingsService? settingsService = null)
     {
         _factory = factory;
         _playbackProgressService = playbackProgressService;
+        _settingsService = settingsService;
         _logger = logger;
+        if (settingsService is not null)
+        {
+            _volume = NormalizeVolume(settingsService.Settings.PlaybackVolume);
+            _volumeBeforeMute = _volume;
+            _playbackSpeed = NormalizePlaybackSpeed(settingsService.Settings.PlaybackSpeed);
+        }
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
         ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -56,7 +68,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
         IPlaybackProgressService playbackProgressService)
-        : this(factory, logger: null, playbackProgressService: playbackProgressService)
+        : this(factory, logger: null, playbackProgressService: playbackProgressService, settingsService: null)
     {
     }
 
@@ -71,6 +83,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
 
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
+    public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
     public ImageSource? Video => _playback?.Video;
     public bool IsReady
     {
@@ -113,7 +126,25 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             if (bounded > 0) _volumeBeforeMute = bounded;
             OnPropertyChanged(nameof(IsMutedIconVisible));
             ApplyVolume();
+            QueuePlaybackPreferenceSave();
             NotifyPlaybackAction(bounded > previous ? VideoPlaybackAction.VolumeUp : VideoPlaybackAction.VolumeDown);
+        }
+    }
+
+    /// <summary>Gets or sets the playback rate for the current and future media sessions.</summary>
+    public double PlaybackSpeed
+    {
+        get => _playbackSpeed;
+        set
+        {
+            var bounded = NormalizePlaybackSpeed(value);
+            if (!SetProperty(ref _playbackSpeed, bounded))
+            {
+                return;
+            }
+
+            ApplyPlaybackSpeed();
+            QueuePlaybackPreferenceSave();
         }
     }
 
@@ -169,6 +200,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
             ApplyVolume();
+            ApplyPlaybackSpeed();
             OnPropertyChanged(nameof(Video));
             _playback.Open(_request.FilePath);
         }
@@ -616,6 +648,72 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     {
         if (_playback is not null) _playback.Volume = IsMuted ? 0 : Volume;
     }
+
+    private void ApplyPlaybackSpeed()
+    {
+        if (_playback is not null) _playback.PlaybackSpeed = PlaybackSpeed;
+    }
+
+    private void QueuePlaybackPreferenceSave()
+    {
+        var settingsService = _settingsService;
+        if (settingsService is null)
+        {
+            return;
+        }
+
+        settingsService.Settings.PlaybackVolume = Volume;
+        settingsService.Settings.PlaybackSpeed = PlaybackSpeed;
+
+        CancellationTokenSource cancellationSource;
+        lock (_preferenceSaveGate)
+        {
+            cancellationSource = new CancellationTokenSource();
+            _preferenceSaveCancellationSource?.Cancel();
+            _preferenceSaveCancellationSource = cancellationSource;
+        }
+
+        _ = SavePlaybackPreferencesAfterDelayAsync(settingsService, cancellationSource);
+    }
+
+    private async Task SavePlaybackPreferencesAfterDelayAsync(
+        ISettingsService settingsService,
+        CancellationTokenSource cancellationSource)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationSource.Token);
+            await settingsService.SaveAsync(cancellationSource.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            // A more recent playback preference superseded this pending save.
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Playback preferences could not be saved.");
+        }
+        finally
+        {
+            lock (_preferenceSaveGate)
+            {
+                if (ReferenceEquals(_preferenceSaveCancellationSource, cancellationSource))
+                {
+                    _preferenceSaveCancellationSource = null;
+                }
+            }
+
+            cancellationSource.Dispose();
+        }
+    }
+
+    private static double NormalizeVolume(double value) => double.IsFinite(value)
+        ? Math.Clamp(value, 0, 1)
+        : 1;
+
+    private static double NormalizePlaybackSpeed(double value) => double.IsFinite(value)
+        ? Math.Clamp(value, 0.5, 2)
+        : 1;
 
     private void NotifyPlaybackAction(VideoPlaybackAction action) => PlaybackActionPerformed?.Invoke(this, action);
 
