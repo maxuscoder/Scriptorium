@@ -32,6 +32,15 @@
                     Style="{StaticResource Text.Metadata}"
                     Text="{Binding TotalDurationText}" />
             </WrapPanel>
+            <StackPanel Margin="0,10,0,0">
+                <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding CourseProgressText}" />
+                <ProgressBar
+                    Height="6"
+                    Margin="0,6,0,0"
+                    Maximum="100"
+                    Minimum="0"
+                    Value="{Binding CourseProgressPercentage, Mode=OneWay}" />
+            </StackPanel>
             <Border Margin="0,16,0,0" Style="{StaticResource Card}">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -56,6 +65,11 @@
                         <Button
                             Command="{Binding NextLessonCommand}"
                             Content="Next lesson"
+                            Style="{StaticResource Button.Secondary}" />
+                        <Button
+                            Margin="8,0,0,0"
+                            Command="{Binding ToggleLessonCompletionCommand}"
+                            Content="{Binding CompletionActionText}"
                             Style="{StaticResource Button.Secondary}" />
                         <Button
                             Margin="8,0,0,0"
@@ -134,6 +148,20 @@
                                         Style="{StaticResource Text.Metadata}"
                                         Foreground="{StaticResource Brush.TextSecondary}"
                                         Text="{Binding Availability}" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        HorizontalAlignment="Right"
+                                        Text="{Binding CompletionStatus}">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <TextBlock
                                         Margin="0,4,0,0"
                                         HorizontalAlignment="Right"

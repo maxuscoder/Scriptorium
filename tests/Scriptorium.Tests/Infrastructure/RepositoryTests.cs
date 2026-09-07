@@ -274,6 +274,28 @@ public sealed class RepositoryTests
 
             Assert.False(await playbackProgressService.SaveAsync(Guid.NewGuid(), new PlaybackProgressUpdate(1, 2)));
             Assert.Equal([mediaItem.Id, mediaItem.Id, mediaItem.Id, mediaItem.Id], savedPlaybackIds);
+
+            var lessonWithoutDuration = new MediaItem
+            {
+                Title = "Reading material",
+                Path = "C:\\Media\\reading-material.pdf",
+                LibraryFolderId = folder.Id,
+                MediaType = MediaType.Tutorial
+            };
+            await mediaItemRepository.AddAsync(lessonWithoutDuration);
+
+            Assert.True(await playbackProgressService.SetCompletionAsync(lessonWithoutDuration.Id, true));
+            savedItem = await mediaItemRepository.GetByIdAsync(lessonWithoutDuration.Id);
+            Assert.NotNull(savedItem);
+            Assert.True(savedItem.IsCompleted);
+            Assert.Null(savedItem.RuntimeSeconds);
+            Assert.Equal(0, savedItem.PlaybackPositionSeconds);
+
+            Assert.True(await playbackProgressService.SetCompletionAsync(lessonWithoutDuration.Id, false));
+            savedItem = await mediaItemRepository.GetByIdAsync(lessonWithoutDuration.Id);
+            Assert.NotNull(savedItem);
+            Assert.False(savedItem.IsCompleted);
+            Assert.Equal(0, savedItem.PlaybackPositionSeconds);
         }
         finally
         {

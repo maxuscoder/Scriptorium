@@ -20,6 +20,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
     private readonly IFavoriteService _favoriteService;
+    private readonly IPlaybackProgressService _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
     private PageViewModel? _returnPage;
@@ -37,18 +38,21 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         ICategoryRepository categoryRepository,
         ICategoryService categoryService,
         IFavoriteService favoriteService,
-        ITutorialCourseSynchronizer tutorialCourseSynchronizer)
+        ITutorialCourseSynchronizer tutorialCourseSynchronizer,
+        IPlaybackProgressService playbackProgressService)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _favoriteService = favoriteService;
+        _playbackProgressService = playbackProgressService;
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
+        ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
@@ -75,6 +79,19 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             ? duration
             : "Unknown";
 
+    /// <summary>Gets the number of lessons the learner has completed.</summary>
+    public int CompletedLessonCount => Lessons.Count(lesson => lesson.IsCompleted);
+
+    /// <summary>Gets the course's completion percentage based on completed lessons.</summary>
+    public double CourseProgressPercentage => Lessons.Count == 0
+        ? 0
+        : CompletedLessonCount / (double)Lessons.Count * 100;
+
+    /// <summary>Gets a concise summary of the learner's progress through this course.</summary>
+    public string CourseProgressText => Lessons.Count == 0
+        ? "No lessons available"
+        : $"{CompletedLessonCount} of {Lessons.Count} lessons completed";
+
     /// <summary>Gets the lesson currently selected for sequential navigation.</summary>
     public TutorialLessonViewModel? SelectedLesson
     {
@@ -93,9 +110,11 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
             OnPropertyChanged(nameof(SelectedLessonPositionText));
             OnPropertyChanged(nameof(FavoriteActionText));
+            OnPropertyChanged(nameof(CompletionActionText));
             SelectCategory(value?.CategoryId);
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
         }
     }
 
@@ -128,6 +147,10 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         ? "Remove from favorites"
         : "Add to favorites";
 
+    public string CompletionActionText => SelectedLesson?.IsCompleted == true
+        ? "Mark incomplete"
+        : "Complete lesson";
+
     public ICommand BackCommand { get; }
 
     /// <summary>Gets the command that selects a lesson from the list.</summary>
@@ -138,6 +161,9 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
     /// <summary>Gets the command that selects the following lesson.</summary>
     public ICommand NextLessonCommand { get; }
+
+    /// <summary>Marks the selected lesson complete or incomplete.</summary>
+    public ICommand ToggleLessonCompletionCommand { get; }
 
     public ICommand SaveCategoryCommand { get; }
 
@@ -182,6 +208,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         OnPropertyChanged(nameof(LessonCountText));
         OnPropertyChanged(nameof(HasLessons));
         OnPropertyChanged(nameof(TotalDurationText));
+        RefreshCourseProgress();
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
     }
@@ -241,6 +268,33 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             lesson.SetFavorite(isFavorite);
             OnPropertyChanged(nameof(FavoriteActionText));
         }
+    }
+
+    private async Task ToggleLessonCompletionAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null)
+        {
+            return;
+        }
+
+        var isCompleted = !lesson.IsCompleted;
+        if (!await _playbackProgressService.SetCompletionAsync(lesson.MediaItemId, isCompleted))
+        {
+            return;
+        }
+
+        lesson.SetCompletion(isCompleted);
+        RefreshCourseProgress();
+    }
+
+    private void RefreshCourseProgress()
+    {
+        OnPropertyChanged(nameof(CompletedLessonCount));
+        OnPropertyChanged(nameof(CourseProgressPercentage));
+        OnPropertyChanged(nameof(CourseProgressText));
+        OnPropertyChanged(nameof(CompletionActionText));
+        ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
     }
 
     private void GoBack()
@@ -346,6 +400,11 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
     public bool IsFavorite => lesson.MediaItem.IsFavorite;
 
+    /// <summary>Gets whether the learner has completed this lesson.</summary>
+    public bool IsCompleted => lesson.MediaItem.IsCompleted;
+
+    public string CompletionStatus => IsCompleted ? "Completed" : "Not started";
+
     public void SetFavorite(bool isFavorite)
     {
         if (lesson.MediaItem.IsFavorite == isFavorite)
@@ -355,6 +414,22 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
         lesson.MediaItem.IsFavorite = isFavorite;
         OnPropertyChanged(nameof(IsFavorite));
+    }
+
+    internal void SetCompletion(bool isCompleted)
+    {
+        if (lesson.MediaItem.IsCompleted == isCompleted)
+        {
+            return;
+        }
+
+        lesson.MediaItem.IsCompleted = isCompleted;
+        lesson.MediaItem.PlaybackPositionSeconds = isCompleted
+            ? lesson.MediaItem.RuntimeSeconds.GetValueOrDefault()
+            : 0;
+        lesson.MediaItem.LastPlayed = DateTimeOffset.UtcNow;
+        OnPropertyChanged(nameof(IsCompleted));
+        OnPropertyChanged(nameof(CompletionStatus));
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;

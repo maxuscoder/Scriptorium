@@ -14,6 +14,12 @@ public interface IPlaybackProgressService
         PlaybackProgressUpdate progressUpdate,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Marks a media item complete or incomplete, including items without a known runtime.</summary>
+    Task<bool> SetCompletionAsync(
+        Guid mediaItemId,
+        bool isCompleted,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets the position from which playback should resume, or null when the item does not exist.</summary>
     Task<long?> GetResumePositionAsync(Guid mediaItemId, CancellationToken cancellationToken = default);
 }

@@ -42,6 +42,34 @@ public sealed class PlaybackProgressService(IMediaItemRepository mediaItemReposi
     }
 
     /// <inheritdoc />
+    public async Task<bool> SetCompletionAsync(
+        Guid mediaItemId,
+        bool isCompleted,
+        CancellationToken cancellationToken = default)
+    {
+        var mediaItem = await mediaItemRepository.GetByIdAsync(mediaItemId, cancellationToken);
+        if (mediaItem is null)
+        {
+            return false;
+        }
+
+        if (mediaItem.RuntimeSeconds is > 0)
+        {
+            return await SaveAsync(
+                mediaItemId,
+                new PlaybackProgressUpdate(isCompleted ? mediaItem.RuntimeSeconds.Value : 0, mediaItem.RuntimeSeconds.Value),
+                cancellationToken);
+        }
+
+        mediaItem.IsCompleted = isCompleted;
+        mediaItem.PlaybackPositionSeconds = 0;
+        mediaItem.LastPlayed = DateTimeOffset.UtcNow;
+        await mediaItemRepository.UpdateAsync(mediaItem, cancellationToken);
+        PlaybackProgressSaved?.Invoke(mediaItemId);
+        return true;
+    }
+
+    /// <inheritdoc />
     public async Task<long?> GetResumePositionAsync(Guid mediaItemId, CancellationToken cancellationToken = default)
     {
         var mediaItem = await mediaItemRepository.GetByIdAsync(mediaItemId, cancellationToken);

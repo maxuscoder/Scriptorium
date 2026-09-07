@@ -145,7 +145,8 @@ public sealed class MainWindowViewModelTests
                 categoryRepository,
                 categoryService,
                 favoriteService,
-                tutorialCourseSynchronizer);
+                tutorialCourseSynchronizer,
+                progressService);
             var tvShowDetails = new TvShowDetailsPageViewModel(
                 tvShowRepository,
                 navigationService,
@@ -232,6 +233,31 @@ public sealed class MainWindowViewModelTests
             Assert.Equal(3, tutorialDetails.Lessons.Count);
             Assert.Equal("Lesson 1", tutorialDetails.SelectedLesson!.Title);
             Assert.Equal("Lesson 1", tutorialDetails.Lessons[0].Title);
+            Assert.Equal(0, tutorialDetails.CompletedLessonCount);
+            Assert.Equal("Complete lesson", tutorialDetails.CompletionActionText);
+
+            await ((AsyncRelayCommand)tutorialDetails.ToggleLessonCompletionCommand).ExecuteAsync();
+
+            Assert.True(tutorialDetails.SelectedLesson.IsCompleted);
+            Assert.Equal("Completed", tutorialDetails.SelectedLesson.CompletionStatus);
+            Assert.Equal(1, tutorialDetails.CompletedLessonCount);
+            Assert.Equal(100d / 3d, tutorialDetails.CourseProgressPercentage, 5);
+            Assert.Equal("1 of 3 lessons completed", tutorialDetails.CourseProgressText);
+            Assert.Equal("Mark incomplete", tutorialDetails.CompletionActionText);
+            var savedLesson = await mediaRepository.GetByIdAsync(tutorialMedia.Id);
+            Assert.NotNull(savedLesson);
+            Assert.True(savedLesson.IsCompleted);
+            Assert.Equal(60, savedLesson.PlaybackPositionSeconds);
+
+            await ((AsyncRelayCommand)tutorialDetails.ToggleLessonCompletionCommand).ExecuteAsync();
+
+            Assert.False(tutorialDetails.SelectedLesson.IsCompleted);
+            Assert.Equal(0, tutorialDetails.CompletedLessonCount);
+            Assert.Equal(0, tutorialDetails.CourseProgressPercentage);
+            savedLesson = await mediaRepository.GetByIdAsync(tutorialMedia.Id);
+            Assert.NotNull(savedLesson);
+            Assert.False(savedLesson.IsCompleted);
+            Assert.Equal(0, savedLesson.PlaybackPositionSeconds);
 
             await OpenAsync(viewModel, episodeMedia);
             Assert.Same(tvShowDetails, navigationService.CurrentPage);
