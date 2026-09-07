@@ -88,6 +88,7 @@ public sealed class TutorialDetailsPageViewModelTests
         var progressService = new PlaybackProgressService(mediaRepository);
         var playerFactory = new TutorialFakePlaybackFactory();
         var player = new VideoPlayerViewModel(playerFactory, progressService);
+        var confirmationDialog = new RecordingConfirmationDialog(true);
         var synchronizer = new TutorialCourseSynchronizer(factory, new LessonFileNameParser());
         var viewModel = new TutorialDetailsPageViewModel(
             courseRepository,
@@ -97,7 +98,8 @@ public sealed class TutorialDetailsPageViewModelTests
             new FavoriteService(mediaRepository),
             synchronizer,
             progressService,
-            player);
+            player,
+            confirmationDialog);
 
         var courseId = (await courseRepository.GetAllAsync()).Single().Id;
         Assert.True(await viewModel.LoadAsync(courseId, viewModel));
@@ -157,6 +159,8 @@ public sealed class TutorialDetailsPageViewModelTests
         playback.RaiseEnded();
         await WaitUntilAsync(() => viewModel.SelectedLesson?.Title == "Lesson 3");
 
+        Assert.Equal(1, confirmationDialog.CallCount);
+        Assert.Contains("Lesson 3", confirmationDialog.LastMessage);
         var completed = await mediaRepository.GetByIdAsync(
             viewModel.Lessons.Single(lesson => lesson.Title == "Lesson 1").MediaItemId);
         Assert.True(completed!.IsCompleted);
@@ -249,6 +253,20 @@ public sealed class TutorialDetailsPageViewModelTests
 
         public Task<ScriptoriumDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(CreateDbContext());
+    }
+
+    private sealed class RecordingConfirmationDialog(bool result) : IConfirmationDialog
+    {
+        public int CallCount { get; private set; }
+
+        public string LastMessage { get; private set; } = string.Empty;
+
+        public bool Confirm(string message, string title)
+        {
+            CallCount++;
+            LastMessage = message;
+            return result;
+        }
     }
 
     private sealed class TutorialFakePlaybackFactory : IVideoPlaybackFactory

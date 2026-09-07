@@ -20,6 +20,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
     private readonly IFavoriteService _favoriteService;
+    private readonly IConfirmationDialog? _confirmationDialog;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
@@ -44,12 +45,14 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         IFavoriteService favoriteService,
         ITutorialCourseSynchronizer tutorialCourseSynchronizer,
         IPlaybackProgressService playbackProgressService,
-        VideoPlayerViewModel player)
+        VideoPlayerViewModel player,
+        IConfirmationDialog? confirmationDialog = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _favoriteService = favoriteService;
+        _confirmationDialog = confirmationDialog;
         _playbackProgressService = playbackProgressService;
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
@@ -459,13 +462,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
             {
                 if (Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId) is { } lesson)
                 {
-                    var wasCompleted = lesson.IsCompleted;
                     lesson.SetPlaybackProgress(args);
                     RefreshCourseProgress();
-                    if (!wasCompleted && lesson.IsCompleted)
-                    {
-                        SelectFirstIncompleteLessonOrKeepCurrent();
-                    }
                 }
             });
             return;
@@ -473,13 +471,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
         if (Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId) is { } currentLesson)
         {
-            var wasCompleted = currentLesson.IsCompleted;
             currentLesson.SetPlaybackProgress(args);
             RefreshCourseProgress();
-            if (!wasCompleted && currentLesson.IsCompleted)
-            {
-                SelectFirstIncompleteLessonOrKeepCurrent();
-            }
         }
     }
 
@@ -506,7 +499,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
 
             _player.SynchronizeCompletion(args.MediaItemId, true);
             RefreshCourseProgress();
-            SelectFirstIncompleteLessonOrKeepCurrent();
+
+            var nextLesson = FindNextIncompleteLesson(lesson);
+            if (nextLesson is null ||
+                _confirmationDialog is not null &&
+                !_confirmationDialog.Confirm(
+                    $"Continue to the next lesson, \"{nextLesson.Title}\"?",
+                    "Continue learning"))
+            {
+                return;
+            }
+
+            SelectedLesson = nextLesson;
         }
         catch
         {
@@ -514,12 +518,17 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         }
     }
 
-    private void SelectFirstIncompleteLessonOrKeepCurrent()
+    private TutorialLessonViewModel? FindNextIncompleteLesson(TutorialLessonViewModel completedLesson)
     {
-        if (Lessons.FirstOrDefault(lesson => !lesson.IsCompleted) is { } nextLesson)
+        var completedIndex = Lessons.IndexOf(completedLesson);
+        if (completedIndex < 0)
         {
-            SelectedLesson = nextLesson;
+            return null;
         }
+
+        return Lessons
+            .Skip(completedIndex + 1)
+            .FirstOrDefault(lesson => !lesson.IsCompleted);
     }
 
     private void RefreshCourseProgress()
