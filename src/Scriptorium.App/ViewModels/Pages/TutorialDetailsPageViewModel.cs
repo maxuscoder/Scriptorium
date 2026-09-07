@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
@@ -20,7 +21,10 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private readonly ICategoryService _categoryService;
     private readonly IFavoriteService _favoriteService;
     private readonly INavigationService _navigationService;
+    private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
     private PageViewModel? _returnPage;
+    private Guid? _courseId;
+    private int _isCourseRefreshQueued;
     private string _courseTitle = "Tutorial";
     private string _sourceFolder = string.Empty;
     private TutorialLessonViewModel? _selectedLesson;
@@ -32,19 +36,22 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         INavigationService navigationService,
         ICategoryRepository categoryRepository,
         ICategoryService categoryService,
-        IFavoriteService favoriteService)
+        IFavoriteService favoriteService,
+        ITutorialCourseSynchronizer tutorialCourseSynchronizer)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _favoriteService = favoriteService;
         _navigationService = navigationService;
+        _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
+        _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
     }
 
     public override string Title => _courseTitle;
@@ -58,6 +65,9 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     public ObservableCollection<TutorialLessonViewModel> Lessons { get; } = [];
 
     public string LessonCountText => $"{Lessons.Count} lesson{(Lessons.Count == 1 ? string.Empty : "s")}";
+
+    /// <summary>Gets whether the course contains lessons to select.</summary>
+    public bool HasLessons => Lessons.Count > 0;
 
     /// <summary>Gets the summed duration of all lessons with a known runtime.</summary>
     public string TotalDurationText =>
@@ -145,22 +155,73 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
         }
 
         _returnPage = returnPage;
+        _courseId = course.Id;
+        await PopulateCourseAsync(course, selectedLessonMediaItemId: null);
+        return true;
+    }
+
+    private async Task PopulateCourseAsync(Course course, Guid? selectedLessonMediaItemId)
+    {
         _courseTitle = MediaDisplayText.TitleOrFallback(course.Title, "Untitled tutorial");
         SourceFolder = course.LibraryFolder.DisplayNameOrName;
         Lessons.Clear();
-        foreach (var lesson in course.Lessons.OrderBy(lesson => lesson.SortOrder))
+        foreach (var lesson in course.Lessons
+                     .OrderBy(lesson => lesson.SortOrder)
+                     .ThenBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
+                     .ThenBy(lesson => lesson.LessonNumber)
+                     .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(lesson => lesson.Id))
         {
             Lessons.Add(new TutorialLessonViewModel(lesson));
         }
 
         await RefreshCategoryOptionsAsync();
-        SelectedLesson = Lessons.FirstOrDefault();
+        SelectedLesson = Lessons.FirstOrDefault(lesson => lesson.MediaItemId == selectedLessonMediaItemId)
+            ?? Lessons.FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(LessonCountText));
+        OnPropertyChanged(nameof(HasLessons));
         OnPropertyChanged(nameof(TotalDurationText));
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
-        return true;
+    }
+
+    private void OnCoursesChanged()
+    {
+        if (_courseId is null || Interlocked.Exchange(ref _isCourseRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshLoadedCourseAsync);
+            return;
+        }
+
+        _ = RefreshLoadedCourseAsync();
+    }
+
+    private async Task RefreshLoadedCourseAsync()
+    {
+        try
+        {
+            if (_courseId is not { } courseId)
+            {
+                return;
+            }
+
+            var course = await _courseRepository.GetByIdAsync(courseId);
+            if (course is not null)
+            {
+                await PopulateCourseAsync(course, SelectedLesson?.MediaItemId);
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isCourseRefreshQueued, 0);
+        }
     }
 
     private async Task ToggleFavoriteAsync()

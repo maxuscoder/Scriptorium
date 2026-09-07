@@ -7,6 +7,9 @@ namespace Scriptorium.Core.Services;
 /// </summary>
 public interface ITutorialCourseSynchronizer
 {
+    /// <summary>Raised after one or more persisted courses or lessons change.</summary>
+    event Action? CoursesChanged;
+
     /// <summary>Synchronizes courses for the supplied scanned folders and indexed media items.</summary>
     Task SynchronizeAsync(
         IEnumerable<LibraryFolder> libraryFolders,

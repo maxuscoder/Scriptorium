@@ -74,6 +74,7 @@
                                 <Style BasedOn="{StaticResource Card}" TargetType="Border">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                            <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
                                             <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -133,6 +134,22 @@
                                         Style="{StaticResource Text.Metadata}"
                                         Foreground="{StaticResource Brush.TextSecondary}"
                                         Text="{Binding Availability}" />
+                                    <TextBlock
+                                        Margin="0,4,0,0"
+                                        HorizontalAlignment="Right"
+                                        Foreground="{StaticResource Brush.Accent}"
+                                        Text="Current lesson">
+                                        <TextBlock.Style>
+                                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <Button
                                         Margin="0,8,0,0"
                                         Command="{Binding DataContext.SelectLessonCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -145,6 +162,21 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <TextBlock
+                Margin="0,16,0,0"
+                HorizontalAlignment="Center"
+                Text="No lessons have been found in this course yet.">
+                <TextBlock.Style>
+                    <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasLessons}" Value="False">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

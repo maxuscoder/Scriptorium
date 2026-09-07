@@ -12,6 +12,9 @@ public sealed class TutorialCourseSynchronizer(
     ILessonFileNameParser lessonFileNameParser) : ITutorialCourseSynchronizer
 {
     /// <inheritdoc />
+    public event Action? CoursesChanged;
+
+    /// <inheritdoc />
     public async Task SynchronizeAsync(
         IEnumerable<LibraryFolder> libraryFolders,
         IEnumerable<MediaItem> mediaItems,
@@ -91,7 +94,7 @@ public sealed class TutorialCourseSynchronizer(
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        var changeCount = await context.SaveChangesAsync(cancellationToken);
 
         var affectedCourseIds = affectedCourses.Select(course => course.Id).ToArray();
         var lessonsToOrder = await context.Lessons
@@ -110,6 +113,10 @@ public sealed class TutorialCourseSynchronizer(
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        changeCount += await context.SaveChangesAsync(cancellationToken);
+        if (changeCount > 0)
+        {
+            CoursesChanged?.Invoke();
+        }
     }
 }

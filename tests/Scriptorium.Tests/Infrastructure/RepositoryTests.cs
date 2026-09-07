@@ -1337,7 +1337,12 @@ public sealed class RepositoryTests
             var synchronizer = new TutorialCourseSynchronizer(
                 new TestDbContextFactory(options),
                 new LessonFileNameParser());
+            var coursesChangedCount = 0;
+            synchronizer.CoursesChanged += () => coursesChangedCount++;
+
             await synchronizer.SynchronizeAsync([reactFolder, emptyFolder], lessons);
+
+            Assert.Equal(1, coursesChangedCount);
 
             await using var hierarchyContext = new ScriptoriumDbContext(options);
             var reactCourse = await hierarchyContext.Courses
@@ -1582,6 +1587,12 @@ public sealed class RepositoryTests
 
     private sealed class ThrowingCourseSynchronizer : ITutorialCourseSynchronizer
     {
+        public event Action? CoursesChanged
+        {
+            add { }
+            remove { }
+        }
+
         public Task SynchronizeAsync(
             IEnumerable<LibraryFolder> libraryFolders,
             IEnumerable<MediaItem> mediaItems,
