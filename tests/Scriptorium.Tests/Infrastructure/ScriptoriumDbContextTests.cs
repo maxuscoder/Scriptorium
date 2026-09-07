@@ -31,7 +31,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(11, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(13, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -44,6 +44,45 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("TVShowTitle", mediaItemColumns);
             Assert.Contains("SeasonNumber", mediaItemColumns);
             Assert.Contains("EpisodeNumber", mediaItemColumns);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Migration_repairs_courses_and_lessons_removed_by_reverted_migration()
+    {
+        var databasePath = CreateDatabasePath();
+
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync("20260812174701_AddTutorialCourseHierarchy");
+            await context.Database.ExecuteSqlRawAsync("DROP TABLE \"Lessons\";");
+            await context.Database.ExecuteSqlRawAsync("DROP TABLE \"Courses\";");
+            await context.Database.ExecuteSqlRawAsync(
+                "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") " +
+                "VALUES ('20260907171307_RemoveTutorials', '9.0.0');");
+
+            await context.Database.MigrateAsync();
+
+            var tableNames = await context.Database
+                .SqlQueryRaw<string>("SELECT name AS Value FROM sqlite_master WHERE type = 'table'")
+                .ToListAsync();
+            Assert.Contains("Courses", tableNames);
+            Assert.Contains("Lessons", tableNames);
+
+            var tutorialFolder = new LibraryFolder
+            {
+                Name = "Tutorials",
+                Path = "C:\\Tutorials",
+                MediaType = MediaType.Tutorial
+            };
+            context.LibraryFolders.Add(tutorialFolder);
+            await context.SaveChangesAsync();
+            Assert.Equal(MediaType.Tutorial, (await context.LibraryFolders.SingleAsync()).MediaType);
         }
         finally
         {
