@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,8 @@ public partial class App : Application
     private ServiceProvider? _serviceProvider;
     private ILogger<App>? _logger;
     private ISettingsService? _settingsService;
+    private bool _settingsFlushInProgress;
+    private bool _allowWindowClose;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -66,6 +69,7 @@ public partial class App : Application
             await _settingsService.SaveAsync();
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Closing += OnMainWindowClosing;
             mainWindow.Show();
         }
         catch (Exception exception)
@@ -81,17 +85,47 @@ public partial class App : Application
         }
     }
 
-    protected override void OnExit(ExitEventArgs e)
+    private async void OnMainWindowClosing(object? sender, CancelEventArgs e)
     {
+        if (_allowWindowClose)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        if (_settingsFlushInProgress)
+        {
+            return;
+        }
+
+        _settingsFlushInProgress = true;
+
         try
         {
-            _settingsService?.SaveAsync().GetAwaiter().GetResult();
+            if (_settingsService is not null)
+            {
+                await _settingsService.FlushAsync();
+            }
         }
         catch (Exception exception)
         {
             _logger?.LogError(exception, "Failed to save user settings during shutdown.");
         }
+        finally
+        {
+            _settingsFlushInProgress = false;
+            _allowWindowClose = true;
 
+            if (sender is Window window)
+            {
+                window.Closing -= OnMainWindowClosing;
+                window.Close();
+            }
+        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
         _logger?.LogInformation("Shutting down Scriptorium with exit code {ExitCode}.", e.ApplicationExitCode);
         _serviceProvider?.Dispose();
         Log.CloseAndFlush();

@@ -9,4 +9,6 @@ public interface ISettingsService
     Task LoadAsync(CancellationToken cancellationToken = default);
 
     Task SaveAsync(CancellationToken cancellationToken = default);
+
+    Task FlushAsync(CancellationToken cancellationToken = default);
 }

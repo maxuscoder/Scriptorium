@@ -434,6 +434,8 @@ public sealed class VideoPlayerTests
             SaveCount++;
             return Task.CompletedTask;
         }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
     }
 
     private sealed class RecordingPlaybackProgressService : IPlaybackProgressService

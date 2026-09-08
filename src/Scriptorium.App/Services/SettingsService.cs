@@ -119,6 +119,8 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public Task FlushAsync(CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
+
     private void BackupCorruptSettingsFile()
     {
         try
