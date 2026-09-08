@@ -15,14 +15,14 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     /// <inheritdoc />
     public override Task AddAsync(MediaItem entity, CancellationToken cancellationToken = default)
     {
-        NormalizePath(entity);
+        NormalizeForPersistence(entity);
         return base.AddAsync(entity, cancellationToken);
     }
 
     /// <inheritdoc />
     public override Task UpdateAsync(MediaItem entity, CancellationToken cancellationToken = default)
     {
-        NormalizePath(entity);
+        NormalizeForPersistence(entity);
         return base.UpdateAsync(entity, cancellationToken);
     }
 
@@ -39,7 +39,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
 
         foreach (var item in items)
         {
-            NormalizePath(item);
+            NormalizeForPersistence(item);
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
@@ -60,7 +60,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
 
         foreach (var item in items)
         {
-            NormalizePath(item);
+            NormalizeForPersistence(item);
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
@@ -215,18 +215,15 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .Include(item => item.Category)
             .Where(item =>
                 !item.IsCompleted &&
-                item.LastPlayed != null &&
+                item.LastPlayedUnixTimeMilliseconds != null &&
                 item.RuntimeSeconds > 0 &&
                 item.PlaybackPositionSeconds > 0 &&
                 item.PlaybackPositionSeconds < item.RuntimeSeconds)
+            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
+            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
             .ToListAsync(cancellationToken);
 
-        // SQLite cannot order DateTimeOffset values, so retain the database filter
-        // and perform the small, display-ready ordering after materialization.
-        return incompleteMedia
-            .OrderByDescending(item => item.LastPlayed)
-            .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return incompleteMedia;
     }
 
     /// <inheritdoc />
@@ -241,15 +238,13 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .AsNoTracking()
             .Include(item => item.LibraryFolder)
             .Include(item => item.Category)
-            .Where(item => item.LastPlayed != null)
+            .Where(item => item.LastPlayedUnixTimeMilliseconds != null)
+            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
+            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
+            .Take(maximumCount)
             .ToListAsync(cancellationToken);
 
-        // SQLite cannot order DateTimeOffset values, so order after materialization.
-        return recentlyWatchedMedia
-            .OrderByDescending(item => item.LastPlayed)
-            .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
-            .Take(maximumCount)
-            .ToList();
+        return recentlyWatchedMedia;
     }
 
     /// <inheritdoc />
@@ -337,6 +332,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                     .SetProperty(item => item.PlaybackPositionSeconds, playbackPositionSeconds)
                     .SetProperty(item => item.RuntimeSeconds, durationSeconds)
                     .SetProperty(item => item.LastPlayed, lastWatched)
+                    .SetProperty(item => item.LastPlayedUnixTimeMilliseconds, lastWatched.ToUnixTimeMilliseconds())
                     .SetProperty(item => item.IsCompleted,
                         MediaPlaybackProgress.MeetsCompletionThreshold(playbackPositionSeconds, durationSeconds)),
                 cancellationToken);
@@ -356,7 +352,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         .Replace("%", "\\%", StringComparison.Ordinal)
         .Replace("_", "\\_", StringComparison.Ordinal);
 
-    private static void NormalizePath(MediaItem item) => item.Path = NormalizePath(item.Path);
+    private static void NormalizeForPersistence(MediaItem item)
+    {
+        item.Path = NormalizePath(item.Path);
+        item.LastPlayedUnixTimeMilliseconds = item.LastPlayed?.ToUnixTimeMilliseconds();
+    }
 
     private static string NormalizePath(string path) =>
         Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));

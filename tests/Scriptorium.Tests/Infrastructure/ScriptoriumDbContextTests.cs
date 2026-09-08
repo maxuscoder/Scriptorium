@@ -31,7 +31,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(16, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(17, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -50,6 +50,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("TVShowTitleOverride", mediaItemColumns);
             Assert.Contains("SeasonNumberOverride", mediaItemColumns);
             Assert.Contains("EpisodeNumberOverride", mediaItemColumns);
+            Assert.Contains("LastPlayedUnixTimeMilliseconds", mediaItemColumns);
         }
         finally
         {
@@ -126,6 +127,9 @@ public sealed class ScriptoriumDbContextTests
             Assert.False(item.IsCompleted);
             Assert.False(item.IsMissing);
             Assert.Null(item.MissingSince);
+            Assert.Equal(
+                new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds(),
+                item.LastPlayedUnixTimeMilliseconds);
             Assert.NotEqual(Guid.Empty, item.LibraryFolderId);
 
             var tableNames = await context.Database
@@ -161,8 +165,8 @@ public sealed class ScriptoriumDbContextTests
                 "CategoryId" TEXT NULL, "Runtime" INTEGER NULL, "ReleaseYear" INTEGER NULL, "Description" TEXT NULL,
                 "TVShow_Description" TEXT NULL, "TVShow_ReleaseYear" INTEGER NULL);
             CREATE TABLE "Favorites" ("MediaId" TEXT NOT NULL PRIMARY KEY, "DateAdded" TEXT NOT NULL);
-            INSERT INTO "MediaItems" ("Id", "Title", "Path", "DateAdded", "IsFavorite", "MediaType", "Runtime")
-            VALUES ('11111111-1111-1111-1111-111111111111', 'Example', 'C:\\Example.mp4', '2026-01-01T00:00:00+00:00', 0, 0, 120000000);
+            INSERT INTO "MediaItems" ("Id", "Title", "Path", "DateAdded", "LastPlayed", "IsFavorite", "MediaType", "Runtime")
+            VALUES ('11111111-1111-1111-1111-111111111111', 'Example', 'C:\\Example.mp4', '2026-01-01T00:00:00+00:00', '2026-01-03T00:00:00+00:00', 0, 0, 120000000);
             INSERT INTO "Favorites" ("MediaId", "DateAdded")
             VALUES ('11111111-1111-1111-1111-111111111111', '2026-01-02T00:00:00+00:00');
             """;

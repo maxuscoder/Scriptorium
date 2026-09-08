@@ -231,6 +231,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LastPlayed")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("LastPlayedUnixTimeMilliseconds")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("LibraryFolderId")
                         .HasColumnType("TEXT");
 
@@ -283,6 +286,8 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.HasIndex("CategoryId");
 
                     b.HasIndex("LibraryFolderId");
+
+                    b.HasIndex("LastPlayedUnixTimeMilliseconds");
 
                     b.HasIndex("Path")
                         .IsUnique();

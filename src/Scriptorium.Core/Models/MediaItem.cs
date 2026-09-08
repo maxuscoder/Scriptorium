@@ -65,6 +65,12 @@ public class MediaItem
     /// <summary>Gets or sets whether playback has been completed.</summary>
     public bool IsCompleted { get; set; }
 
+    /// <summary>
+    /// Gets or sets the last-played timestamp as Unix time in milliseconds.
+    /// This persisted numeric value allows SQLite to sort playback history efficiently.
+    /// </summary>
+    public long? LastPlayedUnixTimeMilliseconds { get; set; }
+
     /// <summary>Gets or sets the file size in bytes, when known.</summary>
     public long? FileSize { get; set; }
 

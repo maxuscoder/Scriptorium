@@ -153,6 +153,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
                 .IsRequired();
             entity.Property(item => item.PlaybackPositionSeconds).HasDefaultValue(0L);
             entity.Property(item => item.IsCompleted).HasDefaultValue(false);
+            entity.HasIndex(item => item.LastPlayedUnixTimeMilliseconds);
             entity.Property(item => item.IsMissing).HasDefaultValue(false);
             entity.Property(item => item.TVShowTitle);
             entity.Property(item => item.SeasonNumber);
