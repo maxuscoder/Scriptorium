@@ -70,18 +70,14 @@ public sealed class MediaDetailsNavigationCoordinator(
 
     private async Task<bool> OpenTutorialForMediaAsync(Guid mediaItemId, PageViewModel returnPage)
     {
-        var course = (await courseRepository.GetAllAsync())
-            .FirstOrDefault(candidate => candidate.Lessons.Any(lesson => lesson.MediaItemId == mediaItemId));
+        var course = await courseRepository.GetByMediaItemIdAsync(mediaItemId);
 
         return course is not null && await OpenTutorialAsync(course.Id, returnPage);
     }
 
     private async Task<bool> OpenTvShowForMediaAsync(Guid mediaItemId, PageViewModel returnPage)
     {
-        var show = (await tvShowRepository.GetAllAsync())
-            .FirstOrDefault(candidate => candidate.Seasons
-                .SelectMany(season => season.Episodes)
-                .Any(episode => episode.MediaItemId == mediaItemId));
+        var show = await tvShowRepository.GetByMediaItemIdAsync(mediaItemId);
 
         return show is not null && await OpenTvShowAsync(show.Id, returnPage);
     }

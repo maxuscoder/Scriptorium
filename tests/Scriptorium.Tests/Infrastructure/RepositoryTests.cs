@@ -46,6 +46,114 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Hierarchy_repositories_find_owners_by_media_item_id()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+        var tutorialMediaId = Guid.NewGuid();
+        var episodeMediaId = Guid.NewGuid();
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+
+                var tutorialFolder = new LibraryFolder
+                {
+                    Name = "Tutorials",
+                    Path = "C:\\Tutorials",
+                    MediaType = MediaType.Tutorial
+                };
+                var tutorialMedia = new MediaItem
+                {
+                    Id = tutorialMediaId,
+                    Title = "Lesson",
+                    Path = "C:\\Tutorials\\lesson.mp4",
+                    MediaType = MediaType.Tutorial
+                };
+                var course = new Course
+                {
+                    Title = "Course",
+                    LibraryFolder = tutorialFolder,
+                    LibraryFolderId = tutorialFolder.Id
+                };
+                course.Lessons.Add(new Lesson
+                {
+                    Course = course,
+                    CourseId = course.Id,
+                    MediaItem = tutorialMedia,
+                    MediaItemId = tutorialMedia.Id,
+                    Title = tutorialMedia.Title,
+                    FilePath = tutorialMedia.Path,
+                    SortOrder = 0
+                });
+
+                var tvFolder = new LibraryFolder
+                {
+                    Name = "TV",
+                    Path = "C:\\TV",
+                    MediaType = MediaType.TvShow
+                };
+                var episodeMedia = new MediaItem
+                {
+                    Id = episodeMediaId,
+                    Title = "Episode",
+                    Path = "C:\\TV\\episode.mp4",
+                    MediaType = MediaType.TvShow
+                };
+                var show = new TVShow
+                {
+                    Title = "Show",
+                    LibraryFolder = tvFolder,
+                    LibraryFolderId = tvFolder.Id,
+                    EpisodeCount = 1
+                };
+                var season = new Season
+                {
+                    TVShow = show,
+                    TVShowId = show.Id,
+                    SeasonNumber = 1
+                };
+                season.Episodes.Add(new Episode
+                {
+                    Season = season,
+                    SeasonId = season.Id,
+                    MediaItem = episodeMedia,
+                    MediaItemId = episodeMedia.Id,
+                    Title = episodeMedia.Title,
+                    FilePath = episodeMedia.Path,
+                    SortOrder = 0
+                });
+                show.Seasons.Add(season);
+
+                context.Courses.Add(course);
+                context.TVShows.Add(show);
+                await context.SaveChangesAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var courseRepository = new CourseRepository(contextFactory);
+            var tvShowRepository = new TvShowRepository(contextFactory);
+
+            var storedCourse = await courseRepository.GetByMediaItemIdAsync(tutorialMediaId);
+            var storedShow = await tvShowRepository.GetByMediaItemIdAsync(episodeMediaId);
+
+            Assert.Equal("Course", storedCourse?.Title);
+            Assert.Equal("Show", storedShow?.Title);
+            Assert.Single(storedCourse!.Lessons);
+            Assert.Single(storedShow!.Seasons);
+            Assert.Single(storedShow.Seasons[0].Episodes);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Favorites_and_categories_are_persisted_without_duplicate_records()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
