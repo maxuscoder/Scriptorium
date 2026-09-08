@@ -1212,8 +1212,17 @@ public sealed class RepositoryTests
             Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitleOverride);
             await using (var context = new ScriptoriumDbContext(options))
             {
-                Assert.True(await context.Episodes.AnyAsync(episode => episode.MediaItemId == mediaItems[1].Id));
-                Assert.True(await context.Seasons.AnyAsync(season => season.Id == sourceSeason.Id));
+                var remainingEpisode = await context.Episodes
+                    .SingleAsync(episode => episode.MediaItemId == mediaItems[1].Id);
+                var remainingSeason = await context.Seasons
+                    .SingleAsync(season => season.Id == sourceSeason.Id);
+                var remainingSourceGroup = await context.TVShows
+                    .SingleAsync(show => show.Id == sourceGroup.Id);
+
+                Assert.Equal(0, remainingEpisode.SortOrder);
+                Assert.Equal(sourceSeason.Id, remainingEpisode.SeasonId);
+                Assert.Equal(1, remainingSourceGroup.EpisodeCount);
+                Assert.Equal(1, await context.Episodes.CountAsync(episode => episode.SeasonId == remainingSeason.Id));
             }
 
             await groupingService.SplitTvShowGroupAsync(targetGroup.Id, [mediaItems[0].Id], "Split show");

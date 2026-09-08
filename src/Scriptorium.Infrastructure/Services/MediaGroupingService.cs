@@ -43,6 +43,8 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         var episode = await context.Episodes
             .Include(item => item.Season)
                 .ThenInclude(season => season.TVShow)
+                    .ThenInclude(show => show.Seasons)
+                        .ThenInclude(season => season.Episodes)
             .Include(item => item.MediaItem)
             .SingleOrDefaultAsync(item => item.MediaItemId == mediaItemId, cancellationToken)
             ?? throw new InvalidOperationException("The selected media is not assigned to a television-show group.");
@@ -211,8 +213,13 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
             context.Seasons.Add(targetSeason);
         }
 
+        episode.Season.Episodes.Remove(episode);
         episode.Season = targetSeason;
         episode.SeasonId = targetSeason.Id;
+        if (!targetSeason.Episodes.Contains(episode))
+        {
+            targetSeason.Episodes.Add(episode);
+        }
         ApplyManualGroupingOverride(episode.MediaItem, targetGroup.Title, seasonNumber);
     }
 
