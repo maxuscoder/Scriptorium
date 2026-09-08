@@ -283,12 +283,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             return;
         }
 
-        if (_playbackProgressService is null)
+        if (_playbackProgressService is null || _player is null)
         {
             return;
         }
 
-        await _player!.FlushPendingProgressSaveAsync();
+        await _player.FlushPendingProgressSaveAsync();
         var isCompleted = !episode.IsCompleted;
         if (!await _playbackProgressService.SetCompletionAsync(episode.MediaItemId, isCompleted))
         {
@@ -308,12 +308,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             return;
         }
 
-        if (_playbackProgressService is null)
+        if (_playbackProgressService is null || _player is null)
         {
             return;
         }
 
-        await _player!.FlushPendingProgressSaveAsync();
+        await _player.FlushPendingProgressSaveAsync();
         if (!await _playbackProgressService.SaveAsync(
                 episode.MediaItemId,
                 new PlaybackProgressUpdate(0, episode.RuntimeSeconds, DateTimeOffset.UtcNow)))
