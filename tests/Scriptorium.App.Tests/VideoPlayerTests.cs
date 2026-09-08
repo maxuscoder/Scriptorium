@@ -435,6 +435,8 @@ public sealed class VideoPlayerTests
             return Task.CompletedTask;
         }
 
+        public Task SaveDebouncedAsync(CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
+
         public Task FlushAsync(CancellationToken cancellationToken = default) => SaveAsync(cancellationToken);
     }
 

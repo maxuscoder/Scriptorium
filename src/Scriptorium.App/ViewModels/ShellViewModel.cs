@@ -89,7 +89,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
 
             _searchPage.UpdateQuery(_searchQuery);
             _settingsService.Settings.LastSearchQuery = _searchQuery;
-            _ = _settingsService.SaveAsync();
+            _ = _settingsService.SaveDebouncedAsync();
             if (!string.IsNullOrWhiteSpace(_searchQuery))
             {
                 _navigationService.NavigateTo(_searchPage);
