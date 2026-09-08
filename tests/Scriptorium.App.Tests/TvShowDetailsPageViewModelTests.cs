@@ -29,7 +29,7 @@ public sealed class TvShowDetailsPageViewModelTests
         var showId = Guid.NewGuid();
         var completed = CreateMedia("S01E01.mkv", isCompleted: true, playbackPositionSeconds: 60);
         var inProgress = CreateMedia("S01E02.mkv", playbackPositionSeconds: 15);
-        var unwatched = CreateMedia("S02E01.mkv");
+        var unwatched = CreateMedia("S02E01.mkv", playbackPositionSeconds: 20);
         await using (var context = new ScriptoriumDbContext(options))
         {
             await context.Database.MigrateAsync();
@@ -62,6 +62,7 @@ public sealed class TvShowDetailsPageViewModelTests
         var mediaRepository = new MediaItemRepository(factory);
         var categoryRepository = new CategoryRepository(factory);
         var progressService = new PlaybackProgressService(mediaRepository);
+        var playbackFactory = new TestVideoPlaybackFactory();
         var viewModel = new TvShowDetailsPageViewModel(
             new TvShowRepository(factory),
             new NavigationService(NullLogger<NavigationService>.Instance),
@@ -69,7 +70,7 @@ public sealed class TvShowDetailsPageViewModelTests
             new CategoryService(categoryRepository, mediaRepository),
             new FavoriteService(mediaRepository),
             progressService,
-            new VideoPlayerViewModel(new UnusedVideoPlaybackFactory(), progressService));
+            new VideoPlayerViewModel(playbackFactory, progressService));
 
         Assert.True(await viewModel.LoadAsync(showId, viewModel));
         Assert.Equal("The Example Show", viewModel.Title);
@@ -85,17 +86,37 @@ public sealed class TvShowDetailsPageViewModelTests
         Assert.True(viewModel.PreviousEpisodeCommand.CanExecute(null));
         Assert.True(viewModel.NextEpisodeCommand.CanExecute(null));
 
-        viewModel.NextEpisodeCommand.Execute(null);
+        viewModel.Player!.Activate();
+        var firstPlayback = Assert.Single(playbackFactory.Instances);
+        firstPlayback.RaiseOpened();
+        firstPlayback.RaiseEnded();
+        await WaitUntilAsync(() => Path.GetFileName(viewModel.SelectedEpisode?.FilePath) == "S02E01.mkv");
         Assert.Equal("S02E01.mkv", Path.GetFileName(viewModel.SelectedEpisode!.FilePath));
+        Assert.Equal(2, viewModel.CompletedEpisodeCount);
+
+        var nextPlayback = playbackFactory.Instances[^1];
+        nextPlayback.RaiseOpened();
+        Assert.Equal(TimeSpan.FromSeconds(20), nextPlayback.Position);
 
         await ((AsyncRelayCommand)viewModel.ToggleEpisodeCompletionCommand).ExecuteAsync();
-        Assert.Equal(2, viewModel.CompletedEpisodeCount);
-        Assert.Equal("2 of 3 episodes watched", viewModel.ShowProgressText);
+        Assert.Equal(3, viewModel.CompletedEpisodeCount);
+        Assert.Equal("3 of 3 episodes watched", viewModel.ShowProgressText);
         Assert.Equal(1, viewModel.Seasons[1].CompletedEpisodeCount);
         Assert.Equal(100d, viewModel.Seasons[1].ProgressPercentage);
         Assert.Equal("100%", viewModel.Seasons[1].ProgressPercentageText);
-        Assert.Equal("1m", viewModel.RemainingDurationText);
+        Assert.Equal("0m", viewModel.RemainingDurationText);
     });
+
+    private static async Task WaitUntilAsync(Func<bool> predicate)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(8);
+        while (!predicate() && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.True(predicate(), "The show did not continue to the next episode.");
+    }
 
     private static MediaItem CreateMedia(string fileName, bool isCompleted = false, long playbackPositionSeconds = 0) => new()
     {
@@ -127,8 +148,46 @@ public sealed class TvShowDetailsPageViewModelTests
             Task.FromResult(CreateDbContext());
     }
 
-    private sealed class UnusedVideoPlaybackFactory : IVideoPlaybackFactory
+    private sealed class TestVideoPlaybackFactory : IVideoPlaybackFactory
     {
-        public IVideoPlayback Create() => throw new InvalidOperationException("This test does not open a native video player.");
+        public List<TestVideoPlayback> Instances { get; } = [];
+
+        public IVideoPlayback Create()
+        {
+            var playback = new TestVideoPlayback();
+            Instances.Add(playback);
+            return playback;
+        }
+    }
+
+    private sealed class TestVideoPlayback : IVideoPlayback
+    {
+        public event EventHandler? Opened;
+        public event EventHandler? Ended;
+        public event EventHandler<Exception>? Failed
+        {
+            add { }
+            remove { }
+        }
+
+        public IVideoOutput VideoOutput { get; } = new TestVideoOutput();
+        public bool IsPlaying { get; private set; }
+        public TimeSpan Position { get; set; }
+        public TimeSpan Duration { get; private set; } = TimeSpan.FromSeconds(60);
+        public double Volume { get; set; }
+        public double PlaybackSpeed { get; set; } = 1;
+
+        public void Open(string filePath) { }
+        public void Play() => IsPlaying = true;
+        public void Pause() => IsPlaying = false;
+        public void Stop() => IsPlaying = false;
+        public void Dispose() { }
+
+        public void RaiseOpened() => Opened?.Invoke(this, EventArgs.Empty);
+        public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
+    }
+
+    private sealed class TestVideoOutput : IVideoOutput
+    {
     }
 }

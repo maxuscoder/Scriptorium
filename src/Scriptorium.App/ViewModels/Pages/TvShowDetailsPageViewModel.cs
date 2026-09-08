@@ -20,6 +20,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
     private readonly IFavoriteService _favoriteService;
+    private readonly IConfirmationDialog? _confirmationDialog;
     private readonly ITvShowHierarchySynchronizer? _tvShowHierarchySynchronizer;
     private readonly IPlaybackProgressService? _playbackProgressService;
     private readonly INavigationService _navigationService;
@@ -41,13 +42,15 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         IFavoriteService favoriteService,
         IPlaybackProgressService? playbackProgressService,
         VideoPlayerViewModel? player,
-        ITvShowHierarchySynchronizer? tvShowHierarchySynchronizer = null)
+        ITvShowHierarchySynchronizer? tvShowHierarchySynchronizer = null,
+        IConfirmationDialog? confirmationDialog = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _favoriteService = favoriteService;
+        _confirmationDialog = confirmationDialog;
         _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
         _player = player;
@@ -105,8 +108,9 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             ? duration
             : "Unknown";
 
-    public string RemainingDurationText =>
-        MediaRuntimeFormatter.Format(EpisodesInOrder().Where(episode => !episode.IsCompleted).Sum(episode => episode.RuntimeSeconds))
+    public string RemainingDurationText => !HasIncompleteEpisodes
+        ? "0m"
+        : MediaRuntimeFormatter.Format(EpisodesInOrder().Where(episode => !episode.IsCompleted).Sum(episode => episode.RuntimeSeconds))
             is { Length: > 0 } duration
             ? duration
             : "Unknown";
@@ -437,22 +441,54 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
 
             await _player.FlushPendingProgressSaveAsync();
             var episode = EpisodesInOrder().FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
-            if (episode is null || episode.IsCompleted)
+            if (episode is null)
             {
                 return;
             }
 
-            if (await _playbackProgressService.SetCompletionAsync(args.MediaItemId, true))
+            if (!episode.IsCompleted)
             {
+                if (!await _playbackProgressService.SetCompletionAsync(args.MediaItemId, true))
+                {
+                    return;
+                }
+
                 episode.SetCompletion(true);
-                _player.SynchronizeCompletion(args.MediaItemId, true);
-                NotifyShowStateChanged();
             }
+
+            _player.SynchronizeCompletion(args.MediaItemId, true);
+            NotifyShowStateChanged();
+
+            var nextEpisode = FindNextIncompleteEpisode(episode);
+            if (nextEpisode is null ||
+                _confirmationDialog is not null &&
+                !_confirmationDialog.Confirm(
+                    $"Continue to the next episode, \"{nextEpisode.Title}\"?",
+                    "Continue watching"))
+            {
+                return;
+            }
+
+            SelectedEpisode = nextEpisode;
         }
         catch
         {
             // Playback completion must not take down the details page if the media is removed.
         }
+    }
+
+    private TvShowEpisodeViewModel? FindNextIncompleteEpisode(TvShowEpisodeViewModel completedEpisode)
+    {
+        var episodes = EpisodesInOrder().ToList();
+        var completedIndex = episodes.IndexOf(completedEpisode);
+        if (completedIndex < 0)
+        {
+            return null;
+        }
+
+        return episodes
+            .Skip(completedIndex + 1)
+            .FirstOrDefault(episode => !episode.IsCompleted);
     }
 
     private async Task ToggleFavoriteAsync()
