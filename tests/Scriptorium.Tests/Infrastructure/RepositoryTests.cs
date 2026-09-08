@@ -1603,6 +1603,12 @@ public sealed class RepositoryTests
 
     private sealed class ThrowingHierarchySynchronizer : ITvShowHierarchySynchronizer
     {
+        public event Action? ShowsChanged
+        {
+            add { }
+            remove { }
+        }
+
         public Task SynchronizeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not organize television media.");
     }

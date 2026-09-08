@@ -20,10 +20,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
     private readonly IFavoriteService _favoriteService;
+    private readonly ITvShowHierarchySynchronizer? _tvShowHierarchySynchronizer;
     private readonly IPlaybackProgressService? _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly VideoPlayerViewModel? _player;
     private PageViewModel? _returnPage;
+    private Guid? _showId;
+    private int _isShowRefreshQueued;
     private string _showTitle = "TV show";
     private string _sourceFolder = string.Empty;
     private TvShowEpisodeViewModel? _selectedEpisode;
@@ -37,13 +40,15 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         ICategoryService categoryService,
         IFavoriteService favoriteService,
         IPlaybackProgressService? playbackProgressService,
-        VideoPlayerViewModel? player)
+        VideoPlayerViewModel? player,
+        ITvShowHierarchySynchronizer? tvShowHierarchySynchronizer = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _favoriteService = favoriteService;
+        _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
         _player = player;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -59,6 +64,11 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         {
             _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
             _player.PlaybackCompleted += OnPlaybackCompleted;
+        }
+
+        if (_tvShowHierarchySynchronizer is not null)
+        {
+            _tvShowHierarchySynchronizer.ShowsChanged += OnShowsChanged;
         }
     }
 
@@ -209,6 +219,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         }
 
         _returnPage = returnPage;
+        _showId = show.Id;
+        await PopulateShowAsync(show, selectedEpisodeMediaItemId: null);
+        return true;
+    }
+
+    private async Task PopulateShowAsync(TVShow show, Guid? selectedEpisodeMediaItemId)
+    {
         _showTitle = MediaDisplayText.TitleOrFallback(show.Title, "Untitled TV show");
         SourceFolder = show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
         Seasons.Clear();
@@ -218,12 +235,50 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
         }
 
         await RefreshCategoryOptionsAsync();
-        SelectedEpisode = EpisodesInOrder().FirstOrDefault(episode => !episode.IsCompleted)
+        SelectedEpisode = EpisodesInOrder().FirstOrDefault(episode => episode.MediaItemId == selectedEpisodeMediaItemId)
+            ?? EpisodesInOrder().FirstOrDefault(episode => !episode.IsCompleted)
             ?? EpisodesInOrder().FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         NotifyShowStateChanged();
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
-        return true;
+    }
+
+    private void OnShowsChanged()
+    {
+        if (_showId is null || Interlocked.Exchange(ref _isShowRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshLoadedShowAsync);
+            return;
+        }
+
+        _ = RefreshLoadedShowAsync();
+    }
+
+    private async Task RefreshLoadedShowAsync()
+    {
+        try
+        {
+            if (_showId is not { } showId)
+            {
+                return;
+            }
+
+            var show = await _tvShowRepository.GetByIdAsync(showId);
+            if (show is not null)
+            {
+                await PopulateShowAsync(show, SelectedEpisode?.MediaItemId);
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isShowRefreshQueued, 0);
+        }
     }
 
     private void ContinueWatching()
