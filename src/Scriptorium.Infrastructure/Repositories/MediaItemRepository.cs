@@ -13,6 +13,20 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     : Repository<MediaItem>(contextFactory), IMediaItemRepository
 {
     /// <inheritdoc />
+    public override Task AddAsync(MediaItem entity, CancellationToken cancellationToken = default)
+    {
+        NormalizePath(entity);
+        return base.AddAsync(entity, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override Task UpdateAsync(MediaItem entity, CancellationToken cancellationToken = default)
+    {
+        NormalizePath(entity);
+        return base.UpdateAsync(entity, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task AddRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mediaItems);
@@ -21,6 +35,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         if (items.Count == 0)
         {
             return;
+        }
+
+        foreach (var item in items)
+        {
+            NormalizePath(item);
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
@@ -37,6 +56,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         if (items.Count == 0)
         {
             return;
+        }
+
+        foreach (var item in items)
+        {
+            NormalizePath(item);
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
@@ -60,6 +84,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     public async Task<MediaItem?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        path = NormalizePath(path);
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         return await MediaItems(context)
@@ -297,6 +322,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         .Replace("\\", "\\\\", StringComparison.Ordinal)
         .Replace("%", "\\%", StringComparison.Ordinal)
         .Replace("_", "\\_", StringComparison.Ordinal);
+
+    private static void NormalizePath(MediaItem item) => item.Path = NormalizePath(item.Path);
+
+    private static string NormalizePath(string path) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
     private async Task<bool> UpdateAsync(
         Guid mediaItemId,

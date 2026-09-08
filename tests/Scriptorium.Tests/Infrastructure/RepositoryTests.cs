@@ -1148,6 +1148,7 @@ public sealed class RepositoryTests
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
         var validFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-folder-{Guid.NewGuid():N}");
         var missingFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-missing-{Guid.NewGuid():N}");
+        var disabledFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-disabled-{Guid.NewGuid():N}");
         var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
             .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
             .Options;
@@ -1164,7 +1165,7 @@ public sealed class RepositoryTests
             var validator = new LibraryFolderValidator();
             await folderRepository.AddAsync(new LibraryFolder { Name = "Valid", Path = validFolderPath });
             await folderRepository.AddAsync(new LibraryFolder { Name = "Missing", Path = missingFolderPath });
-            await folderRepository.AddAsync(new LibraryFolder { Name = "Disabled", Path = validFolderPath, IsEnabled = false });
+            await folderRepository.AddAsync(new LibraryFolder { Name = "Disabled", Path = disabledFolderPath, IsEnabled = false });
 
             Assert.True(validator.Validate(validFolderPath).IsValidForScanning);
             Assert.Equal(LibraryFolderValidationStatus.NotFound, validator.Validate(missingFolderPath).Status);
@@ -1191,6 +1192,11 @@ public sealed class RepositoryTests
             if (Directory.Exists(missingFolderPath))
             {
                 Directory.Delete(missingFolderPath);
+            }
+
+            if (Directory.Exists(disabledFolderPath))
+            {
+                Directory.Delete(disabledFolderPath);
             }
 
             File.Delete(databasePath);
@@ -1424,6 +1430,56 @@ public sealed class RepositoryTests
         var parser = new EpisodeFileNameParser();
 
         Assert.Null(parser.Parse(fileName));
+    }
+
+    [Fact]
+    public async Task Database_enforces_case_insensitive_path_identity_for_media_and_folders()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            await folderRepository.AddAsync(new LibraryFolder
+            {
+                Name = "Movies",
+                Path = "C:\\Movies"
+            });
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => folderRepository.AddAsync(new LibraryFolder
+            {
+                Name = "Duplicate movies",
+                Path = "c:\\movies"
+            }));
+
+            var mediaRepository = new MediaItemRepository(contextFactory);
+            await mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Alien",
+                Path = "C:\\Movies\\Alien.mkv",
+                MediaType = MediaType.Movie
+            });
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Duplicate Alien",
+                Path = "c:\\movies\\ALIEN.mkv",
+                MediaType = MediaType.Movie
+            }));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
     }
 
     [Fact]

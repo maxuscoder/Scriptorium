@@ -165,9 +165,13 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Path")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
 
                     b.ToTable("LibraryFolders", null, t =>
                         {
@@ -241,7 +245,8 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Path")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.Property<long>("PlaybackPositionSeconds")
                         .ValueGeneratedOnAdd()
@@ -279,7 +284,8 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.HasIndex("LibraryFolderId");
 
-                    b.HasIndex("Path");
+                    b.HasIndex("Path")
+                        .IsUnique();
 
                     b.ToTable("MediaItems", (string)null);
                 });

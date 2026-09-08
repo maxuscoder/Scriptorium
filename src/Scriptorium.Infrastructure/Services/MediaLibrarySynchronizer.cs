@@ -9,9 +9,7 @@ namespace Scriptorium.Infrastructure.Services;
 /// </summary>
 public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepository) : IMediaLibrarySynchronizer
 {
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> SynchronizeAsync(
