@@ -107,7 +107,18 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.MediaItems
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        // Reclassification invalidates both generated hierarchy types. Their configured
+        // cascade relationships remove child rows while leaving MediaItems intact.
+        await context.Courses
+            .Where(course => course.LibraryFolderId == libraryFolderId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.TVShows
+            .Where(show => show.LibraryFolderId == libraryFolderId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var updatedCount = await context.MediaItems
             .Where(item => item.LibraryFolderId == libraryFolderId)
             .ExecuteUpdateAsync(
                 setters => setters
@@ -122,6 +133,9 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                     .SetProperty(item => item.SeasonNumberOverride, (int?)null)
                     .SetProperty(item => item.EpisodeNumberOverride, (int?)null),
                 cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+        return updatedCount;
     }
 
     /// <inheritdoc />

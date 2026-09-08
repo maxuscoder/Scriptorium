@@ -826,6 +826,52 @@ public sealed class RepositoryTests
                 }
             ]);
 
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var course = new Course
+                {
+                    LibraryFolderId = reclassifiedFolder.Id,
+                    LibraryFolder = null!,
+                    Title = "Stale course"
+                };
+                course.Lessons.Add(new Lesson
+                {
+                    Course = course,
+                    CourseId = course.Id,
+                    MediaItemId = (await mediaItemRepository.GetByLibraryFolderIdAsync(reclassifiedFolder.Id)).First().Id,
+                    MediaItem = null!,
+                    Title = "First lesson",
+                    FilePath = "C:\\Tutorials\\first.mp4"
+                });
+
+                var show = new TVShow
+                {
+                    LibraryFolderId = reclassifiedFolder.Id,
+                    Title = "Stale show"
+                };
+                var season = new Season
+                {
+                    TVShow = show,
+                    TVShowId = show.Id,
+                    SeasonNumber = 1
+                };
+                season.Episodes.Add(new Episode
+                {
+                    Season = season,
+                    SeasonId = season.Id,
+                    MediaItemId = (await mediaItemRepository.GetByLibraryFolderIdAsync(reclassifiedFolder.Id)).First().Id,
+                    MediaItem = null!,
+                    EpisodeNumber = 1,
+                    Title = "First lesson",
+                    FilePath = "C:\\Tutorials\\first.mp4"
+                });
+                show.Seasons.Add(season);
+
+                context.Courses.Add(course);
+                context.TVShows.Add(show);
+                await context.SaveChangesAsync();
+            }
+
             reclassifiedFolder.MediaType = MediaType.Movie;
             await folderRepository.UpdateAsync(reclassifiedFolder);
             Assert.Equal(2, await mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
@@ -841,6 +887,14 @@ public sealed class RepositoryTests
                 Assert.Null(item.SeasonNumber);
                 Assert.Null(item.EpisodeNumber);
             });
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.Courses.ToListAsync());
+                Assert.Empty(await context.Lessons.ToListAsync());
+                Assert.Empty(await context.TVShows.ToListAsync());
+                Assert.Empty(await context.Seasons.ToListAsync());
+                Assert.Empty(await context.Episodes.ToListAsync());
+            }
             Assert.Equal(MediaType.Movie, (await mediaItemRepository.GetByLibraryFolderIdAsync(unaffectedFolder.Id)).Single().MediaType);
         }
         finally
