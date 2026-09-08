@@ -165,9 +165,13 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Path")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
 
                     b.ToTable("LibraryFolders", null, t =>
                         {
@@ -193,7 +197,19 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DetectedEpisodeNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("DetectedSeasonNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DetectedTVShowTitle")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("EpisodeNumber")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EpisodeNumberOverride")
                         .HasColumnType("INTEGER");
 
                     b.Property<long?>("FileSize")
@@ -215,6 +231,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LastPlayed")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("LastPlayedUnixTimeMilliseconds")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("LibraryFolderId")
                         .HasColumnType("TEXT");
 
@@ -229,7 +248,8 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Path")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.Property<long>("PlaybackPositionSeconds")
                         .ValueGeneratedOnAdd()
@@ -245,7 +265,13 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<int?>("SeasonNumber")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("SeasonNumberOverride")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("TVShowTitle")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TVShowTitleOverride")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ThumbnailPath")
@@ -261,7 +287,10 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.HasIndex("LibraryFolderId");
 
-                    b.HasIndex("Path");
+                    b.HasIndex("LastPlayedUnixTimeMilliseconds");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
 
                     b.ToTable("MediaItems", (string)null);
                 });
@@ -305,7 +334,8 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("TEXT");
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
 
                     b.HasKey("Id");
 

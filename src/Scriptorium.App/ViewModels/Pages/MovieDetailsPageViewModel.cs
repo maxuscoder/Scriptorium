@@ -12,7 +12,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Supplies a movie to the reusable media-details presentation, including its metadata and playback actions.
 /// </summary>
-public sealed class MovieDetailsPageViewModel : PageViewModel
+public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 {
     private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly IMediaItemRepository _mediaItemRepository;
@@ -30,6 +30,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     private string _availability = string.Empty;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private bool _disposed;
 
     public MovieDetailsPageViewModel(
         IMediaItemRepository mediaItemRepository,
@@ -56,6 +57,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     }
 
     public override string Title => _movieTitle;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        Player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
+        Player.Dispose();
+    }
 
     public string? ThumbnailPath
     {
@@ -193,18 +206,17 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
             return;
         }
 
-        var position = movie.IsCompleted ? 0 : movie.RuntimeSeconds.Value;
-        var lastWatched = DateTimeOffset.UtcNow;
-        if (!await _playbackProgressService.SaveAsync(
-                movie.Id,
-                new PlaybackProgressUpdate(position, movie.RuntimeSeconds.Value, lastWatched)))
+        await Player.FlushPendingProgressSaveAsync();
+        var isCompleted = !movie.IsCompleted;
+        if (!await _playbackProgressService.SetCompletionAsync(movie.Id, isCompleted))
         {
             return;
         }
 
-        movie.PlaybackPositionSeconds = position;
-        movie.IsCompleted = !movie.IsCompleted;
-        movie.LastPlayed = lastWatched;
+        movie.PlaybackPositionSeconds = isCompleted ? movie.RuntimeSeconds.Value : 0;
+        movie.IsCompleted = isCompleted;
+        movie.LastPlayed = DateTimeOffset.UtcNow;
+        Player.SynchronizeCompletion(movie.Id, isCompleted);
         Availability = movie.IsMissing ? "File unavailable" : "Available";
         PopulateMetadata(movie);
         NotifyStateChanged();
@@ -219,6 +231,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
         }
 
         var lastWatched = DateTimeOffset.UtcNow;
+        await Player.FlushPendingProgressSaveAsync();
         if (!await _playbackProgressService.SaveAsync(
                 movie.Id,
                 new PlaybackProgressUpdate(0, movie.RuntimeSeconds.Value, lastWatched)))

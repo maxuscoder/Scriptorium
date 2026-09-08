@@ -13,6 +13,7 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
     /// <inheritdoc />
     public override Task AddAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
     {
+        NormalizePath(entity);
         ValidateMediaType(entity);
         return base.AddAsync(entity, cancellationToken);
     }
@@ -20,6 +21,7 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
     /// <inheritdoc />
     public override Task UpdateAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
     {
+        NormalizePath(entity);
         ValidateMediaType(entity);
         return base.UpdateAsync(entity, cancellationToken);
     }
@@ -28,11 +30,12 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
     public async Task<LibraryFolder?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        path = NormalizePath(path);
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         return await context.LibraryFolders
             .AsNoTracking()
-            .SingleOrDefaultAsync(folder => folder.Path == path, cancellationToken);
+            .SingleOrDefaultAsync(folder => EF.Functions.Collate(folder.Path, "NOCASE") == path, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -53,5 +56,13 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
         {
             throw new ArgumentOutOfRangeException(nameof(folder.MediaType), folder.MediaType, "The library folder media type is not supported.");
         }
+    }
+
+    private static void NormalizePath(LibraryFolder folder) => folder.Path = NormalizePath(folder.Path);
+
+    private static string NormalizePath(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
     }
 }

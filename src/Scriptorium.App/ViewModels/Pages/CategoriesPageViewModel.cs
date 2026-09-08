@@ -13,7 +13,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Coordinates category listing, creation, renaming, deletion, and media counts.
 /// </summary>
-public sealed class CategoriesPageViewModel : PageViewModel
+public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
 {
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
@@ -24,6 +24,7 @@ public sealed class CategoriesPageViewModel : PageViewModel
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string _statusMessage = string.Empty;
     private CategoryItemViewModel? _selectedCategory;
+    private bool _disposed;
     private IReadOnlyList<MediaItem> _availableMediaItems = [];
     private bool _isRefreshing;
     private int _isCategoryRefreshQueued;
@@ -55,6 +56,22 @@ public sealed class CategoriesPageViewModel : PageViewModel
     }
 
     public override string Title => "Categories";
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _favoriteService.FavoriteChanged -= OnFavoriteChanged;
+        _categoryService.CategoriesChanged -= OnCategoriesChanged;
+        if (_selectedCategory is not null)
+        {
+            _selectedCategory.PropertyChanged -= OnSelectedCategoryPropertyChanged;
+        }
+    }
 
     public ObservableCollection<CategoryItemViewModel> Categories { get; } = [];
 

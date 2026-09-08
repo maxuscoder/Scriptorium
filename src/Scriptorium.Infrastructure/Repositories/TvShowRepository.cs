@@ -25,6 +25,19 @@ public sealed class TvShowRepository(IDbContextFactory<ScriptoriumDbContext> con
         return await Shows(context).ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<TVShow?> GetByMediaItemIdAsync(
+        Guid mediaItemId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await Shows(context)
+            .SingleOrDefaultAsync(
+                show => show.Seasons.Any(season =>
+                    season.Episodes.Any(episode => episode.MediaItemId == mediaItemId)),
+                cancellationToken);
+    }
+
     private static IQueryable<TVShow> Shows(ScriptoriumDbContext context) =>
         context.TVShows
             .AsNoTracking()

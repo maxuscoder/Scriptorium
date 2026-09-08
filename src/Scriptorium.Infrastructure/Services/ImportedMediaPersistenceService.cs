@@ -69,7 +69,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
             Validate(item);
         }
 
-        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var comparer = StringComparer.OrdinalIgnoreCase;
         var existingByPath = new Dictionary<string, MediaItem>(comparer);
         foreach (var existingItem in await mediaItemRepository.GetAllAsync(cancellationToken))
         {

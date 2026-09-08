@@ -9,7 +9,7 @@ namespace Scriptorium.App.ViewModels;
 /// <summary>
 /// Owns the persistent window chrome and the currently displayed page.
 /// </summary>
-public sealed class ShellViewModel : ViewModelBase
+public sealed class ShellViewModel : ViewModelBase, IDisposable
 {
     private readonly INavigationService _navigationService;
     private readonly SearchPageViewModel _searchPage;
@@ -17,6 +17,7 @@ public sealed class ShellViewModel : ViewModelBase
     private readonly ISettingsService _settingsService;
     private NavigationItem? _selectedNavigationItem;
     private string _searchQuery = string.Empty;
+    private bool _disposed;
 
     public ShellViewModel(
         INavigationService navigationService,
@@ -88,7 +89,7 @@ public sealed class ShellViewModel : ViewModelBase
 
             _searchPage.UpdateQuery(_searchQuery);
             _settingsService.Settings.LastSearchQuery = _searchQuery;
-            _ = _settingsService.SaveAsync();
+            _ = _settingsService.SaveDebouncedAsync();
             if (!string.IsNullOrWhiteSpace(_searchQuery))
             {
                 _navigationService.NavigateTo(_searchPage);
@@ -105,6 +106,18 @@ public sealed class ShellViewModel : ViewModelBase
     }
 
     private void ClearSearchQuery() => SearchQuery = string.Empty;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _navigationService.Navigated -= OnNavigated;
+        _searchQueryResetService.ClearRequested -= ClearSearchQuery;
+    }
 
     private void OnNavigated(PageViewModel page)
     {

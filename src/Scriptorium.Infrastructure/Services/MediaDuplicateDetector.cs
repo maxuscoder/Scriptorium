@@ -7,9 +7,7 @@ namespace Scriptorium.Infrastructure.Services;
 /// </summary>
 public sealed class MediaDuplicateDetector : IMediaDuplicateDetector
 {
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
 
     /// <inheritdoc />
     public Task<IReadOnlyList<MediaFileCandidate>> GetUniqueCandidatesAsync(

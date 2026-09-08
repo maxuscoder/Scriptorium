@@ -37,6 +37,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ISearchQueryResetService, SearchQueryResetService>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IMediaDetailsNavigationCoordinator, MediaDetailsNavigationCoordinator>();
+        services.AddSingleton<IFolderManagementViewModelFactory, FolderManagementViewModelFactory>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
         services.AddSingleton<LibVlcRuntime>();
         services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();
@@ -44,9 +46,9 @@ public static class ServiceCollectionExtensions
 
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<LibraryPageViewModel>();
-        services.AddTransient<TutorialDetailsPageViewModel>();
-        services.AddTransient<TvShowDetailsPageViewModel>();
-        services.AddTransient<MovieDetailsPageViewModel>();
+        services.AddSingleton<TutorialDetailsPageViewModel>();
+        services.AddSingleton<TvShowDetailsPageViewModel>();
+        services.AddSingleton<MovieDetailsPageViewModel>();
         services.AddSingleton<SearchPageViewModel>();
         services.AddTransient<FavoritesPageViewModel>();
         services.AddTransient<CategoriesPageViewModel>();

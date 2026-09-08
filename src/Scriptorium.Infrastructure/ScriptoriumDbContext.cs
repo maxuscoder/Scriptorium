@@ -46,6 +46,8 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
                 "\"MediaType\" IN (0, 1, 2)"));
             entity.HasKey(folder => folder.Id);
             entity.Property(folder => folder.Path).IsRequired();
+            entity.Property(folder => folder.Path).UseCollation("NOCASE");
+            entity.HasIndex(folder => folder.Path).IsUnique();
             entity.Property(folder => folder.Name).IsRequired();
             entity.Property(folder => folder.DisplayName);
             entity.Property(folder => folder.MediaType)
@@ -58,7 +60,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
         {
             entity.ToTable("TVShows");
             entity.HasKey(show => show.Id);
-            entity.Property(show => show.Title).IsRequired();
+            entity.Property(show => show.Title)
+                .IsRequired()
+                .UseCollation("NOCASE");
             entity.Property(show => show.EpisodeCount).HasDefaultValue(0);
             entity.HasIndex(show => new { show.LibraryFolderId, show.Title }).IsUnique();
             entity.HasOne(show => show.LibraryFolder)
@@ -146,14 +150,17 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.ToTable("MediaItems");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).IsRequired();
-            entity.Property(item => item.Path).IsRequired();
+            entity.Property(item => item.Path)
+                .UseCollation("NOCASE")
+                .IsRequired();
             entity.Property(item => item.PlaybackPositionSeconds).HasDefaultValue(0L);
             entity.Property(item => item.IsCompleted).HasDefaultValue(false);
+            entity.HasIndex(item => item.LastPlayedUnixTimeMilliseconds);
             entity.Property(item => item.IsMissing).HasDefaultValue(false);
             entity.Property(item => item.TVShowTitle);
             entity.Property(item => item.SeasonNumber);
             entity.Property(item => item.EpisodeNumber);
-            entity.HasIndex(item => item.Path);
+            entity.HasIndex(item => item.Path).IsUnique();
             entity.HasIndex(item => item.LibraryFolderId);
             entity.HasIndex(item => item.CategoryId);
 

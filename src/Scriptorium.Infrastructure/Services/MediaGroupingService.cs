@@ -30,7 +30,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         group.Title = normalizedTitle;
         foreach (var episode in group.Seasons.SelectMany(season => season.Episodes))
         {
-            episode.MediaItem.TVShowTitle = normalizedTitle;
+            ApplyManualTitleOverride(episode.MediaItem, normalizedTitle);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -43,6 +43,8 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         var episode = await context.Episodes
             .Include(item => item.Season)
                 .ThenInclude(season => season.TVShow)
+                    .ThenInclude(show => show.Seasons)
+                        .ThenInclude(season => season.Episodes)
             .Include(item => item.MediaItem)
             .SingleOrDefaultAsync(item => item.MediaItemId == mediaItemId, cancellationToken)
             ?? throw new InvalidOperationException("The selected media is not assigned to a television-show group.");
@@ -56,7 +58,11 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
 
         var sourceSeason = episode.Season;
         MoveEpisodeToGroup(context, episode, targetGroup, sourceSeason.SeasonNumber);
-        RemoveEmptySeason(context, sourceSeason);
+        await RemoveEmptySeasonAsync(
+            context,
+            sourceSeason,
+            new HashSet<Guid> { episode.Id },
+            cancellationToken);
         ReorderEpisodes(sourceSeason.TVShow);
         ReorderEpisodes(targetGroup);
         await context.SaveChangesAsync(cancellationToken);
@@ -118,6 +124,8 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
             throw new InvalidOperationException("Every selected media item must belong to the source group.");
         }
 
+        var movingEpisodeIds = episodes.Select(episode => episode.Id).ToHashSet();
+
         var newGroup = new TVShow
         {
             Id = Guid.NewGuid(),
@@ -130,7 +138,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         {
             var sourceSeason = episode.Season;
             MoveEpisodeToGroup(context, episode, newGroup, sourceSeason.SeasonNumber);
-            RemoveEmptySeason(context, sourceSeason);
+            await RemoveEmptySeasonAsync(context, sourceSeason, movingEpisodeIds, cancellationToken);
         }
 
         ReorderEpisodes(sourceGroup);
@@ -171,7 +179,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
             context.TVShows.Any(group =>
                 group.Id != excludedGroupId &&
                 group.LibraryFolderId == libraryFolderId &&
-                group.Title == title))
+                EF.Functions.Collate(group.Title, "NOCASE") == title))
         {
             throw new InvalidOperationException("A group with this name already exists in the same library folder.");
         }
@@ -205,15 +213,38 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
             context.Seasons.Add(targetSeason);
         }
 
+        episode.Season.Episodes.Remove(episode);
         episode.Season = targetSeason;
         episode.SeasonId = targetSeason.Id;
-        episode.MediaItem.TVShowTitle = targetGroup.Title;
-        episode.MediaItem.SeasonNumber = seasonNumber;
+        if (!targetSeason.Episodes.Contains(episode))
+        {
+            targetSeason.Episodes.Add(episode);
+        }
+        ApplyManualGroupingOverride(episode.MediaItem, targetGroup.Title, seasonNumber);
     }
 
-    private static void RemoveEmptySeason(ScriptoriumDbContext context, Season season)
+    private static void ApplyManualTitleOverride(MediaItem mediaItem, string title)
     {
-        if (season.Episodes.Any(episode => episode.SeasonId == season.Id))
+        mediaItem.TVShowTitleOverride = title;
+        mediaItem.TVShowTitle = title;
+    }
+
+    private static void ApplyManualGroupingOverride(MediaItem mediaItem, string title, int seasonNumber)
+    {
+        ApplyManualTitleOverride(mediaItem, title);
+        mediaItem.SeasonNumberOverride = seasonNumber;
+        mediaItem.SeasonNumber = seasonNumber;
+    }
+
+    private static async Task RemoveEmptySeasonAsync(
+        ScriptoriumDbContext context,
+        Season season,
+        IReadOnlySet<Guid> movingEpisodeIds,
+        CancellationToken cancellationToken)
+    {
+        if (await context.Episodes.AnyAsync(
+                episode => episode.SeasonId == season.Id && !movingEpisodeIds.Contains(episode.Id),
+                cancellationToken))
         {
             return;
         }

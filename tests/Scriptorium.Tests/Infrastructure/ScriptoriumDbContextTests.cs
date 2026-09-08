@@ -31,7 +31,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(14, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(18, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -44,6 +44,108 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("TVShowTitle", mediaItemColumns);
             Assert.Contains("SeasonNumber", mediaItemColumns);
             Assert.Contains("EpisodeNumber", mediaItemColumns);
+            Assert.Contains("DetectedTVShowTitle", mediaItemColumns);
+            Assert.Contains("DetectedSeasonNumber", mediaItemColumns);
+            Assert.Contains("DetectedEpisodeNumber", mediaItemColumns);
+            Assert.Contains("TVShowTitleOverride", mediaItemColumns);
+            Assert.Contains("SeasonNumberOverride", mediaItemColumns);
+            Assert.Contains("EpisodeNumberOverride", mediaItemColumns);
+            Assert.Contains("LastPlayedUnixTimeMilliseconds", mediaItemColumns);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Path_uniqueness_upgrade_refuses_duplicate_media_paths_without_deleting_records()
+    {
+        var databasePath = CreateDatabasePath();
+
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync("20260909090000_PreserveManualTvShowGrouping");
+            await context.Database.ExecuteSqlRawAsync(
+                """
+                INSERT INTO "MediaItems" ("Id", "Title", "Path", "DateAdded", "MediaType", "IsFavorite", "IsCompleted", "PlaybackPositionSeconds", "IsMissing")
+                VALUES
+                    ('11111111-1111-1111-1111-111111111111', 'Alien 1', 'C:\\Videos\\Alien.mkv', '2026-01-01T00:00:00+00:00', 0, 0, 0, 0, 0),
+                    ('22222222-2222-2222-2222-222222222222', 'Alien 2', 'C:\\VIDEOS\\ALIEN.MKV', '2026-01-01T00:00:00+00:00', 0, 0, 0, 0, 0);
+                """);
+
+            await Assert.ThrowsAsync<SqliteException>(() => context.Database.MigrateAsync());
+
+            await using var verificationContext = new ScriptoriumDbContext(CreateOptions(databasePath));
+            var recordCount = await verificationContext.Database
+                .SqlQueryRaw<long>("SELECT COUNT(*) AS Value FROM \"MediaItems\"")
+                .SingleAsync();
+            Assert.Equal(2, recordCount);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Path_uniqueness_upgrade_refuses_duplicate_folder_paths_without_deleting_records()
+    {
+        var databasePath = CreateDatabasePath();
+
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync("20260909090000_PreserveManualTvShowGrouping");
+            await context.Database.ExecuteSqlRawAsync(
+                """
+                INSERT INTO "LibraryFolders" ("Id", "Path", "Name", "IsEnabled")
+                VALUES
+                    ('33333333-3333-3333-3333-333333333333', 'C:\\Videos', 'Videos 1', 1),
+                    ('44444444-4444-4444-4444-444444444444', 'C:\\VIDEOS', 'Videos 2', 1);
+                """);
+
+            await Assert.ThrowsAsync<SqliteException>(() => context.Database.MigrateAsync());
+
+            await using var verificationContext = new ScriptoriumDbContext(CreateOptions(databasePath));
+            var recordCount = await verificationContext.Database
+                .SqlQueryRaw<long>("SELECT COUNT(*) AS Value FROM \"LibraryFolders\"")
+                .SingleAsync();
+            Assert.Equal(2, recordCount);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Tv_show_title_uniqueness_upgrade_refuses_case_only_duplicates_without_deleting_records()
+    {
+        var databasePath = CreateDatabasePath();
+
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync("20260909110000_AddLastPlayedSortKey");
+            await context.Database.ExecuteSqlRawAsync(
+                """
+                INSERT INTO "LibraryFolders" ("Id", "Path", "Name", "IsEnabled")
+                VALUES ('55555555-5555-5555-5555-555555555555', 'C:\\TV', 'TV', 1);
+                INSERT INTO "TVShows" ("Id", "Title", "LibraryFolderId", "EpisodeCount")
+                VALUES
+                    ('66666666-6666-6666-6666-666666666666', 'Breaking Bad', '55555555-5555-5555-5555-555555555555', 0),
+                    ('77777777-7777-7777-7777-777777777777', 'breaking bad', '55555555-5555-5555-5555-555555555555', 0);
+                """);
+
+            await Assert.ThrowsAsync<SqliteException>(() => context.Database.MigrateAsync());
+
+            await using var verificationContext = new ScriptoriumDbContext(CreateOptions(databasePath));
+            var recordCount = await verificationContext.Database
+                .SqlQueryRaw<long>("SELECT COUNT(*) AS Value FROM \"TVShows\"")
+                .SingleAsync();
+            Assert.Equal(2, recordCount);
         }
         finally
         {
@@ -120,6 +222,9 @@ public sealed class ScriptoriumDbContextTests
             Assert.False(item.IsCompleted);
             Assert.False(item.IsMissing);
             Assert.Null(item.MissingSince);
+            Assert.Equal(
+                new DateTimeOffset(2026, 1, 3, 0, 0, 0, TimeSpan.Zero).ToUnixTimeMilliseconds(),
+                item.LastPlayedUnixTimeMilliseconds);
             Assert.NotEqual(Guid.Empty, item.LibraryFolderId);
 
             var tableNames = await context.Database
@@ -155,8 +260,8 @@ public sealed class ScriptoriumDbContextTests
                 "CategoryId" TEXT NULL, "Runtime" INTEGER NULL, "ReleaseYear" INTEGER NULL, "Description" TEXT NULL,
                 "TVShow_Description" TEXT NULL, "TVShow_ReleaseYear" INTEGER NULL);
             CREATE TABLE "Favorites" ("MediaId" TEXT NOT NULL PRIMARY KEY, "DateAdded" TEXT NOT NULL);
-            INSERT INTO "MediaItems" ("Id", "Title", "Path", "DateAdded", "IsFavorite", "MediaType", "Runtime")
-            VALUES ('11111111-1111-1111-1111-111111111111', 'Example', 'C:\\Example.mp4', '2026-01-01T00:00:00+00:00', 0, 0, 120000000);
+            INSERT INTO "MediaItems" ("Id", "Title", "Path", "DateAdded", "LastPlayed", "IsFavorite", "MediaType", "Runtime")
+            VALUES ('11111111-1111-1111-1111-111111111111', 'Example', 'C:\\Example.mp4', '2026-01-01T00:00:00+00:00', '2026-01-03T00:00:00+00:00', 0, 0, 120000000);
             INSERT INTO "Favorites" ("MediaId", "DateAdded")
             VALUES ('11111111-1111-1111-1111-111111111111', '2026-01-02T00:00:00+00:00');
             """;

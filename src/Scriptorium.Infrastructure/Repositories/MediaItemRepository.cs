@@ -13,6 +13,20 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     : Repository<MediaItem>(contextFactory), IMediaItemRepository
 {
     /// <inheritdoc />
+    public override Task AddAsync(MediaItem entity, CancellationToken cancellationToken = default)
+    {
+        NormalizeForPersistence(entity);
+        return base.AddAsync(entity, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public override Task UpdateAsync(MediaItem entity, CancellationToken cancellationToken = default)
+    {
+        NormalizeForPersistence(entity);
+        return base.UpdateAsync(entity, cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task AddRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mediaItems);
@@ -21,6 +35,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         if (items.Count == 0)
         {
             return;
+        }
+
+        foreach (var item in items)
+        {
+            NormalizeForPersistence(item);
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
@@ -37,6 +56,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         if (items.Count == 0)
         {
             return;
+        }
+
+        foreach (var item in items)
+        {
+            NormalizeForPersistence(item);
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
@@ -60,6 +84,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     public async Task<MediaItem?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        path = NormalizePath(path);
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         return await MediaItems(context)
@@ -95,6 +120,39 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaItem>> GetByLibraryFolderIdsOrPathsAsync(
+        IEnumerable<Guid> libraryFolderIds,
+        IEnumerable<string> paths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(libraryFolderIds);
+        ArgumentNullException.ThrowIfNull(paths);
+
+        var folderIds = libraryFolderIds
+            .Where(folderId => folderId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        var normalizedPaths = paths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(NormalizePath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (folderIds.Length == 0 && normalizedPaths.Length == 0)
+        {
+            return [];
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems
+            .AsNoTracking()
+            .Where(item =>
+                (item.LibraryFolderId != null && folderIds.Contains(item.LibraryFolderId.Value)) ||
+                normalizedPaths.Contains(EF.Functions.Collate(item.Path, "NOCASE")))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<int> UpdateMediaTypeByLibraryFolderIdAsync(
         Guid libraryFolderId,
         MediaType mediaType,
@@ -107,15 +165,35 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         }
 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.MediaItems
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        // Reclassification invalidates both generated hierarchy types. Their configured
+        // cascade relationships remove child rows while leaving MediaItems intact.
+        await context.Courses
+            .Where(course => course.LibraryFolderId == libraryFolderId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.TVShows
+            .Where(show => show.LibraryFolderId == libraryFolderId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var updatedCount = await context.MediaItems
             .Where(item => item.LibraryFolderId == libraryFolderId)
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(item => item.MediaType, mediaType)
                     .SetProperty(item => item.TVShowTitle, (string?)null)
                     .SetProperty(item => item.SeasonNumber, (int?)null)
-                    .SetProperty(item => item.EpisodeNumber, (int?)null),
+                    .SetProperty(item => item.EpisodeNumber, (int?)null)
+                    .SetProperty(item => item.DetectedTVShowTitle, (string?)null)
+                    .SetProperty(item => item.DetectedSeasonNumber, (int?)null)
+                    .SetProperty(item => item.DetectedEpisodeNumber, (int?)null)
+                    .SetProperty(item => item.TVShowTitleOverride, (string?)null)
+                    .SetProperty(item => item.SeasonNumberOverride, (int?)null)
+                    .SetProperty(item => item.EpisodeNumberOverride, (int?)null),
                 cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+        return updatedCount;
     }
 
     /// <inheritdoc />
@@ -137,18 +215,15 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .Include(item => item.Category)
             .Where(item =>
                 !item.IsCompleted &&
-                item.LastPlayed != null &&
+                item.LastPlayedUnixTimeMilliseconds != null &&
                 item.RuntimeSeconds > 0 &&
                 item.PlaybackPositionSeconds > 0 &&
                 item.PlaybackPositionSeconds < item.RuntimeSeconds)
+            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
+            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
             .ToListAsync(cancellationToken);
 
-        // SQLite cannot order DateTimeOffset values, so retain the database filter
-        // and perform the small, display-ready ordering after materialization.
-        return incompleteMedia
-            .OrderByDescending(item => item.LastPlayed)
-            .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return incompleteMedia;
     }
 
     /// <inheritdoc />
@@ -163,15 +238,13 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .AsNoTracking()
             .Include(item => item.LibraryFolder)
             .Include(item => item.Category)
-            .Where(item => item.LastPlayed != null)
+            .Where(item => item.LastPlayedUnixTimeMilliseconds != null)
+            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
+            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
+            .Take(maximumCount)
             .ToListAsync(cancellationToken);
 
-        // SQLite cannot order DateTimeOffset values, so order after materialization.
-        return recentlyWatchedMedia
-            .OrderByDescending(item => item.LastPlayed)
-            .ThenBy(item => item.Title, StringComparer.OrdinalIgnoreCase)
-            .Take(maximumCount)
-            .ToList();
+        return recentlyWatchedMedia;
     }
 
     /// <inheritdoc />
@@ -259,6 +332,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                     .SetProperty(item => item.PlaybackPositionSeconds, playbackPositionSeconds)
                     .SetProperty(item => item.RuntimeSeconds, durationSeconds)
                     .SetProperty(item => item.LastPlayed, lastWatched)
+                    .SetProperty(item => item.LastPlayedUnixTimeMilliseconds, lastWatched.ToUnixTimeMilliseconds())
                     .SetProperty(item => item.IsCompleted,
                         MediaPlaybackProgress.MeetsCompletionThreshold(playbackPositionSeconds, durationSeconds)),
                 cancellationToken);
@@ -277,6 +351,15 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         .Replace("\\", "\\\\", StringComparison.Ordinal)
         .Replace("%", "\\%", StringComparison.Ordinal)
         .Replace("_", "\\_", StringComparison.Ordinal);
+
+    private static void NormalizeForPersistence(MediaItem item)
+    {
+        item.Path = NormalizePath(item.Path);
+        item.LastPlayedUnixTimeMilliseconds = item.LastPlayed?.ToUnixTimeMilliseconds();
+    }
+
+    private static string NormalizePath(string path) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
     private async Task<bool> UpdateAsync(
         Guid mediaItemId,

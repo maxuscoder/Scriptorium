@@ -65,6 +65,12 @@ public class MediaItem
     /// <summary>Gets or sets whether playback has been completed.</summary>
     public bool IsCompleted { get; set; }
 
+    /// <summary>
+    /// Gets or sets the last-played timestamp as Unix time in milliseconds.
+    /// This persisted numeric value allows SQLite to sort playback history efficiently.
+    /// </summary>
+    public long? LastPlayedUnixTimeMilliseconds { get; set; }
+
     /// <summary>Gets or sets the file size in bytes, when known.</summary>
     public long? FileSize { get; set; }
 
@@ -80,14 +86,32 @@ public class MediaItem
     /// <summary>Gets or sets when the file was first observed as missing, if applicable.</summary>
     public DateTimeOffset? MissingSince { get; set; }
 
-    /// <summary>Gets or sets the television show that owns this media item, when discovered from a TV-show library.</summary>
+    /// <summary>Gets or sets the effective television show that owns this media item.</summary>
     public string? TVShowTitle { get; set; }
 
-    /// <summary>Gets or sets the season number that owns this media item, when detected from its folder path.</summary>
+    /// <summary>Gets or sets the effective season number that owns this media item.</summary>
     public int? SeasonNumber { get; set; }
 
-    /// <summary>Gets or sets the episode number that owns this media item, when detected from its filename.</summary>
+    /// <summary>Gets or sets the effective episode number that owns this media item.</summary>
     public int? EpisodeNumber { get; set; }
+
+    /// <summary>Gets or sets the television show title detected during the most recent scan.</summary>
+    public string? DetectedTVShowTitle { get; set; }
+
+    /// <summary>Gets or sets the season number detected during the most recent scan.</summary>
+    public int? DetectedSeasonNumber { get; set; }
+
+    /// <summary>Gets or sets the episode number detected during the most recent scan.</summary>
+    public int? DetectedEpisodeNumber { get; set; }
+
+    /// <summary>Gets or sets the user-assigned television show title, when one exists.</summary>
+    public string? TVShowTitleOverride { get; set; }
+
+    /// <summary>Gets or sets the user-assigned season number, when one exists.</summary>
+    public int? SeasonNumberOverride { get; set; }
+
+    /// <summary>Gets or sets the user-assigned episode number, when one exists.</summary>
+    public int? EpisodeNumberOverride { get; set; }
 
     /// <summary>
     /// Gets or sets the category of media the item represents.

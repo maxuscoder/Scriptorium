@@ -9,9 +9,7 @@ namespace Scriptorium.Infrastructure.Services;
 /// </summary>
 public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepository) : IMediaLibrarySynchronizer
 {
-    private static readonly StringComparer PathComparer = OperatingSystem.IsWindows()
-        ? StringComparer.OrdinalIgnoreCase
-        : StringComparer.Ordinal;
+    private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> SynchronizeAsync(
@@ -22,9 +20,17 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         ArgumentNullException.ThrowIfNull(discoveredFiles);
         ArgumentNullException.ThrowIfNull(scannedFolderIds);
 
+        var discoveredFileList = discoveredFiles.ToList();
         var scannedFolderIdSet = scannedFolderIds.ToHashSet();
+        var discoveredPaths = discoveredFileList
+            .Where(discoveredFile => discoveredFile.IsSupportedFormat)
+            .Select(discoveredFile => NormalizePath(discoveredFile.Path))
+            .ToHashSet(PathComparer);
         var existingByPath = new Dictionary<string, MediaItem>(PathComparer);
-        foreach (var mediaItem in await mediaItemRepository.GetAllAsync(cancellationToken))
+        foreach (var mediaItem in await mediaItemRepository.GetByLibraryFolderIdsOrPathsAsync(
+                     scannedFolderIdSet,
+                     discoveredPaths,
+                     cancellationToken))
         {
             existingByPath[NormalizePath(mediaItem.Path)] = mediaItem;
         }
@@ -33,9 +39,7 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         var addedItemSet = new HashSet<MediaItem>();
         var updatedItems = new List<MediaItem>();
         var synchronizedItems = new List<MediaItem>();
-        var discoveredPaths = new HashSet<string>(PathComparer);
-
-        foreach (var discoveredFile in discoveredFiles)
+        foreach (var discoveredFile in discoveredFileList)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!discoveredFile.IsSupportedFormat)
@@ -44,7 +48,6 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
             }
 
             var normalizedPath = NormalizePath(discoveredFile.Path);
-            discoveredPaths.Add(normalizedPath);
             if (existingByPath.TryGetValue(normalizedPath, out var existingItem))
             {
                 if (ApplyScanMetadata(existingItem, discoveredFile, normalizedPath) && !addedItemSet.Contains(existingItem))
@@ -104,9 +107,41 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         changed |= SetIfChanged(() => mediaItem.FileSize, value => mediaItem.FileSize = value, discoveredFile.FileSize);
         changed |= SetIfChanged(() => mediaItem.CreatedDate, value => mediaItem.CreatedDate = value, discoveredFile.CreatedDate);
         changed |= SetIfChanged(() => mediaItem.ModifiedDate, value => mediaItem.ModifiedDate = value, discoveredFile.ModifiedDate);
-        changed |= SetIfChanged(() => mediaItem.TVShowTitle, value => mediaItem.TVShowTitle = value, discoveredFile.TVShowTitle);
-        changed |= SetIfChanged(() => mediaItem.SeasonNumber, value => mediaItem.SeasonNumber = value, discoveredFile.SeasonNumber);
-        changed |= SetIfChanged(() => mediaItem.EpisodeNumber, value => mediaItem.EpisodeNumber = value, discoveredFile.EpisodeNumber);
+        changed |= SetIfChanged(
+            () => mediaItem.DetectedTVShowTitle,
+            value => mediaItem.DetectedTVShowTitle = value,
+            discoveredFile.TVShowTitle);
+        changed |= SetIfChanged(
+            () => mediaItem.DetectedSeasonNumber,
+            value => mediaItem.DetectedSeasonNumber = value,
+            discoveredFile.SeasonNumber);
+        changed |= SetIfChanged(
+            () => mediaItem.DetectedEpisodeNumber,
+            value => mediaItem.DetectedEpisodeNumber = value,
+            discoveredFile.EpisodeNumber);
+        if (mediaItem.TVShowTitleOverride is null)
+        {
+            changed |= SetIfChanged(
+                () => mediaItem.TVShowTitle,
+                value => mediaItem.TVShowTitle = value,
+                discoveredFile.TVShowTitle);
+        }
+
+        if (mediaItem.SeasonNumberOverride is null)
+        {
+            changed |= SetIfChanged(
+                () => mediaItem.SeasonNumber,
+                value => mediaItem.SeasonNumber = value,
+                discoveredFile.SeasonNumber);
+        }
+
+        if (mediaItem.EpisodeNumberOverride is null)
+        {
+            changed |= SetIfChanged(
+                () => mediaItem.EpisodeNumber,
+                value => mediaItem.EpisodeNumber = value,
+                discoveredFile.EpisodeNumber);
+        }
         changed |= SetIfChanged(() => mediaItem.IsMissing, value => mediaItem.IsMissing = value, false);
         changed |= SetIfChanged(() => mediaItem.MissingSince, value => mediaItem.MissingSince = value, null);
         return changed;
@@ -126,7 +161,10 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         ModifiedDate = discoveredFile.ModifiedDate,
         TVShowTitle = discoveredFile.TVShowTitle,
         SeasonNumber = discoveredFile.SeasonNumber,
-        EpisodeNumber = discoveredFile.EpisodeNumber
+        EpisodeNumber = discoveredFile.EpisodeNumber,
+        DetectedTVShowTitle = discoveredFile.TVShowTitle,
+        DetectedSeasonNumber = discoveredFile.SeasonNumber,
+        DetectedEpisodeNumber = discoveredFile.EpisodeNumber
     };
 
     private static bool SetIfChanged<T>(Func<T> getValue, Action<T> setValue, T value)

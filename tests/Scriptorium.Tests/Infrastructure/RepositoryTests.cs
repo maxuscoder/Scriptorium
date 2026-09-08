@@ -46,6 +46,114 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Hierarchy_repositories_find_owners_by_media_item_id()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+        var tutorialMediaId = Guid.NewGuid();
+        var episodeMediaId = Guid.NewGuid();
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+
+                var tutorialFolder = new LibraryFolder
+                {
+                    Name = "Tutorials",
+                    Path = "C:\\Tutorials",
+                    MediaType = MediaType.Tutorial
+                };
+                var tutorialMedia = new MediaItem
+                {
+                    Id = tutorialMediaId,
+                    Title = "Lesson",
+                    Path = "C:\\Tutorials\\lesson.mp4",
+                    MediaType = MediaType.Tutorial
+                };
+                var course = new Course
+                {
+                    Title = "Course",
+                    LibraryFolder = tutorialFolder,
+                    LibraryFolderId = tutorialFolder.Id
+                };
+                course.Lessons.Add(new Lesson
+                {
+                    Course = course,
+                    CourseId = course.Id,
+                    MediaItem = tutorialMedia,
+                    MediaItemId = tutorialMedia.Id,
+                    Title = tutorialMedia.Title,
+                    FilePath = tutorialMedia.Path,
+                    SortOrder = 0
+                });
+
+                var tvFolder = new LibraryFolder
+                {
+                    Name = "TV",
+                    Path = "C:\\TV",
+                    MediaType = MediaType.TvShow
+                };
+                var episodeMedia = new MediaItem
+                {
+                    Id = episodeMediaId,
+                    Title = "Episode",
+                    Path = "C:\\TV\\episode.mp4",
+                    MediaType = MediaType.TvShow
+                };
+                var show = new TVShow
+                {
+                    Title = "Show",
+                    LibraryFolder = tvFolder,
+                    LibraryFolderId = tvFolder.Id,
+                    EpisodeCount = 1
+                };
+                var season = new Season
+                {
+                    TVShow = show,
+                    TVShowId = show.Id,
+                    SeasonNumber = 1
+                };
+                season.Episodes.Add(new Episode
+                {
+                    Season = season,
+                    SeasonId = season.Id,
+                    MediaItem = episodeMedia,
+                    MediaItemId = episodeMedia.Id,
+                    Title = episodeMedia.Title,
+                    FilePath = episodeMedia.Path,
+                    SortOrder = 0
+                });
+                show.Seasons.Add(season);
+
+                context.Courses.Add(course);
+                context.TVShows.Add(show);
+                await context.SaveChangesAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var courseRepository = new CourseRepository(contextFactory);
+            var tvShowRepository = new TvShowRepository(contextFactory);
+
+            var storedCourse = await courseRepository.GetByMediaItemIdAsync(tutorialMediaId);
+            var storedShow = await tvShowRepository.GetByMediaItemIdAsync(episodeMediaId);
+
+            Assert.Equal("Course", storedCourse?.Title);
+            Assert.Equal("Show", storedShow?.Title);
+            Assert.Single(storedCourse!.Lessons);
+            Assert.Single(storedShow!.Seasons);
+            Assert.Single(storedShow.Seasons[0].Episodes);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Favorites_and_categories_are_persisted_without_duplicate_records()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
@@ -475,6 +583,66 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Media_item_scan_scope_returns_scanned_folders_and_matching_paths_only()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var scannedFolder = new LibraryFolder { Name = "Scanned", Path = "C:\\Scanned" };
+            var unrelatedFolder = new LibraryFolder { Name = "Unrelated", Path = "C:\\Unrelated" };
+            await folderRepository.AddAsync(scannedFolder);
+            await folderRepository.AddAsync(unrelatedFolder);
+
+            var scannedItem = new MediaItem
+            {
+                Title = "Scanned item",
+                Path = "C:\\Scanned\\item.mp4",
+                LibraryFolderId = scannedFolder.Id,
+                MediaType = MediaType.Movie
+            };
+            var pathMatchItem = new MediaItem
+            {
+                Title = "Path match",
+                Path = "C:\\Unrelated\\moved.mp4",
+                LibraryFolderId = unrelatedFolder.Id,
+                MediaType = MediaType.Movie
+            };
+            var unrelatedItem = new MediaItem
+            {
+                Title = "Unrelated item",
+                Path = "C:\\Unrelated\\other.mp4",
+                LibraryFolderId = unrelatedFolder.Id,
+                MediaType = MediaType.Movie
+            };
+            await mediaItemRepository.AddRangeAsync([scannedItem, pathMatchItem, unrelatedItem]);
+
+            var scopedItems = await mediaItemRepository.GetByLibraryFolderIdsOrPathsAsync(
+                [scannedFolder.Id],
+                ["C:\\UNRELATED\\MOVED.MP4"]);
+
+            Assert.Equal(
+                new[] { scannedItem.Id, pathMatchItem.Id }.OrderBy(id => id),
+                scopedItems.Select(item => item.Id).OrderBy(id => id));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Updating_media_that_share_a_folder_does_not_track_duplicate_folder_instances()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
@@ -826,6 +994,52 @@ public sealed class RepositoryTests
                 }
             ]);
 
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var course = new Course
+                {
+                    LibraryFolderId = reclassifiedFolder.Id,
+                    LibraryFolder = null!,
+                    Title = "Stale course"
+                };
+                course.Lessons.Add(new Lesson
+                {
+                    Course = course,
+                    CourseId = course.Id,
+                    MediaItemId = (await mediaItemRepository.GetByLibraryFolderIdAsync(reclassifiedFolder.Id)).First().Id,
+                    MediaItem = null!,
+                    Title = "First lesson",
+                    FilePath = "C:\\Tutorials\\first.mp4"
+                });
+
+                var show = new TVShow
+                {
+                    LibraryFolderId = reclassifiedFolder.Id,
+                    Title = "Stale show"
+                };
+                var season = new Season
+                {
+                    TVShow = show,
+                    TVShowId = show.Id,
+                    SeasonNumber = 1
+                };
+                season.Episodes.Add(new Episode
+                {
+                    Season = season,
+                    SeasonId = season.Id,
+                    MediaItemId = (await mediaItemRepository.GetByLibraryFolderIdAsync(reclassifiedFolder.Id)).First().Id,
+                    MediaItem = null!,
+                    EpisodeNumber = 1,
+                    Title = "First lesson",
+                    FilePath = "C:\\Tutorials\\first.mp4"
+                });
+                show.Seasons.Add(season);
+
+                context.Courses.Add(course);
+                context.TVShows.Add(show);
+                await context.SaveChangesAsync();
+            }
+
             reclassifiedFolder.MediaType = MediaType.Movie;
             await folderRepository.UpdateAsync(reclassifiedFolder);
             Assert.Equal(2, await mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
@@ -841,6 +1055,14 @@ public sealed class RepositoryTests
                 Assert.Null(item.SeasonNumber);
                 Assert.Null(item.EpisodeNumber);
             });
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.Courses.ToListAsync());
+                Assert.Empty(await context.Lessons.ToListAsync());
+                Assert.Empty(await context.TVShows.ToListAsync());
+                Assert.Empty(await context.Seasons.ToListAsync());
+                Assert.Empty(await context.Episodes.ToListAsync());
+            }
             Assert.Equal(MediaType.Movie, (await mediaItemRepository.GetByLibraryFolderIdAsync(unaffectedFolder.Id)).Single().MediaType);
         }
         finally
@@ -983,9 +1205,25 @@ public sealed class RepositoryTests
             var groupingService = new MediaGroupingService(contextFactory);
             await groupingService.RenameTvShowGroupAsync(sourceGroup.Id, "Renamed source");
             Assert.Equal("Renamed source", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+            Assert.Equal("Renamed source", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitleOverride);
 
             await groupingService.MoveEpisodeAsync(mediaItems[0].Id, targetGroup.Id);
             Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+            Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitleOverride);
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var remainingEpisode = await context.Episodes
+                    .SingleAsync(episode => episode.MediaItemId == mediaItems[1].Id);
+                var remainingSeason = await context.Seasons
+                    .SingleAsync(season => season.Id == sourceSeason.Id);
+                var remainingSourceGroup = await context.TVShows
+                    .SingleAsync(show => show.Id == sourceGroup.Id);
+
+                Assert.Equal(0, remainingEpisode.SortOrder);
+                Assert.Equal(sourceSeason.Id, remainingEpisode.SeasonId);
+                Assert.Equal(1, remainingSourceGroup.EpisodeCount);
+                Assert.Equal(1, await context.Episodes.CountAsync(episode => episode.SeasonId == remainingSeason.Id));
+            }
 
             await groupingService.SplitTvShowGroupAsync(targetGroup.Id, [mediaItems[0].Id], "Split show");
             var splitGroup = (await groupingService.GetTvShowGroupsAsync()).Single(group => group.Title == "Split show");
@@ -1004,11 +1242,90 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Library_scanner_preserves_manual_tv_show_grouping_overrides()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var mediaPath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.mkv");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var folder = new LibraryFolder
+            {
+                Name = "TV",
+                Path = Path.GetDirectoryName(mediaPath)!,
+                MediaType = MediaType.TvShow
+            };
+            await folderRepository.AddAsync(folder);
+
+            var mediaItem = new MediaItem
+            {
+                Title = "Episode",
+                Path = mediaPath,
+                LibraryFolderId = folder.Id,
+                MediaType = MediaType.TvShow,
+                TVShowTitle = "Manual show",
+                SeasonNumber = 4,
+                EpisodeNumber = 7,
+                DetectedTVShowTitle = "Old detected show",
+                DetectedSeasonNumber = 1,
+                DetectedEpisodeNumber = 1,
+                TVShowTitleOverride = "Manual show",
+                SeasonNumberOverride = 4
+            };
+            await mediaItemRepository.AddAsync(mediaItem);
+
+            var discoveredFile = new DiscoveredMediaFile(
+                folder.Id,
+                MediaType.TvShow,
+                mediaPath,
+                Path.GetFileName(mediaPath),
+                ".mkv",
+                Path.GetDirectoryName(mediaPath)!,
+                "Episode",
+                45,
+                100,
+                null,
+                null,
+                true,
+                "Filesystem show",
+                2,
+                3);
+
+            var synchronizer = new MediaLibrarySynchronizer(mediaItemRepository);
+            await synchronizer.SynchronizeAsync([discoveredFile], [folder.Id]);
+
+            var synchronizedItem = (await mediaItemRepository.GetByIdAsync(mediaItem.Id))!;
+            Assert.Equal("Manual show", synchronizedItem.TVShowTitle);
+            Assert.Equal(4, synchronizedItem.SeasonNumber);
+            Assert.Equal(3, synchronizedItem.EpisodeNumber);
+            Assert.Equal("Filesystem show", synchronizedItem.DetectedTVShowTitle);
+            Assert.Equal(2, synchronizedItem.DetectedSeasonNumber);
+            Assert.Equal(3, synchronizedItem.DetectedEpisodeNumber);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Folder_validation_and_scan_source_exclude_missing_and_disabled_folders()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
         var validFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-folder-{Guid.NewGuid():N}");
         var missingFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-missing-{Guid.NewGuid():N}");
+        var disabledFolderPath = Path.Combine(Path.GetTempPath(), $"scriptorium-disabled-{Guid.NewGuid():N}");
         var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
             .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
             .Options;
@@ -1025,7 +1342,7 @@ public sealed class RepositoryTests
             var validator = new LibraryFolderValidator();
             await folderRepository.AddAsync(new LibraryFolder { Name = "Valid", Path = validFolderPath });
             await folderRepository.AddAsync(new LibraryFolder { Name = "Missing", Path = missingFolderPath });
-            await folderRepository.AddAsync(new LibraryFolder { Name = "Disabled", Path = validFolderPath, IsEnabled = false });
+            await folderRepository.AddAsync(new LibraryFolder { Name = "Disabled", Path = disabledFolderPath, IsEnabled = false });
 
             Assert.True(validator.Validate(validFolderPath).IsValidForScanning);
             Assert.Equal(LibraryFolderValidationStatus.NotFound, validator.Validate(missingFolderPath).Status);
@@ -1052,6 +1369,11 @@ public sealed class RepositoryTests
             if (Directory.Exists(missingFolderPath))
             {
                 Directory.Delete(missingFolderPath);
+            }
+
+            if (Directory.Exists(disabledFolderPath))
+            {
+                Directory.Delete(disabledFolderPath);
             }
 
             File.Delete(databasePath);
@@ -1285,6 +1607,323 @@ public sealed class RepositoryTests
         var parser = new EpisodeFileNameParser();
 
         Assert.Null(parser.Parse(fileName));
+    }
+
+    [Fact]
+    public async Task Database_enforces_case_insensitive_path_identity_for_media_and_folders()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            await folderRepository.AddAsync(new LibraryFolder
+            {
+                Name = "Movies",
+                Path = "C:\\Movies"
+            });
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => folderRepository.AddAsync(new LibraryFolder
+            {
+                Name = "Duplicate movies",
+                Path = "c:\\movies"
+            }));
+
+            var mediaRepository = new MediaItemRepository(contextFactory);
+            await mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Alien",
+                Path = "C:\\Movies\\Alien.mkv",
+                MediaType = MediaType.Movie
+            });
+
+            await Assert.ThrowsAsync<DbUpdateException>(() => mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Duplicate Alien",
+                Path = "c:\\movies\\ALIEN.mkv",
+                MediaType = MediaType.Movie
+            }));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Database_enforces_case_insensitive_tv_show_titles_within_a_library_folder()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+                var folder = new LibraryFolder
+                {
+                    Name = "TV",
+                    Path = "C:\\TV",
+                    MediaType = MediaType.TvShow
+                };
+                context.LibraryFolders.Add(folder);
+                await context.SaveChangesAsync();
+
+                context.TVShows.Add(new TVShow
+                {
+                    Title = "Breaking Bad",
+                    LibraryFolderId = folder.Id
+                });
+                await context.SaveChangesAsync();
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                context.TVShows.Add(new TVShow
+                {
+                    Title = "breaking bad",
+                    LibraryFolderId = (await context.LibraryFolders.SingleAsync()).Id
+                });
+
+                await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+            }
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Tv_show_hierarchy_synchronizer_reconciles_reassignment_missing_and_media_type_changes()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+                context.LibraryFolders.Add(new LibraryFolder
+                {
+                    Name = "TV",
+                    Path = "C:\\TV",
+                    MediaType = MediaType.TvShow
+                });
+                await context.SaveChangesAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderId = (await new LibraryFolderRepository(contextFactory).GetAllAsync()).Single().Id;
+            var mediaRepository = new MediaItemRepository(contextFactory);
+            await mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Episode",
+                Path = "C:\\TV\\episode.mkv",
+                LibraryFolderId = folderId,
+                MediaType = MediaType.TvShow,
+                TVShowTitle = "Show A",
+                SeasonNumber = 1,
+                EpisodeNumber = 1
+            });
+
+            var synchronizer = new TvShowHierarchySynchronizer(contextFactory);
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.TVShowTitle = "Show B";
+                media.SeasonNumber = 2;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.DoesNotContain(await context.TVShows.ToListAsync(), show => show.Title == "Show A");
+                Assert.Equal("Show B", (await context.TVShows.SingleAsync()).Title);
+                Assert.Equal(2, (await context.Seasons.SingleAsync()).SeasonNumber);
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = true;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Single(await context.Episodes.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = false;
+                media.MediaType = MediaType.Movie;
+                media.TVShowTitle = null;
+                media.SeasonNumber = null;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.TVShows.ToListAsync());
+                Assert.Empty(await context.Seasons.ToListAsync());
+                Assert.Empty(await context.Episodes.ToListAsync());
+                Assert.Single(await context.MediaItems.ToListAsync());
+            }
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Tutorial_course_synchronizer_reconciles_lesson_ownership_and_preserves_missing_lessons()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var firstFolder = new LibraryFolder
+            {
+                Name = "Course A",
+                Path = "C:\\Tutorials\\A",
+                MediaType = MediaType.Tutorial
+            };
+            var secondFolder = new LibraryFolder
+            {
+                Name = "Course B",
+                Path = "C:\\Tutorials\\B",
+                MediaType = MediaType.Tutorial
+            };
+            await folderRepository.AddAsync(firstFolder);
+            await folderRepository.AddAsync(secondFolder);
+
+            var mediaRepository = new MediaItemRepository(contextFactory);
+            await mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Lesson",
+                Path = "C:\\Tutorials\\A\\01 - Lesson.mp4",
+                LibraryFolderId = firstFolder.Id,
+                MediaType = MediaType.Tutorial
+            });
+
+            var synchronizer = new TutorialCourseSynchronizer(contextFactory, new LessonFileNameParser());
+            var folders = await folderRepository.GetAllAsync();
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.LibraryFolderId = secondFolder.Id;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var firstCourse = await context.Courses
+                    .Include(course => course.Lessons)
+                    .SingleAsync(course => course.LibraryFolderId == firstFolder.Id);
+                var secondCourse = await context.Courses
+                    .Include(course => course.Lessons)
+                    .SingleAsync(course => course.LibraryFolderId == secondFolder.Id);
+                Assert.Empty(firstCourse.Lessons);
+                Assert.Single(secondCourse.Lessons);
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = true;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Single(await context.Lessons.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = false;
+                media.MediaType = MediaType.Movie;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.Lessons.ToListAsync());
+                Assert.Equal(2, await context.Courses.CountAsync());
+                Assert.Single(await context.MediaItems.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.MediaType = MediaType.Tutorial;
+                media.LibraryFolderId = secondFolder.Id;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Single(await context.Lessons.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.LibraryFolderId = null;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.Lessons.ToListAsync());
+            }
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
     }
 
     [Theory]

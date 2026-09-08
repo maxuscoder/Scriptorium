@@ -7,8 +7,6 @@ public sealed class ApplicationSettings
 {
     public string Theme { get; set; } = "System";
 
-    public List<string> LibraryFolders { get; set; } = [];
-
     public bool OpenLastLibraryOnStartup { get; set; } = true;
 
     /// <summary>Gets or sets the preferred layout for media cards in the library.</summary>

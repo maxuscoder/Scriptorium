@@ -19,7 +19,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
     private readonly ILibraryFolderRepository _libraryFolderRepository;
     private readonly ILibraryFolderValidator _libraryFolderValidator;
     private readonly IMediaItemRepository _mediaItemRepository;
-    private readonly ISettingsService _settingsService;
     private readonly Func<Task> _refreshLibraryData;
     private readonly Action<string> _setStatusMessage;
     private readonly Func<bool> _isScanning;
@@ -39,7 +38,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
         ILibraryFolderRepository libraryFolderRepository,
         ILibraryFolderValidator libraryFolderValidator,
         IMediaItemRepository mediaItemRepository,
-        ISettingsService settingsService,
         Func<Task> refreshLibraryData,
         Action<string> setStatusMessage,
         Func<bool> isScanning)
@@ -49,7 +47,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
         _libraryFolderRepository = libraryFolderRepository;
         _libraryFolderValidator = libraryFolderValidator;
         _mediaItemRepository = mediaItemRepository;
-        _settingsService = settingsService;
         _refreshLibraryData = refreshLibraryData;
         _setStatusMessage = setStatusMessage;
         _isScanning = isScanning;
@@ -194,12 +191,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
             MediaType = selection.MediaType
         });
 
-        if (!_settingsService.Settings.LibraryFolders.Any(path => string.Equals(path, folderPath, StringComparison.OrdinalIgnoreCase)))
-        {
-            _settingsService.Settings.LibraryFolders.Add(folderPath);
-            await _settingsService.SaveAsync();
-        }
-
         await RefreshAsync();
         SelectedFolderPath = folderPath;
         _setStatusMessage("Library folder added.");
@@ -217,13 +208,6 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
         var folder = configuredFolder.Folder;
         await _libraryFolderRepository.DeleteAsync(folder.Id);
-
-        var removedSettingsEntries = _settingsService.Settings.LibraryFolders.RemoveAll(
-            path => string.Equals(path, folder.Path, StringComparison.OrdinalIgnoreCase));
-        if (removedSettingsEntries > 0)
-        {
-            await _settingsService.SaveAsync();
-        }
 
         SelectedFolder = null;
         await _refreshLibraryData();

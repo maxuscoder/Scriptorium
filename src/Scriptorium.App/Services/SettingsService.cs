@@ -10,6 +10,7 @@ namespace Scriptorium.App.Services;
 /// </summary>
 public sealed class SettingsService : ISettingsService
 {
+    private static readonly TimeSpan DebouncedSaveDelay = TimeSpan.FromMilliseconds(300);
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         WriteIndented = true
@@ -18,7 +19,10 @@ public sealed class SettingsService : ISettingsService
     private readonly ISettingsFileLocation _fileLocation;
     private readonly ILogger<SettingsService> _logger;
     private readonly SemaphoreSlim _operationLock = new(1, 1);
+    private readonly object _scheduledSaveGate = new();
     private ApplicationSettings _settings = new();
+    private CancellationTokenSource? _scheduledSaveCancellationSource;
+    private Task _scheduledSaveTask = Task.CompletedTask;
 
     public SettingsService(
         ISettingsFileLocation fileLocation,
@@ -119,6 +123,54 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public Task SaveDebouncedAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_scheduledSaveGate)
+        {
+            _scheduledSaveCancellationSource?.Cancel();
+            _scheduledSaveCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _scheduledSaveTask = SaveAfterDelayAsync(_scheduledSaveCancellationSource);
+            return _scheduledSaveTask;
+        }
+    }
+
+    public async Task FlushAsync(CancellationToken cancellationToken = default)
+    {
+        Task scheduledSaveTask;
+        lock (_scheduledSaveGate)
+        {
+            scheduledSaveTask = _scheduledSaveTask;
+        }
+
+        await scheduledSaveTask.WaitAsync(cancellationToken);
+        await SaveAsync(cancellationToken);
+    }
+
+    private async Task SaveAfterDelayAsync(CancellationTokenSource cancellationSource)
+    {
+        try
+        {
+            await Task.Delay(DebouncedSaveDelay, cancellationSource.Token);
+            await SaveAsync(cancellationSource.Token);
+        }
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
+        {
+        }
+        finally
+        {
+            lock (_scheduledSaveGate)
+            {
+                if (ReferenceEquals(_scheduledSaveCancellationSource, cancellationSource))
+                {
+                    _scheduledSaveCancellationSource = null;
+                    _scheduledSaveTask = Task.CompletedTask;
+                }
+
+                cancellationSource.Dispose();
+            }
+        }
+    }
+
     private void BackupCorruptSettingsFile()
     {
         try
@@ -139,7 +191,6 @@ public sealed class SettingsService : ISettingsService
     private static ApplicationSettings Normalize(ApplicationSettings settings)
     {
         settings.Theme = string.IsNullOrWhiteSpace(settings.Theme) ? "System" : settings.Theme;
-        settings.LibraryFolders ??= [];
         settings.LibraryLayout = string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase)
             ? "List"
             : "Grid";

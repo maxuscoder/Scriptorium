@@ -21,6 +21,15 @@ public interface IMediaItemRepository : IRepository<MediaItem>
         Guid libraryFolderId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Gets media belonging to any supplied library folder or matching any supplied path.
+    /// This is used by scans to avoid loading unrelated library items.
+    /// </summary>
+    Task<IReadOnlyList<MediaItem>> GetByLibraryFolderIdsOrPathsAsync(
+        IEnumerable<Guid> libraryFolderIds,
+        IEnumerable<string> paths,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Reclassifies all indexed media belonging to a library folder.</summary>
     Task<int> UpdateMediaTypeByLibraryFolderIdAsync(
         Guid libraryFolderId,

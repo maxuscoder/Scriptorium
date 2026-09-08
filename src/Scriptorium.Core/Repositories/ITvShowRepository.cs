@@ -7,4 +7,8 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface ITvShowRepository : IRepository<TVShow>
 {
+    /// <summary>Gets the show that owns an episode for the specified media item.</summary>
+    Task<TVShow?> GetByMediaItemIdAsync(
+        Guid mediaItemId,
+        CancellationToken cancellationToken = default);
 }

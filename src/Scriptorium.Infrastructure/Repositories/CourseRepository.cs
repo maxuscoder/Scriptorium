@@ -26,6 +26,18 @@ public sealed class CourseRepository(IDbContextFactory<ScriptoriumDbContext> con
     }
 
     /// <inheritdoc />
+    public async Task<Course?> GetByMediaItemIdAsync(
+        Guid mediaItemId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await Courses(context)
+            .SingleOrDefaultAsync(
+                course => course.Lessons.Any(lesson => lesson.MediaItemId == mediaItemId),
+                cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> UpdateLessonOrderAsync(
         Guid courseId,
         IReadOnlyList<Guid> orderedLessonIds,
