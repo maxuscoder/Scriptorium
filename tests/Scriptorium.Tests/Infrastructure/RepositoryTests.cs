@@ -1426,6 +1426,199 @@ public sealed class RepositoryTests
         Assert.Null(parser.Parse(fileName));
     }
 
+    [Fact]
+    public async Task Tv_show_hierarchy_synchronizer_reconciles_reassignment_missing_and_media_type_changes()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+                context.LibraryFolders.Add(new LibraryFolder
+                {
+                    Name = "TV",
+                    Path = "C:\\TV",
+                    MediaType = MediaType.TvShow
+                });
+                await context.SaveChangesAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderId = (await new LibraryFolderRepository(contextFactory).GetAllAsync()).Single().Id;
+            var mediaRepository = new MediaItemRepository(contextFactory);
+            await mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Episode",
+                Path = "C:\\TV\\episode.mkv",
+                LibraryFolderId = folderId,
+                MediaType = MediaType.TvShow,
+                TVShowTitle = "Show A",
+                SeasonNumber = 1,
+                EpisodeNumber = 1
+            });
+
+            var synchronizer = new TvShowHierarchySynchronizer(contextFactory);
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.TVShowTitle = "Show B";
+                media.SeasonNumber = 2;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.DoesNotContain(await context.TVShows.ToListAsync(), show => show.Title == "Show A");
+                Assert.Equal("Show B", (await context.TVShows.SingleAsync()).Title);
+                Assert.Equal(2, (await context.Seasons.SingleAsync()).SeasonNumber);
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = true;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Single(await context.Episodes.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = false;
+                media.MediaType = MediaType.Movie;
+                media.TVShowTitle = null;
+                media.SeasonNumber = null;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.TVShows.ToListAsync());
+                Assert.Empty(await context.Seasons.ToListAsync());
+                Assert.Empty(await context.Episodes.ToListAsync());
+                Assert.Single(await context.MediaItems.ToListAsync());
+            }
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Tutorial_course_synchronizer_reconciles_lesson_ownership_and_preserves_missing_lessons()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var firstFolder = new LibraryFolder
+            {
+                Name = "Course A",
+                Path = "C:\\Tutorials\\A",
+                MediaType = MediaType.Tutorial
+            };
+            var secondFolder = new LibraryFolder
+            {
+                Name = "Course B",
+                Path = "C:\\Tutorials\\B",
+                MediaType = MediaType.Tutorial
+            };
+            await folderRepository.AddAsync(firstFolder);
+            await folderRepository.AddAsync(secondFolder);
+
+            var mediaRepository = new MediaItemRepository(contextFactory);
+            await mediaRepository.AddAsync(new MediaItem
+            {
+                Title = "Lesson",
+                Path = "C:\\Tutorials\\A\\01 - Lesson.mp4",
+                LibraryFolderId = firstFolder.Id,
+                MediaType = MediaType.Tutorial
+            });
+
+            var synchronizer = new TutorialCourseSynchronizer(contextFactory, new LessonFileNameParser());
+            var folders = await folderRepository.GetAllAsync();
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.LibraryFolderId = secondFolder.Id;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var firstCourse = await context.Courses
+                    .Include(course => course.Lessons)
+                    .SingleAsync(course => course.LibraryFolderId == firstFolder.Id);
+                var secondCourse = await context.Courses
+                    .Include(course => course.Lessons)
+                    .SingleAsync(course => course.LibraryFolderId == secondFolder.Id);
+                Assert.Empty(firstCourse.Lessons);
+                Assert.Single(secondCourse.Lessons);
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = true;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Single(await context.Lessons.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.IsMissing = false;
+                media.MediaType = MediaType.Movie;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.Lessons.ToListAsync());
+                Assert.Equal(2, await context.Courses.CountAsync());
+                Assert.Single(await context.MediaItems.ToListAsync());
+            }
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
     [Theory]
     [InlineData("01 - Introduction.mp4", 1)]
     [InlineData("Lesson 02 - Components.mkv", 2)]

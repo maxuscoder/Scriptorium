@@ -5,7 +5,7 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
-/// Persists TV-show seasons and their episodes from the media records produced by a scan.
+/// Reconciles television-show seasons and episodes with the current indexed media records.
 /// </summary>
 public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbContext> contextFactory)
     : ITvShowHierarchySynchronizer
@@ -18,127 +18,203 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
     {
         ArgumentNullException.ThrowIfNull(mediaItems);
 
-        var candidates = mediaItems
-            .Where(item => item.MediaType == MediaType.TvShow &&
-                           !string.IsNullOrWhiteSpace(item.TVShowTitle) &&
-                           item.SeasonNumber is > 0)
-            .ToList();
-        if (candidates.Count == 0)
+        var suppliedMediaItems = mediaItems.ToDictionary(item => item.Id);
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var persistedMediaItems = await context.MediaItems.AsNoTracking().ToListAsync(cancellationToken);
+        var mediaById = persistedMediaItems.ToDictionary(item => item.Id);
+        foreach (var mediaItem in suppliedMediaItems)
         {
-            return;
+            if (mediaById.ContainsKey(mediaItem.Key))
+            {
+                mediaById[mediaItem.Key] = mediaItem.Value;
+            }
         }
 
-        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var shows = await context.TVShows
             .Include(show => show.Seasons)
+                .ThenInclude(season => season.Episodes)
             .ToListAsync(cancellationToken);
-        var episodesByMediaItemId = (await context.Episodes
-                .Where(episode => candidates.Select(item => item.Id).Contains(episode.MediaItemId))
-                .ToListAsync(cancellationToken))
+        var episodesByMediaItemId = shows
+            .SelectMany(show => show.Seasons)
+            .SelectMany(season => season.Episodes)
             .ToDictionary(episode => episode.MediaItemId);
-        var affectedSeasons = new HashSet<Season>();
-        var affectedShows = new HashSet<TVShow>();
 
-        foreach (var showGroup in candidates.GroupBy(item => new { item.LibraryFolderId, Title = item.TVShowTitle! }))
+        foreach (var episode in episodesByMediaItemId.Values.ToList())
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var show = shows.SingleOrDefault(existing =>
-                existing.LibraryFolderId == showGroup.Key.LibraryFolderId &&
-                string.Equals(existing.Title, showGroup.Key.Title, StringComparison.Ordinal));
-            if (show is null)
+            if (!mediaById.TryGetValue(episode.MediaItemId, out var mediaItem))
             {
-                show = new TVShow
-                {
-                    Id = Guid.NewGuid(),
-                    LibraryFolderId = showGroup.Key.LibraryFolderId,
-                    Title = showGroup.Key.Title
-                };
-                shows.Add(show);
-                context.TVShows.Add(show);
+                RemoveEpisode(context, episode, episodesByMediaItemId);
+                continue;
             }
 
-            affectedShows.Add(show);
-
-            foreach (var seasonGroup in showGroup.GroupBy(item => item.SeasonNumber!.Value))
+            // A missing file has no fresh metadata to reconcile. Preserve its current
+            // hierarchy until the file is found again, unless its type was changed away
+            // from TV, which is an explicit reassignment.
+            if (mediaItem.IsMissing && mediaItem.MediaType == MediaType.TvShow)
             {
-                var season = show.Seasons.SingleOrDefault(existing => existing.SeasonNumber == seasonGroup.Key);
-                if (season is null)
+                continue;
+            }
+
+            if (!IsCandidate(mediaItem))
+            {
+                RemoveEpisode(context, episode, episodesByMediaItemId);
+                continue;
+            }
+
+            var targetShow = GetOrCreateShow(context, shows, mediaItem);
+            var targetSeason = GetOrCreateSeason(context, targetShow, mediaItem.SeasonNumber!.Value);
+            AssignEpisode(episode, targetSeason, mediaItem);
+        }
+
+        foreach (var mediaItem in mediaById.Values.Where(IsCandidate))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (episodesByMediaItemId.ContainsKey(mediaItem.Id))
+            {
+                continue;
+            }
+
+            var targetShow = GetOrCreateShow(context, shows, mediaItem);
+            var targetSeason = GetOrCreateSeason(context, targetShow, mediaItem.SeasonNumber!.Value);
+            var episode = new Episode
+            {
+                Id = Guid.NewGuid(),
+                MediaItemId = mediaItem.Id,
+                MediaItem = null!,
+                Season = targetSeason,
+                SeasonId = targetSeason.Id,
+                EpisodeNumber = mediaItem.EpisodeNumber,
+                Title = mediaItem.Title,
+                FilePath = mediaItem.Path,
+                Duration = ToDuration(mediaItem.RuntimeSeconds)
+            };
+            targetSeason.Episodes.Add(episode);
+            episodesByMediaItemId.Add(mediaItem.Id, episode);
+            context.Episodes.Add(episode);
+        }
+
+        foreach (var show in shows)
+        {
+            foreach (var season in show.Seasons.ToList())
+            {
+                if (season.Episodes.Count == 0)
                 {
-                    season = new Season
-                    {
-                        Id = Guid.NewGuid(),
-                        TVShow = show,
-                        TVShowId = show.Id,
-                        SeasonNumber = seasonGroup.Key
-                    };
-                    show.Seasons.Add(season);
-                    context.Seasons.Add(season);
+                    show.Seasons.Remove(season);
+                    context.Seasons.Remove(season);
+                    continue;
                 }
 
-                affectedSeasons.Add(season);
-                foreach (var mediaItem in seasonGroup)
-                {
-                    if (!episodesByMediaItemId.TryGetValue(mediaItem.Id, out var episode))
-                    {
-                        episode = new Episode
-                        {
-                            Id = Guid.NewGuid(),
-                            MediaItemId = mediaItem.Id,
-                            MediaItem = null!,
-                            Season = season,
-                            SeasonId = season.Id,
-                            Title = mediaItem.Title,
-                            FilePath = mediaItem.Path
-                        };
-                        episodesByMediaItemId.Add(mediaItem.Id, episode);
-                        context.Episodes.Add(episode);
-                    }
+                ReorderEpisodes(season);
+            }
 
-                    episode.Season = season;
-                    episode.SeasonId = season.Id;
-                    episode.EpisodeNumber = mediaItem.EpisodeNumber;
-                    episode.Title = mediaItem.Title;
-                    episode.FilePath = mediaItem.Path;
-                    episode.Duration = mediaItem.RuntimeSeconds is { } seconds
-                        ? TimeSpan.FromSeconds(seconds)
-                        : TimeSpan.Zero;
-                }
+            show.EpisodeCount = show.Seasons.Sum(season => season.Episodes.Count);
+            if (show.Seasons.Count == 0)
+            {
+                context.TVShows.Remove(show);
             }
         }
 
         var changeCount = await context.SaveChangesAsync(cancellationToken);
-
-        var affectedSeasonIds = affectedSeasons.Select(season => season.Id).ToArray();
-        var episodesToOrder = await context.Episodes
-            .Where(episode => affectedSeasonIds.Contains(episode.SeasonId))
-            .ToListAsync(cancellationToken);
-        foreach (var seasonEpisodes in episodesToOrder.GroupBy(episode => episode.SeasonId))
-        {
-            var sortOrder = 0;
-            foreach (var episode in seasonEpisodes
-                         .OrderBy(episode => episode.EpisodeNumber.HasValue ? 0 : 1)
-                         .ThenBy(episode => episode.EpisodeNumber)
-                         .ThenBy(episode => episode.Title, StringComparer.OrdinalIgnoreCase)
-                         .ThenBy(episode => episode.Id))
-            {
-                episode.SortOrder = sortOrder++;
-            }
-        }
-
-        var affectedShowIds = affectedShows.Select(show => show.Id).ToArray();
-        var episodeCountsByShowId = await context.Episodes
-            .Where(episode => affectedShowIds.Contains(episode.Season.TVShowId))
-            .GroupBy(episode => episode.Season.TVShowId)
-            .ToDictionaryAsync(group => group.Key, group => group.Count(), cancellationToken);
-        foreach (var show in affectedShows)
-        {
-            show.EpisodeCount = episodeCountsByShowId.GetValueOrDefault(show.Id);
-        }
-
-        changeCount += await context.SaveChangesAsync(cancellationToken);
         if (changeCount > 0)
         {
             ShowsChanged?.Invoke();
         }
     }
+
+    private static bool IsCandidate(MediaItem mediaItem) =>
+        !mediaItem.IsMissing &&
+        mediaItem.MediaType == MediaType.TvShow &&
+        !string.IsNullOrWhiteSpace(mediaItem.TVShowTitle) &&
+        mediaItem.SeasonNumber is > 0;
+
+    private static TVShow GetOrCreateShow(
+        ScriptoriumDbContext context,
+        List<TVShow> shows,
+        MediaItem mediaItem)
+    {
+        var show = shows.SingleOrDefault(existing =>
+            existing.LibraryFolderId == mediaItem.LibraryFolderId &&
+            string.Equals(existing.Title, mediaItem.TVShowTitle, StringComparison.Ordinal));
+        if (show is not null)
+        {
+            return show;
+        }
+
+        show = new TVShow
+        {
+            Id = Guid.NewGuid(),
+            LibraryFolderId = mediaItem.LibraryFolderId,
+            Title = mediaItem.TVShowTitle!
+        };
+        shows.Add(show);
+        context.TVShows.Add(show);
+        return show;
+    }
+
+    private static Season GetOrCreateSeason(ScriptoriumDbContext context, TVShow show, int seasonNumber)
+    {
+        var season = show.Seasons.SingleOrDefault(existing => existing.SeasonNumber == seasonNumber);
+        if (season is not null)
+        {
+            return season;
+        }
+
+        season = new Season
+        {
+            Id = Guid.NewGuid(),
+            TVShow = show,
+            TVShowId = show.Id,
+            SeasonNumber = seasonNumber
+        };
+        show.Seasons.Add(season);
+        context.Seasons.Add(season);
+        return season;
+    }
+
+    private static void AssignEpisode(Episode episode, Season targetSeason, MediaItem mediaItem)
+    {
+        if (episode.SeasonId != targetSeason.Id)
+        {
+            episode.Season.Episodes.Remove(episode);
+            episode.Season = targetSeason;
+            episode.SeasonId = targetSeason.Id;
+            if (!targetSeason.Episodes.Contains(episode))
+            {
+                targetSeason.Episodes.Add(episode);
+            }
+        }
+
+        episode.EpisodeNumber = mediaItem.EpisodeNumber;
+        episode.Title = mediaItem.Title;
+        episode.FilePath = mediaItem.Path;
+        episode.Duration = ToDuration(mediaItem.RuntimeSeconds);
+    }
+
+    private static void RemoveEpisode(
+        ScriptoriumDbContext context,
+        Episode episode,
+        IDictionary<Guid, Episode> episodesByMediaItemId)
+    {
+        episode.Season.Episodes.Remove(episode);
+        episodesByMediaItemId.Remove(episode.MediaItemId);
+        context.Episodes.Remove(episode);
+    }
+
+    private static void ReorderEpisodes(Season season)
+    {
+        var sortOrder = 0;
+        foreach (var episode in season.Episodes
+                     .OrderBy(episode => episode.EpisodeNumber.HasValue ? 0 : 1)
+                     .ThenBy(episode => episode.EpisodeNumber)
+                     .ThenBy(episode => episode.Title, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(episode => episode.Id))
+        {
+            episode.SortOrder = sortOrder++;
+        }
+    }
+
+    private static TimeSpan ToDuration(long? durationSeconds) => durationSeconds is { } seconds
+        ? TimeSpan.FromSeconds(seconds)
+        : TimeSpan.Zero;
 }
