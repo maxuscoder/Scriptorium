@@ -78,6 +78,9 @@ public sealed class TvShowDetailsPageViewModelTests
         Assert.Equal("Episode 2", viewModel.SelectedEpisode!.Position);
         Assert.Equal("1 of 3 episodes watched", viewModel.ShowProgressText);
         Assert.Equal(100d / 3d, viewModel.ShowProgressPercentage, 5);
+        Assert.Equal(1, viewModel.Seasons[0].CompletedEpisodeCount);
+        Assert.Equal(50d, viewModel.Seasons[0].ProgressPercentage);
+        Assert.Equal("50%", viewModel.Seasons[0].ProgressPercentageText);
         Assert.Equal("25% watched", viewModel.SelectedEpisode.PlaybackProgressText);
         Assert.True(viewModel.PreviousEpisodeCommand.CanExecute(null));
         Assert.True(viewModel.NextEpisodeCommand.CanExecute(null));
@@ -88,6 +91,9 @@ public sealed class TvShowDetailsPageViewModelTests
         await ((AsyncRelayCommand)viewModel.ToggleEpisodeCompletionCommand).ExecuteAsync();
         Assert.Equal(2, viewModel.CompletedEpisodeCount);
         Assert.Equal("2 of 3 episodes watched", viewModel.ShowProgressText);
+        Assert.Equal(1, viewModel.Seasons[1].CompletedEpisodeCount);
+        Assert.Equal(100d, viewModel.Seasons[1].ProgressPercentage);
+        Assert.Equal("100%", viewModel.Seasons[1].ProgressPercentageText);
         Assert.Equal("1m", viewModel.RemainingDurationText);
     });
 

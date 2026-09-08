@@ -576,6 +576,7 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(CompletedEpisodeCount));
         OnPropertyChanged(nameof(ProgressPercentage));
+        OnPropertyChanged(nameof(ProgressPercentageText));
         OnPropertyChanged(nameof(ProgressText));
     }
 
@@ -587,6 +588,8 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
     public double ProgressPercentage => Episodes.Count == 0
         ? 0
         : CompletedEpisodeCount / (double)Episodes.Count * 100;
+
+    public string ProgressPercentageText => $"{ProgressPercentage:0}%";
 
     public string ProgressText => Episodes.Count == 0
         ? "No episodes"

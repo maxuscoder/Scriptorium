@@ -82,6 +82,7 @@
                                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding EpisodeCountText}" />
                                     <TextBlock Margin="16,0,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding ProgressText}" />
+                                    <TextBlock Margin="16,0,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding ProgressPercentageText}" />
                                 </StackPanel>
                             </Grid>
                             <ProgressBar Height="4" Margin="0,8,0,0" Background="{StaticResource Brush.Border}" Foreground="{StaticResource Brush.Accent}" Maximum="100" Minimum="0" Value="{Binding ProgressPercentage, Mode=OneWay}" />
