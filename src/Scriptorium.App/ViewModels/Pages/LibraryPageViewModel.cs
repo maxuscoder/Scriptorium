@@ -90,7 +90,6 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             libraryFolderRepository,
             libraryFolderValidator,
             mediaItemRepository,
-            settingsService,
             RefreshLibraryDataAsync,
             message => StatusMessage = message,
             () => IsScanning);

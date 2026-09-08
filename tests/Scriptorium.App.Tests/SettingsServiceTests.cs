@@ -40,6 +40,39 @@ public sealed class SettingsServiceTests
         }
     }
 
+    [Fact]
+    public async Task Saving_legacy_settings_drops_the_library_folder_mirror()
+    {
+        var directoryPath = Path.Combine(Path.GetTempPath(), $"scriptorium-settings-{Guid.NewGuid():N}");
+        var filePath = Path.Combine(directoryPath, "settings.json");
+
+        try
+        {
+            Directory.CreateDirectory(directoryPath);
+            await File.WriteAllTextAsync(
+                filePath,
+                """{"LibraryFolders":["C:\\Legacy"],"LastSearchQuery":"saved query"}""");
+
+            var service = new SettingsService(
+                new TestSettingsFileLocation(filePath),
+                NullLogger<SettingsService>.Instance);
+
+            await service.LoadAsync();
+            await service.SaveAsync();
+
+            var savedSettings = await File.ReadAllTextAsync(filePath);
+            Assert.DoesNotContain("LibraryFolders", savedSettings, StringComparison.Ordinal);
+            Assert.Contains("saved query", savedSettings, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(directoryPath))
+            {
+                Directory.Delete(directoryPath, recursive: true);
+            }
+        }
+    }
+
     private sealed class TestSettingsFileLocation(string filePath) : ISettingsFileLocation
     {
         public string FilePath { get; } = filePath;
