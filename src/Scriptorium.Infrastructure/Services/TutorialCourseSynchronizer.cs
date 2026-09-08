@@ -86,9 +86,24 @@ public sealed class TutorialCourseSynchronizer(
                 continue;
             }
 
-            if (mediaItem.LibraryFolderId is not { } lessonFolderId ||
-                !scannedFolderIds.Contains(lessonFolderId))
+            var currentCourseIsScanned = scannedFolderIds.Contains(lesson.Course.LibraryFolderId);
+            if (mediaItem.LibraryFolderId is not { } lessonFolderId)
             {
+                if (currentCourseIsScanned)
+                {
+                    RemoveLesson(context, lesson, lessonsByMediaItemId);
+                }
+
+                continue;
+            }
+
+            if (!scannedFolderIds.Contains(lessonFolderId))
+            {
+                if (currentCourseIsScanned)
+                {
+                    RemoveLesson(context, lesson, lessonsByMediaItemId);
+                }
+
                 continue;
             }
 

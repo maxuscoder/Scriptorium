@@ -1668,6 +1668,33 @@ public sealed class RepositoryTests
                 Assert.Equal(2, await context.Courses.CountAsync());
                 Assert.Single(await context.MediaItems.ToListAsync());
             }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.MediaType = MediaType.Tutorial;
+                media.LibraryFolderId = secondFolder.Id;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Single(await context.Lessons.ToListAsync());
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                var media = await context.MediaItems.SingleAsync();
+                media.LibraryFolderId = null;
+                await context.SaveChangesAsync();
+            }
+
+            await synchronizer.SynchronizeAsync(folders, await mediaRepository.GetAllAsync());
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                Assert.Empty(await context.Lessons.ToListAsync());
+            }
         }
         finally
         {
