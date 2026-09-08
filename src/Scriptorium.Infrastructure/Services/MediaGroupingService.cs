@@ -56,7 +56,11 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
 
         var sourceSeason = episode.Season;
         MoveEpisodeToGroup(context, episode, targetGroup, sourceSeason.SeasonNumber);
-        RemoveEmptySeason(context, sourceSeason);
+        await RemoveEmptySeasonAsync(
+            context,
+            sourceSeason,
+            new HashSet<Guid> { episode.Id },
+            cancellationToken);
         ReorderEpisodes(sourceSeason.TVShow);
         ReorderEpisodes(targetGroup);
         await context.SaveChangesAsync(cancellationToken);
@@ -118,6 +122,8 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
             throw new InvalidOperationException("Every selected media item must belong to the source group.");
         }
 
+        var movingEpisodeIds = episodes.Select(episode => episode.Id).ToHashSet();
+
         var newGroup = new TVShow
         {
             Id = Guid.NewGuid(),
@@ -130,7 +136,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         {
             var sourceSeason = episode.Season;
             MoveEpisodeToGroup(context, episode, newGroup, sourceSeason.SeasonNumber);
-            RemoveEmptySeason(context, sourceSeason);
+            await RemoveEmptySeasonAsync(context, sourceSeason, movingEpisodeIds, cancellationToken);
         }
 
         ReorderEpisodes(sourceGroup);
@@ -211,9 +217,15 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         episode.MediaItem.SeasonNumber = seasonNumber;
     }
 
-    private static void RemoveEmptySeason(ScriptoriumDbContext context, Season season)
+    private static async Task RemoveEmptySeasonAsync(
+        ScriptoriumDbContext context,
+        Season season,
+        IReadOnlySet<Guid> movingEpisodeIds,
+        CancellationToken cancellationToken)
     {
-        if (season.Episodes.Any(episode => episode.SeasonId == season.Id))
+        if (await context.Episodes.AnyAsync(
+                episode => episode.SeasonId == season.Id && !movingEpisodeIds.Contains(episode.Id),
+                cancellationToken))
         {
             return;
         }
