@@ -1,5 +1,4 @@
 using System.IO;
-using System.Windows.Media;
 using Scriptorium.App.Models;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
@@ -137,7 +136,7 @@ public sealed class VideoPlayerTests
         player.Deactivate();
         Assert.True(second.Disposed);
         Assert.Equal(VideoPlaybackState.Stopped, player.PlaybackState);
-        Assert.Null(player.Video);
+        Assert.Null(player.VideoOutput);
         Assert.False(player.IsReady);
         player.Activate();
         Assert.Equal(3, factory.Instances.Count);
@@ -340,7 +339,10 @@ public sealed class VideoPlayerTests
         player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
         player.Activate();
         var playback = Assert.Single(factory.Instances);
+        Assert.False(player.IsReady);
+        Assert.Equal(1, playback.PlaybackSpeed);
         playback.RaiseOpened();
+        Assert.True(player.IsReady);
         Assert.Equal(0.4, playback.Volume);
         Assert.Equal(1.5, playback.PlaybackSpeed);
 
@@ -377,7 +379,8 @@ public sealed class VideoPlayerTests
         public event EventHandler? Opened;
         public event EventHandler? Ended;
         public event EventHandler<Exception>? Failed;
-        public ImageSource Video { get; } = new DrawingImage();
+        public IVideoOutput VideoOutput { get; } = new FakeVideoOutput();
+        public bool IsPlaying { get; private set; }
         public TimeSpan Position { get; set; }
         public TimeSpan Duration => TimeSpan.FromSeconds(60);
         public double Volume { get; set; }
@@ -392,13 +395,31 @@ public sealed class VideoPlayerTests
             if (OpenException is not null) throw OpenException;
             Pause();
         }
-        public void Play() => Calls.Add("Play");
-        public void Pause() => Calls.Add("Pause");
+        public void Play()
+        {
+            IsPlaying = true;
+            Calls.Add("Play");
+        }
+        public void Pause()
+        {
+            IsPlaying = false;
+            Calls.Add("Pause");
+        }
+        public void Stop()
+        {
+            IsPlaying = false;
+            Position = TimeSpan.Zero;
+            Calls.Add("Stop");
+        }
         public void Dispose() => Disposed = true;
         public void RaiseOpened() => Opened?.Invoke(this, EventArgs.Empty);
         public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
         public void RaiseFailed(Exception? exception = null) =>
             Failed?.Invoke(this, exception ?? new InvalidOperationException("Invalid video"));
+    }
+
+    private sealed class FakeVideoOutput : IVideoOutput
+    {
     }
 
     private sealed class RecordingSettingsService : ISettingsService

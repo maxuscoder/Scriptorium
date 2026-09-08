@@ -19,6 +19,7 @@ public partial class VideoPlayer : UserControl
 
     private Window? _fullscreenWindow;
     private Window? _ownerWindow;
+    private object? _inlinePlayerContent;
     private readonly DispatcherTimer _actionFeedbackTimer;
     private bool _isSeeking;
 
@@ -44,7 +45,7 @@ public partial class VideoPlayer : UserControl
         var view = (VideoPlayer)target;
         if (args.OldValue is VideoPlayerViewModel oldPlayer) oldPlayer.PlaybackActionPerformed -= view.OnPlaybackActionPerformed;
         if (view.Player is { } newPlayer) newPlayer.PlaybackActionPerformed += view.OnPlaybackActionPerformed;
-        if (!view.IsLoaded || view.IsFullscreen) return;
+        if (!view.IsLoaded) return;
         view.CloseFullscreen();
         (args.OldValue as VideoPlayerViewModel)?.Deactivate();
         view.Player?.Activate();
@@ -67,7 +68,6 @@ public partial class VideoPlayer : UserControl
     {
         if (Player is { } player) player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
         _actionFeedbackTimer.Stop();
-        if (IsFullscreen) return;
         CloseFullscreen();
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
         _ownerWindow = null;
@@ -161,9 +161,9 @@ public partial class VideoPlayer : UserControl
     {
         if (IsTextInput(args.OriginalSource as DependencyObject)) return;
 
-        if (args.Key == Key.Escape && IsFullscreen)
+        if (args.Key == Key.Escape && _fullscreenWindow is not null)
         {
-            Window.GetWindow(this)?.Close();
+            _fullscreenWindow.Close();
             args.Handled = true;
         }
         else if (args.Key == Key.F11 && Player?.IsReady == true)
@@ -243,17 +243,19 @@ public partial class VideoPlayer : UserControl
 
     private void ToggleFullscreen()
     {
-        if (IsFullscreen)
+        if (_fullscreenWindow is not null)
         {
-            Window.GetWindow(this)?.Close();
+            _fullscreenWindow.Close();
             return;
         }
-        if (_fullscreenWindow is not null || Player?.IsReady != true) return;
+        if (Player?.IsReady != true || Content is null) return;
 
-        // A second view shares the drawing and commands, so playback is never reopened.
-        var view = new VideoPlayer { IsFullscreen = true, Player = Player };
         var owner = Window.GetWindow(this);
-        _fullscreenWindow = new Window
+        var playerContent = Content;
+        Content = null;
+        _inlinePlayerContent = playerContent;
+
+        var fullscreenWindow = new Window
         {
             Title = "Scriptorium video",
             Owner = owner,
@@ -263,17 +265,53 @@ public partial class VideoPlayer : UserControl
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Width = owner?.ActualWidth ?? 960,
             Height = owner?.ActualHeight ?? 540,
-            Content = view,
-            Background = (System.Windows.Media.Brush)FindResource("Brush.Background")
+            Content = playerContent,
+            Background = (Brush)FindResource("Brush.Background")
         };
-        _fullscreenWindow.Closed += (_, _) =>
+        _fullscreenWindow = fullscreenWindow;
+        IsFullscreen = true;
+        fullscreenWindow.PreviewKeyDown += OnPreviewKeyDown;
+        fullscreenWindow.Closed += OnFullscreenClosed;
+        try
         {
+            fullscreenWindow.Show();
+            fullscreenWindow.WindowState = WindowState.Maximized;
+            fullscreenWindow.Focus();
+        }
+        catch
+        {
+            fullscreenWindow.PreviewKeyDown -= OnPreviewKeyDown;
+            fullscreenWindow.Closed -= OnFullscreenClosed;
+            fullscreenWindow.Content = null;
             _fullscreenWindow = null;
-            if (IsLoaded) Focus();
-        };
-        _fullscreenWindow.Show();
-        _fullscreenWindow.WindowState = WindowState.Maximized;
-        view.Focus();
+            IsFullscreen = false;
+            Content = _inlinePlayerContent;
+            _inlinePlayerContent = null;
+            throw;
+        }
+    }
+
+    private void OnFullscreenClosed(object? sender, EventArgs args)
+    {
+        if (sender is Window fullscreenWindow)
+        {
+            fullscreenWindow.PreviewKeyDown -= OnPreviewKeyDown;
+            fullscreenWindow.Closed -= OnFullscreenClosed;
+            fullscreenWindow.Content = null;
+        }
+
+        _fullscreenWindow = null;
+        IsFullscreen = false;
+        if (Content is null && _inlinePlayerContent is not null)
+        {
+            Content = _inlinePlayerContent;
+        }
+        _inlinePlayerContent = null;
+
+        if (IsLoaded)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => Focus()));
+        }
     }
 
     private void CloseFullscreen() => _fullscreenWindow?.Close();

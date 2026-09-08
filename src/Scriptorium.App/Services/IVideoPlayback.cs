@@ -1,14 +1,15 @@
-using System.Windows.Media;
-
 namespace Scriptorium.App.Services;
 
-/// <summary>A UI-thread-owned playback engine, independent of any particular view.</summary>
+/// <summary>
+/// A UI-thread-owned playback session. Implementations keep media-engine types behind this boundary.
+/// </summary>
 public interface IVideoPlayback : IDisposable
 {
     event EventHandler? Opened;
     event EventHandler? Ended;
     event EventHandler<Exception>? Failed;
-    ImageSource Video { get; }
+    IVideoOutput VideoOutput { get; }
+    bool IsPlaying { get; }
     TimeSpan Position { get; set; }
     TimeSpan Duration { get; }
     double Volume { get; set; }
@@ -16,6 +17,12 @@ public interface IVideoPlayback : IDisposable
     void Open(string filePath);
     void Play();
     void Pause();
+    void Stop();
+}
+
+/// <summary>An opaque render target passed from the playback boundary to a platform view adapter.</summary>
+public interface IVideoOutput
+{
 }
 
 public interface IVideoPlaybackFactory

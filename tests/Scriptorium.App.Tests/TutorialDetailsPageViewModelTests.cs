@@ -1,4 +1,3 @@
-using System.Windows.Media;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -286,18 +285,28 @@ public sealed class TutorialDetailsPageViewModelTests
         public event EventHandler? Opened;
         public event EventHandler? Ended;
         public event EventHandler<Exception>? Failed;
-        public ImageSource Video { get; } = new DrawingImage();
+        public IVideoOutput VideoOutput { get; } = new TutorialFakeVideoOutput();
+        public bool IsPlaying { get; private set; }
         public TimeSpan Position { get; set; }
         public TimeSpan Duration => TimeSpan.FromSeconds(60);
         public double Volume { get; set; }
         public double PlaybackSpeed { get; set; } = 1;
 
         public void Open(string filePath) => Pause();
-        public void Play() { }
-        public void Pause() { }
+        public void Play() => IsPlaying = true;
+        public void Pause() => IsPlaying = false;
+        public void Stop()
+        {
+            IsPlaying = false;
+            Position = TimeSpan.Zero;
+        }
         public void Dispose() { }
         public void RaiseOpened() => Opened?.Invoke(this, EventArgs.Empty);
         public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
         public void RaiseFailed(Exception exception) => Failed?.Invoke(this, exception);
+    }
+
+    private sealed class TutorialFakeVideoOutput : IVideoOutput
+    {
     }
 }

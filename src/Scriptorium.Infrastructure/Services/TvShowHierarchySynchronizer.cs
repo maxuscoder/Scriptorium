@@ -11,6 +11,9 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
     : ITvShowHierarchySynchronizer
 {
     /// <inheritdoc />
+    public event Action? ShowsChanged;
+
+    /// <inheritdoc />
     public async Task SynchronizeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(mediaItems);
@@ -103,7 +106,7 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        var changeCount = await context.SaveChangesAsync(cancellationToken);
 
         var affectedSeasonIds = affectedSeasons.Select(season => season.Id).ToArray();
         var episodesToOrder = await context.Episodes
@@ -132,6 +135,10 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
             show.EpisodeCount = episodeCountsByShowId.GetValueOrDefault(show.Id);
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        changeCount += await context.SaveChangesAsync(cancellationToken);
+        if (changeCount > 0)
+        {
+            ShowsChanged?.Invoke();
+        }
     }
 }

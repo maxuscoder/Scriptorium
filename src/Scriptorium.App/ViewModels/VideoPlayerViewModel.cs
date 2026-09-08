@@ -1,5 +1,4 @@
 using System.IO;
-using System.Windows.Media;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
@@ -89,7 +88,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
-    public ImageSource? Video => _playback?.Video;
+    /// <summary>An engine-neutral token consumed only by the WPF video surface adapter.</summary>
+    public IVideoOutput? VideoOutput => _playback?.VideoOutput;
     public bool IsReady
     {
         get => _isReady;
@@ -230,8 +230,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
             ApplyVolume();
-            ApplyPlaybackSpeed();
-            OnPropertyChanged(nameof(Video));
+            OnPropertyChanged(nameof(VideoOutput));
             _playback.Open(_request.FilePath);
         }
         catch (Exception exception)
@@ -250,6 +249,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             OnPropertyChanged(nameof(DurationText));
             var resume = Math.Max(0, _request?.ResumePositionSeconds ?? 0);
             _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
+            ApplyPlaybackSpeed();
             IsReady = true;
             SetPlaybackState(VideoPlaybackState.Paused);
             Status = "Ready to play";
@@ -397,8 +397,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
 
         try
         {
-            _playback.Pause();
-            _playback.Position = TimeSpan.Zero;
+            _playback.Stop();
             _position = TimeSpan.Zero;
             _hasEnded = false;
             SetPlaybackState(VideoPlaybackState.Stopped);
@@ -513,6 +512,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         if (_playback is { } playback)
         {
             _playback = null;
+            // Detach VideoView before disposing the native MediaPlayer it was rendering.
+            OnPropertyChanged(nameof(VideoOutput));
             playback.Opened -= OnOpened;
             playback.Ended -= OnEnded;
             playback.Failed -= OnFailed;
@@ -523,7 +524,6 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         _hasEnded = false;
         _hasStarted = false;
         _isSeeking = false;
-        OnPropertyChanged(nameof(Video));
         NotifyPlaybackChanged();
         NotifyPositionChanged();
     }
