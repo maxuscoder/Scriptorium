@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISearchQueryResetService, SearchQueryResetService>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMediaDetailsNavigationCoordinator, MediaDetailsNavigationCoordinator>();
+        services.AddSingleton<IFolderManagementViewModelFactory, FolderManagementViewModelFactory>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
         services.AddSingleton<LibVlcRuntime>();
         services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();

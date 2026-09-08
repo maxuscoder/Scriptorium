@@ -56,10 +56,6 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private bool _disposed;
 
     public LibraryPageViewModel(
-        IImportFolderDialog importFolderDialog,
-        IConfirmationDialog confirmationDialog,
-        ILibraryFolderRepository libraryFolderRepository,
-        ILibraryFolderValidator libraryFolderValidator,
         IMediaItemRepository mediaItemRepository,
         IMediaScannerService mediaScannerService,
         IPlaybackProgressService playbackProgressService,
@@ -71,7 +67,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         ICategoryRepository categoryRepository,
         ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
-        IMediaDetailsNavigationCoordinator detailsCoordinator)
+        IMediaDetailsNavigationCoordinator detailsCoordinator,
+        IFolderManagementViewModelFactory folderManagementViewModelFactory)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -84,12 +81,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _detailsCoordinator = detailsCoordinator;
-        FolderManagement = new FolderManagementViewModel(
-            importFolderDialog,
-            confirmationDialog,
-            libraryFolderRepository,
-            libraryFolderValidator,
-            mediaItemRepository,
+        FolderManagement = folderManagementViewModelFactory.Create(
             RefreshLibraryDataAsync,
             message => StatusMessage = message,
             () => IsScanning);
