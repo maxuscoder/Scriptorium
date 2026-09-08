@@ -11,16 +11,16 @@ internal static class StaTest
         {
             var dispatcher = Dispatcher.CurrentDispatcher;
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
+            Exception? failure = null;
             dispatcher.BeginInvoke(async () =>
             {
                 try
                 {
                     await test();
-                    completion.SetResult();
                 }
                 catch (Exception exception)
                 {
-                    completion.SetException(exception);
+                    failure = exception;
                 }
                 finally
                 {
@@ -28,9 +28,30 @@ internal static class StaTest
                 }
             });
             Dispatcher.Run();
+
+            if (failure is null)
+            {
+                completion.SetResult();
+            }
+            else
+            {
+                completion.SetException(failure);
+            }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
         return completion.Task.WaitAsync(TimeSpan.FromSeconds(30));
+    }
+
+    /// <summary>
+    /// Completes when the current STA dispatcher reaches application idle.
+    /// </summary>
+    public static Task DrainDispatcherAsync()
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.CurrentDispatcher.BeginInvoke(
+            DispatcherPriority.ApplicationIdle,
+            new Action(() => completion.SetResult()));
+        return completion.Task;
     }
 }

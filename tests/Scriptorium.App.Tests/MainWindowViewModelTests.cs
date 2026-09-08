@@ -24,6 +24,10 @@ public sealed class MainWindowViewModelTests
         var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
             .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
             .Options;
+        MainWindowViewModel? viewModel = null;
+        TutorialDetailsPageViewModel? tutorialDetails = null;
+        TvShowDetailsPageViewModel? tvShowDetails = null;
+        MovieDetailsPageViewModel? movieDetails = null;
 
         try
         {
@@ -140,7 +144,7 @@ public sealed class MainWindowViewModelTests
             var progressService = new PlaybackProgressService(mediaRepository);
             var navigationService = new NavigationService(NullLogger<NavigationService>.Instance);
             var tutorialPlayer = new VideoPlayerViewModel(new UnusedVideoPlaybackFactory(), progressService);
-            var tutorialDetails = new TutorialDetailsPageViewModel(
+            tutorialDetails = new TutorialDetailsPageViewModel(
                 courseRepository,
                 navigationService,
                 categoryRepository,
@@ -149,13 +153,13 @@ public sealed class MainWindowViewModelTests
                 tutorialCourseSynchronizer,
                 progressService,
                 tutorialPlayer);
-            var tvShowDetails = new TvShowDetailsPageViewModel(
+            tvShowDetails = new TvShowDetailsPageViewModel(
                 tvShowRepository,
                 navigationService,
                 categoryRepository,
                 categoryService,
                 favoriteService);
-            var movieDetails = new MovieDetailsPageViewModel(
+            movieDetails = new MovieDetailsPageViewModel(
                 mediaRepository,
                 categoryRepository,
                 categoryService,
@@ -170,7 +174,7 @@ public sealed class MainWindowViewModelTests
                 tutorialDetails,
                 tvShowDetails,
                 movieDetails);
-            var viewModel = new MainWindowViewModel(
+            viewModel = new MainWindowViewModel(
                 mediaRepository,
                 detailsCoordinator,
                 progressService,
@@ -229,6 +233,7 @@ public sealed class MainWindowViewModelTests
                     }],
                     [tutorialMedia, secondTutorialMedia, thirdTutorialMedia]);
                 await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+                await StaTest.DrainDispatcherAsync();
             }
             finally
             {
@@ -271,6 +276,10 @@ public sealed class MainWindowViewModelTests
         }
         finally
         {
+            viewModel?.Dispose();
+            tutorialDetails?.Dispose();
+            tvShowDetails?.Dispose();
+            movieDetails?.Dispose();
             File.Delete(databasePath);
         }
     });
