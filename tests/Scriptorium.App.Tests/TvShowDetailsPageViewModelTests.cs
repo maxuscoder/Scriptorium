@@ -82,6 +82,14 @@ public sealed class TvShowDetailsPageViewModelTests
         Assert.Equal(1, viewModel.Seasons[0].CompletedEpisodeCount);
         Assert.Equal(50d, viewModel.Seasons[0].ProgressPercentage);
         Assert.Equal("50%", viewModel.Seasons[0].ProgressPercentageText);
+        Assert.True(viewModel.Seasons[0].IsExpanded);
+        viewModel.Seasons[0].ToggleExpansionCommand.Execute(null);
+        Assert.False(viewModel.Seasons[0].IsExpanded);
+        Assert.Equal("Expand", viewModel.Seasons[0].ExpansionActionText);
+
+        Assert.True(await viewModel.LoadAsync(showId, viewModel));
+        Assert.False(viewModel.Seasons[0].IsExpanded);
+
         Assert.Equal("25% watched", viewModel.SelectedEpisode.PlaybackProgressText);
         Assert.True(viewModel.PreviousEpisodeCommand.CanExecute(null));
         Assert.True(viewModel.NextEpisodeCommand.CanExecute(null));

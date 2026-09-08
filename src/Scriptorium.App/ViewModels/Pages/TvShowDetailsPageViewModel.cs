@@ -28,6 +28,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     private PageViewModel? _returnPage;
     private Guid? _showId;
     private int _isShowRefreshQueued;
+    private readonly HashSet<int> _collapsedSeasonNumbers = [];
     private string _showTitle = "TV show";
     private string _sourceFolder = string.Empty;
     private TvShowEpisodeViewModel? _selectedEpisode;
@@ -222,20 +223,43 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
             return false;
         }
 
+        var preserveExpansionState = _showId is { } loadedShowId && loadedShowId == show.Id;
+        if (!preserveExpansionState)
+        {
+            _collapsedSeasonNumbers.Clear();
+        }
+
         _returnPage = returnPage;
         _showId = show.Id;
-        await PopulateShowAsync(show, selectedEpisodeMediaItemId: null);
+        await PopulateShowAsync(
+            show,
+            selectedEpisodeMediaItemId: null,
+            preserveExpansionState: preserveExpansionState);
         return true;
     }
 
-    private async Task PopulateShowAsync(TVShow show, Guid? selectedEpisodeMediaItemId)
+    private async Task PopulateShowAsync(
+        TVShow show,
+        Guid? selectedEpisodeMediaItemId,
+        bool preserveExpansionState = true)
     {
+        if (preserveExpansionState)
+        {
+            _collapsedSeasonNumbers.Clear();
+            foreach (var season in Seasons.Where(season => !season.IsExpanded))
+            {
+                _collapsedSeasonNumbers.Add(season.SeasonNumber);
+            }
+        }
+
         _showTitle = MediaDisplayText.TitleOrFallback(show.Title, "Untitled TV show");
         SourceFolder = show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
         Seasons.Clear();
         foreach (var season in show.Seasons.OrderBy(season => season.SeasonNumber))
         {
-            Seasons.Add(new TvShowSeasonViewModel(season));
+            Seasons.Add(new TvShowSeasonViewModel(
+                season,
+                isExpanded: !_collapsedSeasonNumbers.Contains(season.SeasonNumber)));
         }
 
         await RefreshCategoryOptionsAsync();
@@ -588,9 +612,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
 /// <summary>Displays one TV-show season and its ordered episodes.</summary>
 public sealed class TvShowSeasonViewModel : ViewModelBase
 {
-    public TvShowSeasonViewModel(Season season)
+    public TvShowSeasonViewModel(Season season, bool isExpanded = true)
     {
+        SeasonNumber = season.SeasonNumber;
+        _isExpanded = isExpanded;
         _title = $"Season {season.SeasonNumber}";
+        ToggleExpansionCommand = new RelayCommand(ToggleExpanded);
         Episodes = new ObservableCollection<TvShowEpisodeViewModel>(
             season.Episodes
                 .OrderBy(episode => episode.SortOrder)
@@ -604,9 +631,30 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
 
     public string Title => _title;
 
+    public int SeasonNumber { get; }
+
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        private set
+        {
+            if (SetProperty(ref _isExpanded, value))
+            {
+                OnPropertyChanged(nameof(ExpansionActionText));
+            }
+        }
+    }
+
+    public string ExpansionActionText => IsExpanded ? "Collapse" : "Expand";
+
+    public ICommand ToggleExpansionCommand { get; }
+
     public ObservableCollection<TvShowEpisodeViewModel> Episodes { get; }
 
     private readonly string _title;
+    private bool _isExpanded;
+
+    private void ToggleExpanded() => IsExpanded = !IsExpanded;
 
     private void OnEpisodePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
     {
