@@ -339,7 +339,10 @@ public sealed class VideoPlayerTests
         player.SetMedia(new MediaPlaybackRequest("video.mp4", 0));
         player.Activate();
         var playback = Assert.Single(factory.Instances);
+        Assert.False(player.IsReady);
+        Assert.Equal(1, playback.PlaybackSpeed);
         playback.RaiseOpened();
+        Assert.True(player.IsReady);
         Assert.Equal(0.4, playback.Volume);
         Assert.Equal(1.5, playback.PlaybackSpeed);
 

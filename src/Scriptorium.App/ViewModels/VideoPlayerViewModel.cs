@@ -230,7 +230,6 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
             ApplyVolume();
-            ApplyPlaybackSpeed();
             OnPropertyChanged(nameof(VideoOutput));
             _playback.Open(_request.FilePath);
         }
@@ -250,6 +249,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
             OnPropertyChanged(nameof(DurationText));
             var resume = Math.Max(0, _request?.ResumePositionSeconds ?? 0);
             _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
+            ApplyPlaybackSpeed();
             IsReady = true;
             SetPlaybackState(VideoPlaybackState.Paused);
             Status = "Ready to play";
