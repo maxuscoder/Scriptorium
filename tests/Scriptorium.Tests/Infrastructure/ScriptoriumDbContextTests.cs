@@ -31,7 +31,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(17, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(18, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -111,6 +111,39 @@ public sealed class ScriptoriumDbContextTests
             await using var verificationContext = new ScriptoriumDbContext(CreateOptions(databasePath));
             var recordCount = await verificationContext.Database
                 .SqlQueryRaw<long>("SELECT COUNT(*) AS Value FROM \"LibraryFolders\"")
+                .SingleAsync();
+            Assert.Equal(2, recordCount);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Tv_show_title_uniqueness_upgrade_refuses_case_only_duplicates_without_deleting_records()
+    {
+        var databasePath = CreateDatabasePath();
+
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync("20260909110000_AddLastPlayedSortKey");
+            await context.Database.ExecuteSqlRawAsync(
+                """
+                INSERT INTO "LibraryFolders" ("Id", "Path", "Name", "IsEnabled")
+                VALUES ('55555555-5555-5555-5555-555555555555', 'C:\\TV', 'TV', 1);
+                INSERT INTO "TVShows" ("Id", "Title", "LibraryFolderId", "EpisodeCount")
+                VALUES
+                    ('66666666-6666-6666-6666-666666666666', 'Breaking Bad', '55555555-5555-5555-5555-555555555555', 0),
+                    ('77777777-7777-7777-7777-777777777777', 'breaking bad', '55555555-5555-5555-5555-555555555555', 0);
+                """);
+
+            await Assert.ThrowsAsync<SqliteException>(() => context.Database.MigrateAsync());
+
+            await using var verificationContext = new ScriptoriumDbContext(CreateOptions(databasePath));
+            var recordCount = await verificationContext.Database
+                .SqlQueryRaw<long>("SELECT COUNT(*) AS Value FROM \"TVShows\"")
                 .SingleAsync();
             Assert.Equal(2, recordCount);
         }

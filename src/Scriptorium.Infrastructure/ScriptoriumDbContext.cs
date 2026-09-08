@@ -60,7 +60,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
         {
             entity.ToTable("TVShows");
             entity.HasKey(show => show.Id);
-            entity.Property(show => show.Title).IsRequired();
+            entity.Property(show => show.Title)
+                .IsRequired()
+                .UseCollation("NOCASE");
             entity.Property(show => show.EpisodeCount).HasDefaultValue(0);
             entity.HasIndex(show => new { show.LibraryFolderId, show.Title }).IsUnique();
             entity.HasOne(show => show.LibraryFolder)

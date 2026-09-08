@@ -179,7 +179,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
             context.TVShows.Any(group =>
                 group.Id != excludedGroupId &&
                 group.LibraryFolderId == libraryFolderId &&
-                group.Title == title))
+                EF.Functions.Collate(group.Title, "NOCASE") == title))
         {
             throw new InvalidOperationException("A group with this name already exists in the same library folder.");
         }

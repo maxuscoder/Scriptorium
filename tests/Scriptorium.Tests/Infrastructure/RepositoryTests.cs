@@ -1660,6 +1660,53 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Database_enforces_case_insensitive_tv_show_titles_within_a_library_folder()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+                var folder = new LibraryFolder
+                {
+                    Name = "TV",
+                    Path = "C:\\TV",
+                    MediaType = MediaType.TvShow
+                };
+                context.LibraryFolders.Add(folder);
+                await context.SaveChangesAsync();
+
+                context.TVShows.Add(new TVShow
+                {
+                    Title = "Breaking Bad",
+                    LibraryFolderId = folder.Id
+                });
+                await context.SaveChangesAsync();
+            }
+
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                context.TVShows.Add(new TVShow
+                {
+                    Title = "breaking bad",
+                    LibraryFolderId = (await context.LibraryFolders.SingleAsync()).Id
+                });
+
+                await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+            }
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Tv_show_hierarchy_synchronizer_reconciles_reassignment_missing_and_media_type_changes()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
