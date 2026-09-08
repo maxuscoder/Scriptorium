@@ -475,6 +475,66 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Media_item_scan_scope_returns_scanned_folders_and_matching_paths_only()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var scannedFolder = new LibraryFolder { Name = "Scanned", Path = "C:\\Scanned" };
+            var unrelatedFolder = new LibraryFolder { Name = "Unrelated", Path = "C:\\Unrelated" };
+            await folderRepository.AddAsync(scannedFolder);
+            await folderRepository.AddAsync(unrelatedFolder);
+
+            var scannedItem = new MediaItem
+            {
+                Title = "Scanned item",
+                Path = "C:\\Scanned\\item.mp4",
+                LibraryFolderId = scannedFolder.Id,
+                MediaType = MediaType.Movie
+            };
+            var pathMatchItem = new MediaItem
+            {
+                Title = "Path match",
+                Path = "C:\\Unrelated\\moved.mp4",
+                LibraryFolderId = unrelatedFolder.Id,
+                MediaType = MediaType.Movie
+            };
+            var unrelatedItem = new MediaItem
+            {
+                Title = "Unrelated item",
+                Path = "C:\\Unrelated\\other.mp4",
+                LibraryFolderId = unrelatedFolder.Id,
+                MediaType = MediaType.Movie
+            };
+            await mediaItemRepository.AddRangeAsync([scannedItem, pathMatchItem, unrelatedItem]);
+
+            var scopedItems = await mediaItemRepository.GetByLibraryFolderIdsOrPathsAsync(
+                [scannedFolder.Id],
+                ["C:\\UNRELATED\\MOVED.MP4"]);
+
+            Assert.Equal(
+                new[] { scannedItem.Id, pathMatchItem.Id }.OrderBy(id => id),
+                scopedItems.Select(item => item.Id).OrderBy(id => id));
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Updating_media_that_share_a_folder_does_not_track_duplicate_folder_instances()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");

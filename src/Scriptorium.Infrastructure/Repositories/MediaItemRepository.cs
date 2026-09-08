@@ -120,6 +120,39 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaItem>> GetByLibraryFolderIdsOrPathsAsync(
+        IEnumerable<Guid> libraryFolderIds,
+        IEnumerable<string> paths,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(libraryFolderIds);
+        ArgumentNullException.ThrowIfNull(paths);
+
+        var folderIds = libraryFolderIds
+            .Where(folderId => folderId != Guid.Empty)
+            .Distinct()
+            .ToArray();
+        var normalizedPaths = paths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(NormalizePath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        if (folderIds.Length == 0 && normalizedPaths.Length == 0)
+        {
+            return [];
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems
+            .AsNoTracking()
+            .Where(item =>
+                (item.LibraryFolderId != null && folderIds.Contains(item.LibraryFolderId.Value)) ||
+                normalizedPaths.Contains(EF.Functions.Collate(item.Path, "NOCASE")))
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<int> UpdateMediaTypeByLibraryFolderIdAsync(
         Guid libraryFolderId,
         MediaType mediaType,

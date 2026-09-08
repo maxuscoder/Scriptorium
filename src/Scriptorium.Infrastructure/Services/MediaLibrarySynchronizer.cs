@@ -20,9 +20,17 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         ArgumentNullException.ThrowIfNull(discoveredFiles);
         ArgumentNullException.ThrowIfNull(scannedFolderIds);
 
+        var discoveredFileList = discoveredFiles.ToList();
         var scannedFolderIdSet = scannedFolderIds.ToHashSet();
+        var discoveredPaths = discoveredFileList
+            .Where(discoveredFile => discoveredFile.IsSupportedFormat)
+            .Select(discoveredFile => NormalizePath(discoveredFile.Path))
+            .ToHashSet(PathComparer);
         var existingByPath = new Dictionary<string, MediaItem>(PathComparer);
-        foreach (var mediaItem in await mediaItemRepository.GetAllAsync(cancellationToken))
+        foreach (var mediaItem in await mediaItemRepository.GetByLibraryFolderIdsOrPathsAsync(
+                     scannedFolderIdSet,
+                     discoveredPaths,
+                     cancellationToken))
         {
             existingByPath[NormalizePath(mediaItem.Path)] = mediaItem;
         }
@@ -31,9 +39,7 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         var addedItemSet = new HashSet<MediaItem>();
         var updatedItems = new List<MediaItem>();
         var synchronizedItems = new List<MediaItem>();
-        var discoveredPaths = new HashSet<string>(PathComparer);
-
-        foreach (var discoveredFile in discoveredFiles)
+        foreach (var discoveredFile in discoveredFileList)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (!discoveredFile.IsSupportedFormat)
@@ -42,7 +48,6 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
             }
 
             var normalizedPath = NormalizePath(discoveredFile.Path);
-            discoveredPaths.Add(normalizedPath);
             if (existingByPath.TryGetValue(normalizedPath, out var existingItem))
             {
                 if (ApplyScanMetadata(existingItem, discoveredFile, normalizedPath) && !addedItemSet.Contains(existingItem))
