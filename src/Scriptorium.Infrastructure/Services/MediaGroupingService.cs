@@ -30,7 +30,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         group.Title = normalizedTitle;
         foreach (var episode in group.Seasons.SelectMany(season => season.Episodes))
         {
-            episode.MediaItem.TVShowTitle = normalizedTitle;
+            ApplyManualTitleOverride(episode.MediaItem, normalizedTitle);
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -213,8 +213,20 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
 
         episode.Season = targetSeason;
         episode.SeasonId = targetSeason.Id;
-        episode.MediaItem.TVShowTitle = targetGroup.Title;
-        episode.MediaItem.SeasonNumber = seasonNumber;
+        ApplyManualGroupingOverride(episode.MediaItem, targetGroup.Title, seasonNumber);
+    }
+
+    private static void ApplyManualTitleOverride(MediaItem mediaItem, string title)
+    {
+        mediaItem.TVShowTitleOverride = title;
+        mediaItem.TVShowTitle = title;
+    }
+
+    private static void ApplyManualGroupingOverride(MediaItem mediaItem, string title, int seasonNumber)
+    {
+        ApplyManualTitleOverride(mediaItem, title);
+        mediaItem.SeasonNumberOverride = seasonNumber;
+        mediaItem.SeasonNumber = seasonNumber;
     }
 
     private static async Task RemoveEmptySeasonAsync(

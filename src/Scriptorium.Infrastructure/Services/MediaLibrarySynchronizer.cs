@@ -104,9 +104,41 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         changed |= SetIfChanged(() => mediaItem.FileSize, value => mediaItem.FileSize = value, discoveredFile.FileSize);
         changed |= SetIfChanged(() => mediaItem.CreatedDate, value => mediaItem.CreatedDate = value, discoveredFile.CreatedDate);
         changed |= SetIfChanged(() => mediaItem.ModifiedDate, value => mediaItem.ModifiedDate = value, discoveredFile.ModifiedDate);
-        changed |= SetIfChanged(() => mediaItem.TVShowTitle, value => mediaItem.TVShowTitle = value, discoveredFile.TVShowTitle);
-        changed |= SetIfChanged(() => mediaItem.SeasonNumber, value => mediaItem.SeasonNumber = value, discoveredFile.SeasonNumber);
-        changed |= SetIfChanged(() => mediaItem.EpisodeNumber, value => mediaItem.EpisodeNumber = value, discoveredFile.EpisodeNumber);
+        changed |= SetIfChanged(
+            () => mediaItem.DetectedTVShowTitle,
+            value => mediaItem.DetectedTVShowTitle = value,
+            discoveredFile.TVShowTitle);
+        changed |= SetIfChanged(
+            () => mediaItem.DetectedSeasonNumber,
+            value => mediaItem.DetectedSeasonNumber = value,
+            discoveredFile.SeasonNumber);
+        changed |= SetIfChanged(
+            () => mediaItem.DetectedEpisodeNumber,
+            value => mediaItem.DetectedEpisodeNumber = value,
+            discoveredFile.EpisodeNumber);
+        if (mediaItem.TVShowTitleOverride is null)
+        {
+            changed |= SetIfChanged(
+                () => mediaItem.TVShowTitle,
+                value => mediaItem.TVShowTitle = value,
+                discoveredFile.TVShowTitle);
+        }
+
+        if (mediaItem.SeasonNumberOverride is null)
+        {
+            changed |= SetIfChanged(
+                () => mediaItem.SeasonNumber,
+                value => mediaItem.SeasonNumber = value,
+                discoveredFile.SeasonNumber);
+        }
+
+        if (mediaItem.EpisodeNumberOverride is null)
+        {
+            changed |= SetIfChanged(
+                () => mediaItem.EpisodeNumber,
+                value => mediaItem.EpisodeNumber = value,
+                discoveredFile.EpisodeNumber);
+        }
         changed |= SetIfChanged(() => mediaItem.IsMissing, value => mediaItem.IsMissing = value, false);
         changed |= SetIfChanged(() => mediaItem.MissingSince, value => mediaItem.MissingSince = value, null);
         return changed;
@@ -126,7 +158,10 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         ModifiedDate = discoveredFile.ModifiedDate,
         TVShowTitle = discoveredFile.TVShowTitle,
         SeasonNumber = discoveredFile.SeasonNumber,
-        EpisodeNumber = discoveredFile.EpisodeNumber
+        EpisodeNumber = discoveredFile.EpisodeNumber,
+        DetectedTVShowTitle = discoveredFile.TVShowTitle,
+        DetectedSeasonNumber = discoveredFile.SeasonNumber,
+        DetectedEpisodeNumber = discoveredFile.EpisodeNumber
     };
 
     private static bool SetIfChanged<T>(Func<T> getValue, Action<T> setValue, T value)

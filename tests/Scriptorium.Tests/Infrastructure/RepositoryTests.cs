@@ -983,9 +983,11 @@ public sealed class RepositoryTests
             var groupingService = new MediaGroupingService(contextFactory);
             await groupingService.RenameTvShowGroupAsync(sourceGroup.Id, "Renamed source");
             Assert.Equal("Renamed source", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+            Assert.Equal("Renamed source", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitleOverride);
 
             await groupingService.MoveEpisodeAsync(mediaItems[0].Id, targetGroup.Id);
             Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+            Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitleOverride);
             await using (var context = new ScriptoriumDbContext(options))
             {
                 Assert.True(await context.Episodes.AnyAsync(episode => episode.MediaItemId == mediaItems[1].Id));
@@ -1001,6 +1003,84 @@ public sealed class RepositoryTests
             Assert.DoesNotContain(groups, group => group.Id == splitGroup.Id);
             Assert.Equal(2, groups.Single(group => group.Id == targetGroup.Id).EpisodeCount);
             Assert.Equal("Target show", (await mediaItemRepository.GetByIdAsync(mediaItems[0].Id))!.TVShowTitle);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task Library_scanner_preserves_manual_tv_show_grouping_overrides()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var mediaPath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.mkv");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var folderRepository = new LibraryFolderRepository(contextFactory);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var folder = new LibraryFolder
+            {
+                Name = "TV",
+                Path = Path.GetDirectoryName(mediaPath)!,
+                MediaType = MediaType.TvShow
+            };
+            await folderRepository.AddAsync(folder);
+
+            var mediaItem = new MediaItem
+            {
+                Title = "Episode",
+                Path = mediaPath,
+                LibraryFolderId = folder.Id,
+                MediaType = MediaType.TvShow,
+                TVShowTitle = "Manual show",
+                SeasonNumber = 4,
+                EpisodeNumber = 7,
+                DetectedTVShowTitle = "Old detected show",
+                DetectedSeasonNumber = 1,
+                DetectedEpisodeNumber = 1,
+                TVShowTitleOverride = "Manual show",
+                SeasonNumberOverride = 4
+            };
+            await mediaItemRepository.AddAsync(mediaItem);
+
+            var discoveredFile = new DiscoveredMediaFile(
+                folder.Id,
+                MediaType.TvShow,
+                mediaPath,
+                Path.GetFileName(mediaPath),
+                ".mkv",
+                Path.GetDirectoryName(mediaPath)!,
+                "Episode",
+                45,
+                100,
+                null,
+                null,
+                true,
+                "Filesystem show",
+                2,
+                3);
+
+            var synchronizer = new MediaLibrarySynchronizer(mediaItemRepository);
+            await synchronizer.SynchronizeAsync([discoveredFile], [folder.Id]);
+
+            var synchronizedItem = (await mediaItemRepository.GetByIdAsync(mediaItem.Id))!;
+            Assert.Equal("Manual show", synchronizedItem.TVShowTitle);
+            Assert.Equal(4, synchronizedItem.SeasonNumber);
+            Assert.Equal(3, synchronizedItem.EpisodeNumber);
+            Assert.Equal("Filesystem show", synchronizedItem.DetectedTVShowTitle);
+            Assert.Equal(2, synchronizedItem.DetectedSeasonNumber);
+            Assert.Equal(3, synchronizedItem.DetectedEpisodeNumber);
         }
         finally
         {

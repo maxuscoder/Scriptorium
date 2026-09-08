@@ -114,7 +114,13 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                     .SetProperty(item => item.MediaType, mediaType)
                     .SetProperty(item => item.TVShowTitle, (string?)null)
                     .SetProperty(item => item.SeasonNumber, (int?)null)
-                    .SetProperty(item => item.EpisodeNumber, (int?)null),
+                    .SetProperty(item => item.EpisodeNumber, (int?)null)
+                    .SetProperty(item => item.DetectedTVShowTitle, (string?)null)
+                    .SetProperty(item => item.DetectedSeasonNumber, (int?)null)
+                    .SetProperty(item => item.DetectedEpisodeNumber, (int?)null)
+                    .SetProperty(item => item.TVShowTitleOverride, (string?)null)
+                    .SetProperty(item => item.SeasonNumberOverride, (int?)null)
+                    .SetProperty(item => item.EpisodeNumberOverride, (int?)null),
                 cancellationToken);
     }
 
