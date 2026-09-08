@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
@@ -16,6 +17,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IFavoriteService _favoriteService;
+    private readonly ILogger<SearchPageViewModel>? _logger;
     private CancellationTokenSource? _searchCancellationSource;
     private string _query = string.Empty;
     private string? _statusMessage;
@@ -26,11 +28,13 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
     public SearchPageViewModel(
         IMediaItemRepository mediaItemRepository,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
-        IFavoriteService favoriteService)
+        IFavoriteService favoriteService,
+        ILogger<SearchPageViewModel>? logger = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _detailsCoordinator = detailsCoordinator;
         _favoriteService = favoriteService;
+        _logger = logger;
         OpenResultCommand = new AsyncRelayCommand(OpenResultAsync, parameter => parameter is SearchResultViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
@@ -140,8 +144,9 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         {
             return;
         }
-        catch
+        catch (Exception exception)
         {
+            _logger?.LogWarning(exception, "Search failed for query {SearchQuery}.", query);
             if (searchVersion == Volatile.Read(ref _searchVersion))
             {
                 StatusMessage = "Search results could not be loaded.";

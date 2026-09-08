@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
@@ -25,6 +26,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IPlaybackProgressService? _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly VideoPlayerViewModel? _player;
+    private readonly ILogger<TvShowDetailsPageViewModel>? _logger;
     private PageViewModel? _returnPage;
     private Guid? _showId;
     private int _isShowRefreshQueued;
@@ -45,7 +47,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         IPlaybackProgressService? playbackProgressService,
         VideoPlayerViewModel? player,
         ITvShowHierarchySynchronizer? tvShowHierarchySynchronizer = null,
-        IConfirmationDialog? confirmationDialog = null)
+        IConfirmationDialog? confirmationDialog = null,
+        ILogger<TvShowDetailsPageViewModel>? logger = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -56,6 +59,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
         _player = player;
+        _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectEpisodeCommand = new RelayCommand(SelectEpisode, episode => episode is TvShowEpisodeViewModel);
         ContinueWatchingCommand = new RelayCommand(ContinueWatching, CanContinueWatching);
@@ -517,9 +521,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
             SelectedEpisode = nextEpisode;
         }
-        catch
+        catch (Exception exception)
         {
             // Playback completion must not take down the details page if the media is removed.
+            _logger?.LogWarning(
+                exception,
+                "Playback completion could not be synchronized for TV media item {MediaItemId}.",
+                args.MediaItemId);
         }
     }
 

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
@@ -25,6 +26,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
     private readonly VideoPlayerViewModel _player;
+    private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
     private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
     private PageViewModel? _returnPage;
     private Guid? _courseId;
@@ -47,7 +49,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         ITutorialCourseSynchronizer tutorialCourseSynchronizer,
         IPlaybackProgressService playbackProgressService,
         VideoPlayerViewModel player,
-        IConfirmationDialog? confirmationDialog = null)
+        IConfirmationDialog? confirmationDialog = null,
+        ILogger<TutorialDetailsPageViewModel>? logger = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -58,6 +61,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
         _player = player;
+        _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         ContinueLearningCommand = new RelayCommand(ContinueLearning, CanContinueLearning);
@@ -527,9 +531,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 
             SelectedLesson = nextLesson;
         }
-        catch
+        catch (Exception exception)
         {
             // Playback completion must not take down the UI if the media is removed while playing.
+            _logger?.LogWarning(
+                exception,
+                "Playback completion could not be synchronized for tutorial media item {MediaItemId}.",
+                args.MediaItemId);
         }
     }
 
