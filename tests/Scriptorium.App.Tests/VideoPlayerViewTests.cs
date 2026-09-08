@@ -4,7 +4,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
+using LibVLCSharp.WPF;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.Views.Controls;
@@ -16,7 +16,7 @@ namespace Scriptorium.App.Tests;
 public sealed class VideoPlayerViewTests
 {
     [Fact]
-    public Task MoviePreviewRendersAndFullscreenKeepsTheSessionUntilPageUnloads() => StaTest.Run(async () =>
+    public Task MoviePreviewUsesVideoViewAndFullscreenKeepsTheSessionUntilPageUnloads() => StaTest.Run(async () =>
     {
         // Load only presentation resources, without starting the app or touching the user's database.
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -35,7 +35,8 @@ public sealed class VideoPlayerViewTests
         {
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }
         });
-        var factory = new RecordingFactory();
+        using var runtime = new LibVlcRuntime();
+        var factory = new RecordingFactory(runtime);
         var player = new VideoPlayerViewModel(factory);
         var previewPath = Environment.GetEnvironmentVariable("SCRIPTORIUM_PLAYBACK_TEST_FILE")
             ?? Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4");
@@ -62,20 +63,11 @@ public sealed class VideoPlayerViewTests
             await WaitUntil(() => player.IsReady);
             await Task.Delay(500);
             var inlineView = Descendants<VideoPlayer>(page).Single();
-            var image = Descendants<Image>(inlineView).Single();
-            var bitmap = new RenderTargetBitmap(96, 64, 96, 96, PixelFormats.Pbgra32);
-            var drawing = new DrawingVisual();
-            using (var context = drawing.RenderOpen()) context.DrawImage(image.Source, new Rect(0, 0, 96, 64));
-            bitmap.Render(drawing);
-            var pixels = new byte[96 * 64 * 4];
-            bitmap.CopyPixels(pixels, 96 * 4, 0);
-            Assert.True(pixels.Where((_, i) => i % 4 != 3).Any(value => value > 40), "The paused preview must contain a decoded video frame.");
-
-            var pageBitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-            pageBitmap.Render(page);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(pageBitmap));
-            using (var output = File.Create(Path.Combine(AppContext.BaseDirectory, "movie-preview.png"))) encoder.Save(output);
+            var inlineSurface = Descendants<VideoView>(inlineView).Single();
+            Assert.NotNull(inlineSurface.MediaPlayer);
+            var mediaPlayer = inlineSurface.MediaPlayer;
+            var inlineHandle = mediaPlayer.Hwnd;
+            Assert.NotEqual(IntPtr.Zero, inlineHandle);
 
             player.TogglePlaybackCommand.Execute(null);
             var actionFeedback = Assert.IsType<Border>(inlineView.FindName("ActionFeedback"));
@@ -87,27 +79,35 @@ public sealed class VideoPlayerViewTests
                 AutomationProperties.GetName(button) == "Toggle fullscreen");
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await Task.Delay(200);
-            var fullscreen = Assert.Single(window.OwnedWindows.Cast<Window>());
+            var fullscreen = Assert.Single(FullscreenWindows(window));
             Assert.Equal(WindowState.Maximized, fullscreen.WindowState);
-            var fullscreenView = Assert.IsType<VideoPlayer>(fullscreen.Content);
-            Assert.Same(player, fullscreenView.Player);
+            var fullscreenSurface = Descendants<VideoView>(fullscreen).Single();
+            Assert.Same(inlineSurface, fullscreenSurface);
+            Assert.Same(mediaPlayer, fullscreenSurface.MediaPlayer);
+            Assert.NotEqual(IntPtr.Zero, fullscreenSurface.MediaPlayer!.Hwnd);
+            Assert.Equal(inlineHandle, fullscreenSurface.MediaPlayer.Hwnd);
             Assert.Single(factory.Instances);
             Assert.True(engine.Position >= position);
-            Assert.True(player.IsPlaying);
+            Assert.True(player.IsPlaying, player.Status);
 
             // Exiting with Escape leaves the inline session running.
-            fullscreenView.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(fullscreenView), 0, Key.Escape)
+            fullscreen.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(fullscreen), 0, Key.Escape)
             {
                 RoutedEvent = Keyboard.PreviewKeyDownEvent
             });
-            Assert.Empty(window.OwnedWindows.Cast<Window>());
-            Assert.True(player.IsPlaying);
+            await WaitUntil(() => !FullscreenWindows(window).Any());
+            Assert.True(player.IsPlaying, player.Status);
+            await WaitUntil(() => Descendants<VideoView>(inlineView).Any());
+            Assert.Same(inlineSurface, Descendants<VideoView>(inlineView).Single());
+            Assert.Same(mediaPlayer, inlineSurface.MediaPlayer);
+            Assert.NotEqual(IntPtr.Zero, inlineSurface.MediaPlayer!.Hwnd);
+            Assert.Equal(inlineHandle, inlineSurface.MediaPlayer.Hwnd);
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             window.Content = null;
             await Task.Delay(100);
-            Assert.Empty(window.OwnedWindows.Cast<Window>());
+            Assert.Empty(FullscreenWindows(window));
             Assert.False(player.IsReady);
-            Assert.Null(player.Video);
+            Assert.Null(player.VideoOutput);
         }
         finally
         {
@@ -124,6 +124,9 @@ public sealed class VideoPlayerViewTests
         Assert.True(predicate(), "Video did not become ready.");
     }
 
+    private static IEnumerable<Window> FullscreenWindows(Window owner) =>
+        owner.OwnedWindows.Cast<Window>().Where(window => window.Title == "Scriptorium video");
+
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
@@ -134,12 +137,12 @@ public sealed class VideoPlayerViewTests
         }
     }
 
-    private sealed class RecordingFactory : IVideoPlaybackFactory
+    private sealed class RecordingFactory(LibVlcRuntime runtime) : IVideoPlaybackFactory
     {
         public List<IVideoPlayback> Instances { get; } = [];
         public IVideoPlayback Create()
         {
-            var playback = new WpfVideoPlayback();
+            var playback = new LibVlcVideoPlayback(runtime);
             Instances.Add(playback);
             return playback;
         }

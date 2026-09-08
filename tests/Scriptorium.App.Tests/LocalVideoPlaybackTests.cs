@@ -14,15 +14,15 @@ public sealed class LocalVideoPlaybackTests
         File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"), path);
         try
         {
-            using (var player = new WpfVideoPlayback())
+            using var runtime = new LibVlcRuntime();
+            using (var player = new LibVlcVideoPlayback(runtime))
             {
                 var opened = new TaskCompletionSource();
                 player.Opened += (_, _) => opened.TrySetResult();
                 player.Failed += (_, error) => opened.TrySetException(error);
                 player.Open(path);
                 await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
-                Assert.Equal(96, player.Video.Width);
-                Assert.Equal(64, player.Video.Height);
+                Assert.NotNull(player.VideoOutput);
                 Assert.InRange(player.Duration.TotalSeconds, 3.9, 4.1);
                 await Task.Delay(300);
                 Assert.InRange(player.Position.TotalSeconds, 0, 0.1);

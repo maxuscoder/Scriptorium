@@ -38,7 +38,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISearchQueryResetService, SearchQueryResetService>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
-        services.AddSingleton<IVideoPlaybackFactory, WpfVideoPlaybackFactory>();
+        services.AddSingleton<LibVlcRuntime>();
+        services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();
         services.AddTransient<VideoPlayerViewModel>();
 
         services.AddTransient<MainWindowViewModel>();
