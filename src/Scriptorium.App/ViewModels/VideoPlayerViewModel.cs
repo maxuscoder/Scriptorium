@@ -8,7 +8,7 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.App.ViewModels;
 
 /// <summary>Owns one preview session. Views only attach/detach and present its commands.</summary>
-public sealed class VideoPlayerViewModel : ViewModelBase
+public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan ProgressSaveInterval = TimeSpan.FromSeconds(5);
     private readonly IVideoPlaybackFactory _factory;
@@ -42,6 +42,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase
     private long? _lastSavedDurationSeconds;
     private Guid? _completionOverrideMediaItemId;
     private bool _completionOverride;
+    private bool _disposed;
 
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
@@ -205,6 +206,22 @@ public sealed class VideoPlayerViewModel : ViewModelBase
         _active = false;
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _timer.Stop();
+        _timer.Tick -= OnTick;
+        _preferenceSaveCancellationSource?.Cancel();
+        _preferenceSaveCancellationSource?.Dispose();
+        _preferenceSaveCancellationSource = null;
+        Deactivate();
     }
 
     /// <summary>Releases the player and waits for its final progress snapshot to be persisted.</summary>

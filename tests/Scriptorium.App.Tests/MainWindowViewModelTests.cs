@@ -163,14 +163,16 @@ public sealed class MainWindowViewModelTests
                 progressService,
                 favoriteService,
                 new VideoPlayerViewModel(new UnusedVideoPlaybackFactory(), progressService));
-            var viewModel = new MainWindowViewModel(
-                mediaRepository,
+            var detailsCoordinator = new MediaDetailsNavigationCoordinator(
                 courseRepository,
                 tvShowRepository,
                 navigationService,
                 tutorialDetails,
                 tvShowDetails,
-                movieDetails,
+                movieDetails);
+            var viewModel = new MainWindowViewModel(
+                mediaRepository,
+                detailsCoordinator,
                 progressService,
                 NullLogger<MainWindowViewModel>.Instance);
 

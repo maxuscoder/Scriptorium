@@ -13,7 +13,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Displays the seasons, episodes, playback state, and navigation actions belonging to one TV show.
 /// </summary>
-public sealed class TvShowDetailsPageViewModel : PageViewModel
+public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 {
     private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly ITvShowRepository _tvShowRepository;
@@ -34,6 +34,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     private TvShowEpisodeViewModel? _selectedEpisode;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private bool _disposed;
 
     public TvShowDetailsPageViewModel(
         ITvShowRepository tvShowRepository,
@@ -88,6 +89,27 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel
     }
 
     public override string Title => _showTitle;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        if (_player is not null)
+        {
+            _player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
+            _player.PlaybackCompleted -= OnPlaybackCompleted;
+            _player.Dispose();
+        }
+
+        if (_tvShowHierarchySynchronizer is not null)
+        {
+            _tvShowHierarchySynchronizer.ShowsChanged -= OnShowsChanged;
+        }
+    }
 
     public string SourceFolder
     {

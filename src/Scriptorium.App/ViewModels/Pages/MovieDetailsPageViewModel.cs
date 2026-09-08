@@ -12,7 +12,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Supplies a movie to the reusable media-details presentation, including its metadata and playback actions.
 /// </summary>
-public sealed class MovieDetailsPageViewModel : PageViewModel
+public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 {
     private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly IMediaItemRepository _mediaItemRepository;
@@ -30,6 +30,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     private string _availability = string.Empty;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private bool _disposed;
 
     public MovieDetailsPageViewModel(
         IMediaItemRepository mediaItemRepository,
@@ -56,6 +57,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel
     }
 
     public override string Title => _movieTitle;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        Player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
+        Player.Dispose();
+    }
 
     public string? ThumbnailPath
     {

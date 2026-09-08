@@ -13,7 +13,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Displays the lessons contained by one tutorial collection.
 /// </summary>
-public sealed class TutorialDetailsPageViewModel : PageViewModel
+public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 {
     private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly ICourseRepository _courseRepository;
@@ -36,6 +36,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     private string _categoryStatus = string.Empty;
     private string _orderStatus = string.Empty;
     private bool _isReordering;
+    private bool _disposed;
 
     public TutorialDetailsPageViewModel(
         ICourseRepository courseRepository,
@@ -73,6 +74,20 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel
     }
 
     public override string Title => _courseTitle;
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _tutorialCourseSynchronizer.CoursesChanged -= OnCoursesChanged;
+        _player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
+        _player.PlaybackCompleted -= OnPlaybackCompleted;
+        _player.Dispose();
+    }
 
     public string SourceFolder
     {

@@ -9,35 +9,21 @@ using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
-public sealed class FavoritesPageViewModel : PageViewModel
+public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
 {
     private readonly IFavoriteService _favoriteService;
-    private readonly ICourseRepository _courseRepository;
-    private readonly ITvShowRepository _tvShowRepository;
-    private readonly INavigationService _navigationService;
-    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
-    private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
-    private readonly MovieDetailsPageViewModel _movieDetailsPage;
+    private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string? _statusMessage;
     private bool _isRefreshing;
+    private bool _disposed;
 
     public FavoritesPageViewModel(
         IFavoriteService favoriteService,
-        ICourseRepository courseRepository,
-        ITvShowRepository tvShowRepository,
-        INavigationService navigationService,
-        TutorialDetailsPageViewModel tutorialDetailsPage,
-        TvShowDetailsPageViewModel tvShowDetailsPage,
-        MovieDetailsPageViewModel movieDetailsPage)
+        IMediaDetailsNavigationCoordinator detailsCoordinator)
     {
         _favoriteService = favoriteService;
-        _courseRepository = courseRepository;
-        _tvShowRepository = tvShowRepository;
-        _navigationService = navigationService;
-        _tutorialDetailsPage = tutorialDetailsPage;
-        _tvShowDetailsPage = tvShowDetailsPage;
-        _movieDetailsPage = movieDetailsPage;
+        _detailsCoordinator = detailsCoordinator;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         OpenFavoriteCommand = new AsyncRelayCommand(OpenFavoriteAsync, parameter => parameter is LibraryMediaItemViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
@@ -45,6 +31,17 @@ public sealed class FavoritesPageViewModel : PageViewModel
     }
 
     public override string Title => "Favorites";
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _favoriteService.FavoriteChanged -= OnFavoriteChanged;
+    }
 
     public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
 
@@ -122,38 +119,10 @@ public sealed class FavoritesPageViewModel : PageViewModel
             return;
         }
 
-        switch (item.MediaItem.MediaType)
+        if (!await _detailsCoordinator.OpenMediaAsync(item.MediaItem, this))
         {
-            case MediaType.Movie:
-                if (await _movieDetailsPage.LoadAsync(item.MediaItemId, this))
-                {
-                    _navigationService.NavigateTo(_movieDetailsPage);
-                    return;
-                }
-                break;
-            case MediaType.Tutorial:
-                var course = (await _courseRepository.GetAllAsync())
-                    .FirstOrDefault(candidate => candidate.Lessons.Any(lesson => lesson.MediaItemId == item.MediaItemId));
-                if (course is not null && await _tutorialDetailsPage.LoadAsync(course.Id, this))
-                {
-                    _navigationService.NavigateTo(_tutorialDetailsPage);
-                    return;
-                }
-                break;
-            case MediaType.TvShow:
-                var show = (await _tvShowRepository.GetAllAsync())
-                    .FirstOrDefault(candidate => candidate.Seasons
-                        .SelectMany(season => season.Episodes)
-                        .Any(episode => episode.MediaItemId == item.MediaItemId));
-                if (show is not null && await _tvShowDetailsPage.LoadAsync(show.Id, this))
-                {
-                    _navigationService.NavigateTo(_tvShowDetailsPage);
-                    return;
-                }
-                break;
+            StatusMessage = "This media is no longer available in the library.";
         }
-
-        StatusMessage = "This media is no longer available in the library.";
     }
 
     private void OnFavoriteChanged(Guid mediaItemId)

@@ -10,40 +10,26 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>Searches every indexed media record and opens its owning media view.</summary>
-public sealed class SearchPageViewModel : PageViewModel
+public sealed class SearchPageViewModel : PageViewModel, IDisposable
 {
     private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(250);
     private readonly IMediaItemRepository _mediaItemRepository;
-    private readonly ICourseRepository _courseRepository;
-    private readonly ITvShowRepository _tvShowRepository;
-    private readonly INavigationService _navigationService;
-    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
-    private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
-    private readonly MovieDetailsPageViewModel _movieDetailsPage;
+    private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IFavoriteService _favoriteService;
     private CancellationTokenSource? _searchCancellationSource;
     private string _query = string.Empty;
     private string? _statusMessage;
     private bool _isSearching;
     private int _searchVersion;
+    private bool _disposed;
 
     public SearchPageViewModel(
         IMediaItemRepository mediaItemRepository,
-        ICourseRepository courseRepository,
-        ITvShowRepository tvShowRepository,
-        INavigationService navigationService,
-        TutorialDetailsPageViewModel tutorialDetailsPage,
-        TvShowDetailsPageViewModel tvShowDetailsPage,
-        MovieDetailsPageViewModel movieDetailsPage,
+        IMediaDetailsNavigationCoordinator detailsCoordinator,
         IFavoriteService favoriteService)
     {
         _mediaItemRepository = mediaItemRepository;
-        _courseRepository = courseRepository;
-        _tvShowRepository = tvShowRepository;
-        _navigationService = navigationService;
-        _tutorialDetailsPage = tutorialDetailsPage;
-        _tvShowDetailsPage = tvShowDetailsPage;
-        _movieDetailsPage = movieDetailsPage;
+        _detailsCoordinator = detailsCoordinator;
         _favoriteService = favoriteService;
         OpenResultCommand = new AsyncRelayCommand(OpenResultAsync, parameter => parameter is SearchResultViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
@@ -51,6 +37,20 @@ public sealed class SearchPageViewModel : PageViewModel
     }
 
     public override string Title => "Search";
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _favoriteService.FavoriteChanged -= OnFavoriteChanged;
+        _searchCancellationSource?.Cancel();
+        _searchCancellationSource?.Dispose();
+        _searchCancellationSource = null;
+    }
 
     /// <summary>Gets the query currently represented by the results.</summary>
     public string Query
@@ -171,38 +171,10 @@ public sealed class SearchPageViewModel : PageViewModel
             return;
         }
 
-        switch (result.MediaItem.MediaType)
+        if (!await _detailsCoordinator.OpenMediaAsync(result.MediaItem, this))
         {
-            case MediaType.Movie:
-                if (await _movieDetailsPage.LoadAsync(result.MediaItem.Id, this))
-                {
-                    _navigationService.NavigateTo(_movieDetailsPage);
-                    return;
-                }
-                break;
-            case MediaType.Tutorial:
-                var course = (await _courseRepository.GetAllAsync())
-                    .FirstOrDefault(candidate => candidate.Lessons.Any(lesson => lesson.MediaItemId == result.MediaItem.Id));
-                if (course is not null && await _tutorialDetailsPage.LoadAsync(course.Id, this))
-                {
-                    _navigationService.NavigateTo(_tutorialDetailsPage);
-                    return;
-                }
-                break;
-            case MediaType.TvShow:
-                var show = (await _tvShowRepository.GetAllAsync())
-                    .FirstOrDefault(candidate => candidate.Seasons
-                        .SelectMany(season => season.Episodes)
-                        .Any(episode => episode.MediaItemId == result.MediaItem.Id));
-                if (show is not null && await _tvShowDetailsPage.LoadAsync(show.Id, this))
-                {
-                    _navigationService.NavigateTo(_tvShowDetailsPage);
-                    return;
-                }
-                break;
+            StatusMessage = "This media is no longer available in the library.";
         }
-
-        StatusMessage = "This media is no longer available in the library.";
     }
 
     private async Task ToggleFavoriteAsync(object? parameter)

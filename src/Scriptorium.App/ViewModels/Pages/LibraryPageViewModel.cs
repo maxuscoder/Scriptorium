@@ -9,7 +9,7 @@ using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
-public sealed class LibraryPageViewModel : PageViewModel
+public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 {
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaScannerService _mediaScannerService;
@@ -21,10 +21,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
-    private readonly INavigationService _navigationService;
-    private readonly TutorialDetailsPageViewModel _tutorialDetailsPage;
-    private readonly TvShowDetailsPageViewModel _tvShowDetailsPage;
-    private readonly MovieDetailsPageViewModel _movieDetailsPage;
+    private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
@@ -56,6 +53,7 @@ public sealed class LibraryPageViewModel : PageViewModel
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
     private Task? _initialDataLoadTask;
+    private bool _disposed;
 
     public LibraryPageViewModel(
         IImportFolderDialog importFolderDialog,
@@ -73,10 +71,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         ICategoryRepository categoryRepository,
         ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
-        INavigationService navigationService,
-        TutorialDetailsPageViewModel tutorialDetailsPage,
-        TvShowDetailsPageViewModel tvShowDetailsPage,
-        MovieDetailsPageViewModel movieDetailsPage)
+        IMediaDetailsNavigationCoordinator detailsCoordinator)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -88,10 +83,7 @@ public sealed class LibraryPageViewModel : PageViewModel
         _categoryRepository = categoryRepository;
         _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
-        _navigationService = navigationService;
-        _tutorialDetailsPage = tutorialDetailsPage;
-        _tvShowDetailsPage = tvShowDetailsPage;
-        _movieDetailsPage = movieDetailsPage;
+        _detailsCoordinator = detailsCoordinator;
         FolderManagement = new FolderManagementViewModel(
             importFolderDialog,
             confirmationDialog,
@@ -191,6 +183,22 @@ public sealed class LibraryPageViewModel : PageViewModel
     }
 
     public override string Title => "Library";
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _playbackProgressService.PlaybackProgressSaved -= OnPlaybackProgressSaved;
+        _favoriteService.FavoriteChanged -= OnFavoriteChanged;
+        _categoryService.CategoriesChanged -= OnCategoriesChanged;
+        _scanCancellationSource?.Cancel();
+        _scanCancellationSource?.Dispose();
+        _scanCancellationSource = null;
+    }
 
     /// <summary>
     /// Loads the browser data once for the lifetime of this view model. Re-entering the Library
@@ -884,37 +892,31 @@ public sealed class LibraryPageViewModel : PageViewModel
     private async Task OpenTutorialAsync(object? parameter)
     {
         if (parameter is not TutorialCollectionViewModel tutorial ||
-            !await _tutorialDetailsPage.LoadAsync(tutorial.Id, this))
+            !await _detailsCoordinator.OpenTutorialAsync(tutorial.Id, this))
         {
             StatusMessage = "This tutorial collection is no longer available.";
             return;
         }
-
-        _navigationService.NavigateTo(_tutorialDetailsPage);
     }
 
     private async Task OpenTvShowAsync(object? parameter)
     {
         if (parameter is not TvShowCollectionViewModel show ||
-            !await _tvShowDetailsPage.LoadAsync(show.Id, this))
+            !await _detailsCoordinator.OpenTvShowAsync(show.Id, this))
         {
             StatusMessage = "This TV show is no longer available.";
             return;
         }
-
-        _navigationService.NavigateTo(_tvShowDetailsPage);
     }
 
     private async Task OpenMovieAsync(object? parameter)
     {
         if (parameter is not MovieItemViewModel movie ||
-            !await _movieDetailsPage.LoadAsync(movie.Id, this))
+            !await _detailsCoordinator.OpenMovieAsync(movie.Id, this))
         {
             StatusMessage = "This movie is no longer available.";
             return;
         }
-
-        _navigationService.NavigateTo(_movieDetailsPage);
     }
 
     /// <summary>Gets or sets whether favorite media is displayed before other media.</summary>
