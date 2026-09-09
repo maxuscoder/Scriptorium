@@ -67,7 +67,9 @@
                 </Grid>
             </Border>
 
-            <controls:MediaCategoryEditor Margin="0,16,0,0" />
+            <controls:MediaTitleEditor Margin="0,16,0,0" />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaCategoryEditor />
 
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Seasons}">
                 <ItemsControl.ItemTemplate>

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Scriptorium.Core.Models;
 
 /// <summary>
@@ -14,6 +16,16 @@ public class MediaItem
     /// Gets or sets the display title of the media item.
     /// </summary>
     public required string Title { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional title chosen by the user. The indexed title remains
+    /// unchanged so a scan can continue to identify the source metadata.
+    /// </summary>
+    public string? TitleOverride { get; set; }
+
+    /// <summary>Gets the title shown in the application.</summary>
+    [NotMapped]
+    public string DisplayTitle => string.IsNullOrWhiteSpace(TitleOverride) ? Title : TitleOverride.Trim();
 
     /// <summary>
     /// Gets or sets the path to the media file or folder.

@@ -286,6 +286,8 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         return await MediaItems(context)
             .Where(item =>
                 EF.Functions.Like(EF.Functions.Collate(item.Title, "NOCASE"), searchPattern, "\\") ||
+                (item.TitleOverride != null &&
+                 EF.Functions.Like(EF.Functions.Collate(item.TitleOverride, "NOCASE"), searchPattern, "\\")) ||
                 (item.LibraryFolder != null &&
                  (EF.Functions.Like(EF.Functions.Collate(item.LibraryFolder.Name, "NOCASE"), searchPattern, "\\") ||
                   (item.LibraryFolder.DisplayName != null &&

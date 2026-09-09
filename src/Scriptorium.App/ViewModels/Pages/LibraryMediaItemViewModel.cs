@@ -12,7 +12,7 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
     /// <summary>Gets the indexed item represented by this card.</summary>
     public MediaItem MediaItem { get; } = mediaItem;
 
-    public string Title => MediaDisplayText.TitleOrFallback(MediaItem.Title, "Untitled media");
+    public string Title => MediaDisplayText.TitleOrFallback(MediaItem.DisplayTitle, "Untitled media");
 
     public string SourcePath => MediaItem.Path;
 

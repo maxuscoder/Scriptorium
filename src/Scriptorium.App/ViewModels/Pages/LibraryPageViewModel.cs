@@ -22,6 +22,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
+    private readonly IMediaTitleService? _mediaTitleService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
@@ -52,6 +53,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
+    private int _isTitleRefreshQueued;
     private Task? _initialDataLoadTask;
     private bool _disposed;
 
@@ -68,7 +70,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
-        IFolderManagementViewModelFactory folderManagementViewModelFactory)
+        IFolderManagementViewModelFactory folderManagementViewModelFactory,
+        IMediaTitleService? mediaTitleService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -81,6 +84,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _detailsCoordinator = detailsCoordinator;
+        _mediaTitleService = mediaTitleService;
         FolderManagement = folderManagementViewModelFactory.Create(
             RefreshLibraryDataAsync,
             message => StatusMessage = message,
@@ -171,6 +175,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
         _categoryService.CategoriesChanged += OnCategoriesChanged;
+        if (_mediaTitleService is not null)
+        {
+            _mediaTitleService.TitleChanged += OnTitleChanged;
+        }
     }
 
     public override string Title => "Library";
@@ -186,6 +194,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _playbackProgressService.PlaybackProgressSaved -= OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged -= OnFavoriteChanged;
         _categoryService.CategoriesChanged -= OnCategoriesChanged;
+        if (_mediaTitleService is not null)
+        {
+            _mediaTitleService.TitleChanged -= OnTitleChanged;
+        }
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
@@ -609,7 +621,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
         var comparison = StringComparison.OrdinalIgnoreCase;
         var term = query.Trim();
-        return mediaItem.Title.Contains(term, comparison) ||
+        return mediaItem.DisplayTitle.Contains(term, comparison) ||
                mediaItem.Path.Contains(term, comparison) ||
                (mediaItem.TVShowTitle?.Contains(term, comparison) ?? false) ||
                (mediaItem.LibraryFolder?.DisplayNameOrName.Contains(term, comparison) ?? false) ||
@@ -778,6 +790,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isCategoryRefreshQueued, 0);
+        }
+    }
+
+    private void OnTitleChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isTitleRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterTitleChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterTitleChangeAsync();
+    }
+
+    private async Task RefreshAfterTitleChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isTitleRefreshQueued, 0);
         }
     }
 
@@ -956,7 +1000,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private IEnumerable<MediaItem> OrderMediaItems(IEnumerable<MediaItem> mediaItems) =>
         OrderLibraryItems(
             mediaItems,
-            mediaItem => mediaItem.Title,
+            mediaItem => mediaItem.DisplayTitle,
             mediaItem => mediaItem.DateAdded,
             mediaItem => mediaItem.DateAdded,
             mediaItem => mediaItem.LastPlayed,

@@ -150,6 +150,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.ToTable("MediaItems");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).IsRequired();
+            entity.Property(item => item.TitleOverride);
             entity.Property(item => item.Path)
                 .UseCollation("NOCASE")
                 .IsRequired();

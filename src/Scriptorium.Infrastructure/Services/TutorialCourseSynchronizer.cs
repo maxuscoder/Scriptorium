@@ -141,7 +141,7 @@ public sealed class TutorialCourseSynchronizer(
                 MediaItemId = mediaItem.Id,
                 MediaItem = null!,
                 LessonNumber = lessonFileNameParser.ParseLessonNumber(mediaItem.Path),
-                Title = mediaItem.Title,
+                Title = mediaItem.DisplayTitle,
                 FilePath = mediaItem.Path
             };
             targetCourse.Lessons.Add(lesson);
@@ -216,7 +216,7 @@ public sealed class TutorialCourseSynchronizer(
             }
         }
 
-        lesson.Title = mediaItem.Title;
+        lesson.Title = mediaItem.DisplayTitle;
         lesson.FilePath = mediaItem.Path;
     }
 
@@ -241,12 +241,12 @@ public sealed class TutorialCourseSynchronizer(
                     .Where(lesson => newLessonIds.Contains(lesson.Id))
                     .OrderBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
                     .ThenBy(lesson => lesson.LessonNumber)
-                    .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(lesson => lesson.MediaItem?.DisplayTitle ?? lesson.Title, StringComparer.OrdinalIgnoreCase)
                     .ThenBy(lesson => lesson.Id))
             : course.Lessons
                 .OrderBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
                 .ThenBy(lesson => lesson.LessonNumber)
-                .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(lesson => lesson.MediaItem?.DisplayTitle ?? lesson.Title, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(lesson => lesson.Id);
 
         var sortOrder = 0;

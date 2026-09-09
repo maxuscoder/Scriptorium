@@ -13,7 +13,7 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public Guid MediaItemId => movie.Id;
 
-    public string Title => MediaDisplayText.TitleOrFallback(movie.Title, "Untitled movie");
+    public string Title => MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
 
     public string SourceFolder => movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies";
 

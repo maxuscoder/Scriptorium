@@ -277,6 +277,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<string>("ThumbnailPath")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TitleOverride")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");

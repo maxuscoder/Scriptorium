@@ -99,6 +99,7 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
     private static bool ApplyScanMetadata(MediaItem mediaItem, DiscoveredMediaFile discoveredFile, string normalizedPath)
     {
         var changed = false;
+        // Title is source metadata; a user-selected TitleOverride is deliberately kept separate.
         changed |= SetIfChanged(() => mediaItem.Title, value => mediaItem.Title = value, discoveredFile.DisplayTitle);
         changed |= SetIfChanged(() => mediaItem.Path, value => mediaItem.Path = value, normalizedPath);
         changed |= SetIfChanged(() => mediaItem.LibraryFolderId, value => mediaItem.LibraryFolderId = value, discoveredFile.LibraryFolderId);

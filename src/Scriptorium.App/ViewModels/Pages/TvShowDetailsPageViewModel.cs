@@ -21,6 +21,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private readonly ICategoryRepository _categoryRepository;
     private readonly ICategoryService _categoryService;
     private readonly IFavoriteService _favoriteService;
+    private readonly IMediaTitleService? _mediaTitleService;
     private readonly IConfirmationDialog? _confirmationDialog;
     private readonly ITvShowHierarchySynchronizer? _tvShowHierarchySynchronizer;
     private readonly IPlaybackProgressService? _playbackProgressService;
@@ -36,6 +37,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private TvShowEpisodeViewModel? _selectedEpisode;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private string _editableTitle = string.Empty;
+    private string _titleStatus = string.Empty;
     private bool _disposed;
 
     public TvShowDetailsPageViewModel(
@@ -48,13 +51,15 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         VideoPlayerViewModel? player,
         ITvShowHierarchySynchronizer? tvShowHierarchySynchronizer = null,
         IConfirmationDialog? confirmationDialog = null,
-        ILogger<TvShowDetailsPageViewModel>? logger = null)
+        ILogger<TvShowDetailsPageViewModel>? logger = null,
+        IMediaTitleService? mediaTitleService = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
         _favoriteService = favoriteService;
+        _mediaTitleService = mediaTitleService;
         _confirmationDialog = confirmationDialog;
         _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
@@ -68,6 +73,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         ToggleEpisodeCompletionCommand = new AsyncRelayCommand(ToggleEpisodeCompletionAsync, () => SelectedEpisode is not null);
         ResetProgressCommand = new AsyncRelayCommand(ResetProgressAsync, CanResetProgress);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedEpisode is not null && SelectedCategory is not null);
+        SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
         if (_player is not null)
         {
@@ -184,11 +190,14 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             OnPropertyChanged(nameof(CompletionActionText));
             OpenSelectedEpisode();
             SelectCategory(value?.CategoryId);
+            EditableTitle = value?.Title ?? string.Empty;
+            TitleStatus = string.Empty;
             ((RelayCommand)PreviousEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)ContinueWatchingCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleEpisodeCompletionCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ResetProgressCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         }
@@ -228,6 +237,18 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _categoryStatus, value);
     }
 
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => SetProperty(ref _editableTitle, value);
+    }
+
+    public string TitleStatus
+    {
+        get => _titleStatus;
+        private set => SetProperty(ref _titleStatus, value);
+    }
+
     public ICommand BackCommand { get; }
     public ICommand SelectEpisodeCommand { get; }
     public ICommand ContinueWatchingCommand { get; }
@@ -236,6 +257,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand ToggleEpisodeCompletionCommand { get; }
     public ICommand ResetProgressCommand { get; }
     public ICommand SaveCategoryCommand { get; }
+
+    public ICommand SaveTitleCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
@@ -591,6 +614,37 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             : $"Category '{category.Name}' assigned.";
     }
 
+    private async Task SaveTitleAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || _mediaTitleService is null)
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        string normalizedTitle;
+        try
+        {
+            normalizedTitle = MediaTitleValidation.Normalize(EditableTitle);
+        }
+        catch (ArgumentException exception)
+        {
+            TitleStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaTitleService.SaveAsync(episode.MediaItemId, normalizedTitle))
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        episode.SetTitleOverride(normalizedTitle);
+        EditableTitle = episode.Title;
+        TitleStatus = "Custom title saved.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -713,7 +767,7 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
 /// <summary>Displays one TV-show episode and its resumable playback state.</summary>
 public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : ViewModelBase, IMediaFavoriteItem
 {
-    public string Title => MediaDisplayText.TitleOrFallback(episode.Title, "Untitled episode");
+    public string Title => MediaDisplayText.TitleOrFallback(episode.MediaItem.DisplayTitle, "Untitled episode");
 
     public string Position => episode.EpisodeNumber is { } number ? $"Episode {number}" : $"Episode {episode.SortOrder + 1}";
 
@@ -795,6 +849,13 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.CategoryId = category.Id;
         episode.MediaItem.Category = category.Category;
         OnPropertyChanged(nameof(CategoryId));
+    }
+
+    internal void SetTitleOverride(string title)
+    {
+        episode.MediaItem.TitleOverride = title;
+        episode.Title = episode.MediaItem.DisplayTitle;
+        OnPropertyChanged(nameof(Title));
     }
 
     public Guid? CategoryId => episode.MediaItem.CategoryId;

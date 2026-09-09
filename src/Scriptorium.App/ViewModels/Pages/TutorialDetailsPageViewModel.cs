@@ -25,6 +25,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
+    private readonly IMediaTitleService? _mediaTitleService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
     private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
@@ -36,6 +37,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private TutorialLessonViewModel? _selectedLesson;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private string _editableTitle = string.Empty;
+    private string _titleStatus = string.Empty;
     private string _orderStatus = string.Empty;
     private bool _isReordering;
     private bool _disposed;
@@ -50,7 +53,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         IPlaybackProgressService playbackProgressService,
         VideoPlayerViewModel player,
         IConfirmationDialog? confirmationDialog = null,
-        ILogger<TutorialDetailsPageViewModel>? logger = null)
+        ILogger<TutorialDetailsPageViewModel>? logger = null,
+        IMediaTitleService? mediaTitleService = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -60,6 +64,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _playbackProgressService = playbackProgressService;
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
+        _mediaTitleService = mediaTitleService;
         _player = player;
         _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -71,6 +76,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
+        SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -176,9 +182,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             OnPropertyChanged(nameof(CompletionActionText));
             OpenSelectedLesson();
             SelectCategory(value?.CategoryId);
+            EditableTitle = value?.Title ?? string.Empty;
+            TitleStatus = string.Empty;
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
             ((RelayCommand)ContinueLearningCommand).NotifyCanExecuteChanged();
         }
     }
@@ -206,6 +215,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _categoryStatus;
         private set => SetProperty(ref _categoryStatus, value);
+    }
+
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => SetProperty(ref _editableTitle, value);
+    }
+
+    public string TitleStatus
+    {
+        get => _titleStatus;
+        private set => SetProperty(ref _titleStatus, value);
     }
 
     public string OrderStatus
@@ -250,6 +271,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveCategoryCommand { get; }
 
+    public ICommand SaveTitleCommand { get; }
+
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a tutorial collection before it becomes the current page.</summary>
@@ -278,7 +301,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
                      .OrderBy(lesson => lesson.SortOrder)
                      .ThenBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
                      .ThenBy(lesson => lesson.LessonNumber)
-                     .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(lesson => lesson.MediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase)
                      .ThenBy(lesson => lesson.Id))
         {
             Lessons.Add(new TutorialLessonViewModel(lesson));
@@ -635,6 +658,38 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             : $"Category '{category.Name}' assigned.";
     }
 
+    private async Task SaveTitleAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaTitleService is null)
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        string normalizedTitle;
+        try
+        {
+            normalizedTitle = MediaTitleValidation.Normalize(EditableTitle);
+        }
+        catch (ArgumentException exception)
+        {
+            TitleStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaTitleService.SaveAsync(lesson.MediaItemId, normalizedTitle))
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        lesson.SetTitleOverride(normalizedTitle);
+        EditableTitle = lesson.Title;
+        TitleStatus = "Custom title saved.";
+        OnPropertyChanged(nameof(SelectedLessonPositionText));
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -658,7 +713,7 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 {
     public Guid LessonId => lesson.Id;
 
-    public string Title => MediaDisplayText.TitleOrFallback(lesson.Title, "Untitled lesson");
+    public string Title => MediaDisplayText.TitleOrFallback(lesson.MediaItem.DisplayTitle, "Untitled lesson");
 
     public string Position => lesson.LessonNumber is { } number ? $"Lesson {number}" : $"Lesson {lesson.SortOrder + 1}";
 
@@ -735,6 +790,13 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
         lesson.SortOrder = sortOrder;
         OnPropertyChanged(nameof(Position));
+    }
+
+    internal void SetTitleOverride(string title)
+    {
+        lesson.MediaItem.TitleOverride = title;
+        lesson.Title = lesson.MediaItem.DisplayTitle;
+        OnPropertyChanged(nameof(Title));
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;

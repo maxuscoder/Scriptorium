@@ -53,9 +53,21 @@ public sealed class MovieDetailsPageViewModelTests
             new NavigationService(NullLogger<NavigationService>.Instance),
             progressService,
             new FavoriteService(mediaRepository),
-            player);
+            player,
+            new MediaTitleService(mediaRepository));
 
         Assert.True(await viewModel.LoadAsync(movie.Id, viewModel));
+        viewModel.EditableTitle = "  ";
+        await ((AsyncRelayCommand)viewModel.SaveTitleCommand).ExecuteAsync();
+        Assert.Equal("Enter a title.", viewModel.TitleStatus);
+
+        viewModel.EditableTitle = "Renamed movie";
+        await ((AsyncRelayCommand)viewModel.SaveTitleCommand).ExecuteAsync();
+        Assert.Equal("Renamed movie", viewModel.Title);
+        var renamedMovie = (await mediaRepository.GetByIdAsync(movie.Id))!;
+        Assert.Equal("Renamed movie", renamedMovie.DisplayTitle);
+        Assert.Equal(movie.Path, renamedMovie.Path);
+
         player.Activate();
         var playback = Assert.Single(playerFactory.Instances);
         playback.RaiseOpened();

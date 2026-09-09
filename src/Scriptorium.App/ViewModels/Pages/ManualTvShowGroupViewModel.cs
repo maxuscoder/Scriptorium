@@ -17,7 +17,7 @@ public sealed class ManualTvShowGroupViewModel
                 .OrderBy(episode => episode.SortOrder)
                 .Select(episode => new ManualTvShowMediaViewModel(
                     episode.MediaItemId,
-                    episode.Title,
+                    episode.MediaItem?.DisplayTitle ?? episode.Title,
                     season.SeasonNumber,
                     episode.EpisodeNumber)))
             .ToList();

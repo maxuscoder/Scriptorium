@@ -10,7 +10,7 @@ public sealed class SearchResultViewModel : ViewModelBase, IMediaFavoriteItem
     public SearchResultViewModel(MediaItem mediaItem, string query)
     {
         MediaItem = mediaItem;
-        Title = MediaDisplayText.TitleOrFallback(MediaItem.Title, "Untitled media");
+        Title = MediaDisplayText.TitleOrFallback(MediaItem.DisplayTitle, "Untitled media");
 
         var matchStart = Title.IndexOf(query, StringComparison.OrdinalIgnoreCase);
         if (matchStart >= 0)

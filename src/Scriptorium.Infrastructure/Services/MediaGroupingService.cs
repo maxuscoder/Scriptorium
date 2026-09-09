@@ -269,7 +269,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         foreach (var episode in season.Episodes
                      .OrderBy(episode => episode.EpisodeNumber.HasValue ? 0 : 1)
                      .ThenBy(episode => episode.EpisodeNumber)
-                     .ThenBy(episode => episode.Title, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(episode => episode.MediaItem?.DisplayTitle ?? episode.Title, StringComparer.OrdinalIgnoreCase)
                      .ThenBy(episode => episode.Id))
         {
             episode.SortOrder = sortOrder++;

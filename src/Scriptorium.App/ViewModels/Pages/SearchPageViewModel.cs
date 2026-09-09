@@ -135,7 +135,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
 
             foreach (var mediaItem in mediaItems
                          .Where(mediaItem => mediaItem.MediaType.IsSupported())
-                         .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
+                         .OrderBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase))
             {
                 Results.Add(new SearchResultViewModel(mediaItem, query));
             }

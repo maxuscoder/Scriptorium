@@ -21,9 +21,12 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private readonly INavigationService _navigationService;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly IFavoriteService _favoriteService;
+    private readonly IMediaTitleService? _mediaTitleService;
     private PageViewModel? _returnPage;
     private MediaItem? _movie;
     private string _movieTitle = "Movie";
+    private string _editableTitle = string.Empty;
+    private string _titleStatus = string.Empty;
     private string? _thumbnailPath;
     private string _headerMetadata = string.Empty;
     private string _description = "No description available.";
@@ -39,7 +42,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         INavigationService navigationService,
         IPlaybackProgressService playbackProgressService,
         IFavoriteService favoriteService,
-        VideoPlayerViewModel player)
+        VideoPlayerViewModel player,
+        IMediaTitleService? mediaTitleService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -47,6 +51,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _navigationService = navigationService;
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
+        _mediaTitleService = mediaTitleService;
         Player = player;
         Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -54,6 +59,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ResetProgressCommand = new AsyncRelayCommand(ResetProgressAsync, CanResetProgress);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
+        SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => _movie is not null);
     }
 
     public override string Title => _movieTitle;
@@ -92,6 +98,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _availability;
         private set => SetProperty(ref _availability, value);
+    }
+
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => SetProperty(ref _editableTitle, value);
+    }
+
+    public string TitleStatus
+    {
+        get => _titleStatus;
+        private set => SetProperty(ref _titleStatus, value);
     }
 
     /// <summary>Gets the metadata rendered by the shared details page.</summary>
@@ -148,6 +166,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveCategoryCommand { get; }
 
+    public ICommand SaveTitleCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -162,7 +182,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _returnPage = returnPage;
         _movie = movie;
         await RefreshCategoryOptionsAsync(movie.CategoryId);
-        _movieTitle = MediaDisplayText.TitleOrFallback(movie.Title, "Untitled movie");
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        TitleStatus = string.Empty;
         ThumbnailPath = movie.ThumbnailPath;
         HeaderMetadata = JoinMetadata(
             movie.ReleaseYear?.ToString(),
@@ -302,6 +324,48 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         PopulateMetadata(movie);
     }
 
+    private async Task SaveTitleAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        string normalizedTitle;
+        try
+        {
+            normalizedTitle = MediaTitleValidation.Normalize(EditableTitle);
+        }
+        catch (ArgumentException exception)
+        {
+            TitleStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaTitleService is not null
+            ? await _mediaTitleService.SaveAsync(movie.Id, normalizedTitle)
+            : await SaveTitleDirectlyAsync(movie, normalizedTitle);
+        if (!saved)
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        movie.TitleOverride = normalizedTitle;
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        TitleStatus = "Custom title saved.";
+        NotifyStateChanged();
+    }
+
+    private async Task<bool> SaveTitleDirectlyAsync(MediaItem movie, string normalizedTitle)
+    {
+        movie.TitleOverride = normalizedTitle;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
+    }
+
     private async Task RefreshCategoryOptionsAsync(Guid? selectedCategoryId)
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -369,6 +433,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ((AsyncRelayCommand)ResetProgressCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
     }
 
     private void GoBack()

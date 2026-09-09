@@ -105,7 +105,9 @@
                     </StackPanel>
                 </Grid>
             </Border>
-            <controls:MediaCategoryEditor Margin="0,16,0,0" />
+            <controls:MediaTitleEditor Margin="0,16,0,0" />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaCategoryEditor />
             <TextBlock Margin="0,16,0,0" Foreground="{StaticResource Brush.Accent}" Text="{Binding OrderStatus}">
                 <TextBlock.Style>
                     <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
