@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace Scriptorium.Core.Models;
 
 /// <summary>
@@ -16,6 +18,28 @@ public class MediaItem
     public required string Title { get; set; }
 
     /// <summary>
+    /// Gets or sets the optional title chosen by the user. The indexed title remains
+    /// unchanged so a scan can continue to identify the source metadata.
+    /// </summary>
+    public string? TitleOverride { get; set; }
+
+    /// <summary>Gets the title shown in the application.</summary>
+    [NotMapped]
+    public string DisplayTitle => string.IsNullOrWhiteSpace(TitleOverride) ? Title : TitleOverride.Trim();
+
+    /// <summary>Gets whether this item contains one or more manually edited metadata fields.</summary>
+    [NotMapped]
+    public bool HasManualMetadata =>
+        !string.IsNullOrWhiteSpace(TitleOverride) ||
+        !string.IsNullOrWhiteSpace(DescriptionOverride) ||
+        ReleaseYearOverride is not null ||
+        ThumbnailOverride is not null ||
+        MediaTypeOverride is not null ||
+        !string.IsNullOrWhiteSpace(TVShowTitleOverride) ||
+        SeasonNumberOverride is not null ||
+        EpisodeNumberOverride is not null;
+
+    /// <summary>
     /// Gets or sets the path to the media file or folder.
     /// </summary>
     public required string Path { get; set; }
@@ -24,6 +48,12 @@ public class MediaItem
     /// Gets or sets the optional path to the item's thumbnail.
     /// </summary>
     public string? ThumbnailPath { get; set; }
+
+    /// <summary>Gets or sets the thumbnail path detected or imported from the source.</summary>
+    public string? DetectedThumbnailPath { get; set; }
+
+    /// <summary>Gets or sets the user-selected thumbnail path, when one exists.</summary>
+    public string? ThumbnailOverride { get; set; }
 
     /// <summary>
     /// Gets or sets when the media item was added to the library.
@@ -56,8 +86,24 @@ public class MediaItem
     /// <summary>Gets or sets the release year, when known.</summary>
     public int? ReleaseYear { get; set; }
 
+    /// <summary>Gets or sets the optional release year chosen by the user.</summary>
+    public int? ReleaseYearOverride { get; set; }
+
+    /// <summary>Gets the release year shown and used by the application.</summary>
+    [NotMapped]
+    public int? EffectiveReleaseYear => ReleaseYearOverride ?? ReleaseYear;
+
     /// <summary>Gets or sets the optional item description.</summary>
     public string? Description { get; set; }
+
+    /// <summary>Gets or sets the optional description chosen by the user.</summary>
+    public string? DescriptionOverride { get; set; }
+
+    /// <summary>Gets the description shown in the application.</summary>
+    [NotMapped]
+    public string? DisplayDescription => string.IsNullOrWhiteSpace(DescriptionOverride)
+        ? Description
+        : DescriptionOverride.Trim();
 
     /// <summary>Gets or sets the resumable playback position in whole seconds.</summary>
     public long PlaybackPositionSeconds { get; set; }
@@ -117,4 +163,10 @@ public class MediaItem
     /// Gets or sets the category of media the item represents.
     /// </summary>
     public MediaType MediaType { get; set; }
+
+    /// <summary>Gets or sets the media type detected during the most recent scan.</summary>
+    public MediaType? DetectedMediaType { get; set; }
+
+    /// <summary>Gets or sets the user-selected media type, when one exists.</summary>
+    public MediaType? MediaTypeOverride { get; set; }
 }

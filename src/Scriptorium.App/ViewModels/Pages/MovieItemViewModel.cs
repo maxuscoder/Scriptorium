@@ -13,13 +13,15 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public Guid MediaItemId => movie.Id;
 
-    public string Title => MediaDisplayText.TitleOrFallback(movie.Title, "Untitled movie");
+    public string Title => MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+
+    public bool HasManualMetadata => movie.HasManualMetadata;
 
     public string SourceFolder => movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies";
 
     public string? ThumbnailPath => movie.ThumbnailPath;
 
-    public string ReleaseYear => movie.ReleaseYear?.ToString() ?? "Year unknown";
+    public string ReleaseYear => movie.EffectiveReleaseYear?.ToString() ?? "Year unknown";
 
     public string Runtime => MediaRuntimeFormatter.Format(movie.RuntimeSeconds);
 
@@ -47,7 +49,7 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public string PlaybackProgressText => MediaPlaybackProgress.DisplayText(movie);
 
-    public string Summary => string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
+    public string Summary => string.IsNullOrWhiteSpace(movie.DisplayDescription) ? "No description available." : movie.DisplayDescription;
 
     public bool IsMissing => movie.IsMissing;
 

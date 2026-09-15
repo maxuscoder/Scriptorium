@@ -197,6 +197,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DescriptionOverride")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("DetectedEpisodeNumber")
                         .HasColumnType("INTEGER");
 
@@ -237,7 +240,16 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<Guid?>("LibraryFolderId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DetectedMediaType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DetectedThumbnailPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("MediaType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MediaTypeOverride")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset?>("MissingSince")
@@ -259,6 +271,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<int?>("ReleaseYear")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("ReleaseYearOverride")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("RuntimeSeconds")
                         .HasColumnType("INTEGER");
 
@@ -275,6 +290,12 @@ namespace Scriptorium.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ThumbnailPath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThumbnailOverride")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TitleOverride")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")

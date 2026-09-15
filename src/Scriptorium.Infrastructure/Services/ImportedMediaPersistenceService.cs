@@ -35,6 +35,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
             Title = importedMedia.Title,
             Path = filePath,
             ThumbnailPath = importedMedia.ThumbnailPath,
+            DetectedThumbnailPath = importedMedia.ThumbnailPath,
             LibraryFolderId = importedMedia.LibraryFolderId,
             LibraryFolder = null!,
             CategoryId = importedMedia.CategoryId,
@@ -123,10 +124,12 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         Title = importedMedia.Title,
         Path = filePath,
         ThumbnailPath = importedMedia.ThumbnailPath,
+        DetectedThumbnailPath = importedMedia.ThumbnailPath,
         LibraryFolderId = importedMedia.LibraryFolderId,
         LibraryFolder = null!,
         CategoryId = importedMedia.CategoryId,
         MediaType = importedMedia.MediaType,
+        DetectedMediaType = importedMedia.MediaType,
         RuntimeSeconds = importedMedia.RuntimeSeconds,
         ReleaseYear = importedMedia.ReleaseYear,
         Description = importedMedia.Description,
@@ -139,10 +142,16 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
     {
         mediaItem.Title = importedMedia.Title;
         mediaItem.Path = filePath;
-        mediaItem.ThumbnailPath = importedMedia.ThumbnailPath;
+        mediaItem.DetectedThumbnailPath = importedMedia.ThumbnailPath;
+        if (mediaItem.ThumbnailOverride is null)
+        {
+            mediaItem.ThumbnailPath = importedMedia.ThumbnailPath;
+        }
         mediaItem.LibraryFolderId = importedMedia.LibraryFolderId;
         mediaItem.CategoryId = importedMedia.CategoryId;
         mediaItem.MediaType = importedMedia.MediaType;
+        mediaItem.DetectedMediaType = importedMedia.MediaType;
+        mediaItem.MediaTypeOverride = null;
         mediaItem.RuntimeSeconds = importedMedia.RuntimeSeconds;
         mediaItem.ReleaseYear = importedMedia.ReleaseYear;
         mediaItem.Description = importedMedia.Description;

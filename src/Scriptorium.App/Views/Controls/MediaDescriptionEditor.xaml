@@ -1,0 +1,34 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.MediaDescriptionEditor"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="Description" />
+        <TextBox
+            MinHeight="110"
+            Margin="0,12,0,0"
+            AcceptsReturn="True"
+            MaxLength="5000"
+            Style="{StaticResource Input.TextBox}"
+            Text="{Binding EditableDescription, UpdateSourceTrigger=PropertyChanged}"
+            TextWrapping="Wrap"
+            VerticalScrollBarVisibility="Auto" />
+        <Button
+            Margin="0,12,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding SaveDescriptionCommand}"
+            Content="Save description"
+            Style="{StaticResource Button.Primary}" />
+        <Button
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding RestoreDescriptionCommand}"
+            Content="Restore detected description"
+            Style="{StaticResource Button.Secondary}" />
+        <TextBlock
+            Margin="0,8,0,0"
+            Foreground="{StaticResource Brush.TextSecondary}"
+            Text="{Binding DescriptionStatus}"
+            TextWrapping="Wrap" />
+    </StackPanel>
+</UserControl>

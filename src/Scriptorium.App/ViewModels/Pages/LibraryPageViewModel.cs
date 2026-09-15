@@ -22,6 +22,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly ICourseRepository _courseRepository;
     private readonly ITvShowRepository _tvShowRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
+    private readonly IMediaTitleService? _mediaTitleService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
+    private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaMetadataResetService? _mediaMetadataResetService;
+    private readonly IMediaGroupingService _mediaGroupingService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
@@ -52,6 +58,13 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
+    private int _isTitleRefreshQueued;
+    private int _isDescriptionRefreshQueued;
+    private int _isMediaTypeRefreshQueued;
+    private int _isEpisodeSeasonRefreshQueued;
+    private int _isEpisodeNumberRefreshQueued;
+    private int _isThumbnailRefreshQueued;
+    private int _isMetadataResetRefreshQueued;
     private Task? _initialDataLoadTask;
     private bool _disposed;
 
@@ -68,7 +81,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         ICourseRepository courseRepository,
         ITvShowRepository tvShowRepository,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
-        IFolderManagementViewModelFactory folderManagementViewModelFactory)
+        IFolderManagementViewModelFactory folderManagementViewModelFactory,
+        IMediaTitleService? mediaTitleService = null,
+        IMediaTypeService? mediaTypeService = null,
+        IMediaThumbnailService? mediaThumbnailService = null,
+        IMediaMetadataResetService? mediaMetadataResetService = null,
+        IMediaDescriptionService? mediaDescriptionService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -81,6 +99,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _courseRepository = courseRepository;
         _tvShowRepository = tvShowRepository;
         _detailsCoordinator = detailsCoordinator;
+        _mediaTitleService = mediaTitleService;
+        _mediaDescriptionService = mediaDescriptionService;
+        _mediaTypeService = mediaTypeService;
+        _mediaThumbnailService = mediaThumbnailService;
+        _mediaMetadataResetService = mediaMetadataResetService;
+        _mediaGroupingService = mediaGroupingService;
         FolderManagement = folderManagementViewModelFactory.Create(
             RefreshLibraryDataAsync,
             message => StatusMessage = message,
@@ -166,11 +190,35 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             new(LibrarySortOrder.MostRecentlyWatched, "Playback: most recent first"),
             new(LibrarySortOrder.LeastRecentlyWatched, "Playback: least recent first"),
             new(LibrarySortOrder.HighestPlaybackProgress, "Progress: highest first"),
-            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: lowest first")
+            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: lowest first"),
+            new(LibrarySortOrder.ReleaseYearNewest, "Release year: newest first"),
+            new(LibrarySortOrder.ReleaseYearOldest, "Release year: oldest first")
         ];
         _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
         _categoryService.CategoriesChanged += OnCategoriesChanged;
+        if (_mediaTitleService is not null)
+        {
+            _mediaTitleService.TitleChanged += OnTitleChanged;
+        }
+        if (_mediaTypeService is not null)
+        {
+            _mediaTypeService.MediaTypeChanged += OnMediaTypeChanged;
+        }
+        _mediaGroupingService.EpisodeSeasonChanged += OnEpisodeSeasonChanged;
+        _mediaGroupingService.EpisodeNumberChanged += OnEpisodeNumberChanged;
+        if (_mediaThumbnailService is not null)
+        {
+            _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
+        }
+        if (_mediaMetadataResetService is not null)
+        {
+            _mediaMetadataResetService.MetadataReset += OnMetadataReset;
+        }
+        if (_mediaDescriptionService is not null)
+        {
+            _mediaDescriptionService.DescriptionChanged += OnDescriptionChanged;
+        }
     }
 
     public override string Title => "Library";
@@ -186,6 +234,28 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _playbackProgressService.PlaybackProgressSaved -= OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged -= OnFavoriteChanged;
         _categoryService.CategoriesChanged -= OnCategoriesChanged;
+        if (_mediaTitleService is not null)
+        {
+            _mediaTitleService.TitleChanged -= OnTitleChanged;
+        }
+        if (_mediaTypeService is not null)
+        {
+            _mediaTypeService.MediaTypeChanged -= OnMediaTypeChanged;
+        }
+        _mediaGroupingService.EpisodeSeasonChanged -= OnEpisodeSeasonChanged;
+        _mediaGroupingService.EpisodeNumberChanged -= OnEpisodeNumberChanged;
+        if (_mediaThumbnailService is not null)
+        {
+            _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
+        }
+        if (_mediaMetadataResetService is not null)
+        {
+            _mediaMetadataResetService.MetadataReset -= OnMetadataReset;
+        }
+        if (_mediaDescriptionService is not null)
+        {
+            _mediaDescriptionService.DescriptionChanged -= OnDescriptionChanged;
+        }
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
@@ -609,9 +679,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
         var comparison = StringComparison.OrdinalIgnoreCase;
         var term = query.Trim();
-        return mediaItem.Title.Contains(term, comparison) ||
+        return mediaItem.DisplayTitle.Contains(term, comparison) ||
                mediaItem.Path.Contains(term, comparison) ||
                (mediaItem.TVShowTitle?.Contains(term, comparison) ?? false) ||
+               (mediaItem.EffectiveReleaseYear?.ToString().Contains(term, comparison) ?? false) ||
                (mediaItem.LibraryFolder?.DisplayNameOrName.Contains(term, comparison) ?? false) ||
                (mediaItem.Category?.Name.Contains(term, comparison) ?? false);
     }
@@ -778,6 +849,230 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isCategoryRefreshQueued, 0);
+        }
+    }
+
+    private void OnTitleChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isTitleRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterTitleChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterTitleChangeAsync();
+    }
+
+    private async Task RefreshAfterTitleChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isTitleRefreshQueued, 0);
+        }
+    }
+
+    private void OnMediaTypeChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isMediaTypeRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterMediaTypeChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterMediaTypeChangeAsync();
+    }
+
+    private async Task RefreshAfterMediaTypeChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isMediaTypeRefreshQueued, 0);
+        }
+    }
+
+    private void OnEpisodeSeasonChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isEpisodeSeasonRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterEpisodeSeasonChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterEpisodeSeasonChangeAsync();
+    }
+
+    private async Task RefreshAfterEpisodeSeasonChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isEpisodeSeasonRefreshQueued, 0);
+        }
+    }
+
+    private void OnEpisodeNumberChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isEpisodeNumberRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterEpisodeNumberChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterEpisodeNumberChangeAsync();
+    }
+
+    private async Task RefreshAfterEpisodeNumberChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isEpisodeNumberRefreshQueued, 0);
+        }
+    }
+
+    private void OnThumbnailChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isThumbnailRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterThumbnailChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterThumbnailChangeAsync();
+    }
+
+    private async Task RefreshAfterThumbnailChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isThumbnailRefreshQueued, 0);
+        }
+    }
+
+    private void OnMetadataReset(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isMetadataResetRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterMetadataResetAsync);
+            return;
+        }
+
+        _ = RefreshAfterMetadataResetAsync();
+    }
+
+    private async Task RefreshAfterMetadataResetAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isMetadataResetRefreshQueued, 0);
+        }
+    }
+
+    private void OnDescriptionChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isDescriptionRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterDescriptionChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterDescriptionChangeAsync();
+    }
+
+    private async Task RefreshAfterDescriptionChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isDescriptionRefreshQueued, 0);
         }
     }
 
@@ -954,16 +1249,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     private IEnumerable<MediaItem> OrderMediaItems(IEnumerable<MediaItem> mediaItems) =>
-        OrderLibraryItems(
-            mediaItems,
-            mediaItem => mediaItem.Title,
-            mediaItem => mediaItem.DateAdded,
-            mediaItem => mediaItem.DateAdded,
-            mediaItem => mediaItem.LastPlayed,
-            mediaItem => mediaItem.LastPlayed,
-            MediaPlaybackProgress.ProgressPercentage,
-            MediaPlaybackProgress.ProgressPercentage,
-            mediaItem => mediaItem.IsFavorite);
+        SelectedSortOrder switch
+        {
+            LibrarySortOrder.ReleaseYearNewest => OrderByReleaseYear(mediaItems, descending: true),
+            LibrarySortOrder.ReleaseYearOldest => OrderByReleaseYear(mediaItems, descending: false),
+            _ => OrderLibraryItems(
+                mediaItems,
+                mediaItem => mediaItem.DisplayTitle,
+                mediaItem => mediaItem.DateAdded,
+                mediaItem => mediaItem.DateAdded,
+                mediaItem => mediaItem.LastPlayed,
+                mediaItem => mediaItem.LastPlayed,
+                MediaPlaybackProgress.ProgressPercentage,
+                MediaPlaybackProgress.ProgressPercentage,
+                mediaItem => mediaItem.IsFavorite)
+        };
+
+    private IEnumerable<MediaItem> OrderByReleaseYear(IEnumerable<MediaItem> mediaItems, bool descending)
+    {
+        var orderedItems = descending
+            ? mediaItems
+                .OrderByDescending(mediaItem => mediaItem.EffectiveReleaseYear.HasValue)
+                .ThenByDescending(mediaItem => mediaItem.EffectiveReleaseYear)
+                .ThenBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase)
+            : mediaItems
+                .OrderBy(mediaItem => mediaItem.EffectiveReleaseYear.HasValue ? 0 : 1)
+                .ThenBy(mediaItem => mediaItem.EffectiveReleaseYear)
+                .ThenBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase);
+
+        return FavoritesFirst
+            ? orderedItems.OrderByDescending(mediaItem => mediaItem.IsFavorite)
+            : orderedItems;
+    }
 
     private IEnumerable<TutorialCollectionViewModel> OrderTutorials(IEnumerable<TutorialCollectionViewModel> tutorials) =>
         OrderLibraryItems(

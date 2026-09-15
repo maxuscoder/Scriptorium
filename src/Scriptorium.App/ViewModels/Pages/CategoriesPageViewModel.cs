@@ -266,7 +266,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         {
             foreach (var mediaItem in _availableMediaItems
                          .Where(mediaItem => mediaItem.CategoryId == SelectedCategory.Id)
-                         .OrderBy(mediaItem => mediaItem.Title, StringComparer.OrdinalIgnoreCase))
+                         .OrderBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase))
             {
                 MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
             }

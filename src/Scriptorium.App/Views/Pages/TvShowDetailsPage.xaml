@@ -55,7 +55,24 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisodePositionText}" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.CardTitle}" Text="{Binding SelectedEpisode.Title}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.Accent}" Text="Edited metadata">
+                            <TextBlock.Style>
+                                <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedEpisode.HasManualMetadata}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisode.SeasonAndPosition}" />
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            Foreground="{StaticResource Brush.TextSecondary}"
+                            Text="{Binding SelectedEpisode.Description}"
+                            TextWrapping="Wrap" />
                     </StackPanel>
                     <WrapPanel Grid.Row="1" Margin="0,14,0,0">
                         <Button Margin="0,0,8,0" Command="{Binding PreviousEpisodeCommand}" Content="Previous episode" Style="{StaticResource Button.Secondary}" />
@@ -67,7 +84,23 @@
                 </Grid>
             </Border>
 
-            <controls:MediaCategoryEditor Margin="0,16,0,0" />
+            <controls:MediaThumbnailEditor Margin="0,16,0,0" />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaTypeEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaSeasonEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaEpisodeEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaTitleEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaDescriptionEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaReleaseYearEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaCategoryEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaMetadataResetEditor />
 
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Seasons}">
                 <ItemsControl.ItemTemplate>

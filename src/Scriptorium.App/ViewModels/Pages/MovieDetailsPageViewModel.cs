@@ -21,9 +21,27 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private readonly INavigationService _navigationService;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly IFavoriteService _favoriteService;
+    private readonly IMediaTitleService? _mediaTitleService;
+    private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
+    private readonly IMediaReleaseYearService? _mediaReleaseYearService;
+    private readonly IMediaMetadataResetService? _mediaMetadataResetService;
+    private readonly IConfirmationDialog? _confirmationDialog;
     private PageViewModel? _returnPage;
     private MediaItem? _movie;
     private string _movieTitle = "Movie";
+    private string _editableTitle = string.Empty;
+    private string _titleStatus = string.Empty;
+    private string _editableThumbnailPath = string.Empty;
+    private string _thumbnailStatus = string.Empty;
+    private string _metadataResetStatus = string.Empty;
+    private string _editableDescription = string.Empty;
+    private string _descriptionStatus = string.Empty;
+    private string _editableReleaseYear = string.Empty;
+    private string _releaseYearStatus = string.Empty;
+    private MediaType? _selectedMediaType;
+    private string _mediaTypeStatus = string.Empty;
     private string? _thumbnailPath;
     private string _headerMetadata = string.Empty;
     private string _description = "No description available.";
@@ -39,7 +57,14 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         INavigationService navigationService,
         IPlaybackProgressService playbackProgressService,
         IFavoriteService favoriteService,
-        VideoPlayerViewModel player)
+        VideoPlayerViewModel player,
+        IMediaTitleService? mediaTitleService = null,
+        IMediaTypeService? mediaTypeService = null,
+        IMediaThumbnailService? mediaThumbnailService = null,
+        IMediaMetadataResetService? mediaMetadataResetService = null,
+        IConfirmationDialog? confirmationDialog = null,
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IMediaReleaseYearService? mediaReleaseYearService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -47,6 +72,13 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _navigationService = navigationService;
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
+        _mediaTitleService = mediaTitleService;
+        _mediaTypeService = mediaTypeService;
+        _mediaThumbnailService = mediaThumbnailService;
+        _mediaMetadataResetService = mediaMetadataResetService;
+        _confirmationDialog = confirmationDialog;
+        _mediaDescriptionService = mediaDescriptionService;
+        _mediaReleaseYearService = mediaReleaseYearService;
         Player = player;
         Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -54,6 +86,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ResetProgressCommand = new AsyncRelayCommand(ResetProgressAsync, CanResetProgress);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
+        SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => _movie is not null);
+        SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => _movie is not null && SelectedMediaType is not null);
+        ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
+        SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => _movie is not null);
+        ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => _movie is not null);
+        SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => _movie is not null);
+        SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => _movie is not null);
+        RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => _movie is not null);
+        RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => _movie is not null);
+        RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => _movie is not null);
+        RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => _movie is not null);
+        RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => _movie is not null);
     }
 
     public override string Title => _movieTitle;
@@ -93,6 +137,84 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         get => _availability;
         private set => SetProperty(ref _availability, value);
     }
+
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => SetProperty(ref _editableTitle, value);
+    }
+
+    public string TitleStatus
+    {
+        get => _titleStatus;
+        private set => SetProperty(ref _titleStatus, value);
+    }
+
+    public string EditableThumbnailPath
+    {
+        get => _editableThumbnailPath;
+        set => SetProperty(ref _editableThumbnailPath, value);
+    }
+
+    public string ThumbnailStatus
+    {
+        get => _thumbnailStatus;
+        private set => SetProperty(ref _thumbnailStatus, value);
+    }
+
+    public string MetadataResetStatus
+    {
+        get => _metadataResetStatus;
+        private set => SetProperty(ref _metadataResetStatus, value);
+    }
+
+    public string EditableDescription
+    {
+        get => _editableDescription;
+        set => SetProperty(ref _editableDescription, value);
+    }
+
+    public string DescriptionStatus
+    {
+        get => _descriptionStatus;
+        private set => SetProperty(ref _descriptionStatus, value);
+    }
+
+    public string EditableReleaseYear
+    {
+        get => _editableReleaseYear;
+        set => SetProperty(ref _editableReleaseYear, value);
+    }
+
+    public string ReleaseYearStatus
+    {
+        get => _releaseYearStatus;
+        private set => SetProperty(ref _releaseYearStatus, value);
+    }
+
+    public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
+
+    public MediaType? SelectedMediaType
+    {
+        get => _selectedMediaType;
+        set
+        {
+            if (SetProperty(ref _selectedMediaType, value))
+            {
+                ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string MediaTypeStatus
+    {
+        get => _mediaTypeStatus;
+        private set => SetProperty(ref _mediaTypeStatus, value);
+    }
+
+    public string MediaTypeLabel => _movie is null ? "Media" : MediaTypeOptions.SingularName(_movie.MediaType);
+
+    public bool HasManualMetadata => _movie?.HasManualMetadata == true;
 
     /// <summary>Gets the metadata rendered by the shared details page.</summary>
     public ObservableCollection<MediaDetailsMetadataItem> MetadataItems { get; } = [];
@@ -148,6 +270,25 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveCategoryCommand { get; }
 
+    public ICommand SaveTitleCommand { get; }
+
+    public ICommand SaveMediaTypeCommand { get; }
+
+    public ICommand ChooseThumbnailCommand { get; }
+
+    public ICommand SaveThumbnailCommand { get; }
+
+    public ICommand ResetMetadataCommand { get; }
+
+    public ICommand SaveDescriptionCommand { get; }
+
+    public ICommand SaveReleaseYearCommand { get; }
+    public ICommand RestoreTitleCommand { get; }
+    public ICommand RestoreDescriptionCommand { get; }
+    public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RestoreThumbnailCommand { get; }
+    public ICommand RestoreMediaTypeCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -161,14 +302,25 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
         _returnPage = returnPage;
         _movie = movie;
+        SelectedMediaType = movie.MediaType;
+        MediaTypeStatus = string.Empty;
         await RefreshCategoryOptionsAsync(movie.CategoryId);
-        _movieTitle = MediaDisplayText.TitleOrFallback(movie.Title, "Untitled movie");
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        TitleStatus = string.Empty;
         ThumbnailPath = movie.ThumbnailPath;
+        EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = string.Empty;
+        MetadataResetStatus = string.Empty;
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = string.Empty;
         HeaderMetadata = JoinMetadata(
-            movie.ReleaseYear?.ToString(),
+            movie.EffectiveReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
             MediaCategoryDisplay.Name(movie));
-        Description = string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
+        Description = FormatDescription(movie.DisplayDescription);
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        DescriptionStatus = string.Empty;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
         Player.SetMedia(new MediaPlaybackRequest(
             movie.Path,
@@ -296,10 +448,392 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
             ? "Category assignment removed."
             : $"Category '{selectedCategory.Name}' assigned.";
         HeaderMetadata = JoinMetadata(
-            movie.ReleaseYear?.ToString(),
+            movie.EffectiveReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
             MediaCategoryDisplay.Name(movie));
         PopulateMetadata(movie);
+    }
+
+    private async Task SaveTitleAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        string normalizedTitle;
+        try
+        {
+            normalizedTitle = MediaTitleValidation.Normalize(EditableTitle);
+        }
+        catch (ArgumentException exception)
+        {
+            TitleStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaTitleService is not null
+            ? await _mediaTitleService.SaveAsync(movie.Id, normalizedTitle)
+            : await SaveTitleDirectlyAsync(movie, normalizedTitle);
+        if (!saved)
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        movie.TitleOverride = normalizedTitle;
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        TitleStatus = "Custom title saved.";
+        NotifyStateChanged();
+    }
+
+    private async Task SaveMediaTypeAsync()
+    {
+        var movie = _movie;
+        if (movie is null || SelectedMediaType is not { } mediaType)
+        {
+            return;
+        }
+
+        if (movie.MediaType == mediaType)
+        {
+            MediaTypeStatus = "No media type changes to save.";
+            return;
+        }
+
+        var saved = _mediaTypeService is not null
+            ? await _mediaTypeService.SaveAsync(movie.Id, mediaType)
+            : await _mediaItemRepository.UpdateMediaTypeAsync(movie.Id, mediaType);
+        if (!saved)
+        {
+            MediaTypeStatus = "The media type could not be saved.";
+            return;
+        }
+
+        movie.MediaType = mediaType;
+        movie.MediaTypeOverride = mediaType;
+        MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
+        NotifyStateChanged();
+    }
+
+    private void ChooseThumbnail()
+    {
+        if (!MediaThumbnailPicker.TrySelect(EditableThumbnailPath, out var selectedPath, out var error))
+        {
+            return;
+        }
+
+        if (error is not null)
+        {
+            ThumbnailStatus = error;
+            return;
+        }
+
+        EditableThumbnailPath = selectedPath ?? string.Empty;
+        ThumbnailStatus = string.Empty;
+    }
+
+    private async Task SaveThumbnailAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        string normalizedPath;
+        try
+        {
+            normalizedPath = MediaThumbnailValidation.Normalize(EditableThumbnailPath);
+        }
+        catch (ArgumentException exception)
+        {
+            ThumbnailStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaThumbnailService is not null
+            ? await _mediaThumbnailService.SaveAsync(movie.Id, normalizedPath)
+            : await SaveThumbnailDirectlyAsync(movie, normalizedPath);
+        if (!saved)
+        {
+            ThumbnailStatus = "The thumbnail could not be saved.";
+            return;
+        }
+
+        movie.ThumbnailOverride = normalizedPath;
+        movie.ThumbnailPath = normalizedPath;
+        ThumbnailPath = normalizedPath;
+        EditableThumbnailPath = normalizedPath;
+        ThumbnailStatus = "Custom thumbnail saved.";
+        NotifyStateChanged();
+    }
+
+    private async Task ResetMetadataAsync()
+    {
+        var movie = _movie;
+        if (movie is null || _mediaMetadataResetService is null)
+        {
+            MetadataResetStatus = "Metadata reset is unavailable.";
+            return;
+        }
+
+        if (_confirmationDialog is not null &&
+            !_confirmationDialog.Confirm(
+                $"Discard all manual metadata changes for \"{movie.DisplayTitle}\"?",
+                "Reset metadata"))
+        {
+            return;
+        }
+
+        if (!await _mediaMetadataResetService.ResetAsync(movie.Id))
+        {
+            MetadataResetStatus = "The metadata could not be reset.";
+            return;
+        }
+
+        movie.TitleOverride = null;
+        movie.ThumbnailOverride = null;
+        movie.ThumbnailPath = movie.DetectedThumbnailPath;
+        movie.MediaTypeOverride = null;
+        if (movie.DetectedMediaType is { } detectedMediaType)
+        {
+            movie.MediaType = detectedMediaType;
+        }
+
+        movie.TVShowTitleOverride = null;
+        movie.SeasonNumberOverride = null;
+        movie.EpisodeNumberOverride = null;
+        movie.TVShowTitle = movie.DetectedTVShowTitle;
+        movie.SeasonNumber = movie.DetectedSeasonNumber;
+        movie.EpisodeNumber = movie.DetectedEpisodeNumber;
+        movie.DescriptionOverride = null;
+        movie.ReleaseYearOverride = null;
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        Description = FormatDescription(movie.DisplayDescription);
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = string.Empty;
+        EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
+        ThumbnailPath = movie.ThumbnailPath;
+        SelectedMediaType = movie.MediaType;
+        HeaderMetadata = JoinMetadata(
+            movie.EffectiveReleaseYear?.ToString(),
+            MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
+            MediaCategoryDisplay.Name(movie));
+        PopulateMetadata(movie);
+        MetadataResetStatus = "Detected metadata restored.";
+        TitleStatus = string.Empty;
+        MediaTypeStatus = string.Empty;
+        ThumbnailStatus = string.Empty;
+        NotifyStateChanged();
+    }
+
+    private async Task SaveDescriptionAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        string? normalizedDescription;
+        try
+        {
+            normalizedDescription = MediaDescriptionValidation.Normalize(EditableDescription);
+        }
+        catch (ArgumentException exception)
+        {
+            DescriptionStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaDescriptionService is not null
+            ? await _mediaDescriptionService.SaveAsync(movie.Id, normalizedDescription)
+            : await SaveDescriptionDirectlyAsync(movie, normalizedDescription);
+        if (!saved)
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        movie.DescriptionOverride = normalizedDescription;
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        Description = FormatDescription(movie.DisplayDescription);
+        DescriptionStatus = normalizedDescription is null
+            ? "Custom description cleared."
+            : "Custom description saved.";
+        NotifyStateChanged();
+    }
+
+    private async Task<bool> SaveThumbnailDirectlyAsync(MediaItem movie, string normalizedPath)
+    {
+        movie.ThumbnailOverride = normalizedPath;
+        movie.ThumbnailPath = normalizedPath;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
+    }
+
+    private async Task SaveReleaseYearAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        int? normalizedReleaseYear;
+        try
+        {
+            normalizedReleaseYear = MediaReleaseYearValidation.Normalize(EditableReleaseYear);
+        }
+        catch (ArgumentException exception)
+        {
+            ReleaseYearStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaReleaseYearService is not null
+            ? await _mediaReleaseYearService.SaveAsync(movie.Id, normalizedReleaseYear)
+            : await SaveReleaseYearDirectlyAsync(movie, normalizedReleaseYear);
+        if (!saved)
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        movie.ReleaseYearOverride = normalizedReleaseYear;
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        HeaderMetadata = JoinMetadata(
+            movie.EffectiveReleaseYear?.ToString(),
+            MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
+            MediaCategoryDisplay.Name(movie));
+        PopulateMetadata(movie);
+        ReleaseYearStatus = normalizedReleaseYear is null
+            ? "Custom release year cleared."
+            : "Custom release year saved.";
+        NotifyStateChanged();
+    }
+
+    private async Task RestoreTitleAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Title))
+        {
+            TitleStatus = "The detected title could not be restored.";
+            return;
+        }
+
+        movie.TitleOverride = null;
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        TitleStatus = "Detected title restored.";
+        NotifyStateChanged();
+    }
+
+    private async Task RestoreDescriptionAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Description))
+        {
+            DescriptionStatus = "The detected description could not be restored.";
+            return;
+        }
+
+        movie.DescriptionOverride = null;
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        Description = FormatDescription(movie.DisplayDescription);
+        DescriptionStatus = "Detected description restored.";
+    }
+
+    private async Task RestoreReleaseYearAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.ReleaseYear))
+        {
+            ReleaseYearStatus = "The detected release year could not be restored.";
+            return;
+        }
+
+        movie.ReleaseYearOverride = null;
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        HeaderMetadata = JoinMetadata(
+            movie.EffectiveReleaseYear?.ToString(),
+            MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
+            MediaCategoryDisplay.Name(movie));
+        PopulateMetadata(movie);
+        ReleaseYearStatus = "Detected release year restored.";
+    }
+
+    private async Task RestoreThumbnailAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Thumbnail))
+        {
+            ThumbnailStatus = "The detected thumbnail could not be restored.";
+            return;
+        }
+
+        movie.ThumbnailOverride = null;
+        movie.ThumbnailPath = movie.DetectedThumbnailPath;
+        ThumbnailPath = movie.ThumbnailPath;
+        EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = "Detected thumbnail restored.";
+        NotifyStateChanged();
+    }
+
+    private async Task RestoreMediaTypeAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.MediaType))
+        {
+            MediaTypeStatus = "The detected media type could not be restored.";
+            return;
+        }
+
+        movie.MediaTypeOverride = null;
+        if (movie.DetectedMediaType is { } detectedMediaType)
+        {
+            movie.MediaType = detectedMediaType;
+        }
+
+        SelectedMediaType = movie.MediaType;
+        MediaTypeStatus = "Detected media type restored.";
+        NotifyStateChanged();
+    }
+
+    private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
+    {
+        if (_mediaMetadataResetService is null)
+        {
+            return false;
+        }
+
+        return await _mediaMetadataResetService.ResetFieldAsync(mediaItemId, field);
+    }
+
+    private async Task<bool> SaveReleaseYearDirectlyAsync(MediaItem movie, int? releaseYear)
+    {
+        movie.ReleaseYearOverride = releaseYear;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
+    }
+
+    private async Task<bool> SaveTitleDirectlyAsync(MediaItem movie, string normalizedTitle)
+    {
+        movie.TitleOverride = normalizedTitle;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
+    }
+
+    private async Task<bool> SaveDescriptionDirectlyAsync(MediaItem movie, string? normalizedDescription)
+    {
+        movie.DescriptionOverride = normalizedDescription;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
     }
 
     private async Task RefreshCategoryOptionsAsync(Guid? selectedCategoryId)
@@ -346,7 +880,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         MetadataItems.Clear();
         AddMetadata("Library", movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies");
         AddMetadata("Category", MediaCategoryDisplay.Name(movie));
-        AddMetadata("Release year", movie.ReleaseYear?.ToString() ?? "Unknown");
+        AddMetadata("Release year", movie.EffectiveReleaseYear?.ToString() ?? "Unknown");
         AddMetadata("Runtime", MediaRuntimeFormatter.Format(movie.RuntimeSeconds) is { Length: > 0 } runtime ? runtime : "Unknown");
         AddMetadata("Playback", PlaybackText(movie));
         AddMetadata("Added", FormatDate(movie.DateAdded));
@@ -360,6 +894,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private void NotifyStateChanged()
     {
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(MediaTypeLabel));
         OnPropertyChanged(nameof(CompletionActionText));
         OnPropertyChanged(nameof(FavoriteActionText));
         OnPropertyChanged(nameof(PlaybackProgressPercentage));
@@ -369,6 +904,10 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ((AsyncRelayCommand)ResetProgressCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)ResetMetadataCommand).NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private void GoBack()
@@ -381,6 +920,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     private static string JoinMetadata(params string?[] values) =>
         string.Join(" • ", values.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static string FormatDescription(string? description) =>
+        string.IsNullOrWhiteSpace(description) ? "No description available." : description;
 
     private static string PlaybackText(MediaItem movie) => movie.IsCompleted
         ? "Completed"

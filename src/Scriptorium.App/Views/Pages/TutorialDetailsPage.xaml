@@ -81,6 +81,23 @@
                             Margin="0,4,0,0"
                             Style="{StaticResource Text.CardTitle}"
                             Text="{Binding SelectedLesson.Title}" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.Accent}" Text="Edited metadata">
+                            <TextBlock.Style>
+                                <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedLesson.HasManualMetadata}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            Foreground="{StaticResource Brush.TextSecondary}"
+                            Text="{Binding SelectedLesson.Description}"
+                            TextWrapping="Wrap" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button
@@ -105,7 +122,19 @@
                     </StackPanel>
                 </Grid>
             </Border>
-            <controls:MediaCategoryEditor Margin="0,16,0,0" />
+            <controls:MediaThumbnailEditor Margin="0,16,0,0" />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaTypeEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaTitleEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaDescriptionEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaReleaseYearEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaCategoryEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaMetadataResetEditor />
             <TextBlock Margin="0,16,0,0" Foreground="{StaticResource Brush.Accent}" Text="{Binding OrderStatus}">
                 <TextBlock.Style>
                     <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">

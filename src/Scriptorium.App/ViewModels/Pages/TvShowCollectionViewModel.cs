@@ -15,6 +15,8 @@ public sealed class TvShowCollectionViewModel(TVShow show)
 
     public string Title => MediaDisplayText.TitleOrFallback(show.Title, "Untitled TV show");
 
+    public bool HasManualMetadata => MediaItems.Any(mediaItem => mediaItem.HasManualMetadata);
+
     public string SourceFolder => show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
 
     public string? ThumbnailPath => show.Seasons

@@ -99,10 +99,15 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
     private static bool ApplyScanMetadata(MediaItem mediaItem, DiscoveredMediaFile discoveredFile, string normalizedPath)
     {
         var changed = false;
+        // Title is source metadata; a user-selected TitleOverride is deliberately kept separate.
         changed |= SetIfChanged(() => mediaItem.Title, value => mediaItem.Title = value, discoveredFile.DisplayTitle);
         changed |= SetIfChanged(() => mediaItem.Path, value => mediaItem.Path = value, normalizedPath);
         changed |= SetIfChanged(() => mediaItem.LibraryFolderId, value => mediaItem.LibraryFolderId = value, discoveredFile.LibraryFolderId);
-        changed |= SetIfChanged(() => mediaItem.MediaType, value => mediaItem.MediaType = value, discoveredFile.MediaType);
+        changed |= SetIfChanged(() => mediaItem.DetectedMediaType, value => mediaItem.DetectedMediaType = value, discoveredFile.MediaType);
+        if (mediaItem.MediaTypeOverride is null)
+        {
+            changed |= SetIfChanged(() => mediaItem.MediaType, value => mediaItem.MediaType = value, discoveredFile.MediaType);
+        }
         changed |= SetIfChanged(() => mediaItem.RuntimeSeconds, value => mediaItem.RuntimeSeconds = value, discoveredFile.RuntimeSeconds);
         changed |= SetIfChanged(() => mediaItem.FileSize, value => mediaItem.FileSize = value, discoveredFile.FileSize);
         changed |= SetIfChanged(() => mediaItem.CreatedDate, value => mediaItem.CreatedDate = value, discoveredFile.CreatedDate);
@@ -155,6 +160,7 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         LibraryFolderId = discoveredFile.LibraryFolderId,
         LibraryFolder = null!,
         MediaType = discoveredFile.MediaType,
+        DetectedMediaType = discoveredFile.MediaType,
         RuntimeSeconds = discoveredFile.RuntimeSeconds,
         FileSize = discoveredFile.FileSize,
         CreatedDate = discoveredFile.CreatedDate,

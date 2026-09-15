@@ -92,6 +92,21 @@
                         Text="{Binding TypeLabel, ElementName=Root}" />
                     <TextBlock
                         Margin="0,6,0,0"
+                        Foreground="{StaticResource Brush.Accent}"
+                        Text="Edited metadata">
+                        <TextBlock.Style>
+                            <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasManualMetadata, ElementName=Root}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock
+                        Margin="0,6,0,0"
                         Style="{StaticResource Text.PageTitle}"
                         Text="{Binding Title, ElementName=Root}"
                         TextWrapping="Wrap" />

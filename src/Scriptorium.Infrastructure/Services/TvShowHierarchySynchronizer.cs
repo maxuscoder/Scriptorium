@@ -85,7 +85,7 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
                 Season = targetSeason,
                 SeasonId = targetSeason.Id,
                 EpisodeNumber = mediaItem.EpisodeNumber,
-                Title = mediaItem.Title,
+                Title = mediaItem.DisplayTitle,
                 FilePath = mediaItem.Path,
                 Duration = ToDuration(mediaItem.RuntimeSeconds)
             };
@@ -186,7 +186,7 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
         }
 
         episode.EpisodeNumber = mediaItem.EpisodeNumber;
-        episode.Title = mediaItem.Title;
+        episode.Title = mediaItem.DisplayTitle;
         episode.FilePath = mediaItem.Path;
         episode.Duration = ToDuration(mediaItem.RuntimeSeconds);
     }
@@ -207,7 +207,7 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
         foreach (var episode in season.Episodes
                      .OrderBy(episode => episode.EpisodeNumber.HasValue ? 0 : 1)
                      .ThenBy(episode => episode.EpisodeNumber)
-                     .ThenBy(episode => episode.Title, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(episode => episode.MediaItem?.DisplayTitle ?? episode.Title, StringComparer.OrdinalIgnoreCase)
                      .ThenBy(episode => episode.Id))
         {
             episode.SortOrder = sortOrder++;

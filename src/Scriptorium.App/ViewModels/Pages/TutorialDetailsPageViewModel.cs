@@ -25,6 +25,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
+    private readonly IMediaTitleService? _mediaTitleService;
+    private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
+    private readonly IMediaReleaseYearService? _mediaReleaseYearService;
+    private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
     private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
@@ -36,6 +42,17 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private TutorialLessonViewModel? _selectedLesson;
     private MediaCategoryOptionViewModel? _selectedCategory;
     private string _categoryStatus = string.Empty;
+    private string _editableTitle = string.Empty;
+    private string _titleStatus = string.Empty;
+    private string _editableThumbnailPath = string.Empty;
+    private string _thumbnailStatus = string.Empty;
+    private string _metadataResetStatus = string.Empty;
+    private string _editableDescription = string.Empty;
+    private string _descriptionStatus = string.Empty;
+    private string _editableReleaseYear = string.Empty;
+    private string _releaseYearStatus = string.Empty;
+    private MediaType? _selectedMediaType;
+    private string _mediaTypeStatus = string.Empty;
     private string _orderStatus = string.Empty;
     private bool _isReordering;
     private bool _disposed;
@@ -50,7 +67,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         IPlaybackProgressService playbackProgressService,
         VideoPlayerViewModel player,
         IConfirmationDialog? confirmationDialog = null,
-        ILogger<TutorialDetailsPageViewModel>? logger = null)
+        ILogger<TutorialDetailsPageViewModel>? logger = null,
+        IMediaTitleService? mediaTitleService = null,
+        IMediaTypeService? mediaTypeService = null,
+        IMediaThumbnailService? mediaThumbnailService = null,
+        IMediaMetadataResetService? mediaMetadataResetService = null,
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IMediaReleaseYearService? mediaReleaseYearService = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -60,6 +83,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _playbackProgressService = playbackProgressService;
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
+        _mediaTitleService = mediaTitleService;
+        _mediaTypeService = mediaTypeService;
+        _mediaThumbnailService = mediaThumbnailService;
+        _mediaMetadataResetService = mediaMetadataResetService;
+        _mediaDescriptionService = mediaDescriptionService;
+        _mediaReleaseYearService = mediaReleaseYearService;
         _player = player;
         _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -71,6 +100,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
+        SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedLesson is not null);
+        SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => SelectedLesson is not null && SelectedMediaType is not null);
+        ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
+        SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => SelectedLesson is not null);
+        ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedLesson is not null);
+        SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedLesson is not null);
+        SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => SelectedLesson is not null);
+        RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => SelectedLesson is not null);
+        RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => SelectedLesson is not null);
+        RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => SelectedLesson is not null);
+        RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedLesson is not null);
+        RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -172,13 +213,27 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             }
 
             OnPropertyChanged(nameof(SelectedLessonPositionText));
+            OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
             OpenSelectedLesson();
             SelectCategory(value?.CategoryId);
+            EditableTitle = value?.Title ?? string.Empty;
+            TitleStatus = string.Empty;
+            EditableDescription = value?.Description ?? string.Empty;
+            DescriptionStatus = string.Empty;
+            EditableReleaseYear = value?.ReleaseYear?.ToString() ?? string.Empty;
+            ReleaseYearStatus = string.Empty;
+            SelectedMediaType = value?.MediaType;
+            MediaTypeStatus = string.Empty;
+            EditableThumbnailPath = value?.ThumbnailPath ?? string.Empty;
+            ThumbnailStatus = string.Empty;
+            MetadataResetStatus = string.Empty;
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
+            ((AsyncRelayCommand)ResetMetadataCommand).NotifyCanExecuteChanged();
             ((RelayCommand)ContinueLearningCommand).NotifyCanExecuteChanged();
         }
     }
@@ -206,6 +261,82 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _categoryStatus;
         private set => SetProperty(ref _categoryStatus, value);
+    }
+
+    public string EditableTitle
+    {
+        get => _editableTitle;
+        set => SetProperty(ref _editableTitle, value);
+    }
+
+    public string TitleStatus
+    {
+        get => _titleStatus;
+        private set => SetProperty(ref _titleStatus, value);
+    }
+
+    public string EditableThumbnailPath
+    {
+        get => _editableThumbnailPath;
+        set => SetProperty(ref _editableThumbnailPath, value);
+    }
+
+    public string ThumbnailStatus
+    {
+        get => _thumbnailStatus;
+        private set => SetProperty(ref _thumbnailStatus, value);
+    }
+
+    public string MetadataResetStatus
+    {
+        get => _metadataResetStatus;
+        private set => SetProperty(ref _metadataResetStatus, value);
+    }
+
+    public string EditableDescription
+    {
+        get => _editableDescription;
+        set => SetProperty(ref _editableDescription, value);
+    }
+
+    public string DescriptionStatus
+    {
+        get => _descriptionStatus;
+        private set => SetProperty(ref _descriptionStatus, value);
+    }
+
+    public bool HasManualMetadata => SelectedLesson?.HasManualMetadata == true;
+
+    public string EditableReleaseYear
+    {
+        get => _editableReleaseYear;
+        set => SetProperty(ref _editableReleaseYear, value);
+    }
+
+    public string ReleaseYearStatus
+    {
+        get => _releaseYearStatus;
+        private set => SetProperty(ref _releaseYearStatus, value);
+    }
+
+    public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
+
+    public MediaType? SelectedMediaType
+    {
+        get => _selectedMediaType;
+        set
+        {
+            if (SetProperty(ref _selectedMediaType, value))
+            {
+                ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string MediaTypeStatus
+    {
+        get => _mediaTypeStatus;
+        private set => SetProperty(ref _mediaTypeStatus, value);
     }
 
     public string OrderStatus
@@ -250,6 +381,19 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveCategoryCommand { get; }
 
+    public ICommand SaveTitleCommand { get; }
+    public ICommand SaveMediaTypeCommand { get; }
+    public ICommand ChooseThumbnailCommand { get; }
+    public ICommand SaveThumbnailCommand { get; }
+    public ICommand ResetMetadataCommand { get; }
+    public ICommand SaveDescriptionCommand { get; }
+    public ICommand SaveReleaseYearCommand { get; }
+    public ICommand RestoreTitleCommand { get; }
+    public ICommand RestoreDescriptionCommand { get; }
+    public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RestoreThumbnailCommand { get; }
+    public ICommand RestoreMediaTypeCommand { get; }
+
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a tutorial collection before it becomes the current page.</summary>
@@ -278,7 +422,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
                      .OrderBy(lesson => lesson.SortOrder)
                      .ThenBy(lesson => lesson.LessonNumber.HasValue ? 0 : 1)
                      .ThenBy(lesson => lesson.LessonNumber)
-                     .ThenBy(lesson => lesson.Title, StringComparer.OrdinalIgnoreCase)
+                     .ThenBy(lesson => lesson.MediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase)
                      .ThenBy(lesson => lesson.Id))
         {
             Lessons.Add(new TutorialLessonViewModel(lesson));
@@ -635,6 +779,295 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             : $"Category '{category.Name}' assigned.";
     }
 
+    private async Task SaveTitleAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaTitleService is null)
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        string normalizedTitle;
+        try
+        {
+            normalizedTitle = MediaTitleValidation.Normalize(EditableTitle);
+        }
+        catch (ArgumentException exception)
+        {
+            TitleStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaTitleService.SaveAsync(lesson.MediaItemId, normalizedTitle))
+        {
+            TitleStatus = "The title could not be saved.";
+            return;
+        }
+
+        lesson.SetTitleOverride(normalizedTitle);
+        EditableTitle = lesson.Title;
+        TitleStatus = "Custom title saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+        OnPropertyChanged(nameof(SelectedLessonPositionText));
+    }
+
+    private async Task SaveMediaTypeAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || SelectedMediaType is not { } mediaType || _mediaTypeService is null)
+        {
+            MediaTypeStatus = "The media type could not be saved.";
+            return;
+        }
+
+        if (lesson.MediaType == mediaType)
+        {
+            MediaTypeStatus = "No media type changes to save.";
+            return;
+        }
+
+        if (!await _mediaTypeService.SaveAsync(lesson.MediaItemId, mediaType))
+        {
+            MediaTypeStatus = "The media type could not be saved.";
+            return;
+        }
+
+        lesson.SetMediaType(mediaType);
+        MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private void ChooseThumbnail()
+    {
+        if (!MediaThumbnailPicker.TrySelect(EditableThumbnailPath, out var selectedPath, out var error))
+        {
+            return;
+        }
+
+        if (error is not null)
+        {
+            ThumbnailStatus = error;
+            return;
+        }
+
+        EditableThumbnailPath = selectedPath ?? string.Empty;
+        ThumbnailStatus = string.Empty;
+    }
+
+    private async Task SaveThumbnailAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaThumbnailService is null)
+        {
+            ThumbnailStatus = "The thumbnail could not be saved.";
+            return;
+        }
+
+        string normalizedPath;
+        try
+        {
+            normalizedPath = MediaThumbnailValidation.Normalize(EditableThumbnailPath);
+        }
+        catch (ArgumentException exception)
+        {
+            ThumbnailStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaThumbnailService.SaveAsync(lesson.MediaItemId, normalizedPath))
+        {
+            ThumbnailStatus = "The thumbnail could not be saved.";
+            return;
+        }
+
+        lesson.SetThumbnailPath(normalizedPath);
+        EditableThumbnailPath = normalizedPath;
+        ThumbnailStatus = "Custom thumbnail saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task ResetMetadataAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaMetadataResetService is null)
+        {
+            MetadataResetStatus = "Metadata reset is unavailable.";
+            return;
+        }
+
+        if (_confirmationDialog is not null &&
+            !_confirmationDialog.Confirm(
+                $"Discard all manual metadata changes for \"{lesson.Title}\"?",
+                "Reset metadata"))
+        {
+            return;
+        }
+
+        if (!await _mediaMetadataResetService.ResetAsync(lesson.MediaItemId))
+        {
+            MetadataResetStatus = "The metadata could not be reset.";
+            return;
+        }
+
+        lesson.SetMetadataReset();
+        await RefreshLoadedCourseAsync();
+        MetadataResetStatus = "Detected metadata restored.";
+    }
+
+    private async Task SaveDescriptionAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaDescriptionService is null)
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        string? normalizedDescription;
+        try
+        {
+            normalizedDescription = MediaDescriptionValidation.Normalize(EditableDescription);
+        }
+        catch (ArgumentException exception)
+        {
+            DescriptionStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaDescriptionService.SaveAsync(lesson.MediaItemId, normalizedDescription))
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        lesson.SetDescriptionOverride(normalizedDescription);
+        EditableDescription = lesson.Description ?? string.Empty;
+        DescriptionStatus = normalizedDescription is null
+            ? "Custom description cleared."
+            : "Custom description saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task SaveReleaseYearAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaReleaseYearService is null)
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        int? normalizedReleaseYear;
+        try
+        {
+            normalizedReleaseYear = MediaReleaseYearValidation.Normalize(EditableReleaseYear);
+        }
+        catch (ArgumentException exception)
+        {
+            ReleaseYearStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaReleaseYearService.SaveAsync(lesson.MediaItemId, normalizedReleaseYear))
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        lesson.SetReleaseYearOverride(normalizedReleaseYear);
+        EditableReleaseYear = lesson.ReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = normalizedReleaseYear is null
+            ? "Custom release year cleared."
+            : "Custom release year saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task RestoreTitleAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Title))
+        {
+            TitleStatus = "The detected title could not be restored.";
+            return;
+        }
+
+        lesson.SetTitleOverride(null);
+        EditableTitle = lesson.Title;
+        TitleStatus = "Detected title restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task RestoreDescriptionAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Description))
+        {
+            DescriptionStatus = "The detected description could not be restored.";
+            return;
+        }
+
+        lesson.SetDescriptionOverride(null);
+        EditableDescription = lesson.Description ?? string.Empty;
+        DescriptionStatus = "Detected description restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task RestoreReleaseYearAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.ReleaseYear))
+        {
+            ReleaseYearStatus = "The detected release year could not be restored.";
+            return;
+        }
+
+        lesson.SetReleaseYearOverride(null);
+        EditableReleaseYear = lesson.ReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = "Detected release year restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task RestoreThumbnailAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Thumbnail))
+        {
+            ThumbnailStatus = "The detected thumbnail could not be restored.";
+            return;
+        }
+
+        lesson.SetThumbnailPath(lesson.DetectedThumbnailPath);
+        EditableThumbnailPath = lesson.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = "Detected thumbnail restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task RestoreMediaTypeAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.MediaType))
+        {
+            MediaTypeStatus = "The detected media type could not be restored.";
+            return;
+        }
+
+        lesson.SetMediaType(lesson.DetectedMediaType);
+        SelectedMediaType = lesson.MediaType;
+        MediaTypeStatus = "Detected media type restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
+    {
+        if (_mediaMetadataResetService is null)
+        {
+            return false;
+        }
+
+        return await _mediaMetadataResetService.ResetFieldAsync(mediaItemId, field);
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -658,7 +1091,7 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 {
     public Guid LessonId => lesson.Id;
 
-    public string Title => MediaDisplayText.TitleOrFallback(lesson.Title, "Untitled lesson");
+    public string Title => MediaDisplayText.TitleOrFallback(lesson.MediaItem.DisplayTitle, "Untitled lesson");
 
     public string Position => lesson.LessonNumber is { } number ? $"Lesson {number}" : $"Lesson {lesson.SortOrder + 1}";
 
@@ -673,6 +1106,20 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public string FilePath => lesson.FilePath;
 
     public Guid MediaItemId => lesson.MediaItemId;
+
+    public MediaType MediaType => lesson.MediaItem.MediaType;
+
+    public string? ThumbnailPath => lesson.MediaItem.ThumbnailPath;
+
+    public string? Description => lesson.MediaItem.DisplayDescription;
+
+    public bool HasManualMetadata => lesson.MediaItem.HasManualMetadata;
+
+    public string? DetectedThumbnailPath => lesson.MediaItem.DetectedThumbnailPath;
+
+    public MediaType DetectedMediaType => lesson.MediaItem.DetectedMediaType ?? lesson.MediaItem.MediaType;
+
+    public int? ReleaseYear => lesson.MediaItem.EffectiveReleaseYear;
 
     public bool IsFavorite => lesson.MediaItem.IsFavorite;
 
@@ -735,6 +1182,68 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
         lesson.SortOrder = sortOrder;
         OnPropertyChanged(nameof(Position));
+    }
+
+    internal void SetTitleOverride(string? title)
+    {
+        lesson.MediaItem.TitleOverride = title;
+        lesson.Title = lesson.MediaItem.DisplayTitle;
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SetMediaType(MediaType mediaType)
+    {
+        lesson.MediaItem.MediaType = mediaType;
+        lesson.MediaItem.MediaTypeOverride = mediaType;
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SetThumbnailPath(string? thumbnailPath)
+    {
+        lesson.MediaItem.ThumbnailPath = thumbnailPath;
+        OnPropertyChanged(nameof(ThumbnailPath));
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SetDescriptionOverride(string? description)
+    {
+        lesson.MediaItem.DescriptionOverride = description;
+        OnPropertyChanged(nameof(Description));
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SetReleaseYearOverride(int? releaseYear)
+    {
+        lesson.MediaItem.ReleaseYearOverride = releaseYear;
+        OnPropertyChanged(nameof(ReleaseYear));
+        OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SetMetadataReset()
+    {
+        lesson.MediaItem.TitleOverride = null;
+        lesson.MediaItem.DescriptionOverride = null;
+        lesson.MediaItem.ReleaseYearOverride = null;
+        lesson.MediaItem.ThumbnailOverride = null;
+        lesson.MediaItem.ThumbnailPath = lesson.MediaItem.DetectedThumbnailPath;
+        lesson.MediaItem.MediaTypeOverride = null;
+        if (lesson.MediaItem.DetectedMediaType is { } detectedMediaType)
+        {
+            lesson.MediaItem.MediaType = detectedMediaType;
+        }
+
+        lesson.MediaItem.TVShowTitleOverride = null;
+        lesson.MediaItem.SeasonNumberOverride = null;
+        lesson.MediaItem.EpisodeNumberOverride = null;
+        lesson.MediaItem.TVShowTitle = lesson.MediaItem.DetectedTVShowTitle;
+        lesson.MediaItem.SeasonNumber = lesson.MediaItem.DetectedSeasonNumber;
+        lesson.MediaItem.EpisodeNumber = lesson.MediaItem.DetectedEpisodeNumber;
+        lesson.Title = lesson.MediaItem.DisplayTitle;
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(MediaType));
+        OnPropertyChanged(nameof(ThumbnailPath));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;

@@ -71,6 +71,7 @@
                             FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}"
                             FavoriteParameter="{Binding}"
                             FallbackGlyph="{Binding TypeGlyph}"
+                            HasManualMetadata="{Binding HasManualMetadata}"
                             HasPlaybackProgress="{Binding HasPlaybackProgress}"
                             IsFavorite="{Binding IsFavorite}"
                             IsMissing="{Binding IsMissing}"

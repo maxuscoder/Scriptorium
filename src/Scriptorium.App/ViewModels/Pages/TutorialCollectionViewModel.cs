@@ -13,6 +13,8 @@ public sealed class TutorialCollectionViewModel(Course course)
 
     public string Title => MediaDisplayText.TitleOrFallback(course.Title, "Untitled tutorial");
 
+    public bool HasManualMetadata => MediaItems.Any(mediaItem => mediaItem.HasManualMetadata);
+
     public string SourceFolder => course.LibraryFolder.DisplayNameOrName;
 
     public string? ThumbnailPath => course.Lessons

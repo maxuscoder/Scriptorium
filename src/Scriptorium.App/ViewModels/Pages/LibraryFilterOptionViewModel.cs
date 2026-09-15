@@ -71,7 +71,9 @@ public enum LibrarySortOrder
     MostRecentlyWatched,
     LeastRecentlyWatched,
     HighestPlaybackProgress,
-    LowestPlaybackProgress
+    LowestPlaybackProgress,
+    ReleaseYearNewest,
+    ReleaseYearOldest
 }
 
 /// <summary>
