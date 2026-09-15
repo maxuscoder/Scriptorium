@@ -58,6 +58,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isTitleRefreshQueued;
     private int _isMediaTypeRefreshQueued;
     private int _isEpisodeSeasonRefreshQueued;
+    private int _isEpisodeNumberRefreshQueued;
     private Task? _initialDataLoadTask;
     private bool _disposed;
 
@@ -191,6 +192,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             _mediaTypeService.MediaTypeChanged += OnMediaTypeChanged;
         }
         _mediaGroupingService.EpisodeSeasonChanged += OnEpisodeSeasonChanged;
+        _mediaGroupingService.EpisodeNumberChanged += OnEpisodeNumberChanged;
     }
 
     public override string Title => "Library";
@@ -215,6 +217,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             _mediaTypeService.MediaTypeChanged -= OnMediaTypeChanged;
         }
         _mediaGroupingService.EpisodeSeasonChanged -= OnEpisodeSeasonChanged;
+        _mediaGroupingService.EpisodeNumberChanged -= OnEpisodeNumberChanged;
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
@@ -903,6 +906,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isEpisodeSeasonRefreshQueued, 0);
+        }
+    }
+
+    private void OnEpisodeNumberChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isEpisodeNumberRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterEpisodeNumberChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterEpisodeNumberChangeAsync();
+    }
+
+    private async Task RefreshAfterEpisodeNumberChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isEpisodeNumberRefreshQueued, 0);
         }
     }
 

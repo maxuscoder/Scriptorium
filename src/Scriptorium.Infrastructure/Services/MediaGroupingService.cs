@@ -13,6 +13,9 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
     public event Action<Guid>? EpisodeSeasonChanged;
 
     /// <inheritdoc />
+    public event Action<Guid>? EpisodeNumberChanged;
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<TVShow>> GetTvShowGroupsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -127,6 +130,36 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         ReorderEpisodes(targetShow);
         await context.SaveChangesAsync(cancellationToken);
         EpisodeSeasonChanged?.Invoke(mediaItemId);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateEpisodeNumberAsync(
+        Guid mediaItemId,
+        int episodeNumber,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(mediaItemId, Guid.Empty);
+        if (episodeNumber <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(episodeNumber), episodeNumber, "The episode number must be positive.");
+        }
+
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var episode = await context.Episodes
+            .Include(item => item.Season)
+                .ThenInclude(season => season.TVShow)
+                    .ThenInclude(show => show.Seasons)
+                        .ThenInclude(season => season.Episodes)
+            .Include(item => item.MediaItem)
+            .SingleOrDefaultAsync(item => item.MediaItemId == mediaItemId, cancellationToken)
+            ?? throw new InvalidOperationException("The selected media is not assigned to a television-show group.");
+
+        episode.EpisodeNumber = episodeNumber;
+        episode.MediaItem.EpisodeNumberOverride = episodeNumber;
+        episode.MediaItem.EpisodeNumber = episodeNumber;
+        ReorderEpisodes(episode.Season);
+        await context.SaveChangesAsync(cancellationToken);
+        EpisodeNumberChanged?.Invoke(mediaItemId);
     }
 
     /// <inheritdoc />

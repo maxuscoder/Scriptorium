@@ -93,6 +93,19 @@ public sealed class MediaGroupingServiceTests
         Assert.Equal(2, storedSeason.SeasonNumber);
         Assert.Single(storedSeason.Episodes);
         Assert.Equal(mediaItem.Id, storedSeason.Episodes[0].MediaItemId);
+
+        await service.UpdateEpisodeNumberAsync(mediaItem.Id, 5);
+
+        verificationContext.ChangeTracker.Clear();
+        storedMedia = await verificationContext.MediaItems.SingleAsync();
+        Assert.Equal(5, storedMedia.EpisodeNumber);
+        Assert.Equal(5, storedMedia.EpisodeNumberOverride);
+        Assert.Equal(3, storedMedia.DetectedEpisodeNumber);
+        storedShow = await verificationContext.TVShows
+            .Include(value => value.Seasons)
+                .ThenInclude(value => value.Episodes)
+            .SingleAsync();
+        Assert.Equal(5, Assert.Single(Assert.Single(storedShow.Seasons).Episodes).EpisodeNumber);
     }
 
     [Theory]
@@ -110,6 +123,23 @@ public sealed class MediaGroupingServiceTests
     public void Normalizes_positive_season_numbers()
     {
         Assert.Equal(12, MediaSeasonValidation.Normalize(" 12 "));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("abc")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public void Rejects_invalid_episode_numbers(string? value)
+    {
+        Assert.Throws<ArgumentException>(() => MediaEpisodeValidation.Normalize(value));
+    }
+
+    [Fact]
+    public void Normalizes_positive_episode_numbers()
+    {
+        Assert.Equal(8, MediaEpisodeValidation.Normalize(" 8 "));
     }
 
     private sealed class TestDbContextFactory(DbContextOptions<ScriptoriumDbContext> options)

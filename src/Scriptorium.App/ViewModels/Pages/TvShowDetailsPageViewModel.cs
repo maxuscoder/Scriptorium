@@ -45,6 +45,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private string _mediaTypeStatus = string.Empty;
     private string _editableSeasonNumber = string.Empty;
     private string _seasonNumberStatus = string.Empty;
+    private string _editableEpisodeNumber = string.Empty;
+    private string _episodeNumberStatus = string.Empty;
     private bool _disposed;
 
     public TvShowDetailsPageViewModel(
@@ -86,6 +88,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedEpisode is not null);
         SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => SelectedEpisode is not null && SelectedMediaType is not null);
         SaveSeasonNumberCommand = new AsyncRelayCommand(SaveSeasonNumberAsync, () => SelectedEpisode is not null);
+        SaveEpisodeNumberCommand = new AsyncRelayCommand(SaveEpisodeNumberAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
         if (_player is not null)
         {
@@ -208,6 +211,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             MediaTypeStatus = string.Empty;
             EditableSeasonNumber = value?.SeasonNumber.ToString() ?? string.Empty;
             SeasonNumberStatus = string.Empty;
+            EditableEpisodeNumber = value?.EpisodeNumber.ToString() ?? string.Empty;
+            EpisodeNumberStatus = string.Empty;
             ((RelayCommand)PreviousEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)ContinueWatchingCommand).NotifyCanExecuteChanged();
@@ -297,6 +302,18 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _seasonNumberStatus, value);
     }
 
+    public string EditableEpisodeNumber
+    {
+        get => _editableEpisodeNumber;
+        set => SetProperty(ref _editableEpisodeNumber, value);
+    }
+
+    public string EpisodeNumberStatus
+    {
+        get => _episodeNumberStatus;
+        private set => SetProperty(ref _episodeNumberStatus, value);
+    }
+
     public ICommand BackCommand { get; }
     public ICommand SelectEpisodeCommand { get; }
     public ICommand ContinueWatchingCommand { get; }
@@ -309,6 +326,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand SaveTitleCommand { get; }
     public ICommand SaveMediaTypeCommand { get; }
     public ICommand SaveSeasonNumberCommand { get; }
+    public ICommand SaveEpisodeNumberCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
@@ -766,6 +784,52 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         SeasonNumberStatus = $"Season number changed to {seasonNumber}.";
     }
 
+    private async Task SaveEpisodeNumberAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || _mediaGroupingService is null)
+        {
+            EpisodeNumberStatus = "The episode number could not be saved.";
+            return;
+        }
+
+        int episodeNumber;
+        try
+        {
+            episodeNumber = MediaEpisodeValidation.Normalize(EditableEpisodeNumber);
+        }
+        catch (ArgumentException exception)
+        {
+            EpisodeNumberStatus = exception.Message;
+            return;
+        }
+
+        if (episode.EpisodeNumber == episodeNumber)
+        {
+            EpisodeNumberStatus = "No episode number changes to save.";
+            return;
+        }
+
+        try
+        {
+            await _mediaGroupingService.UpdateEpisodeNumberAsync(episode.MediaItemId, episodeNumber);
+        }
+        catch (ArgumentException exception)
+        {
+            EpisodeNumberStatus = exception.Message;
+            return;
+        }
+        catch (InvalidOperationException exception)
+        {
+            EpisodeNumberStatus = exception.Message;
+            return;
+        }
+
+        await RefreshLoadedShowAsync();
+        EditableEpisodeNumber = episodeNumber.ToString();
+        EpisodeNumberStatus = $"Episode number changed to {episodeNumber}.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -889,6 +953,8 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
 public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : ViewModelBase, IMediaFavoriteItem
 {
     public int SeasonNumber => seasonNumber;
+
+    public int? EpisodeNumber => episode.EpisodeNumber;
 
     public string Title => MediaDisplayText.TitleOrFallback(episode.MediaItem.DisplayTitle, "Untitled episode");
 
