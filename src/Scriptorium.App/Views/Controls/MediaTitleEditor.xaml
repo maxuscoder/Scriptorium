@@ -20,6 +20,12 @@
                 Content="Save title"
                 Style="{StaticResource Button.Primary}" />
         </Grid>
+        <Button
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding RestoreTitleCommand}"
+            Content="Restore detected title"
+            Style="{StaticResource Button.Secondary}" />
         <TextBlock
             Margin="0,8,0,0"
             Foreground="{StaticResource Brush.TextSecondary}"

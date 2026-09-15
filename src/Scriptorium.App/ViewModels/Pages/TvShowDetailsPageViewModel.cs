@@ -113,6 +113,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedEpisode is not null);
         SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedEpisode is not null);
         SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => SelectedEpisode is not null);
+        RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => SelectedEpisode is not null);
+        RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => SelectedEpisode is not null);
+        RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => SelectedEpisode is not null);
+        RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedEpisode is not null);
+        RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedEpisode is not null);
+        RestoreSeasonNumberCommand = new AsyncRelayCommand(RestoreSeasonNumberAsync, () => SelectedEpisode is not null);
+        RestoreEpisodeNumberCommand = new AsyncRelayCommand(RestoreEpisodeNumberAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
         if (_player is not null)
         {
@@ -406,6 +413,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand ResetMetadataCommand { get; }
     public ICommand SaveDescriptionCommand { get; }
     public ICommand SaveReleaseYearCommand { get; }
+    public ICommand RestoreTitleCommand { get; }
+    public ICommand RestoreDescriptionCommand { get; }
+    public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RestoreThumbnailCommand { get; }
+    public ICommand RestoreMediaTypeCommand { get; }
+    public ICommand RestoreSeasonNumberCommand { get; }
+    public ICommand RestoreEpisodeNumberCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
@@ -1051,6 +1065,112 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             : "Custom release year saved.";
     }
 
+    private async Task RestoreTitleAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.Title))
+        {
+            TitleStatus = "The detected title could not be restored.";
+            return;
+        }
+
+        episode.SetTitleOverride(null);
+        EditableTitle = episode.Title;
+        TitleStatus = "Detected title restored.";
+    }
+
+    private async Task RestoreDescriptionAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.Description))
+        {
+            DescriptionStatus = "The detected description could not be restored.";
+            return;
+        }
+
+        episode.SetDescriptionOverride(null);
+        EditableDescription = episode.Description ?? string.Empty;
+        DescriptionStatus = "Detected description restored.";
+    }
+
+    private async Task RestoreReleaseYearAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.ReleaseYear))
+        {
+            ReleaseYearStatus = "The detected release year could not be restored.";
+            return;
+        }
+
+        episode.SetReleaseYearOverride(null);
+        EditableReleaseYear = episode.ReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = "Detected release year restored.";
+    }
+
+    private async Task RestoreThumbnailAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.Thumbnail))
+        {
+            ThumbnailStatus = "The detected thumbnail could not be restored.";
+            return;
+        }
+
+        episode.SetThumbnailPath(episode.DetectedThumbnailPath);
+        EditableThumbnailPath = episode.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = "Detected thumbnail restored.";
+    }
+
+    private async Task RestoreMediaTypeAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.MediaType))
+        {
+            MediaTypeStatus = "The detected media type could not be restored.";
+            return;
+        }
+
+        episode.SetMediaType(episode.DetectedMediaType);
+        SelectedMediaType = episode.MediaType;
+        MediaTypeStatus = "Detected media type restored.";
+    }
+
+    private async Task RestoreSeasonNumberAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.SeasonNumber))
+        {
+            SeasonNumberStatus = "The detected season number could not be restored.";
+            return;
+        }
+
+        await RefreshLoadedShowAsync();
+        SeasonNumberStatus = "Detected season number restored.";
+    }
+
+    private async Task RestoreEpisodeNumberAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.EpisodeNumber))
+        {
+            EpisodeNumberStatus = "The detected episode number could not be restored.";
+            return;
+        }
+
+        await RefreshLoadedShowAsync();
+        EpisodeNumberStatus = "Detected episode number restored.";
+    }
+
+    private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
+    {
+        if (_mediaMetadataResetService is null)
+        {
+            return false;
+        }
+
+        return await _mediaMetadataResetService.ResetFieldAsync(mediaItemId, field);
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -1211,6 +1331,10 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string? Description => episode.MediaItem.DisplayDescription;
 
+    public string? DetectedThumbnailPath => episode.MediaItem.DetectedThumbnailPath;
+
+    public MediaType DetectedMediaType => episode.MediaItem.DetectedMediaType ?? episode.MediaItem.MediaType;
+
     public int? ReleaseYear => episode.MediaItem.EffectiveReleaseYear;
 
     public bool IsFavorite => episode.MediaItem.IsFavorite;
@@ -1269,7 +1393,7 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         OnPropertyChanged(nameof(CategoryId));
     }
 
-    internal void SetTitleOverride(string title)
+    internal void SetTitleOverride(string? title)
     {
         episode.MediaItem.TitleOverride = title;
         episode.Title = episode.MediaItem.DisplayTitle;
@@ -1282,7 +1406,7 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.MediaTypeOverride = mediaType;
     }
 
-    internal void SetThumbnailPath(string thumbnailPath)
+    internal void SetThumbnailPath(string? thumbnailPath)
     {
         episode.MediaItem.ThumbnailPath = thumbnailPath;
         OnPropertyChanged(nameof(ThumbnailPath));

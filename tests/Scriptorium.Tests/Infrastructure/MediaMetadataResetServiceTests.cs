@@ -75,6 +75,15 @@ public sealed class MediaMetadataResetServiceTests
         var resetMediaItemId = Guid.Empty;
         service.MetadataReset += mediaItemId => resetMediaItemId = mediaItemId;
 
+        Assert.True(await service.ResetFieldAsync(mediaItem.Id, MediaMetadataField.Title));
+        var fieldReset = (await repository.GetByIdAsync(mediaItem.Id))!;
+        Assert.Null(fieldReset.TitleOverride);
+        Assert.Equal("Manual description", fieldReset.DescriptionOverride);
+        Assert.Equal(2024, fieldReset.ReleaseYearOverride);
+        Assert.Equal(@"C:\custom\manual.png", fieldReset.ThumbnailOverride);
+        Assert.Equal(MediaType.Tutorial, fieldReset.MediaTypeOverride);
+        Assert.Equal(8, fieldReset.SeasonNumberOverride);
+
         Assert.True(await service.ResetAsync(mediaItem.Id));
 
         var stored = (await repository.GetByIdAsync(mediaItem.Id))!;

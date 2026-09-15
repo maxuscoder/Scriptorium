@@ -93,6 +93,11 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => _movie is not null);
         SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => _movie is not null);
         SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => _movie is not null);
+        RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => _movie is not null);
+        RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => _movie is not null);
+        RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => _movie is not null);
+        RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => _movie is not null);
+        RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => _movie is not null);
     }
 
     public override string Title => _movieTitle;
@@ -276,6 +281,11 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand SaveDescriptionCommand { get; }
 
     public ICommand SaveReleaseYearCommand { get; }
+    public ICommand RestoreTitleCommand { get; }
+    public ICommand RestoreDescriptionCommand { get; }
+    public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RestoreThumbnailCommand { get; }
+    public ICommand RestoreMediaTypeCommand { get; }
 
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
@@ -701,6 +711,102 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ReleaseYearStatus = normalizedReleaseYear is null
             ? "Custom release year cleared."
             : "Custom release year saved.";
+    }
+
+    private async Task RestoreTitleAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Title))
+        {
+            TitleStatus = "The detected title could not be restored.";
+            return;
+        }
+
+        movie.TitleOverride = null;
+        _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
+        EditableTitle = movie.DisplayTitle;
+        TitleStatus = "Detected title restored.";
+        NotifyStateChanged();
+    }
+
+    private async Task RestoreDescriptionAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Description))
+        {
+            DescriptionStatus = "The detected description could not be restored.";
+            return;
+        }
+
+        movie.DescriptionOverride = null;
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        Description = FormatDescription(movie.DisplayDescription);
+        DescriptionStatus = "Detected description restored.";
+    }
+
+    private async Task RestoreReleaseYearAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.ReleaseYear))
+        {
+            ReleaseYearStatus = "The detected release year could not be restored.";
+            return;
+        }
+
+        movie.ReleaseYearOverride = null;
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        HeaderMetadata = JoinMetadata(
+            movie.EffectiveReleaseYear?.ToString(),
+            MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
+            MediaCategoryDisplay.Name(movie));
+        PopulateMetadata(movie);
+        ReleaseYearStatus = "Detected release year restored.";
+    }
+
+    private async Task RestoreThumbnailAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Thumbnail))
+        {
+            ThumbnailStatus = "The detected thumbnail could not be restored.";
+            return;
+        }
+
+        movie.ThumbnailOverride = null;
+        movie.ThumbnailPath = movie.DetectedThumbnailPath;
+        ThumbnailPath = movie.ThumbnailPath;
+        EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = "Detected thumbnail restored.";
+    }
+
+    private async Task RestoreMediaTypeAsync()
+    {
+        var movie = _movie;
+        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.MediaType))
+        {
+            MediaTypeStatus = "The detected media type could not be restored.";
+            return;
+        }
+
+        movie.MediaTypeOverride = null;
+        if (movie.DetectedMediaType is { } detectedMediaType)
+        {
+            movie.MediaType = detectedMediaType;
+        }
+
+        SelectedMediaType = movie.MediaType;
+        MediaTypeStatus = "Detected media type restored.";
+        NotifyStateChanged();
+    }
+
+    private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
+    {
+        if (_mediaMetadataResetService is null)
+        {
+            return false;
+        }
+
+        return await _mediaMetadataResetService.ResetFieldAsync(mediaItemId, field);
     }
 
     private async Task<bool> SaveReleaseYearDirectlyAsync(MediaItem movie, int? releaseYear)

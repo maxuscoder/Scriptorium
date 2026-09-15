@@ -20,6 +20,12 @@
                 Content="Save episode"
                 Style="{StaticResource Button.Primary}" />
         </Grid>
+        <Button
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding RestoreEpisodeNumberCommand}"
+            Content="Restore detected episode"
+            Style="{StaticResource Button.Secondary}" />
         <TextBlock
             Margin="0,8,0,0"
             Foreground="{StaticResource Brush.TextSecondary}"

@@ -28,6 +28,12 @@
                 Content="Save thumbnail"
                 Style="{StaticResource Button.Primary}" />
         </Grid>
+        <Button
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding RestoreThumbnailCommand}"
+            Content="Restore detected thumbnail"
+            Style="{StaticResource Button.Secondary}" />
         <TextBlock
             Margin="0,8,0,0"
             Foreground="{StaticResource Brush.TextSecondary}"

@@ -19,6 +19,12 @@
             Command="{Binding SaveDescriptionCommand}"
             Content="Save description"
             Style="{StaticResource Button.Primary}" />
+        <Button
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding RestoreDescriptionCommand}"
+            Content="Restore detected description"
+            Style="{StaticResource Button.Secondary}" />
         <TextBlock
             Margin="0,8,0,0"
             Foreground="{StaticResource Brush.TextSecondary}"

@@ -20,6 +20,12 @@
                 Content="Save season"
                 Style="{StaticResource Button.Primary}" />
         </Grid>
+        <Button
+            Margin="0,8,0,0"
+            HorizontalAlignment="Left"
+            Command="{Binding RestoreSeasonNumberCommand}"
+            Content="Restore detected season"
+            Style="{StaticResource Button.Secondary}" />
         <TextBlock
             Margin="0,8,0,0"
             Foreground="{StaticResource Brush.TextSecondary}"

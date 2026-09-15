@@ -8,4 +8,10 @@ public interface IMediaMetadataResetService
 
     /// <summary>Restores detected metadata for one indexed media item.</summary>
     Task<bool> ResetAsync(Guid mediaItemId, CancellationToken cancellationToken = default);
+
+    /// <summary>Restores one detected metadata field without changing other overrides.</summary>
+    Task<bool> ResetFieldAsync(
+        Guid mediaItemId,
+        MediaMetadataField field,
+        CancellationToken cancellationToken = default);
 }

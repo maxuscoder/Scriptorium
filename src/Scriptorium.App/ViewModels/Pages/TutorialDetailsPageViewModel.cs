@@ -107,6 +107,11 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedLesson is not null);
         SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedLesson is not null);
         SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => SelectedLesson is not null);
+        RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => SelectedLesson is not null);
+        RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => SelectedLesson is not null);
+        RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => SelectedLesson is not null);
+        RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedLesson is not null);
+        RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -380,6 +385,11 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand ResetMetadataCommand { get; }
     public ICommand SaveDescriptionCommand { get; }
     public ICommand SaveReleaseYearCommand { get; }
+    public ICommand RestoreTitleCommand { get; }
+    public ICommand RestoreDescriptionCommand { get; }
+    public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RestoreThumbnailCommand { get; }
+    public ICommand RestoreMediaTypeCommand { get; }
 
     public ICommand ToggleFavoriteCommand { get; }
 
@@ -965,6 +975,86 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             : "Custom release year saved.";
     }
 
+    private async Task RestoreTitleAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Title))
+        {
+            TitleStatus = "The detected title could not be restored.";
+            return;
+        }
+
+        lesson.SetTitleOverride(null);
+        EditableTitle = lesson.Title;
+        TitleStatus = "Detected title restored.";
+    }
+
+    private async Task RestoreDescriptionAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Description))
+        {
+            DescriptionStatus = "The detected description could not be restored.";
+            return;
+        }
+
+        lesson.SetDescriptionOverride(null);
+        EditableDescription = lesson.Description ?? string.Empty;
+        DescriptionStatus = "Detected description restored.";
+    }
+
+    private async Task RestoreReleaseYearAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.ReleaseYear))
+        {
+            ReleaseYearStatus = "The detected release year could not be restored.";
+            return;
+        }
+
+        lesson.SetReleaseYearOverride(null);
+        EditableReleaseYear = lesson.ReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = "Detected release year restored.";
+    }
+
+    private async Task RestoreThumbnailAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Thumbnail))
+        {
+            ThumbnailStatus = "The detected thumbnail could not be restored.";
+            return;
+        }
+
+        lesson.SetThumbnailPath(lesson.DetectedThumbnailPath);
+        EditableThumbnailPath = lesson.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = "Detected thumbnail restored.";
+    }
+
+    private async Task RestoreMediaTypeAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.MediaType))
+        {
+            MediaTypeStatus = "The detected media type could not be restored.";
+            return;
+        }
+
+        lesson.SetMediaType(lesson.DetectedMediaType);
+        SelectedMediaType = lesson.MediaType;
+        MediaTypeStatus = "Detected media type restored.";
+    }
+
+    private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
+    {
+        if (_mediaMetadataResetService is null)
+        {
+            return false;
+        }
+
+        return await _mediaMetadataResetService.ResetFieldAsync(mediaItemId, field);
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -1009,6 +1099,10 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public string? ThumbnailPath => lesson.MediaItem.ThumbnailPath;
 
     public string? Description => lesson.MediaItem.DisplayDescription;
+
+    public string? DetectedThumbnailPath => lesson.MediaItem.DetectedThumbnailPath;
+
+    public MediaType DetectedMediaType => lesson.MediaItem.DetectedMediaType ?? lesson.MediaItem.MediaType;
 
     public int? ReleaseYear => lesson.MediaItem.EffectiveReleaseYear;
 
@@ -1075,7 +1169,7 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(Position));
     }
 
-    internal void SetTitleOverride(string title)
+    internal void SetTitleOverride(string? title)
     {
         lesson.MediaItem.TitleOverride = title;
         lesson.Title = lesson.MediaItem.DisplayTitle;
@@ -1088,7 +1182,7 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.MediaTypeOverride = mediaType;
     }
 
-    internal void SetThumbnailPath(string thumbnailPath)
+    internal void SetThumbnailPath(string? thumbnailPath)
     {
         lesson.MediaItem.ThumbnailPath = thumbnailPath;
         OnPropertyChanged(nameof(ThumbnailPath));
