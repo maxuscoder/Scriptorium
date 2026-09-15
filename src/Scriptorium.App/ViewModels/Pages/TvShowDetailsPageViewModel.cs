@@ -23,6 +23,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IFavoriteService _favoriteService;
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaGroupingService? _mediaGroupingService;
     private readonly IConfirmationDialog? _confirmationDialog;
     private readonly ITvShowHierarchySynchronizer? _tvShowHierarchySynchronizer;
     private readonly IPlaybackProgressService? _playbackProgressService;
@@ -42,6 +43,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private string _titleStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
+    private string _editableSeasonNumber = string.Empty;
+    private string _seasonNumberStatus = string.Empty;
     private bool _disposed;
 
     public TvShowDetailsPageViewModel(
@@ -56,7 +59,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         IConfirmationDialog? confirmationDialog = null,
         ILogger<TvShowDetailsPageViewModel>? logger = null,
         IMediaTitleService? mediaTitleService = null,
-        IMediaTypeService? mediaTypeService = null)
+        IMediaTypeService? mediaTypeService = null,
+        IMediaGroupingService? mediaGroupingService = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -65,6 +69,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         _favoriteService = favoriteService;
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
+        _mediaGroupingService = mediaGroupingService;
         _confirmationDialog = confirmationDialog;
         _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
@@ -80,6 +85,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedEpisode is not null && SelectedCategory is not null);
         SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedEpisode is not null);
         SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => SelectedEpisode is not null && SelectedMediaType is not null);
+        SaveSeasonNumberCommand = new AsyncRelayCommand(SaveSeasonNumberAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
         if (_player is not null)
         {
@@ -200,6 +206,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             TitleStatus = string.Empty;
             SelectedMediaType = value?.MediaType;
             MediaTypeStatus = string.Empty;
+            EditableSeasonNumber = value?.SeasonNumber.ToString() ?? string.Empty;
+            SeasonNumberStatus = string.Empty;
             ((RelayCommand)PreviousEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)ContinueWatchingCommand).NotifyCanExecuteChanged();
@@ -277,6 +285,18 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _mediaTypeStatus, value);
     }
 
+    public string EditableSeasonNumber
+    {
+        get => _editableSeasonNumber;
+        set => SetProperty(ref _editableSeasonNumber, value);
+    }
+
+    public string SeasonNumberStatus
+    {
+        get => _seasonNumberStatus;
+        private set => SetProperty(ref _seasonNumberStatus, value);
+    }
+
     public ICommand BackCommand { get; }
     public ICommand SelectEpisodeCommand { get; }
     public ICommand ContinueWatchingCommand { get; }
@@ -288,6 +308,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveTitleCommand { get; }
     public ICommand SaveMediaTypeCommand { get; }
+    public ICommand SaveSeasonNumberCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
@@ -699,6 +720,52 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
     }
 
+    private async Task SaveSeasonNumberAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || _mediaGroupingService is null)
+        {
+            SeasonNumberStatus = "The season number could not be saved.";
+            return;
+        }
+
+        int seasonNumber;
+        try
+        {
+            seasonNumber = MediaSeasonValidation.Normalize(EditableSeasonNumber);
+        }
+        catch (ArgumentException exception)
+        {
+            SeasonNumberStatus = exception.Message;
+            return;
+        }
+
+        if (episode.SeasonNumber == seasonNumber)
+        {
+            SeasonNumberStatus = "No season number changes to save.";
+            return;
+        }
+
+        try
+        {
+            await _mediaGroupingService.UpdateEpisodeSeasonAsync(episode.MediaItemId, seasonNumber);
+        }
+        catch (ArgumentException exception)
+        {
+            SeasonNumberStatus = exception.Message;
+            return;
+        }
+        catch (InvalidOperationException exception)
+        {
+            SeasonNumberStatus = exception.Message;
+            return;
+        }
+
+        await RefreshLoadedShowAsync();
+        EditableSeasonNumber = seasonNumber.ToString();
+        SeasonNumberStatus = $"Season number changed to {seasonNumber}.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -821,6 +888,8 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
 /// <summary>Displays one TV-show episode and its resumable playback state.</summary>
 public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : ViewModelBase, IMediaFavoriteItem
 {
+    public int SeasonNumber => seasonNumber;
+
     public string Title => MediaDisplayText.TitleOrFallback(episode.MediaItem.DisplayTitle, "Untitled episode");
 
     public string Position => episode.EpisodeNumber is { } number ? $"Episode {number}" : $"Episode {episode.SortOrder + 1}";

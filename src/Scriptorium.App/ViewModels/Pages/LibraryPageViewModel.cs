@@ -24,6 +24,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaGroupingService _mediaGroupingService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
@@ -56,6 +57,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isCategoryRefreshQueued;
     private int _isTitleRefreshQueued;
     private int _isMediaTypeRefreshQueued;
+    private int _isEpisodeSeasonRefreshQueued;
     private Task? _initialDataLoadTask;
     private bool _disposed;
 
@@ -89,6 +91,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _detailsCoordinator = detailsCoordinator;
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
+        _mediaGroupingService = mediaGroupingService;
         FolderManagement = folderManagementViewModelFactory.Create(
             RefreshLibraryDataAsync,
             message => StatusMessage = message,
@@ -187,6 +190,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             _mediaTypeService.MediaTypeChanged += OnMediaTypeChanged;
         }
+        _mediaGroupingService.EpisodeSeasonChanged += OnEpisodeSeasonChanged;
     }
 
     public override string Title => "Library";
@@ -210,6 +214,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             _mediaTypeService.MediaTypeChanged -= OnMediaTypeChanged;
         }
+        _mediaGroupingService.EpisodeSeasonChanged -= OnEpisodeSeasonChanged;
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
@@ -866,6 +871,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isMediaTypeRefreshQueued, 0);
+        }
+    }
+
+    private void OnEpisodeSeasonChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isEpisodeSeasonRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterEpisodeSeasonChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterEpisodeSeasonChangeAsync();
+    }
+
+    private async Task RefreshAfterEpisodeSeasonChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isEpisodeSeasonRefreshQueued, 0);
         }
     }
 

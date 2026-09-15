@@ -10,6 +10,9 @@ namespace Scriptorium.Infrastructure.Services;
 public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext> contextFactory) : IMediaGroupingService
 {
     /// <inheritdoc />
+    public event Action<Guid>? EpisodeSeasonChanged;
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<TVShow>> GetTvShowGroupsAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -66,6 +69,64 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         ReorderEpisodes(sourceSeason.TVShow);
         ReorderEpisodes(targetGroup);
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateEpisodeSeasonAsync(
+        Guid mediaItemId,
+        int seasonNumber,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(mediaItemId, Guid.Empty);
+        if (seasonNumber <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(seasonNumber), seasonNumber, "The season number must be positive.");
+        }
+
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var episode = await context.Episodes
+            .Include(item => item.Season)
+                .ThenInclude(season => season.TVShow)
+                    .ThenInclude(show => show.Seasons)
+                        .ThenInclude(season => season.Episodes)
+            .Include(item => item.MediaItem)
+            .SingleOrDefaultAsync(item => item.MediaItemId == mediaItemId, cancellationToken)
+            ?? throw new InvalidOperationException("The selected media is not assigned to a television-show group.");
+
+        var sourceSeason = episode.Season;
+        var targetShow = sourceSeason.TVShow;
+        var targetSeason = targetShow.Seasons.SingleOrDefault(season => season.SeasonNumber == seasonNumber);
+        if (targetSeason is null)
+        {
+            targetSeason = new Season
+            {
+                Id = Guid.NewGuid(),
+                TVShowId = targetShow.Id,
+                TVShow = targetShow,
+                SeasonNumber = seasonNumber
+            };
+            targetShow.Seasons.Add(targetSeason);
+            context.Seasons.Add(targetSeason);
+        }
+
+        if (sourceSeason.Id != targetSeason.Id)
+        {
+            sourceSeason.Episodes.Remove(episode);
+            targetSeason.Episodes.Add(episode);
+            episode.Season = targetSeason;
+            episode.SeasonId = targetSeason.Id;
+            await RemoveEmptySeasonAsync(
+                context,
+                sourceSeason,
+                new HashSet<Guid> { episode.Id },
+                cancellationToken);
+        }
+
+        episode.MediaItem.SeasonNumberOverride = seasonNumber;
+        episode.MediaItem.SeasonNumber = seasonNumber;
+        ReorderEpisodes(targetShow);
+        await context.SaveChangesAsync(cancellationToken);
+        EpisodeSeasonChanged?.Invoke(mediaItemId);
     }
 
     /// <inheritdoc />
