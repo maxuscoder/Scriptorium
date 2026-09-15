@@ -124,6 +124,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         Title = importedMedia.Title,
         Path = filePath,
         ThumbnailPath = importedMedia.ThumbnailPath,
+        DetectedThumbnailPath = importedMedia.ThumbnailPath,
         LibraryFolderId = importedMedia.LibraryFolderId,
         LibraryFolder = null!,
         CategoryId = importedMedia.CategoryId,

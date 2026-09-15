@@ -25,6 +25,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
@@ -61,6 +62,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isEpisodeSeasonRefreshQueued;
     private int _isEpisodeNumberRefreshQueued;
     private int _isThumbnailRefreshQueued;
+    private int _isMetadataResetRefreshQueued;
     private Task? _initialDataLoadTask;
     private bool _disposed;
 
@@ -80,7 +82,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IFolderManagementViewModelFactory folderManagementViewModelFactory,
         IMediaTitleService? mediaTitleService = null,
         IMediaTypeService? mediaTypeService = null,
-        IMediaThumbnailService? mediaThumbnailService = null)
+        IMediaThumbnailService? mediaThumbnailService = null,
+        IMediaMetadataResetService? mediaMetadataResetService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -96,6 +99,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
         _mediaThumbnailService = mediaThumbnailService;
+        _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
         FolderManagement = folderManagementViewModelFactory.Create(
             RefreshLibraryDataAsync,
@@ -201,6 +205,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
         }
+        if (_mediaMetadataResetService is not null)
+        {
+            _mediaMetadataResetService.MetadataReset += OnMetadataReset;
+        }
     }
 
     public override string Title => "Library";
@@ -229,6 +237,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         if (_mediaThumbnailService is not null)
         {
             _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
+        }
+        if (_mediaMetadataResetService is not null)
+        {
+            _mediaMetadataResetService.MetadataReset -= OnMetadataReset;
         }
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
@@ -982,6 +994,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isThumbnailRefreshQueued, 0);
+        }
+    }
+
+    private void OnMetadataReset(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isMetadataResetRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterMetadataResetAsync);
+            return;
+        }
+
+        _ = RefreshAfterMetadataResetAsync();
+    }
+
+    private async Task RefreshAfterMetadataResetAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isMetadataResetRefreshQueued, 0);
         }
     }
 

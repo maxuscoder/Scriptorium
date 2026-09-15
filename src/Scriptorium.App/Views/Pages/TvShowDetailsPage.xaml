@@ -78,6 +78,8 @@
             <controls:MediaTitleEditor />
             <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
             <controls:MediaCategoryEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaMetadataResetEditor />
 
             <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Seasons}">
                 <ItemsControl.ItemTemplate>
