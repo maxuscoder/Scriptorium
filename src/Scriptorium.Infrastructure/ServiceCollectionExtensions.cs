@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IImportedMediaPersistenceService, ImportedMediaPersistenceService>();
         services.AddSingleton<IMediaTitleService, MediaTitleService>();
         services.AddSingleton<IMediaTypeService, MediaTypeService>();
+        services.AddSingleton<IMediaThumbnailService, MediaThumbnailService>();
         services.AddSingleton<IPlaybackProgressService, PlaybackProgressService>();
         services.AddSingleton<IFavoriteService, FavoriteService>();
         services.AddSingleton<ICategoryService, CategoryService>();

@@ -41,6 +41,7 @@ public sealed class RepositoryTests
         Assert.IsType<MediaScannerService>(provider.GetRequiredService<IMediaScannerService>());
         Assert.IsType<ImportedMediaPersistenceService>(provider.GetRequiredService<IImportedMediaPersistenceService>());
         Assert.IsType<MediaTypeService>(provider.GetRequiredService<IMediaTypeService>());
+        Assert.IsType<MediaThumbnailService>(provider.GetRequiredService<IMediaThumbnailService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
         Assert.IsType<FavoriteService>(provider.GetRequiredService<IFavoriteService>());
         Assert.IsType<CategoryService>(provider.GetRequiredService<ICategoryService>());

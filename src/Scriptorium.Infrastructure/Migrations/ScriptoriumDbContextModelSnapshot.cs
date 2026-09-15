@@ -240,6 +240,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<int?>("DetectedMediaType")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("DetectedThumbnailPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("MediaType")
                         .HasColumnType("INTEGER");
 
@@ -281,6 +284,9 @@ namespace Scriptorium.Infrastructure.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ThumbnailPath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ThumbnailOverride")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TitleOverride")

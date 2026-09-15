@@ -31,7 +31,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(20, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(21, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -51,6 +51,8 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("TitleOverride", mediaItemColumns);
             Assert.Contains("DetectedMediaType", mediaItemColumns);
             Assert.Contains("MediaTypeOverride", mediaItemColumns);
+            Assert.Contains("DetectedThumbnailPath", mediaItemColumns);
+            Assert.Contains("ThumbnailOverride", mediaItemColumns);
             Assert.Contains("SeasonNumberOverride", mediaItemColumns);
             Assert.Contains("EpisodeNumberOverride", mediaItemColumns);
             Assert.Contains("LastPlayedUnixTimeMilliseconds", mediaItemColumns);

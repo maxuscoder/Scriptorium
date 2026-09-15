@@ -24,6 +24,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly RelayCommand _cancelScanCommand;
@@ -59,6 +60,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isMediaTypeRefreshQueued;
     private int _isEpisodeSeasonRefreshQueued;
     private int _isEpisodeNumberRefreshQueued;
+    private int _isThumbnailRefreshQueued;
     private Task? _initialDataLoadTask;
     private bool _disposed;
 
@@ -77,7 +79,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaDetailsNavigationCoordinator detailsCoordinator,
         IFolderManagementViewModelFactory folderManagementViewModelFactory,
         IMediaTitleService? mediaTitleService = null,
-        IMediaTypeService? mediaTypeService = null)
+        IMediaTypeService? mediaTypeService = null,
+        IMediaThumbnailService? mediaThumbnailService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -92,6 +95,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _detailsCoordinator = detailsCoordinator;
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
+        _mediaThumbnailService = mediaThumbnailService;
         _mediaGroupingService = mediaGroupingService;
         FolderManagement = folderManagementViewModelFactory.Create(
             RefreshLibraryDataAsync,
@@ -193,6 +197,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
         _mediaGroupingService.EpisodeSeasonChanged += OnEpisodeSeasonChanged;
         _mediaGroupingService.EpisodeNumberChanged += OnEpisodeNumberChanged;
+        if (_mediaThumbnailService is not null)
+        {
+            _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
+        }
     }
 
     public override string Title => "Library";
@@ -218,6 +226,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
         _mediaGroupingService.EpisodeSeasonChanged -= OnEpisodeSeasonChanged;
         _mediaGroupingService.EpisodeNumberChanged -= OnEpisodeNumberChanged;
+        if (_mediaThumbnailService is not null)
+        {
+            _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
+        }
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
@@ -938,6 +950,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isEpisodeNumberRefreshQueued, 0);
+        }
+    }
+
+    private void OnThumbnailChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isThumbnailRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterThumbnailChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterThumbnailChangeAsync();
+    }
+
+    private async Task RefreshAfterThumbnailChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isThumbnailRefreshQueued, 0);
         }
     }
 

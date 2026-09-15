@@ -37,6 +37,12 @@ public class MediaItem
     /// </summary>
     public string? ThumbnailPath { get; set; }
 
+    /// <summary>Gets or sets the thumbnail path detected or imported from the source.</summary>
+    public string? DetectedThumbnailPath { get; set; }
+
+    /// <summary>Gets or sets the user-selected thumbnail path, when one exists.</summary>
+    public string? ThumbnailOverride { get; set; }
+
     /// <summary>
     /// Gets or sets when the media item was added to the library.
     /// </summary>

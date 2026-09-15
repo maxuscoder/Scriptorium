@@ -23,11 +23,14 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IFavoriteService _favoriteService;
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaThumbnailService? _mediaThumbnailService;
     private PageViewModel? _returnPage;
     private MediaItem? _movie;
     private string _movieTitle = "Movie";
     private string _editableTitle = string.Empty;
     private string _titleStatus = string.Empty;
+    private string _editableThumbnailPath = string.Empty;
+    private string _thumbnailStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
     private string? _thumbnailPath;
@@ -47,7 +50,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         IFavoriteService favoriteService,
         VideoPlayerViewModel player,
         IMediaTitleService? mediaTitleService = null,
-        IMediaTypeService? mediaTypeService = null)
+        IMediaTypeService? mediaTypeService = null,
+        IMediaThumbnailService? mediaThumbnailService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -57,6 +61,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _favoriteService = favoriteService;
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
+        _mediaThumbnailService = mediaThumbnailService;
         Player = player;
         Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -66,6 +71,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
         SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => _movie is not null);
         SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => _movie is not null && SelectedMediaType is not null);
+        ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
+        SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => _movie is not null);
     }
 
     public override string Title => _movieTitle;
@@ -116,6 +123,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _titleStatus;
         private set => SetProperty(ref _titleStatus, value);
+    }
+
+    public string EditableThumbnailPath
+    {
+        get => _editableThumbnailPath;
+        set => SetProperty(ref _editableThumbnailPath, value);
+    }
+
+    public string ThumbnailStatus
+    {
+        get => _thumbnailStatus;
+        private set => SetProperty(ref _thumbnailStatus, value);
     }
 
     public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
@@ -198,6 +217,10 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveMediaTypeCommand { get; }
 
+    public ICommand ChooseThumbnailCommand { get; }
+
+    public ICommand SaveThumbnailCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -218,6 +241,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         EditableTitle = movie.DisplayTitle;
         TitleStatus = string.Empty;
         ThumbnailPath = movie.ThumbnailPath;
+        EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
+        ThumbnailStatus = string.Empty;
         HeaderMetadata = JoinMetadata(
             movie.ReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
@@ -418,6 +443,66 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         movie.MediaTypeOverride = mediaType;
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
         NotifyStateChanged();
+    }
+
+    private void ChooseThumbnail()
+    {
+        if (!MediaThumbnailPicker.TrySelect(EditableThumbnailPath, out var selectedPath, out var error))
+        {
+            return;
+        }
+
+        if (error is not null)
+        {
+            ThumbnailStatus = error;
+            return;
+        }
+
+        EditableThumbnailPath = selectedPath ?? string.Empty;
+        ThumbnailStatus = string.Empty;
+    }
+
+    private async Task SaveThumbnailAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        string normalizedPath;
+        try
+        {
+            normalizedPath = MediaThumbnailValidation.Normalize(EditableThumbnailPath);
+        }
+        catch (ArgumentException exception)
+        {
+            ThumbnailStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaThumbnailService is not null
+            ? await _mediaThumbnailService.SaveAsync(movie.Id, normalizedPath)
+            : await SaveThumbnailDirectlyAsync(movie, normalizedPath);
+        if (!saved)
+        {
+            ThumbnailStatus = "The thumbnail could not be saved.";
+            return;
+        }
+
+        movie.ThumbnailOverride = normalizedPath;
+        movie.ThumbnailPath = normalizedPath;
+        ThumbnailPath = normalizedPath;
+        EditableThumbnailPath = normalizedPath;
+        ThumbnailStatus = "Custom thumbnail saved.";
+    }
+
+    private async Task<bool> SaveThumbnailDirectlyAsync(MediaItem movie, string normalizedPath)
+    {
+        movie.ThumbnailOverride = normalizedPath;
+        movie.ThumbnailPath = normalizedPath;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
     }
 
     private async Task<bool> SaveTitleDirectlyAsync(MediaItem movie, string normalizedTitle)

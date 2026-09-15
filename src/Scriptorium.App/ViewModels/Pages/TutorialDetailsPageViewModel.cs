@@ -27,6 +27,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
+    private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
     private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
@@ -40,6 +41,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private string _categoryStatus = string.Empty;
     private string _editableTitle = string.Empty;
     private string _titleStatus = string.Empty;
+    private string _editableThumbnailPath = string.Empty;
+    private string _thumbnailStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
     private string _orderStatus = string.Empty;
@@ -58,7 +61,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         IConfirmationDialog? confirmationDialog = null,
         ILogger<TutorialDetailsPageViewModel>? logger = null,
         IMediaTitleService? mediaTitleService = null,
-        IMediaTypeService? mediaTypeService = null)
+        IMediaTypeService? mediaTypeService = null,
+        IMediaThumbnailService? mediaThumbnailService = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -70,6 +74,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
+        _mediaThumbnailService = mediaThumbnailService;
         _player = player;
         _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -83,6 +88,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
         SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedLesson is not null);
         SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => SelectedLesson is not null && SelectedMediaType is not null);
+        ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
+        SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -192,6 +199,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             TitleStatus = string.Empty;
             SelectedMediaType = value?.MediaType;
             MediaTypeStatus = string.Empty;
+            EditableThumbnailPath = value?.ThumbnailPath ?? string.Empty;
+            ThumbnailStatus = string.Empty;
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
@@ -235,6 +244,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _titleStatus;
         private set => SetProperty(ref _titleStatus, value);
+    }
+
+    public string EditableThumbnailPath
+    {
+        get => _editableThumbnailPath;
+        set => SetProperty(ref _editableThumbnailPath, value);
+    }
+
+    public string ThumbnailStatus
+    {
+        get => _thumbnailStatus;
+        private set => SetProperty(ref _thumbnailStatus, value);
     }
 
     public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
@@ -301,6 +322,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveTitleCommand { get; }
     public ICommand SaveMediaTypeCommand { get; }
+    public ICommand ChooseThumbnailCommand { get; }
+    public ICommand SaveThumbnailCommand { get; }
 
     public ICommand ToggleFavoriteCommand { get; }
 
@@ -744,6 +767,54 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
     }
 
+    private void ChooseThumbnail()
+    {
+        if (!MediaThumbnailPicker.TrySelect(EditableThumbnailPath, out var selectedPath, out var error))
+        {
+            return;
+        }
+
+        if (error is not null)
+        {
+            ThumbnailStatus = error;
+            return;
+        }
+
+        EditableThumbnailPath = selectedPath ?? string.Empty;
+        ThumbnailStatus = string.Empty;
+    }
+
+    private async Task SaveThumbnailAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaThumbnailService is null)
+        {
+            ThumbnailStatus = "The thumbnail could not be saved.";
+            return;
+        }
+
+        string normalizedPath;
+        try
+        {
+            normalizedPath = MediaThumbnailValidation.Normalize(EditableThumbnailPath);
+        }
+        catch (ArgumentException exception)
+        {
+            ThumbnailStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaThumbnailService.SaveAsync(lesson.MediaItemId, normalizedPath))
+        {
+            ThumbnailStatus = "The thumbnail could not be saved.";
+            return;
+        }
+
+        lesson.SetThumbnailPath(normalizedPath);
+        EditableThumbnailPath = normalizedPath;
+        ThumbnailStatus = "Custom thumbnail saved.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -784,6 +855,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public Guid MediaItemId => lesson.MediaItemId;
 
     public MediaType MediaType => lesson.MediaItem.MediaType;
+
+    public string? ThumbnailPath => lesson.MediaItem.ThumbnailPath;
 
     public bool IsFavorite => lesson.MediaItem.IsFavorite;
 
@@ -859,6 +932,12 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     {
         lesson.MediaItem.MediaType = mediaType;
         lesson.MediaItem.MediaTypeOverride = mediaType;
+    }
+
+    internal void SetThumbnailPath(string thumbnailPath)
+    {
+        lesson.MediaItem.ThumbnailPath = thumbnailPath;
+        OnPropertyChanged(nameof(ThumbnailPath));
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;
