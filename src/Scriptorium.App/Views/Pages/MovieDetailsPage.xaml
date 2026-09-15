@@ -16,12 +16,14 @@
         TertiaryActionText="{Binding FavoriteActionText}"
         ThumbnailPath="{Binding ThumbnailPath}"
         Title="{Binding Title}"
-        TypeLabel="Movie">
+        TypeLabel="{Binding MediaTypeLabel}">
         <controls:MediaDetailsPage.PreviewContent>
             <controls:VideoPlayer Height="380" Player="{Binding Player}" />
         </controls:MediaDetailsPage.PreviewContent>
         <controls:MediaDetailsPage.ExtensionContent>
             <StackPanel>
+                <controls:MediaTypeEditor />
+                <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
                 <controls:MediaTitleEditor />
                 <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
                 <controls:MediaCategoryEditor />

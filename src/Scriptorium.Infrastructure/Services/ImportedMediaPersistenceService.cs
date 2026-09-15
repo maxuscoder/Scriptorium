@@ -127,6 +127,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         LibraryFolder = null!,
         CategoryId = importedMedia.CategoryId,
         MediaType = importedMedia.MediaType,
+        DetectedMediaType = importedMedia.MediaType,
         RuntimeSeconds = importedMedia.RuntimeSeconds,
         ReleaseYear = importedMedia.ReleaseYear,
         Description = importedMedia.Description,
@@ -143,6 +144,8 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         mediaItem.LibraryFolderId = importedMedia.LibraryFolderId;
         mediaItem.CategoryId = importedMedia.CategoryId;
         mediaItem.MediaType = importedMedia.MediaType;
+        mediaItem.DetectedMediaType = importedMedia.MediaType;
+        mediaItem.MediaTypeOverride = null;
         mediaItem.RuntimeSeconds = importedMedia.RuntimeSeconds;
         mediaItem.ReleaseYear = importedMedia.ReleaseYear;
         mediaItem.Description = importedMedia.Description;

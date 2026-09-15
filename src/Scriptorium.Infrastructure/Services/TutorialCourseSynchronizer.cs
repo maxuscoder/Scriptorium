@@ -57,10 +57,15 @@ public sealed class TutorialCourseSynchronizer(
             .ToDictionary(lesson => lesson.MediaItemId);
         var newLessonIds = new HashSet<Guid>();
         var affectedCourses = new HashSet<Course>();
+        var tutorialFolderIds = mediaById.Values
+            .Where(item => item.MediaType == MediaType.Tutorial && item.LibraryFolderId is not null)
+            .Select(item => item.LibraryFolderId!.Value)
+            .ToHashSet();
 
         // A configured tutorial folder gets a course even when it is currently empty.
         foreach (var folder in foldersById.Values.Where(folder =>
-                     suppliedFolders.ContainsKey(folder.Id) && folder.MediaType == MediaType.Tutorial))
+                     suppliedFolders.ContainsKey(folder.Id) &&
+                     (folder.MediaType == MediaType.Tutorial || tutorialFolderIds.Contains(folder.Id))))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var course = GetOrCreateCourse(context, courses, coursesByFolderId, folder);
@@ -154,7 +159,7 @@ public sealed class TutorialCourseSynchronizer(
         foreach (var course in courses)
         {
             if (!foldersById.TryGetValue(course.LibraryFolderId, out var folder) ||
-                folder.MediaType != MediaType.Tutorial)
+                (folder.MediaType != MediaType.Tutorial && !tutorialFolderIds.Contains(folder.Id)))
             {
                 context.Courses.Remove(course);
                 continue;
@@ -176,8 +181,7 @@ public sealed class TutorialCourseSynchronizer(
         !mediaItem.IsMissing &&
         mediaItem.MediaType == MediaType.Tutorial &&
         mediaItem.LibraryFolderId is { } folderId &&
-        foldersById.TryGetValue(folderId, out var folder) &&
-        folder.MediaType == MediaType.Tutorial;
+        foldersById.ContainsKey(folderId);
 
     private static Course GetOrCreateCourse(
         ScriptoriumDbContext context,

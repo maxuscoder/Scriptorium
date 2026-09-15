@@ -22,11 +22,14 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly IFavoriteService _favoriteService;
     private readonly IMediaTitleService? _mediaTitleService;
+    private readonly IMediaTypeService? _mediaTypeService;
     private PageViewModel? _returnPage;
     private MediaItem? _movie;
     private string _movieTitle = "Movie";
     private string _editableTitle = string.Empty;
     private string _titleStatus = string.Empty;
+    private MediaType? _selectedMediaType;
+    private string _mediaTypeStatus = string.Empty;
     private string? _thumbnailPath;
     private string _headerMetadata = string.Empty;
     private string _description = "No description available.";
@@ -43,7 +46,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         IPlaybackProgressService playbackProgressService,
         IFavoriteService favoriteService,
         VideoPlayerViewModel player,
-        IMediaTitleService? mediaTitleService = null)
+        IMediaTitleService? mediaTitleService = null,
+        IMediaTypeService? mediaTypeService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -52,6 +56,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _playbackProgressService = playbackProgressService;
         _favoriteService = favoriteService;
         _mediaTitleService = mediaTitleService;
+        _mediaTypeService = mediaTypeService;
         Player = player;
         Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -60,6 +65,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => _movie is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => _movie is not null && SelectedCategory is not null);
         SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => _movie is not null);
+        SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => _movie is not null && SelectedMediaType is not null);
     }
 
     public override string Title => _movieTitle;
@@ -111,6 +117,28 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         get => _titleStatus;
         private set => SetProperty(ref _titleStatus, value);
     }
+
+    public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
+
+    public MediaType? SelectedMediaType
+    {
+        get => _selectedMediaType;
+        set
+        {
+            if (SetProperty(ref _selectedMediaType, value))
+            {
+                ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string MediaTypeStatus
+    {
+        get => _mediaTypeStatus;
+        private set => SetProperty(ref _mediaTypeStatus, value);
+    }
+
+    public string MediaTypeLabel => _movie is null ? "Media" : MediaTypeOptions.SingularName(_movie.MediaType);
 
     /// <summary>Gets the metadata rendered by the shared details page.</summary>
     public ObservableCollection<MediaDetailsMetadataItem> MetadataItems { get; } = [];
@@ -168,6 +196,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveTitleCommand { get; }
 
+    public ICommand SaveMediaTypeCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -181,6 +211,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
         _returnPage = returnPage;
         _movie = movie;
+        SelectedMediaType = movie.MediaType;
+        MediaTypeStatus = string.Empty;
         await RefreshCategoryOptionsAsync(movie.CategoryId);
         _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
         EditableTitle = movie.DisplayTitle;
@@ -359,6 +391,35 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         NotifyStateChanged();
     }
 
+    private async Task SaveMediaTypeAsync()
+    {
+        var movie = _movie;
+        if (movie is null || SelectedMediaType is not { } mediaType)
+        {
+            return;
+        }
+
+        if (movie.MediaType == mediaType)
+        {
+            MediaTypeStatus = "No media type changes to save.";
+            return;
+        }
+
+        var saved = _mediaTypeService is not null
+            ? await _mediaTypeService.SaveAsync(movie.Id, mediaType)
+            : await _mediaItemRepository.UpdateMediaTypeAsync(movie.Id, mediaType);
+        if (!saved)
+        {
+            MediaTypeStatus = "The media type could not be saved.";
+            return;
+        }
+
+        movie.MediaType = mediaType;
+        movie.MediaTypeOverride = mediaType;
+        MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
+        NotifyStateChanged();
+    }
+
     private async Task<bool> SaveTitleDirectlyAsync(MediaItem movie, string normalizedTitle)
     {
         movie.TitleOverride = normalizedTitle;
@@ -424,6 +485,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private void NotifyStateChanged()
     {
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(MediaTypeLabel));
         OnPropertyChanged(nameof(CompletionActionText));
         OnPropertyChanged(nameof(FavoriteActionText));
         OnPropertyChanged(nameof(PlaybackProgressPercentage));
@@ -434,6 +496,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ((AsyncRelayCommand)ToggleFavoriteCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveCategoryCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
+        ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
     }
 
     private void GoBack()

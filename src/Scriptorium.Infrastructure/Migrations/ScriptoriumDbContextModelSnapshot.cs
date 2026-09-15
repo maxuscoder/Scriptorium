@@ -237,7 +237,13 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<Guid?>("LibraryFolderId")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("DetectedMediaType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("MediaType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MediaTypeOverride")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTimeOffset?>("MissingSince")

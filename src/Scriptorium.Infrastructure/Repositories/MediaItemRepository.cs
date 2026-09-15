@@ -181,6 +181,8 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
             .ExecuteUpdateAsync(
                 setters => setters
                     .SetProperty(item => item.MediaType, mediaType)
+                    .SetProperty(item => item.DetectedMediaType, mediaType)
+                    .SetProperty(item => item.MediaTypeOverride, (MediaType?)null)
                     .SetProperty(item => item.TVShowTitle, (string?)null)
                     .SetProperty(item => item.SeasonNumber, (int?)null)
                     .SetProperty(item => item.EpisodeNumber, (int?)null)
@@ -194,6 +196,62 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
 
         await transaction.CommitAsync(cancellationToken);
         return updatedCount;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> UpdateMediaTypeAsync(
+        Guid mediaItemId,
+        MediaType mediaType,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(mediaItemId, Guid.Empty);
+        if (!mediaType.IsSupported())
+        {
+            throw new ArgumentOutOfRangeException(nameof(mediaType), mediaType, "The media type is not supported.");
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var mediaItem = await context.MediaItems.SingleOrDefaultAsync(item => item.Id == mediaItemId, cancellationToken);
+        if (mediaItem is null)
+        {
+            return false;
+        }
+
+        await context.Lessons
+            .Where(lesson => lesson.MediaItemId == mediaItemId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.Episodes
+            .Where(episode => episode.MediaItemId == mediaItemId)
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.Seasons
+            .Where(season => !season.Episodes.Any())
+            .ExecuteDeleteAsync(cancellationToken);
+        await context.TVShows
+            .Where(show => !show.Seasons.Any())
+            .ExecuteDeleteAsync(cancellationToken);
+
+        mediaItem.MediaType = mediaType;
+        mediaItem.MediaTypeOverride = mediaType;
+        if (mediaType == MediaType.TvShow)
+        {
+            mediaItem.TVShowTitle = mediaItem.TVShowTitleOverride ?? mediaItem.DetectedTVShowTitle;
+            mediaItem.SeasonNumber = mediaItem.SeasonNumberOverride ?? mediaItem.DetectedSeasonNumber;
+            mediaItem.EpisodeNumber = mediaItem.EpisodeNumberOverride ?? mediaItem.DetectedEpisodeNumber;
+        }
+        else
+        {
+            mediaItem.TVShowTitle = null;
+            mediaItem.SeasonNumber = null;
+            mediaItem.EpisodeNumber = null;
+            mediaItem.TVShowTitleOverride = null;
+            mediaItem.SeasonNumberOverride = null;
+            mediaItem.EpisodeNumberOverride = null;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
     }
 
     /// <inheritdoc />

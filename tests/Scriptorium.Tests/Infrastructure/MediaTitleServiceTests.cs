@@ -86,6 +86,83 @@ public sealed class MediaTitleServiceTests
         Assert.Throws<ArgumentException>(() => MediaTitleValidation.Normalize(new string('x', MediaTitleValidation.MaximumLength + 1)));
     }
 
+    [Fact]
+    public async Task Saves_a_media_type_override_and_rebuilds_its_library_classification()
+    {
+        await using var database = new SqliteConnection("Data Source=:memory:");
+        await database.OpenAsync();
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite(database)
+            .Options;
+        var folder = new LibraryFolder
+        {
+            Name = "Mixed media",
+            Path = @"C:\Mixed",
+            MediaType = MediaType.Movie
+        };
+        var mediaItem = new MediaItem
+        {
+            Title = "Lesson 01",
+            Path = @"C:\Mixed\01 - Lesson.mp4",
+            MediaType = MediaType.Movie,
+            DetectedMediaType = MediaType.Movie,
+            LibraryFolderId = folder.Id,
+            LibraryFolder = folder
+        };
+        await using (var context = new ScriptoriumDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            context.Add(folder);
+            context.Add(mediaItem);
+            await context.SaveChangesAsync();
+        }
+
+        var factory = new TestDbContextFactory(options);
+        var mediaRepository = new MediaItemRepository(factory);
+        var typeService = new MediaTypeService(
+            mediaRepository,
+            new LibraryFolderRepository(factory),
+            new TvShowHierarchySynchronizer(factory),
+            new TutorialCourseSynchronizer(factory, new LessonFileNameParser()));
+        var changedMediaItemId = Guid.Empty;
+        typeService.MediaTypeChanged += mediaItemId => changedMediaItemId = mediaItemId;
+
+        Assert.True(await typeService.SaveAsync(mediaItem.Id, MediaType.Tutorial));
+
+        var stored = (await mediaRepository.GetByIdAsync(mediaItem.Id))!;
+        Assert.Equal(MediaType.Tutorial, stored.MediaType);
+        Assert.Equal(MediaType.Movie, stored.DetectedMediaType);
+        Assert.Equal(MediaType.Tutorial, stored.MediaTypeOverride);
+        Assert.Equal(mediaItem.Id, changedMediaItemId);
+
+        await using var verificationContext = new ScriptoriumDbContext(options);
+        var course = await verificationContext.Courses
+            .Include(value => value.Lessons)
+            .SingleAsync(value => value.LibraryFolderId == folder.Id);
+        Assert.Single(course.Lessons);
+        Assert.Equal(mediaItem.Id, course.Lessons[0].MediaItemId);
+
+        await new MediaLibrarySynchronizer(mediaRepository).SynchronizeAsync(
+            [new DiscoveredMediaFile(
+                folder.Id,
+                MediaType.Movie,
+                stored.Path,
+                "01 - Lesson.mp4",
+                ".mp4",
+                folder.Path,
+                "Lesson 01",
+                null,
+                null,
+                null,
+                null,
+                true)],
+            [folder.Id]);
+
+        stored = (await mediaRepository.GetByIdAsync(mediaItem.Id))!;
+        Assert.Equal(MediaType.Tutorial, stored.MediaType);
+        Assert.Equal(MediaType.Movie, stored.DetectedMediaType);
+    }
+
     private sealed class TestDbContextFactory(DbContextOptions<ScriptoriumDbContext> options)
         : IDbContextFactory<ScriptoriumDbContext>
     {

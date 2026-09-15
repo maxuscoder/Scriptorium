@@ -26,6 +26,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly INavigationService _navigationService;
     private readonly ITutorialCourseSynchronizer _tutorialCourseSynchronizer;
     private readonly IMediaTitleService? _mediaTitleService;
+    private readonly IMediaTypeService? _mediaTypeService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
     private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
@@ -39,6 +40,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private string _categoryStatus = string.Empty;
     private string _editableTitle = string.Empty;
     private string _titleStatus = string.Empty;
+    private MediaType? _selectedMediaType;
+    private string _mediaTypeStatus = string.Empty;
     private string _orderStatus = string.Empty;
     private bool _isReordering;
     private bool _disposed;
@@ -54,7 +57,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         VideoPlayerViewModel player,
         IConfirmationDialog? confirmationDialog = null,
         ILogger<TutorialDetailsPageViewModel>? logger = null,
-        IMediaTitleService? mediaTitleService = null)
+        IMediaTitleService? mediaTitleService = null,
+        IMediaTypeService? mediaTypeService = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -65,6 +69,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _navigationService = navigationService;
         _tutorialCourseSynchronizer = tutorialCourseSynchronizer;
         _mediaTitleService = mediaTitleService;
+        _mediaTypeService = mediaTypeService;
         _player = player;
         _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -77,6 +82,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
         SaveCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync, () => SelectedLesson is not null && SelectedCategory is not null);
         SaveTitleCommand = new AsyncRelayCommand(SaveTitleAsync, () => SelectedLesson is not null);
+        SaveMediaTypeCommand = new AsyncRelayCommand(SaveMediaTypeAsync, () => SelectedLesson is not null && SelectedMediaType is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -184,6 +190,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             SelectCategory(value?.CategoryId);
             EditableTitle = value?.Title ?? string.Empty;
             TitleStatus = string.Empty;
+            SelectedMediaType = value?.MediaType;
+            MediaTypeStatus = string.Empty;
             ((RelayCommand)PreviousLessonCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextLessonCommand).NotifyCanExecuteChanged();
             ((AsyncRelayCommand)ToggleLessonCompletionCommand).NotifyCanExecuteChanged();
@@ -229,6 +237,26 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _titleStatus, value);
     }
 
+    public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
+
+    public MediaType? SelectedMediaType
+    {
+        get => _selectedMediaType;
+        set
+        {
+            if (SetProperty(ref _selectedMediaType, value))
+            {
+                ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
+            }
+        }
+    }
+
+    public string MediaTypeStatus
+    {
+        get => _mediaTypeStatus;
+        private set => SetProperty(ref _mediaTypeStatus, value);
+    }
+
     public string OrderStatus
     {
         get => _orderStatus;
@@ -272,6 +300,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand SaveCategoryCommand { get; }
 
     public ICommand SaveTitleCommand { get; }
+    public ICommand SaveMediaTypeCommand { get; }
 
     public ICommand ToggleFavoriteCommand { get; }
 
@@ -690,6 +719,31 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(SelectedLessonPositionText));
     }
 
+    private async Task SaveMediaTypeAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || SelectedMediaType is not { } mediaType || _mediaTypeService is null)
+        {
+            MediaTypeStatus = "The media type could not be saved.";
+            return;
+        }
+
+        if (lesson.MediaType == mediaType)
+        {
+            MediaTypeStatus = "No media type changes to save.";
+            return;
+        }
+
+        if (!await _mediaTypeService.SaveAsync(lesson.MediaItemId, mediaType))
+        {
+            MediaTypeStatus = "The media type could not be saved.";
+            return;
+        }
+
+        lesson.SetMediaType(mediaType);
+        MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -728,6 +782,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public string FilePath => lesson.FilePath;
 
     public Guid MediaItemId => lesson.MediaItemId;
+
+    public MediaType MediaType => lesson.MediaItem.MediaType;
 
     public bool IsFavorite => lesson.MediaItem.IsFavorite;
 
@@ -797,6 +853,12 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.TitleOverride = title;
         lesson.Title = lesson.MediaItem.DisplayTitle;
         OnPropertyChanged(nameof(Title));
+    }
+
+    internal void SetMediaType(MediaType mediaType)
+    {
+        lesson.MediaItem.MediaType = mediaType;
+        lesson.MediaItem.MediaTypeOverride = mediaType;
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;

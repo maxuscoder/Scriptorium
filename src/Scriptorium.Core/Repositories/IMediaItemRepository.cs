@@ -36,6 +36,12 @@ public interface IMediaItemRepository : IRepository<MediaItem>
         MediaType mediaType,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Updates one media item's effective and user-selected media type.</summary>
+    Task<bool> UpdateMediaTypeAsync(
+        Guid mediaItemId,
+        MediaType mediaType,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets favorited media items.</summary>
     Task<IReadOnlyList<MediaItem>> GetFavoritesAsync(CancellationToken cancellationToken = default);
 

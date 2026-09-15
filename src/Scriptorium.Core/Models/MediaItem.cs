@@ -129,4 +129,10 @@ public class MediaItem
     /// Gets or sets the category of media the item represents.
     /// </summary>
     public MediaType MediaType { get; set; }
+
+    /// <summary>Gets or sets the media type detected during the most recent scan.</summary>
+    public MediaType? DetectedMediaType { get; set; }
+
+    /// <summary>Gets or sets the user-selected media type, when one exists.</summary>
+    public MediaType? MediaTypeOverride { get; set; }
 }
