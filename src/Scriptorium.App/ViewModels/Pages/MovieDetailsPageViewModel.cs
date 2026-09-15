@@ -24,6 +24,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IConfirmationDialog? _confirmationDialog;
     private PageViewModel? _returnPage;
@@ -34,6 +35,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private string _editableThumbnailPath = string.Empty;
     private string _thumbnailStatus = string.Empty;
     private string _metadataResetStatus = string.Empty;
+    private string _editableDescription = string.Empty;
+    private string _descriptionStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
     private string? _thumbnailPath;
@@ -56,7 +59,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         IMediaTypeService? mediaTypeService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
-        IConfirmationDialog? confirmationDialog = null)
+        IConfirmationDialog? confirmationDialog = null,
+        IMediaDescriptionService? mediaDescriptionService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -69,6 +73,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
         _confirmationDialog = confirmationDialog;
+        _mediaDescriptionService = mediaDescriptionService;
         Player = player;
         Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -81,6 +86,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
         SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => _movie is not null);
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => _movie is not null);
+        SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => _movie is not null);
     }
 
     public override string Title => _movieTitle;
@@ -149,6 +155,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _metadataResetStatus;
         private set => SetProperty(ref _metadataResetStatus, value);
+    }
+
+    public string EditableDescription
+    {
+        get => _editableDescription;
+        set => SetProperty(ref _editableDescription, value);
+    }
+
+    public string DescriptionStatus
+    {
+        get => _descriptionStatus;
+        private set => SetProperty(ref _descriptionStatus, value);
     }
 
     public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
@@ -237,6 +255,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand ResetMetadataCommand { get; }
 
+    public ICommand SaveDescriptionCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -264,7 +284,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
             movie.ReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
             MediaCategoryDisplay.Name(movie));
-        Description = string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
+        Description = FormatDescription(movie.DisplayDescription);
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        DescriptionStatus = string.Empty;
         Availability = movie.IsMissing ? "File unavailable" : "Available";
         Player.SetMedia(new MediaPlaybackRequest(
             movie.Path,
@@ -552,8 +574,11 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         movie.TVShowTitle = movie.DetectedTVShowTitle;
         movie.SeasonNumber = movie.DetectedSeasonNumber;
         movie.EpisodeNumber = movie.DetectedEpisodeNumber;
+        movie.DescriptionOverride = null;
         _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
         EditableTitle = movie.DisplayTitle;
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        Description = FormatDescription(movie.DisplayDescription);
         EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
         ThumbnailPath = movie.ThumbnailPath;
         SelectedMediaType = movie.MediaType;
@@ -569,6 +594,42 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         NotifyStateChanged();
     }
 
+    private async Task SaveDescriptionAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        string? normalizedDescription;
+        try
+        {
+            normalizedDescription = MediaDescriptionValidation.Normalize(EditableDescription);
+        }
+        catch (ArgumentException exception)
+        {
+            DescriptionStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaDescriptionService is not null
+            ? await _mediaDescriptionService.SaveAsync(movie.Id, normalizedDescription)
+            : await SaveDescriptionDirectlyAsync(movie, normalizedDescription);
+        if (!saved)
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        movie.DescriptionOverride = normalizedDescription;
+        EditableDescription = movie.DisplayDescription ?? string.Empty;
+        Description = FormatDescription(movie.DisplayDescription);
+        DescriptionStatus = normalizedDescription is null
+            ? "Custom description cleared."
+            : "Custom description saved.";
+    }
+
     private async Task<bool> SaveThumbnailDirectlyAsync(MediaItem movie, string normalizedPath)
     {
         movie.ThumbnailOverride = normalizedPath;
@@ -580,6 +641,13 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private async Task<bool> SaveTitleDirectlyAsync(MediaItem movie, string normalizedTitle)
     {
         movie.TitleOverride = normalizedTitle;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
+    }
+
+    private async Task<bool> SaveDescriptionDirectlyAsync(MediaItem movie, string? normalizedDescription)
+    {
+        movie.DescriptionOverride = normalizedDescription;
         await _mediaItemRepository.UpdateAsync(movie);
         return true;
     }
@@ -667,6 +735,9 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     private static string JoinMetadata(params string?[] values) =>
         string.Join(" • ", values.Where(value => !string.IsNullOrWhiteSpace(value)));
+
+    private static string FormatDescription(string? description) =>
+        string.IsNullOrWhiteSpace(description) ? "No description available." : description;
 
     private static string PlaybackText(MediaItem movie) => movie.IsCompleted
         ? "Completed"

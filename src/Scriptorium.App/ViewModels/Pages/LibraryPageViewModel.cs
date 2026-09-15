@@ -23,6 +23,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly ITvShowRepository _tvShowRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IMediaTitleService? _mediaTitleService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
@@ -58,6 +59,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
     private int _isTitleRefreshQueued;
+    private int _isDescriptionRefreshQueued;
     private int _isMediaTypeRefreshQueued;
     private int _isEpisodeSeasonRefreshQueued;
     private int _isEpisodeNumberRefreshQueued;
@@ -83,7 +85,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaTitleService? mediaTitleService = null,
         IMediaTypeService? mediaTypeService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
-        IMediaMetadataResetService? mediaMetadataResetService = null)
+        IMediaMetadataResetService? mediaMetadataResetService = null,
+        IMediaDescriptionService? mediaDescriptionService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -97,6 +100,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _tvShowRepository = tvShowRepository;
         _detailsCoordinator = detailsCoordinator;
         _mediaTitleService = mediaTitleService;
+        _mediaDescriptionService = mediaDescriptionService;
         _mediaTypeService = mediaTypeService;
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
@@ -209,6 +213,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             _mediaMetadataResetService.MetadataReset += OnMetadataReset;
         }
+        if (_mediaDescriptionService is not null)
+        {
+            _mediaDescriptionService.DescriptionChanged += OnDescriptionChanged;
+        }
     }
 
     public override string Title => "Library";
@@ -241,6 +249,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         if (_mediaMetadataResetService is not null)
         {
             _mediaMetadataResetService.MetadataReset -= OnMetadataReset;
+        }
+        if (_mediaDescriptionService is not null)
+        {
+            _mediaDescriptionService.DescriptionChanged -= OnDescriptionChanged;
         }
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
@@ -1026,6 +1038,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         finally
         {
             Volatile.Write(ref _isMetadataResetRefreshQueued, 0);
+        }
+    }
+
+    private void OnDescriptionChanged(Guid mediaItemId)
+    {
+        if (Interlocked.Exchange(ref _isDescriptionRefreshQueued, 1) != 0)
+        {
+            return;
+        }
+
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            _ = dispatcher.InvokeAsync(RefreshAfterDescriptionChangeAsync);
+            return;
+        }
+
+        _ = RefreshAfterDescriptionChangeAsync();
+    }
+
+    private async Task RefreshAfterDescriptionChangeAsync()
+    {
+        try
+        {
+            if (!IsScanning)
+            {
+                await RefreshLibraryDataAsync();
+            }
+        }
+        finally
+        {
+            Volatile.Write(ref _isDescriptionRefreshQueued, 0);
         }
     }
 

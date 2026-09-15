@@ -25,6 +25,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaGroupingService? _mediaGroupingService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IConfirmationDialog? _confirmationDialog;
     private readonly ITvShowHierarchySynchronizer? _tvShowHierarchySynchronizer;
@@ -52,6 +53,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private string _editableThumbnailPath = string.Empty;
     private string _thumbnailStatus = string.Empty;
     private string _metadataResetStatus = string.Empty;
+    private string _editableDescription = string.Empty;
+    private string _descriptionStatus = string.Empty;
     private bool _disposed;
 
     public TvShowDetailsPageViewModel(
@@ -69,7 +72,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         IMediaTypeService? mediaTypeService = null,
         IMediaGroupingService? mediaGroupingService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
-        IMediaMetadataResetService? mediaMetadataResetService = null)
+        IMediaMetadataResetService? mediaMetadataResetService = null,
+        IMediaDescriptionService? mediaDescriptionService = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -81,6 +85,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         _mediaGroupingService = mediaGroupingService;
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
+        _mediaDescriptionService = mediaDescriptionService;
         _confirmationDialog = confirmationDialog;
         _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
@@ -101,6 +106,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
         SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => SelectedEpisode is not null);
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedEpisode is not null);
+        SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
         if (_player is not null)
         {
@@ -219,6 +225,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             SelectCategory(value?.CategoryId);
             EditableTitle = value?.Title ?? string.Empty;
             TitleStatus = string.Empty;
+            EditableDescription = value?.Description ?? string.Empty;
+            DescriptionStatus = string.Empty;
             SelectedMediaType = value?.MediaType;
             MediaTypeStatus = string.Empty;
             EditableSeasonNumber = value?.SeasonNumber.ToString() ?? string.Empty;
@@ -348,6 +356,18 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _metadataResetStatus, value);
     }
 
+    public string EditableDescription
+    {
+        get => _editableDescription;
+        set => SetProperty(ref _editableDescription, value);
+    }
+
+    public string DescriptionStatus
+    {
+        get => _descriptionStatus;
+        private set => SetProperty(ref _descriptionStatus, value);
+    }
+
     public ICommand BackCommand { get; }
     public ICommand SelectEpisodeCommand { get; }
     public ICommand ContinueWatchingCommand { get; }
@@ -364,6 +384,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand ChooseThumbnailCommand { get; }
     public ICommand SaveThumbnailCommand { get; }
     public ICommand ResetMetadataCommand { get; }
+    public ICommand SaveDescriptionCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
@@ -943,6 +964,39 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         MetadataResetStatus = "Detected metadata restored.";
     }
 
+    private async Task SaveDescriptionAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || _mediaDescriptionService is null)
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        string? normalizedDescription;
+        try
+        {
+            normalizedDescription = MediaDescriptionValidation.Normalize(EditableDescription);
+        }
+        catch (ArgumentException exception)
+        {
+            DescriptionStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaDescriptionService.SaveAsync(episode.MediaItemId, normalizedDescription))
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        episode.SetDescriptionOverride(normalizedDescription);
+        EditableDescription = episode.Description ?? string.Empty;
+        DescriptionStatus = normalizedDescription is null
+            ? "Custom description cleared."
+            : "Custom description saved.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -1101,6 +1155,8 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string? ThumbnailPath => episode.MediaItem.ThumbnailPath;
 
+    public string? Description => episode.MediaItem.DisplayDescription;
+
     public bool IsFavorite => episode.MediaItem.IsFavorite;
 
     public bool IsCompleted => episode.MediaItem.IsCompleted;
@@ -1176,9 +1232,16 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         OnPropertyChanged(nameof(ThumbnailPath));
     }
 
+    internal void SetDescriptionOverride(string? description)
+    {
+        episode.MediaItem.DescriptionOverride = description;
+        OnPropertyChanged(nameof(Description));
+    }
+
     internal void SetMetadataReset()
     {
         episode.MediaItem.TitleOverride = null;
+        episode.MediaItem.DescriptionOverride = null;
         episode.MediaItem.ThumbnailOverride = null;
         episode.MediaItem.ThumbnailPath = episode.MediaItem.DetectedThumbnailPath;
         episode.MediaItem.MediaTypeOverride = null;

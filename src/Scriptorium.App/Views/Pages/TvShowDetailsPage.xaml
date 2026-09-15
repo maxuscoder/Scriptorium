@@ -56,6 +56,11 @@
                         <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisodePositionText}" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.CardTitle}" Text="{Binding SelectedEpisode.Title}" TextWrapping="Wrap" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisode.SeasonAndPosition}" />
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            Foreground="{StaticResource Brush.TextSecondary}"
+                            Text="{Binding SelectedEpisode.Description}"
+                            TextWrapping="Wrap" />
                     </StackPanel>
                     <WrapPanel Grid.Row="1" Margin="0,14,0,0">
                         <Button Margin="0,0,8,0" Command="{Binding PreviousEpisodeCommand}" Content="Previous episode" Style="{StaticResource Button.Secondary}" />
@@ -76,6 +81,8 @@
             <controls:MediaEpisodeEditor />
             <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
             <controls:MediaTitleEditor />
+            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <controls:MediaDescriptionEditor />
             <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
             <controls:MediaCategoryEditor />
             <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />

@@ -47,7 +47,7 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public string PlaybackProgressText => MediaPlaybackProgress.DisplayText(movie);
 
-    public string Summary => string.IsNullOrWhiteSpace(movie.Description) ? "No description available." : movie.Description;
+    public string Summary => string.IsNullOrWhiteSpace(movie.DisplayDescription) ? "No description available." : movie.DisplayDescription;
 
     public bool IsMissing => movie.IsMissing;
 

@@ -28,6 +28,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
@@ -45,6 +46,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private string _editableThumbnailPath = string.Empty;
     private string _thumbnailStatus = string.Empty;
     private string _metadataResetStatus = string.Empty;
+    private string _editableDescription = string.Empty;
+    private string _descriptionStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
     private string _orderStatus = string.Empty;
@@ -65,7 +68,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         IMediaTitleService? mediaTitleService = null,
         IMediaTypeService? mediaTypeService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
-        IMediaMetadataResetService? mediaMetadataResetService = null)
+        IMediaMetadataResetService? mediaMetadataResetService = null,
+        IMediaDescriptionService? mediaDescriptionService = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -79,6 +83,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _mediaTypeService = mediaTypeService;
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
+        _mediaDescriptionService = mediaDescriptionService;
         _player = player;
         _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -95,6 +100,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         ChooseThumbnailCommand = new RelayCommand(ChooseThumbnail);
         SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => SelectedLesson is not null);
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedLesson is not null);
+        SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -202,6 +208,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             SelectCategory(value?.CategoryId);
             EditableTitle = value?.Title ?? string.Empty;
             TitleStatus = string.Empty;
+            EditableDescription = value?.Description ?? string.Empty;
+            DescriptionStatus = string.Empty;
             SelectedMediaType = value?.MediaType;
             MediaTypeStatus = string.Empty;
             EditableThumbnailPath = value?.ThumbnailPath ?? string.Empty;
@@ -271,6 +279,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _metadataResetStatus, value);
     }
 
+    public string EditableDescription
+    {
+        get => _editableDescription;
+        set => SetProperty(ref _editableDescription, value);
+    }
+
+    public string DescriptionStatus
+    {
+        get => _descriptionStatus;
+        private set => SetProperty(ref _descriptionStatus, value);
+    }
+
     public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
 
     public MediaType? SelectedMediaType
@@ -338,6 +358,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand ChooseThumbnailCommand { get; }
     public ICommand SaveThumbnailCommand { get; }
     public ICommand ResetMetadataCommand { get; }
+    public ICommand SaveDescriptionCommand { get; }
 
     public ICommand ToggleFavoriteCommand { get; }
 
@@ -857,6 +878,39 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         MetadataResetStatus = "Detected metadata restored.";
     }
 
+    private async Task SaveDescriptionAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaDescriptionService is null)
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        string? normalizedDescription;
+        try
+        {
+            normalizedDescription = MediaDescriptionValidation.Normalize(EditableDescription);
+        }
+        catch (ArgumentException exception)
+        {
+            DescriptionStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaDescriptionService.SaveAsync(lesson.MediaItemId, normalizedDescription))
+        {
+            DescriptionStatus = "The description could not be saved.";
+            return;
+        }
+
+        lesson.SetDescriptionOverride(normalizedDescription);
+        EditableDescription = lesson.Description ?? string.Empty;
+        DescriptionStatus = normalizedDescription is null
+            ? "Custom description cleared."
+            : "Custom description saved.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -899,6 +953,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public MediaType MediaType => lesson.MediaItem.MediaType;
 
     public string? ThumbnailPath => lesson.MediaItem.ThumbnailPath;
+
+    public string? Description => lesson.MediaItem.DisplayDescription;
 
     public bool IsFavorite => lesson.MediaItem.IsFavorite;
 
@@ -982,9 +1038,16 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(ThumbnailPath));
     }
 
+    internal void SetDescriptionOverride(string? description)
+    {
+        lesson.MediaItem.DescriptionOverride = description;
+        OnPropertyChanged(nameof(Description));
+    }
+
     internal void SetMetadataReset()
     {
         lesson.MediaItem.TitleOverride = null;
+        lesson.MediaItem.DescriptionOverride = null;
         lesson.MediaItem.ThumbnailOverride = null;
         lesson.MediaItem.ThumbnailPath = lesson.MediaItem.DetectedThumbnailPath;
         lesson.MediaItem.MediaTypeOverride = null;

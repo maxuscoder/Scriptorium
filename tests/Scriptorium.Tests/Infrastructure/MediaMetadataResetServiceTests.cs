@@ -30,6 +30,8 @@ public sealed class MediaMetadataResetServiceTests
         {
             Title = "Detected title",
             TitleOverride = "Manual title",
+            Description = "Detected description",
+            DescriptionOverride = "Manual description",
             Path = @"C:\Videos\original-name.mp4",
             ThumbnailPath = @"C:\custom\manual.png",
             DetectedThumbnailPath = @"C:\Videos\detected.jpg",
@@ -76,6 +78,8 @@ public sealed class MediaMetadataResetServiceTests
         var stored = (await repository.GetByIdAsync(mediaItem.Id))!;
         Assert.Null(stored.TitleOverride);
         Assert.Equal("Detected title", stored.DisplayTitle);
+        Assert.Null(stored.DescriptionOverride);
+        Assert.Equal("Detected description", stored.DisplayDescription);
         Assert.Equal(@"C:\Videos\original-name.mp4", stored.Path);
         Assert.Null(stored.ThumbnailOverride);
         Assert.Equal(@"C:\Videos\detected.jpg", stored.ThumbnailPath);

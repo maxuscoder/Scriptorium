@@ -77,6 +77,15 @@ public class MediaItem
     /// <summary>Gets or sets the optional item description.</summary>
     public string? Description { get; set; }
 
+    /// <summary>Gets or sets the optional description chosen by the user.</summary>
+    public string? DescriptionOverride { get; set; }
+
+    /// <summary>Gets the description shown in the application.</summary>
+    [NotMapped]
+    public string? DisplayDescription => string.IsNullOrWhiteSpace(DescriptionOverride)
+        ? Description
+        : DescriptionOverride.Trim();
+
     /// <summary>Gets or sets the resumable playback position in whole seconds.</summary>
     public long PlaybackPositionSeconds { get; set; }
 

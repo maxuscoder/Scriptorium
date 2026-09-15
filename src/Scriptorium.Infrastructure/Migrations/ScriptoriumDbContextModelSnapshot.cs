@@ -197,6 +197,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DescriptionOverride")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("DetectedEpisodeNumber")
                         .HasColumnType("INTEGER");
 

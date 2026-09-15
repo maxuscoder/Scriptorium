@@ -28,6 +28,7 @@ public sealed class MediaMetadataResetService(
         }
 
         mediaItem.TitleOverride = null;
+        mediaItem.DescriptionOverride = null;
         mediaItem.ThumbnailOverride = null;
         mediaItem.ThumbnailPath = mediaItem.DetectedThumbnailPath;
         mediaItem.MediaTypeOverride = null;
