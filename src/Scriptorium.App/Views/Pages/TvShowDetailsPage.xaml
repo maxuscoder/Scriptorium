@@ -55,6 +55,18 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisodePositionText}" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.CardTitle}" Text="{Binding SelectedEpisode.Title}" TextWrapping="Wrap" />
+                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.Accent}" Text="Edited metadata">
+                            <TextBlock.Style>
+                                <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedEpisode.HasManualMetadata}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisode.SeasonAndPosition}" />
                         <TextBlock
                             Margin="0,8,0,0"

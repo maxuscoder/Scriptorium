@@ -83,6 +83,7 @@ public sealed class MediaMetadataResetServiceTests
         Assert.Equal(@"C:\custom\manual.png", fieldReset.ThumbnailOverride);
         Assert.Equal(MediaType.Tutorial, fieldReset.MediaTypeOverride);
         Assert.Equal(8, fieldReset.SeasonNumberOverride);
+        Assert.True(fieldReset.HasManualMetadata);
 
         Assert.True(await service.ResetAsync(mediaItem.Id));
 
@@ -105,6 +106,7 @@ public sealed class MediaMetadataResetServiceTests
         Assert.Null(stored.TVShowTitleOverride);
         Assert.Null(stored.SeasonNumberOverride);
         Assert.Null(stored.EpisodeNumberOverride);
+        Assert.False(stored.HasManualMetadata);
         Assert.Equal(category.Id, stored.CategoryId);
         Assert.Equal(mediaItem.Id, resetMediaItemId);
     }

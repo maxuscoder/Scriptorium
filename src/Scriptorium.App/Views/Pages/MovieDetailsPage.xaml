@@ -16,7 +16,8 @@
         TertiaryActionText="{Binding FavoriteActionText}"
         ThumbnailPath="{Binding ThumbnailPath}"
         Title="{Binding Title}"
-        TypeLabel="{Binding MediaTypeLabel}">
+        TypeLabel="{Binding MediaTypeLabel}"
+        HasManualMetadata="{Binding HasManualMetadata}">
         <controls:MediaDetailsPage.PreviewContent>
             <controls:VideoPlayer Height="380" Player="{Binding Player}" />
         </controls:MediaDetailsPage.PreviewContent>

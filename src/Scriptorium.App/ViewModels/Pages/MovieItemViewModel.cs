@@ -15,6 +15,8 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public string Title => MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
 
+    public bool HasManualMetadata => movie.HasManualMetadata;
+
     public string SourceFolder => movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies";
 
     public string? ThumbnailPath => movie.ThumbnailPath;

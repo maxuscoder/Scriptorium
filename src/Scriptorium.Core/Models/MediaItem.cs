@@ -27,6 +27,18 @@ public class MediaItem
     [NotMapped]
     public string DisplayTitle => string.IsNullOrWhiteSpace(TitleOverride) ? Title : TitleOverride.Trim();
 
+    /// <summary>Gets whether this item contains one or more manually edited metadata fields.</summary>
+    [NotMapped]
+    public bool HasManualMetadata =>
+        !string.IsNullOrWhiteSpace(TitleOverride) ||
+        !string.IsNullOrWhiteSpace(DescriptionOverride) ||
+        ReleaseYearOverride is not null ||
+        ThumbnailOverride is not null ||
+        MediaTypeOverride is not null ||
+        !string.IsNullOrWhiteSpace(TVShowTitleOverride) ||
+        SeasonNumberOverride is not null ||
+        EpisodeNumberOverride is not null;
+
     /// <summary>
     /// Gets or sets the path to the media file or folder.
     /// </summary>

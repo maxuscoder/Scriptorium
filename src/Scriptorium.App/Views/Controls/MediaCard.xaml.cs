@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Data;
 
 namespace Scriptorium.App.Views.Controls;
 
@@ -103,6 +104,9 @@ public partial class MediaCard : UserControl
     public static readonly DependencyProperty IsMissingProperty =
         DependencyProperty.Register(nameof(IsMissing), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
 
+    public static readonly DependencyProperty HasManualMetadataProperty =
+        DependencyProperty.Register(nameof(HasManualMetadata), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+
     public static readonly DependencyProperty IsFavoriteProperty =
         DependencyProperty.Register(nameof(IsFavorite), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
 
@@ -163,6 +167,7 @@ public partial class MediaCard : UserControl
     public MediaCard()
     {
         InitializeComponent();
+        SetBinding(HasManualMetadataProperty, new Binding(nameof(HasManualMetadata)));
     }
 
     public string? ThumbnailPath
@@ -253,6 +258,13 @@ public partial class MediaCard : UserControl
     {
         get => (bool)GetValue(IsMissingProperty);
         set => SetValue(IsMissingProperty, value);
+    }
+
+    /// <summary>Gets or sets whether the represented media item has manual metadata edits.</summary>
+    public bool HasManualMetadata
+    {
+        get => (bool)GetValue(HasManualMetadataProperty);
+        set => SetValue(HasManualMetadataProperty, value);
     }
 
     /// <summary>Gets or sets whether the card's media item is marked as a favorite.</summary>

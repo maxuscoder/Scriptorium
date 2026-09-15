@@ -232,6 +232,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             }
 
             OnPropertyChanged(nameof(SelectedEpisodePositionText));
+            OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
             OpenSelectedEpisode();
@@ -382,6 +383,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         get => _descriptionStatus;
         private set => SetProperty(ref _descriptionStatus, value);
     }
+
+    public bool HasManualMetadata => SelectedEpisode?.HasManualMetadata == true;
 
     public string EditableReleaseYear
     {
@@ -804,6 +807,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetTitleOverride(normalizedTitle);
         EditableTitle = episode.Title;
         TitleStatus = "Custom title saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task SaveMediaTypeAsync()
@@ -829,6 +833,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
         episode.SetMediaType(mediaType);
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task SaveSeasonNumberAsync()
@@ -875,6 +880,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         await RefreshLoadedShowAsync();
         EditableSeasonNumber = seasonNumber.ToString();
         SeasonNumberStatus = $"Season number changed to {seasonNumber}.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task SaveEpisodeNumberAsync()
@@ -921,6 +927,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         await RefreshLoadedShowAsync();
         EditableEpisodeNumber = episodeNumber.ToString();
         EpisodeNumberStatus = $"Episode number changed to {episodeNumber}.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private void ChooseThumbnail()
@@ -969,6 +976,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetThumbnailPath(normalizedPath);
         EditableThumbnailPath = normalizedPath;
         ThumbnailStatus = "Custom thumbnail saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task ResetMetadataAsync()
@@ -1030,6 +1038,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         DescriptionStatus = normalizedDescription is null
             ? "Custom description cleared."
             : "Custom description saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task SaveReleaseYearAsync()
@@ -1063,6 +1072,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         ReleaseYearStatus = normalizedReleaseYear is null
             ? "Custom release year cleared."
             : "Custom release year saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreTitleAsync()
@@ -1077,6 +1087,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetTitleOverride(null);
         EditableTitle = episode.Title;
         TitleStatus = "Detected title restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreDescriptionAsync()
@@ -1091,6 +1102,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetDescriptionOverride(null);
         EditableDescription = episode.Description ?? string.Empty;
         DescriptionStatus = "Detected description restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreReleaseYearAsync()
@@ -1105,6 +1117,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetReleaseYearOverride(null);
         EditableReleaseYear = episode.ReleaseYear?.ToString() ?? string.Empty;
         ReleaseYearStatus = "Detected release year restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreThumbnailAsync()
@@ -1119,6 +1132,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetThumbnailPath(episode.DetectedThumbnailPath);
         EditableThumbnailPath = episode.ThumbnailPath ?? string.Empty;
         ThumbnailStatus = "Detected thumbnail restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreMediaTypeAsync()
@@ -1133,6 +1147,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         episode.SetMediaType(episode.DetectedMediaType);
         SelectedMediaType = episode.MediaType;
         MediaTypeStatus = "Detected media type restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreSeasonNumberAsync()
@@ -1146,6 +1161,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
         await RefreshLoadedShowAsync();
         SeasonNumberStatus = "Detected season number restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreEpisodeNumberAsync()
@@ -1159,6 +1175,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
         await RefreshLoadedShowAsync();
         EpisodeNumberStatus = "Detected episode number restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
@@ -1331,6 +1348,8 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string? Description => episode.MediaItem.DisplayDescription;
 
+    public bool HasManualMetadata => episode.MediaItem.HasManualMetadata;
+
     public string? DetectedThumbnailPath => episode.MediaItem.DetectedThumbnailPath;
 
     public MediaType DetectedMediaType => episode.MediaItem.DetectedMediaType ?? episode.MediaItem.MediaType;
@@ -1398,30 +1417,35 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.TitleOverride = title;
         episode.Title = episode.MediaItem.DisplayTitle;
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetMediaType(MediaType mediaType)
     {
         episode.MediaItem.MediaType = mediaType;
         episode.MediaItem.MediaTypeOverride = mediaType;
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetThumbnailPath(string? thumbnailPath)
     {
         episode.MediaItem.ThumbnailPath = thumbnailPath;
         OnPropertyChanged(nameof(ThumbnailPath));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetDescriptionOverride(string? description)
     {
         episode.MediaItem.DescriptionOverride = description;
         OnPropertyChanged(nameof(Description));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetReleaseYearOverride(int? releaseYear)
     {
         episode.MediaItem.ReleaseYearOverride = releaseYear;
         OnPropertyChanged(nameof(ReleaseYear));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetMetadataReset()
@@ -1451,6 +1475,7 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         OnPropertyChanged(nameof(Position));
         OnPropertyChanged(nameof(MediaType));
         OnPropertyChanged(nameof(ThumbnailPath));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     public Guid? CategoryId => episode.MediaItem.CategoryId;

@@ -38,6 +38,7 @@
                             FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             FavoriteParameter="{Binding}"
                             FallbackGlyph="{Binding TypeGlyph}"
+                            HasManualMetadata="{Binding HasManualMetadata}"
                             HasPlaybackProgress="{Binding HasPlaybackProgress}"
                             IsFavorite="{Binding IsFavorite}"
                             IsMissing="{Binding IsMissing}"

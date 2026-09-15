@@ -213,6 +213,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             }
 
             OnPropertyChanged(nameof(SelectedLessonPositionText));
+            OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
             OpenSelectedLesson();
@@ -303,6 +304,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         get => _descriptionStatus;
         private set => SetProperty(ref _descriptionStatus, value);
     }
+
+    public bool HasManualMetadata => SelectedLesson?.HasManualMetadata == true;
 
     public string EditableReleaseYear
     {
@@ -805,6 +808,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetTitleOverride(normalizedTitle);
         EditableTitle = lesson.Title;
         TitleStatus = "Custom title saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
         OnPropertyChanged(nameof(SelectedLessonPositionText));
     }
 
@@ -831,6 +835,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 
         lesson.SetMediaType(mediaType);
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private void ChooseThumbnail()
@@ -879,6 +884,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetThumbnailPath(normalizedPath);
         EditableThumbnailPath = normalizedPath;
         ThumbnailStatus = "Custom thumbnail saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task ResetMetadataAsync()
@@ -940,6 +946,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         DescriptionStatus = normalizedDescription is null
             ? "Custom description cleared."
             : "Custom description saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task SaveReleaseYearAsync()
@@ -973,6 +980,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         ReleaseYearStatus = normalizedReleaseYear is null
             ? "Custom release year cleared."
             : "Custom release year saved.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreTitleAsync()
@@ -987,6 +995,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetTitleOverride(null);
         EditableTitle = lesson.Title;
         TitleStatus = "Detected title restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreDescriptionAsync()
@@ -1001,6 +1010,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetDescriptionOverride(null);
         EditableDescription = lesson.Description ?? string.Empty;
         DescriptionStatus = "Detected description restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreReleaseYearAsync()
@@ -1015,6 +1025,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetReleaseYearOverride(null);
         EditableReleaseYear = lesson.ReleaseYear?.ToString() ?? string.Empty;
         ReleaseYearStatus = "Detected release year restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreThumbnailAsync()
@@ -1029,6 +1040,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetThumbnailPath(lesson.DetectedThumbnailPath);
         EditableThumbnailPath = lesson.ThumbnailPath ?? string.Empty;
         ThumbnailStatus = "Detected thumbnail restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task RestoreMediaTypeAsync()
@@ -1043,6 +1055,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         lesson.SetMediaType(lesson.DetectedMediaType);
         SelectedMediaType = lesson.MediaType;
         MediaTypeStatus = "Detected media type restored.";
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private async Task<bool> ResetMetadataFieldAsync(Guid mediaItemId, MediaMetadataField field)
@@ -1099,6 +1112,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public string? ThumbnailPath => lesson.MediaItem.ThumbnailPath;
 
     public string? Description => lesson.MediaItem.DisplayDescription;
+
+    public bool HasManualMetadata => lesson.MediaItem.HasManualMetadata;
 
     public string? DetectedThumbnailPath => lesson.MediaItem.DetectedThumbnailPath;
 
@@ -1174,30 +1189,35 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.TitleOverride = title;
         lesson.Title = lesson.MediaItem.DisplayTitle;
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetMediaType(MediaType mediaType)
     {
         lesson.MediaItem.MediaType = mediaType;
         lesson.MediaItem.MediaTypeOverride = mediaType;
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetThumbnailPath(string? thumbnailPath)
     {
         lesson.MediaItem.ThumbnailPath = thumbnailPath;
         OnPropertyChanged(nameof(ThumbnailPath));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetDescriptionOverride(string? description)
     {
         lesson.MediaItem.DescriptionOverride = description;
         OnPropertyChanged(nameof(Description));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetReleaseYearOverride(int? releaseYear)
     {
         lesson.MediaItem.ReleaseYearOverride = releaseYear;
         OnPropertyChanged(nameof(ReleaseYear));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     internal void SetMetadataReset()
@@ -1223,6 +1243,7 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(MediaType));
         OnPropertyChanged(nameof(ThumbnailPath));
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     public Guid? CategoryId => lesson.MediaItem.CategoryId;

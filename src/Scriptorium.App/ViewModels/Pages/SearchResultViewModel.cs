@@ -33,6 +33,8 @@ public sealed class SearchResultViewModel : ViewModelBase, IMediaFavoriteItem
 
     public string Title { get; }
 
+    public bool HasManualMetadata => MediaItem.HasManualMetadata;
+
     /// <summary>Gets the title text that precedes the matching query.</summary>
     public string TitlePrefix { get; }
 

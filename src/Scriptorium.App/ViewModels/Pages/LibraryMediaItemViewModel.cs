@@ -14,6 +14,8 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
 
     public string Title => MediaDisplayText.TitleOrFallback(MediaItem.DisplayTitle, "Untitled media");
 
+    public bool HasManualMetadata => MediaItem.HasManualMetadata;
+
     public string SourcePath => MediaItem.Path;
 
     public string? ThumbnailPath => MediaItem.ThumbnailPath;

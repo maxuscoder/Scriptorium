@@ -41,6 +41,9 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty DescriptionProperty =
         DependencyProperty.Register(nameof(Description), typeof(string), typeof(MediaDetailsPage), new PropertyMetadata(string.Empty));
 
+    public static readonly DependencyProperty HasManualMetadataProperty =
+        DependencyProperty.Register(nameof(HasManualMetadata), typeof(bool), typeof(MediaDetailsPage), new PropertyMetadata(false));
+
     public static readonly DependencyProperty FallbackGlyphProperty =
         DependencyProperty.Register(nameof(FallbackGlyph), typeof(string), typeof(MediaDetailsPage), new PropertyMetadata("•"));
 
@@ -95,6 +98,8 @@ public partial class MediaDetailsPage : UserControl
     public string Status { get => (string)GetValue(StatusProperty); set => SetValue(StatusProperty, value); }
 
     public string Description { get => (string)GetValue(DescriptionProperty); set => SetValue(DescriptionProperty, value); }
+
+    public bool HasManualMetadata { get => (bool)GetValue(HasManualMetadataProperty); set => SetValue(HasManualMetadataProperty, value); }
 
     public string FallbackGlyph { get => (string)GetValue(FallbackGlyphProperty); set => SetValue(FallbackGlyphProperty, value); }
 

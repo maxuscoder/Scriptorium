@@ -214,6 +214,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public string MediaTypeLabel => _movie is null ? "Media" : MediaTypeOptions.SingularName(_movie.MediaType);
 
+    public bool HasManualMetadata => _movie?.HasManualMetadata == true;
+
     /// <summary>Gets the metadata rendered by the shared details page.</summary>
     public ObservableCollection<MediaDetailsMetadataItem> MetadataItems { get; } = [];
 
@@ -566,6 +568,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ThumbnailPath = normalizedPath;
         EditableThumbnailPath = normalizedPath;
         ThumbnailStatus = "Custom thumbnail saved.";
+        NotifyStateChanged();
     }
 
     private async Task ResetMetadataAsync()
@@ -663,6 +666,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         DescriptionStatus = normalizedDescription is null
             ? "Custom description cleared."
             : "Custom description saved.";
+        NotifyStateChanged();
     }
 
     private async Task<bool> SaveThumbnailDirectlyAsync(MediaItem movie, string normalizedPath)
@@ -711,6 +715,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ReleaseYearStatus = normalizedReleaseYear is null
             ? "Custom release year cleared."
             : "Custom release year saved.";
+        NotifyStateChanged();
     }
 
     private async Task RestoreTitleAsync()
@@ -777,6 +782,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ThumbnailPath = movie.ThumbnailPath;
         EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
         ThumbnailStatus = "Detected thumbnail restored.";
+        NotifyStateChanged();
     }
 
     private async Task RestoreMediaTypeAsync()
@@ -901,6 +907,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         ((AsyncRelayCommand)SaveTitleCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)SaveMediaTypeCommand).NotifyCanExecuteChanged();
         ((AsyncRelayCommand)ResetMetadataCommand).NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(HasManualMetadata));
     }
 
     private void GoBack()
