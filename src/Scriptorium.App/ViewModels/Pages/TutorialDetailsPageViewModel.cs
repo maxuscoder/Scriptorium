@@ -29,6 +29,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
+    private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
@@ -48,6 +49,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private string _metadataResetStatus = string.Empty;
     private string _editableDescription = string.Empty;
     private string _descriptionStatus = string.Empty;
+    private string _editableReleaseYear = string.Empty;
+    private string _releaseYearStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
     private string _orderStatus = string.Empty;
@@ -69,7 +72,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         IMediaTypeService? mediaTypeService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
-        IMediaDescriptionService? mediaDescriptionService = null)
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IMediaReleaseYearService? mediaReleaseYearService = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -84,6 +88,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaDescriptionService = mediaDescriptionService;
+        _mediaReleaseYearService = mediaReleaseYearService;
         _player = player;
         _logger = logger;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -101,6 +106,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => SelectedLesson is not null);
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedLesson is not null);
         SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedLesson is not null);
+        SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -210,6 +216,8 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             TitleStatus = string.Empty;
             EditableDescription = value?.Description ?? string.Empty;
             DescriptionStatus = string.Empty;
+            EditableReleaseYear = value?.ReleaseYear?.ToString() ?? string.Empty;
+            ReleaseYearStatus = string.Empty;
             SelectedMediaType = value?.MediaType;
             MediaTypeStatus = string.Empty;
             EditableThumbnailPath = value?.ThumbnailPath ?? string.Empty;
@@ -291,6 +299,18 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _descriptionStatus, value);
     }
 
+    public string EditableReleaseYear
+    {
+        get => _editableReleaseYear;
+        set => SetProperty(ref _editableReleaseYear, value);
+    }
+
+    public string ReleaseYearStatus
+    {
+        get => _releaseYearStatus;
+        private set => SetProperty(ref _releaseYearStatus, value);
+    }
+
     public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
 
     public MediaType? SelectedMediaType
@@ -359,6 +379,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand SaveThumbnailCommand { get; }
     public ICommand ResetMetadataCommand { get; }
     public ICommand SaveDescriptionCommand { get; }
+    public ICommand SaveReleaseYearCommand { get; }
 
     public ICommand ToggleFavoriteCommand { get; }
 
@@ -911,6 +932,39 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             : "Custom description saved.";
     }
 
+    private async Task SaveReleaseYearAsync()
+    {
+        var lesson = SelectedLesson;
+        if (lesson is null || _mediaReleaseYearService is null)
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        int? normalizedReleaseYear;
+        try
+        {
+            normalizedReleaseYear = MediaReleaseYearValidation.Normalize(EditableReleaseYear);
+        }
+        catch (ArgumentException exception)
+        {
+            ReleaseYearStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaReleaseYearService.SaveAsync(lesson.MediaItemId, normalizedReleaseYear))
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        lesson.SetReleaseYearOverride(normalizedReleaseYear);
+        EditableReleaseYear = lesson.ReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = normalizedReleaseYear is null
+            ? "Custom release year cleared."
+            : "Custom release year saved.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -955,6 +1009,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
     public string? ThumbnailPath => lesson.MediaItem.ThumbnailPath;
 
     public string? Description => lesson.MediaItem.DisplayDescription;
+
+    public int? ReleaseYear => lesson.MediaItem.EffectiveReleaseYear;
 
     public bool IsFavorite => lesson.MediaItem.IsFavorite;
 
@@ -1044,10 +1100,17 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(Description));
     }
 
+    internal void SetReleaseYearOverride(int? releaseYear)
+    {
+        lesson.MediaItem.ReleaseYearOverride = releaseYear;
+        OnPropertyChanged(nameof(ReleaseYear));
+    }
+
     internal void SetMetadataReset()
     {
         lesson.MediaItem.TitleOverride = null;
         lesson.MediaItem.DescriptionOverride = null;
+        lesson.MediaItem.ReleaseYearOverride = null;
         lesson.MediaItem.ThumbnailOverride = null;
         lesson.MediaItem.ThumbnailPath = lesson.MediaItem.DetectedThumbnailPath;
         lesson.MediaItem.MediaTypeOverride = null;

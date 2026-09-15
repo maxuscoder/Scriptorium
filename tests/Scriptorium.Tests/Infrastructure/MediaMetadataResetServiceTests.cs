@@ -32,6 +32,8 @@ public sealed class MediaMetadataResetServiceTests
             TitleOverride = "Manual title",
             Description = "Detected description",
             DescriptionOverride = "Manual description",
+            ReleaseYear = 2020,
+            ReleaseYearOverride = 2024,
             Path = @"C:\Videos\original-name.mp4",
             ThumbnailPath = @"C:\custom\manual.png",
             DetectedThumbnailPath = @"C:\Videos\detected.jpg",
@@ -80,6 +82,8 @@ public sealed class MediaMetadataResetServiceTests
         Assert.Equal("Detected title", stored.DisplayTitle);
         Assert.Null(stored.DescriptionOverride);
         Assert.Equal("Detected description", stored.DisplayDescription);
+        Assert.Null(stored.ReleaseYearOverride);
+        Assert.Equal(2020, stored.EffectiveReleaseYear);
         Assert.Equal(@"C:\Videos\original-name.mp4", stored.Path);
         Assert.Null(stored.ThumbnailOverride);
         Assert.Equal(@"C:\Videos\detected.jpg", stored.ThumbnailPath);

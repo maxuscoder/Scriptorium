@@ -346,6 +346,10 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                 EF.Functions.Like(EF.Functions.Collate(item.Title, "NOCASE"), searchPattern, "\\") ||
                 (item.TitleOverride != null &&
                  EF.Functions.Like(EF.Functions.Collate(item.TitleOverride, "NOCASE"), searchPattern, "\\")) ||
+                (item.ReleaseYear != null &&
+                 EF.Functions.Like(item.ReleaseYear.Value.ToString(), searchPattern, "\\")) ||
+                (item.ReleaseYearOverride != null &&
+                 EF.Functions.Like(item.ReleaseYearOverride.Value.ToString(), searchPattern, "\\")) ||
                 (item.LibraryFolder != null &&
                  (EF.Functions.Like(EF.Functions.Collate(item.LibraryFolder.Name, "NOCASE"), searchPattern, "\\") ||
                   (item.LibraryFolder.DisplayName != null &&

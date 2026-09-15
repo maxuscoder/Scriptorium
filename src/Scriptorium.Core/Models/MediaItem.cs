@@ -74,6 +74,13 @@ public class MediaItem
     /// <summary>Gets or sets the release year, when known.</summary>
     public int? ReleaseYear { get; set; }
 
+    /// <summary>Gets or sets the optional release year chosen by the user.</summary>
+    public int? ReleaseYearOverride { get; set; }
+
+    /// <summary>Gets the release year shown and used by the application.</summary>
+    [NotMapped]
+    public int? EffectiveReleaseYear => ReleaseYearOverride ?? ReleaseYear;
+
     /// <summary>Gets or sets the optional item description.</summary>
     public string? Description { get; set; }
 

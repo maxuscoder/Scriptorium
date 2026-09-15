@@ -190,7 +190,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             new(LibrarySortOrder.MostRecentlyWatched, "Playback: most recent first"),
             new(LibrarySortOrder.LeastRecentlyWatched, "Playback: least recent first"),
             new(LibrarySortOrder.HighestPlaybackProgress, "Progress: highest first"),
-            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: lowest first")
+            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: lowest first"),
+            new(LibrarySortOrder.ReleaseYearNewest, "Release year: newest first"),
+            new(LibrarySortOrder.ReleaseYearOldest, "Release year: oldest first")
         ];
         _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
@@ -680,6 +682,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         return mediaItem.DisplayTitle.Contains(term, comparison) ||
                mediaItem.Path.Contains(term, comparison) ||
                (mediaItem.TVShowTitle?.Contains(term, comparison) ?? false) ||
+               (mediaItem.EffectiveReleaseYear?.ToString().Contains(term, comparison) ?? false) ||
                (mediaItem.LibraryFolder?.DisplayNameOrName.Contains(term, comparison) ?? false) ||
                (mediaItem.Category?.Name.Contains(term, comparison) ?? false);
     }
@@ -1246,16 +1249,38 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     private IEnumerable<MediaItem> OrderMediaItems(IEnumerable<MediaItem> mediaItems) =>
-        OrderLibraryItems(
-            mediaItems,
-            mediaItem => mediaItem.DisplayTitle,
-            mediaItem => mediaItem.DateAdded,
-            mediaItem => mediaItem.DateAdded,
-            mediaItem => mediaItem.LastPlayed,
-            mediaItem => mediaItem.LastPlayed,
-            MediaPlaybackProgress.ProgressPercentage,
-            MediaPlaybackProgress.ProgressPercentage,
-            mediaItem => mediaItem.IsFavorite);
+        SelectedSortOrder switch
+        {
+            LibrarySortOrder.ReleaseYearNewest => OrderByReleaseYear(mediaItems, descending: true),
+            LibrarySortOrder.ReleaseYearOldest => OrderByReleaseYear(mediaItems, descending: false),
+            _ => OrderLibraryItems(
+                mediaItems,
+                mediaItem => mediaItem.DisplayTitle,
+                mediaItem => mediaItem.DateAdded,
+                mediaItem => mediaItem.DateAdded,
+                mediaItem => mediaItem.LastPlayed,
+                mediaItem => mediaItem.LastPlayed,
+                MediaPlaybackProgress.ProgressPercentage,
+                MediaPlaybackProgress.ProgressPercentage,
+                mediaItem => mediaItem.IsFavorite)
+        };
+
+    private IEnumerable<MediaItem> OrderByReleaseYear(IEnumerable<MediaItem> mediaItems, bool descending)
+    {
+        var orderedItems = descending
+            ? mediaItems
+                .OrderByDescending(mediaItem => mediaItem.EffectiveReleaseYear.HasValue)
+                .ThenByDescending(mediaItem => mediaItem.EffectiveReleaseYear)
+                .ThenBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase)
+            : mediaItems
+                .OrderBy(mediaItem => mediaItem.EffectiveReleaseYear.HasValue ? 0 : 1)
+                .ThenBy(mediaItem => mediaItem.EffectiveReleaseYear)
+                .ThenBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase);
+
+        return FavoritesFirst
+            ? orderedItems.OrderByDescending(mediaItem => mediaItem.IsFavorite)
+            : orderedItems;
+    }
 
     private IEnumerable<TutorialCollectionViewModel> OrderTutorials(IEnumerable<TutorialCollectionViewModel> tutorials) =>
         OrderLibraryItems(

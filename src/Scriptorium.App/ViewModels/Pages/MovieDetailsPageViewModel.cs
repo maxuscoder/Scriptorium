@@ -25,6 +25,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
+    private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IConfirmationDialog? _confirmationDialog;
     private PageViewModel? _returnPage;
@@ -37,6 +38,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private string _metadataResetStatus = string.Empty;
     private string _editableDescription = string.Empty;
     private string _descriptionStatus = string.Empty;
+    private string _editableReleaseYear = string.Empty;
+    private string _releaseYearStatus = string.Empty;
     private MediaType? _selectedMediaType;
     private string _mediaTypeStatus = string.Empty;
     private string? _thumbnailPath;
@@ -60,7 +63,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IConfirmationDialog? confirmationDialog = null,
-        IMediaDescriptionService? mediaDescriptionService = null)
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IMediaReleaseYearService? mediaReleaseYearService = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -74,6 +78,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _mediaMetadataResetService = mediaMetadataResetService;
         _confirmationDialog = confirmationDialog;
         _mediaDescriptionService = mediaDescriptionService;
+        _mediaReleaseYearService = mediaReleaseYearService;
         Player = player;
         Player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
@@ -87,6 +92,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => _movie is not null);
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => _movie is not null);
         SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => _movie is not null);
+        SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => _movie is not null);
     }
 
     public override string Title => _movieTitle;
@@ -167,6 +173,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     {
         get => _descriptionStatus;
         private set => SetProperty(ref _descriptionStatus, value);
+    }
+
+    public string EditableReleaseYear
+    {
+        get => _editableReleaseYear;
+        set => SetProperty(ref _editableReleaseYear, value);
+    }
+
+    public string ReleaseYearStatus
+    {
+        get => _releaseYearStatus;
+        private set => SetProperty(ref _releaseYearStatus, value);
     }
 
     public IReadOnlyList<MediaTypeChoice> MediaTypes => MediaTypeOptions.All;
@@ -257,6 +275,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
 
     public ICommand SaveDescriptionCommand { get; }
 
+    public ICommand SaveReleaseYearCommand { get; }
+
     /// <summary>Loads a movie before it becomes the current page.</summary>
     public async Task<bool> LoadAsync(Guid movieId, PageViewModel returnPage)
     {
@@ -280,8 +300,10 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
         ThumbnailStatus = string.Empty;
         MetadataResetStatus = string.Empty;
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = string.Empty;
         HeaderMetadata = JoinMetadata(
-            movie.ReleaseYear?.ToString(),
+            movie.EffectiveReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
             MediaCategoryDisplay.Name(movie));
         Description = FormatDescription(movie.DisplayDescription);
@@ -414,7 +436,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
             ? "Category assignment removed."
             : $"Category '{selectedCategory.Name}' assigned.";
         HeaderMetadata = JoinMetadata(
-            movie.ReleaseYear?.ToString(),
+            movie.EffectiveReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
             MediaCategoryDisplay.Name(movie));
         PopulateMetadata(movie);
@@ -575,15 +597,18 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         movie.SeasonNumber = movie.DetectedSeasonNumber;
         movie.EpisodeNumber = movie.DetectedEpisodeNumber;
         movie.DescriptionOverride = null;
+        movie.ReleaseYearOverride = null;
         _movieTitle = MediaDisplayText.TitleOrFallback(movie.DisplayTitle, "Untitled movie");
         EditableTitle = movie.DisplayTitle;
         EditableDescription = movie.DisplayDescription ?? string.Empty;
         Description = FormatDescription(movie.DisplayDescription);
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = string.Empty;
         EditableThumbnailPath = movie.ThumbnailPath ?? string.Empty;
         ThumbnailPath = movie.ThumbnailPath;
         SelectedMediaType = movie.MediaType;
         HeaderMetadata = JoinMetadata(
-            movie.ReleaseYear?.ToString(),
+            movie.EffectiveReleaseYear?.ToString(),
             MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
             MediaCategoryDisplay.Name(movie));
         PopulateMetadata(movie);
@@ -634,6 +659,53 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     {
         movie.ThumbnailOverride = normalizedPath;
         movie.ThumbnailPath = normalizedPath;
+        await _mediaItemRepository.UpdateAsync(movie);
+        return true;
+    }
+
+    private async Task SaveReleaseYearAsync()
+    {
+        var movie = _movie;
+        if (movie is null)
+        {
+            return;
+        }
+
+        int? normalizedReleaseYear;
+        try
+        {
+            normalizedReleaseYear = MediaReleaseYearValidation.Normalize(EditableReleaseYear);
+        }
+        catch (ArgumentException exception)
+        {
+            ReleaseYearStatus = exception.Message;
+            return;
+        }
+
+        var saved = _mediaReleaseYearService is not null
+            ? await _mediaReleaseYearService.SaveAsync(movie.Id, normalizedReleaseYear)
+            : await SaveReleaseYearDirectlyAsync(movie, normalizedReleaseYear);
+        if (!saved)
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        movie.ReleaseYearOverride = normalizedReleaseYear;
+        EditableReleaseYear = movie.EffectiveReleaseYear?.ToString() ?? string.Empty;
+        HeaderMetadata = JoinMetadata(
+            movie.EffectiveReleaseYear?.ToString(),
+            MediaRuntimeFormatter.Format(movie.RuntimeSeconds),
+            MediaCategoryDisplay.Name(movie));
+        PopulateMetadata(movie);
+        ReleaseYearStatus = normalizedReleaseYear is null
+            ? "Custom release year cleared."
+            : "Custom release year saved.";
+    }
+
+    private async Task<bool> SaveReleaseYearDirectlyAsync(MediaItem movie, int? releaseYear)
+    {
+        movie.ReleaseYearOverride = releaseYear;
         await _mediaItemRepository.UpdateAsync(movie);
         return true;
     }
@@ -696,7 +768,7 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         MetadataItems.Clear();
         AddMetadata("Library", movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies");
         AddMetadata("Category", MediaCategoryDisplay.Name(movie));
-        AddMetadata("Release year", movie.ReleaseYear?.ToString() ?? "Unknown");
+        AddMetadata("Release year", movie.EffectiveReleaseYear?.ToString() ?? "Unknown");
         AddMetadata("Runtime", MediaRuntimeFormatter.Format(movie.RuntimeSeconds) is { Length: > 0 } runtime ? runtime : "Unknown");
         AddMetadata("Playback", PlaybackText(movie));
         AddMetadata("Added", FormatDate(movie.DateAdded));

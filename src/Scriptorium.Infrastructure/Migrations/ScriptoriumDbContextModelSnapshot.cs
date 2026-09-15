@@ -271,6 +271,9 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<int?>("ReleaseYear")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("ReleaseYearOverride")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("RuntimeSeconds")
                         .HasColumnType("INTEGER");
 

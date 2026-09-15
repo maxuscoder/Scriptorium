@@ -19,7 +19,7 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public string? ThumbnailPath => movie.ThumbnailPath;
 
-    public string ReleaseYear => movie.ReleaseYear?.ToString() ?? "Year unknown";
+    public string ReleaseYear => movie.EffectiveReleaseYear?.ToString() ?? "Year unknown";
 
     public string Runtime => MediaRuntimeFormatter.Format(movie.RuntimeSeconds);
 

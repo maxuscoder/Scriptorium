@@ -26,6 +26,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaGroupingService? _mediaGroupingService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
+    private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IConfirmationDialog? _confirmationDialog;
     private readonly ITvShowHierarchySynchronizer? _tvShowHierarchySynchronizer;
@@ -55,6 +56,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private string _metadataResetStatus = string.Empty;
     private string _editableDescription = string.Empty;
     private string _descriptionStatus = string.Empty;
+    private string _editableReleaseYear = string.Empty;
+    private string _releaseYearStatus = string.Empty;
     private bool _disposed;
 
     public TvShowDetailsPageViewModel(
@@ -73,7 +76,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         IMediaGroupingService? mediaGroupingService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
-        IMediaDescriptionService? mediaDescriptionService = null)
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IMediaReleaseYearService? mediaReleaseYearService = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -86,6 +90,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaDescriptionService = mediaDescriptionService;
+        _mediaReleaseYearService = mediaReleaseYearService;
         _confirmationDialog = confirmationDialog;
         _tvShowHierarchySynchronizer = tvShowHierarchySynchronizer;
         _playbackProgressService = playbackProgressService;
@@ -107,6 +112,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         SaveThumbnailCommand = new AsyncRelayCommand(SaveThumbnailAsync, () => SelectedEpisode is not null);
         ResetMetadataCommand = new AsyncRelayCommand(ResetMetadataAsync, () => SelectedEpisode is not null);
         SaveDescriptionCommand = new AsyncRelayCommand(SaveDescriptionAsync, () => SelectedEpisode is not null);
+        SaveReleaseYearCommand = new AsyncRelayCommand(SaveReleaseYearAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
         if (_player is not null)
         {
@@ -227,6 +233,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             TitleStatus = string.Empty;
             EditableDescription = value?.Description ?? string.Empty;
             DescriptionStatus = string.Empty;
+            EditableReleaseYear = value?.ReleaseYear?.ToString() ?? string.Empty;
+            ReleaseYearStatus = string.Empty;
             SelectedMediaType = value?.MediaType;
             MediaTypeStatus = string.Empty;
             EditableSeasonNumber = value?.SeasonNumber.ToString() ?? string.Empty;
@@ -368,6 +376,18 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _descriptionStatus, value);
     }
 
+    public string EditableReleaseYear
+    {
+        get => _editableReleaseYear;
+        set => SetProperty(ref _editableReleaseYear, value);
+    }
+
+    public string ReleaseYearStatus
+    {
+        get => _releaseYearStatus;
+        private set => SetProperty(ref _releaseYearStatus, value);
+    }
+
     public ICommand BackCommand { get; }
     public ICommand SelectEpisodeCommand { get; }
     public ICommand ContinueWatchingCommand { get; }
@@ -385,6 +405,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand SaveThumbnailCommand { get; }
     public ICommand ResetMetadataCommand { get; }
     public ICommand SaveDescriptionCommand { get; }
+    public ICommand SaveReleaseYearCommand { get; }
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
@@ -997,6 +1018,39 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             : "Custom description saved.";
     }
 
+    private async Task SaveReleaseYearAsync()
+    {
+        var episode = SelectedEpisode;
+        if (episode is null || _mediaReleaseYearService is null)
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        int? normalizedReleaseYear;
+        try
+        {
+            normalizedReleaseYear = MediaReleaseYearValidation.Normalize(EditableReleaseYear);
+        }
+        catch (ArgumentException exception)
+        {
+            ReleaseYearStatus = exception.Message;
+            return;
+        }
+
+        if (!await _mediaReleaseYearService.SaveAsync(episode.MediaItemId, normalizedReleaseYear))
+        {
+            ReleaseYearStatus = "The release year could not be saved.";
+            return;
+        }
+
+        episode.SetReleaseYearOverride(normalizedReleaseYear);
+        EditableReleaseYear = episode.ReleaseYear?.ToString() ?? string.Empty;
+        ReleaseYearStatus = normalizedReleaseYear is null
+            ? "Custom release year cleared."
+            : "Custom release year saved.";
+    }
+
     private async Task RefreshCategoryOptionsAsync()
     {
         var categories = await _categoryRepository.GetAllAsync();
@@ -1157,6 +1211,8 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string? Description => episode.MediaItem.DisplayDescription;
 
+    public int? ReleaseYear => episode.MediaItem.EffectiveReleaseYear;
+
     public bool IsFavorite => episode.MediaItem.IsFavorite;
 
     public bool IsCompleted => episode.MediaItem.IsCompleted;
@@ -1238,10 +1294,17 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         OnPropertyChanged(nameof(Description));
     }
 
+    internal void SetReleaseYearOverride(int? releaseYear)
+    {
+        episode.MediaItem.ReleaseYearOverride = releaseYear;
+        OnPropertyChanged(nameof(ReleaseYear));
+    }
+
     internal void SetMetadataReset()
     {
         episode.MediaItem.TitleOverride = null;
         episode.MediaItem.DescriptionOverride = null;
+        episode.MediaItem.ReleaseYearOverride = null;
         episode.MediaItem.ThumbnailOverride = null;
         episode.MediaItem.ThumbnailPath = episode.MediaItem.DetectedThumbnailPath;
         episode.MediaItem.MediaTypeOverride = null;

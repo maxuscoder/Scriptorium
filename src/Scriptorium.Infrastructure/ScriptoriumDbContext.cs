@@ -152,6 +152,7 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.Property(item => item.Title).IsRequired();
             entity.Property(item => item.TitleOverride);
             entity.Property(item => item.DescriptionOverride);
+            entity.Property(item => item.ReleaseYearOverride);
             entity.Property(item => item.DetectedThumbnailPath);
             entity.Property(item => item.ThumbnailOverride);
             entity.Property(item => item.DetectedMediaType);
