@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Collections;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
@@ -29,6 +30,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
+    private readonly AsyncRelayCommand _retryLibraryLoadCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
     private readonly AsyncRelayCommand _openTvShowCommand;
@@ -39,6 +41,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly AsyncRelayCommand _resetLibraryCommand;
     private string? _statusMessage;
     private bool _isScanning;
+    private bool _isLoading;
+    private bool _hasLibraryLoadError;
     private int _indexedMediaCount;
     private int _missingMediaCount;
     private CancellationTokenSource? _scanCancellationSource;
@@ -113,8 +117,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             mediaGroupingService,
             RefreshLibraryDataAsync,
             message => StatusMessage = message);
-        _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning);
+        _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning && !IsLoading);
         RefreshLibraryCommand = _refreshLibraryCommand;
+        _retryLibraryLoadCommand = new AsyncRelayCommand(RetryLibraryLoadAsync, () => !IsScanning && !IsLoading);
+        RetryLibraryLoadCommand = _retryLibraryLoadCommand;
         _cancelScanCommand = new RelayCommand(CancelScan, () => IsScanning);
         CancelScanCommand = _cancelScanCommand;
         _openTutorialCommand = new AsyncRelayCommand(OpenTutorialAsync, parameter => parameter is TutorialCollectionViewModel);
@@ -149,7 +155,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         SetListLayoutCommand = _setListLayoutCommand;
         _clearFiltersCommand = new RelayCommand(ClearFilters, () => HasActiveFilters);
         ClearFiltersCommand = _clearFiltersCommand;
-        _resetLibraryCommand = new AsyncRelayCommand(ResetLibraryAsync, () => !IsScanning);
+        _resetLibraryCommand = new AsyncRelayCommand(ResetLibraryAsync, () => !IsScanning && !IsLoading);
         ResetLibraryCommand = _resetLibraryCommand;
         MediaTypeFilters =
         [
@@ -293,13 +299,13 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public TvShowGroupManagementViewModel TvShowGroupManagement { get; }
 
     /// <summary>Gets every supported media item currently indexed in the library.</summary>
-    public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
+    public BatchObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
 
     /// <summary>Gets the selectable media-type filters.</summary>
     public IReadOnlyList<LibraryFilterOptionViewModel<MediaType>> MediaTypeFilters { get; }
 
     /// <summary>Gets the selectable category filters.</summary>
-    public ObservableCollection<LibraryFilterOptionViewModel<Guid>> CategoryFilters { get; } = [];
+    public BatchObservableCollection<LibraryFilterOptionViewModel<Guid>> CategoryFilters { get; } = [];
 
     /// <summary>Gets the category-selection summary used by the filter panel.</summary>
     public string CategoryFilterSummary => CategoryFilters.Count(filter => filter.IsSelected) switch
@@ -400,14 +406,17 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Clears library state and restores the default presentation without changing the view mode.</summary>
     public ICommand ResetLibraryCommand { get; }
 
+    /// <summary>Retries loading the library after an initial-load failure.</summary>
+    public ICommand RetryLibraryLoadCommand { get; }
+
     /// <summary>Gets the tutorial collections available in the library.</summary>
-    public ObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
+    public BatchObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
 
     /// <summary>Gets the television-show collections available in the library.</summary>
-    public ObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
+    public BatchObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
 
     /// <summary>Gets the movies available in the library.</summary>
-    public ObservableCollection<MovieItemViewModel> Movies { get; } = [];
+    public BatchObservableCollection<MovieItemViewModel> Movies { get; } = [];
 
     /// <summary>Gets whether the browser has no media items to display.</summary>
     public bool IsLibraryEmpty => MediaItems.Count == 0;
@@ -491,6 +500,34 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         private set => SetProperty(ref _statusMessage, value);
     }
 
+    /// <summary>Gets whether library data is being refreshed.</summary>
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
+        {
+            if (SetProperty(ref _isLoading, value))
+            {
+                _refreshLibraryCommand.NotifyCanExecuteChanged();
+                _retryLibraryLoadCommand.NotifyCanExecuteChanged();
+                _resetLibraryCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(LibrarySummary));
+                OnPropertyChanged(nameof(IsLibraryEmpty));
+            }
+        }
+    }
+
+    /// <summary>Gets whether the latest initial library load failed.</summary>
+    public bool HasLibraryLoadError
+    {
+        get => _hasLibraryLoadError;
+        private set => SetProperty(ref _hasLibraryLoadError, value);
+    }
+
+    /// <summary>Gets the user-facing initial-load error.</summary>
+    public string LibraryLoadErrorMessage =>
+        "The library could not be loaded. Check the database and try again.";
+
     /// <summary>Gets whether a library scan is currently in progress.</summary>
     public bool IsScanning
     {
@@ -500,6 +537,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             if (SetProperty(ref _isScanning, value))
             {
                 _refreshLibraryCommand.NotifyCanExecuteChanged();
+                _retryLibraryLoadCommand.NotifyCanExecuteChanged();
                 _cancelScanCommand.NotifyCanExecuteChanged();
                 FolderManagement.NotifyScanningStateChanged();
                 _resetLibraryCommand.NotifyCanExecuteChanged();
@@ -536,7 +574,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Gets the current high-level library state for display.</summary>
-    public string LibrarySummary => IsScanning
+    public string LibrarySummary => IsLoading
+        ? "Loading library…"
+        : IsScanning
         ? "Scanning configured folders…"
         : $"{IndexedMediaCount} indexed media file{(IndexedMediaCount == 1 ? string.Empty : "s")}; {MissingMediaCount} missing.";
 
@@ -581,34 +621,55 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
     public async Task RefreshLibraryDataAsync()
     {
-        await FolderManagement.RefreshAsync();
-        var mediaItems = await _mediaItemRepository.GetAllAsync();
-        _availableMediaItems = mediaItems
-            .Where(mediaItem => mediaItem.MediaType.IsSupported())
-            .ToArray();
-        await RefreshCategoryFiltersAsync();
-        ApplyFilters();
+        var ownsLoadingState = !IsLoading;
+        if (ownsLoadingState)
+        {
+            IsLoading = true;
+        }
 
-        IndexedMediaCount = mediaItems.Count;
-        MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
-        RefreshMovies(mediaItems);
-        await RefreshTutorialsAsync();
-        await RefreshTvShowsAsync();
-        await TvShowGroupManagement.RefreshAsync();
+        try
+        {
+            await FolderManagement.RefreshAsync();
+            var mediaItems = await _mediaItemRepository.GetAllAsync();
+            _availableMediaItems = mediaItems
+                .Where(mediaItem => mediaItem.MediaType.IsSupported())
+                .ToArray();
+            await RefreshCategoryFiltersAsync();
+            ApplyFilters();
+
+            IndexedMediaCount = mediaItems.Count;
+            MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
+            RefreshMovies(mediaItems);
+            await RefreshTutorialsAsync();
+            await RefreshTvShowsAsync();
+            await TvShowGroupManagement.RefreshAsync();
+            HasLibraryLoadError = false;
+        }
+        finally
+        {
+            if (ownsLoadingState)
+            {
+                IsLoading = false;
+            }
+        }
     }
 
     private async Task LoadInitialLibraryDataAsync()
     {
+        HasLibraryLoadError = false;
+
         try
         {
             await RefreshLibraryDataAsync();
         }
-        catch
+        catch (Exception)
         {
             _initialDataLoadTask = null;
-            throw;
+            HasLibraryLoadError = true;
         }
     }
+
+    private async Task RetryLibraryLoadAsync() => await EnsureLibraryDataLoadedAsync();
 
     private async Task RefreshCategoryFiltersAsync()
     {
@@ -617,15 +678,13 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         var removedCategoryFilterIds = _selectedCategoryFilterIds.RemoveWhere(categoryId => !availableCategoryIds.Contains(categoryId));
 
         _suppressFilterStateSaving = true;
-        CategoryFilters.Clear();
-        foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            var filter = new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFiltersAndSaveFilterState)
+        CategoryFilters.ReplaceRange(
+            categories
+                .OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(category => new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFiltersAndSaveFilterState)
             {
                 IsSelected = _selectedCategoryFilterIds.Contains(category.Id)
-            };
-            CategoryFilters.Add(filter);
-        }
+            }));
 
         _suppressFilterStateSaving = false;
 
@@ -689,11 +748,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private void ApplyFilters(bool updateGroupedMedia = false)
     {
-        MediaItems.Clear();
-        foreach (var mediaItem in FilterMediaItems())
-        {
-            MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
-        }
+        MediaItems.ReplaceRange(FilterMediaItems().Select(mediaItem => new LibraryMediaItemViewModel(mediaItem)));
 
         if (updateGroupedMedia)
         {
@@ -1080,11 +1135,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public async Task RefreshTutorialsAsync()
     {
         var courses = await _courseRepository.GetAllAsync();
-        Tutorials.Clear();
-        foreach (var course in courses)
-        {
-            Tutorials.Add(new TutorialCollectionViewModel(course));
-        }
+        Tutorials.ReplaceRange(courses.Select(course => new TutorialCollectionViewModel(course)));
 
         SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
 
@@ -1096,11 +1147,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public async Task RefreshTvShowsAsync()
     {
         var shows = await _tvShowRepository.GetAllAsync();
-        TvShows.Clear();
-        foreach (var show in shows)
-        {
-            TvShows.Add(new TvShowCollectionViewModel(show));
-        }
+        TvShows.ReplaceRange(shows.Select(show => new TvShowCollectionViewModel(show)));
 
         SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
 
@@ -1110,11 +1157,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private void RefreshMovies(IEnumerable<MediaItem> mediaItems)
     {
-        Movies.Clear();
-        foreach (var movie in OrderMediaItems(mediaItems.Where(mediaItem => mediaItem.MediaType == MediaType.Movie)))
-        {
-            Movies.Add(new MovieItemViewModel(movie));
-        }
+        Movies.ReplaceRange(
+            OrderMediaItems(mediaItems.Where(mediaItem => mediaItem.MediaType == MediaType.Movie))
+                .Select(movie => new MovieItemViewModel(movie)));
 
         OnPropertyChanged(nameof(MovieCountText));
         OnPropertyChanged(nameof(HasMovies));
@@ -1352,6 +1397,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private static void SortDisplayedGroups<T>(ObservableCollection<T> groups, IEnumerable<T> orderedGroups)
     {
         var reorderedGroups = orderedGroups.ToArray();
+        if (groups is BatchObservableCollection<T> batchGroups)
+        {
+            batchGroups.ReplaceRange(reorderedGroups);
+            return;
+        }
+
         groups.Clear();
         foreach (var group in reorderedGroups)
         {
