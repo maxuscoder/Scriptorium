@@ -101,14 +101,18 @@ public sealed class TvShowGroupManagementViewModel : ViewModelBase
 
     public ICommand SplitGroupCommand { get; }
 
-    public async Task RefreshAsync()
+    public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         var selectedGroupId = SelectedGroup?.Id;
         var targetGroupId = TargetGroup?.Id;
+        var groups = await _mediaGroupingService.GetTvShowGroupsAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var refreshedGroups = groups.Select(group => new ManualTvShowGroupViewModel(group)).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
         Groups.Clear();
-        foreach (var group in await _mediaGroupingService.GetTvShowGroupsAsync())
+        foreach (var group in refreshedGroups)
         {
-            Groups.Add(new ManualTvShowGroupViewModel(group));
+            Groups.Add(group);
         }
 
         SelectedGroup = selectedGroupId is { } selectedId

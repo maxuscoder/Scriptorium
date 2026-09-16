@@ -31,6 +31,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly AsyncRelayCommand _retryLibraryLoadCommand;
+    private readonly RelayCommand _cancelLibraryLoadCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
     private readonly AsyncRelayCommand _openTvShowCommand;
@@ -43,9 +44,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private bool _isScanning;
     private bool _isLoading;
     private bool _hasLibraryLoadError;
+    private bool _wasLibraryLoadCancelled;
     private int _indexedMediaCount;
     private int _missingMediaCount;
     private CancellationTokenSource? _scanCancellationSource;
+    private CancellationTokenSource? _libraryLoadCancellationSource;
     private string? _currentScanPath;
     private int _processedFileCount;
     private int _discoveredMediaCount;
@@ -110,17 +113,19 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
         FolderManagement = folderManagementViewModelFactory.Create(
-            RefreshLibraryDataAsync,
+            () => RefreshLibraryDataAsync(),
             message => StatusMessage = message,
             () => IsScanning);
         TvShowGroupManagement = new TvShowGroupManagementViewModel(
             mediaGroupingService,
-            RefreshLibraryDataAsync,
+            () => RefreshLibraryDataAsync(),
             message => StatusMessage = message);
         _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning && !IsLoading);
         RefreshLibraryCommand = _refreshLibraryCommand;
         _retryLibraryLoadCommand = new AsyncRelayCommand(RetryLibraryLoadAsync, () => !IsScanning && !IsLoading);
         RetryLibraryLoadCommand = _retryLibraryLoadCommand;
+        _cancelLibraryLoadCommand = new RelayCommand(CancelLibraryLoad, () => IsLoading);
+        CancelLibraryLoadCommand = _cancelLibraryLoadCommand;
         _cancelScanCommand = new RelayCommand(CancelScan, () => IsScanning);
         CancelScanCommand = _cancelScanCommand;
         _openTutorialCommand = new AsyncRelayCommand(OpenTutorialAsync, parameter => parameter is TutorialCollectionViewModel);
@@ -265,6 +270,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
+        _libraryLoadCancellationSource?.Cancel();
+        _libraryLoadCancellationSource = null;
     }
 
     /// <summary>
@@ -409,6 +416,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Retries loading the library after an initial-load failure.</summary>
     public ICommand RetryLibraryLoadCommand { get; }
 
+    /// <summary>Requests cancellation of an active library data load.</summary>
+    public ICommand CancelLibraryLoadCommand { get; }
+
     /// <summary>Gets the tutorial collections available in the library.</summary>
     public BatchObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
 
@@ -510,6 +520,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             {
                 _refreshLibraryCommand.NotifyCanExecuteChanged();
                 _retryLibraryLoadCommand.NotifyCanExecuteChanged();
+                _cancelLibraryLoadCommand.NotifyCanExecuteChanged();
                 _resetLibraryCommand.NotifyCanExecuteChanged();
                 OnPropertyChanged(nameof(LibrarySummary));
                 OnPropertyChanged(nameof(IsLibraryEmpty));
@@ -521,12 +532,37 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public bool HasLibraryLoadError
     {
         get => _hasLibraryLoadError;
-        private set => SetProperty(ref _hasLibraryLoadError, value);
+        private set
+        {
+            if (SetProperty(ref _hasLibraryLoadError, value))
+            {
+                OnPropertyChanged(nameof(HasLibraryLoadIssue));
+                OnPropertyChanged(nameof(LibraryLoadMessage));
+            }
+        }
     }
 
-    /// <summary>Gets the user-facing initial-load error.</summary>
-    public string LibraryLoadErrorMessage =>
-        "The library could not be loaded. Check the database and try again.";
+    /// <summary>Gets whether library loading ended before a complete refresh.</summary>
+    public bool WasLibraryLoadCancelled
+    {
+        get => _wasLibraryLoadCancelled;
+        private set
+        {
+            if (SetProperty(ref _wasLibraryLoadCancelled, value))
+            {
+                OnPropertyChanged(nameof(HasLibraryLoadIssue));
+                OnPropertyChanged(nameof(LibraryLoadMessage));
+            }
+        }
+    }
+
+    /// <summary>Gets whether a load failure or cancellation needs user attention.</summary>
+    public bool HasLibraryLoadIssue => HasLibraryLoadError || WasLibraryLoadCancelled;
+
+    /// <summary>Gets the user-facing load failure or cancellation message.</summary>
+    public string LibraryLoadMessage => WasLibraryLoadCancelled
+        ? "Library loading was cancelled. Try again to load it."
+        : "The library could not be loaded. Check the database and try again.";
 
     /// <summary>Gets whether a library scan is currently in progress.</summary>
     public bool IsScanning
@@ -619,36 +655,68 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         : string.Empty;
 
     /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
-    public async Task RefreshLibraryDataAsync()
+    public async Task RefreshLibraryDataAsync(CancellationToken cancellationToken = default)
     {
         var ownsLoadingState = !IsLoading;
+        CancellationTokenSource? refreshCancellationSource = null;
+        var previousAvailableMediaItems = _availableMediaItems;
+        var previousMediaItems = MediaItems.ToArray();
+        var previousCategoryFilters = CategoryFilters.ToArray();
+        var previousTutorials = Tutorials.ToArray();
+        var previousTvShows = TvShows.ToArray();
+        var previousMovies = Movies.ToArray();
+        var previousIndexedMediaCount = IndexedMediaCount;
+        var previousMissingMediaCount = MissingMediaCount;
         if (ownsLoadingState)
         {
+            refreshCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _libraryLoadCancellationSource = refreshCancellationSource;
+            cancellationToken = refreshCancellationSource.Token;
             IsLoading = true;
         }
 
         try
         {
-            await FolderManagement.RefreshAsync();
-            var mediaItems = await _mediaItemRepository.GetAllAsync();
+            await FolderManagement.RefreshAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            var mediaItems = await _mediaItemRepository.GetAllAsync(cancellationToken);
             _availableMediaItems = mediaItems
                 .Where(mediaItem => mediaItem.MediaType.IsSupported())
                 .ToArray();
-            await RefreshCategoryFiltersAsync();
+            await RefreshCategoryFiltersAsync(cancellationToken);
             ApplyFilters();
 
             IndexedMediaCount = mediaItems.Count;
             MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
             RefreshMovies(mediaItems);
-            await RefreshTutorialsAsync();
-            await RefreshTvShowsAsync();
-            await TvShowGroupManagement.RefreshAsync();
+            await RefreshTutorialsAsync(cancellationToken);
+            await RefreshTvShowsAsync(cancellationToken);
+            await TvShowGroupManagement.RefreshAsync(cancellationToken);
             HasLibraryLoadError = false;
+            WasLibraryLoadCancelled = false;
+        }
+        catch (OperationCanceledException)
+        {
+            _availableMediaItems = previousAvailableMediaItems;
+            MediaItems.ReplaceRange(previousMediaItems);
+            CategoryFilters.ReplaceRange(previousCategoryFilters);
+            Tutorials.ReplaceRange(previousTutorials);
+            TvShows.ReplaceRange(previousTvShows);
+            Movies.ReplaceRange(previousMovies);
+            IndexedMediaCount = previousIndexedMediaCount;
+            MissingMediaCount = previousMissingMediaCount;
+            throw;
         }
         finally
         {
             if (ownsLoadingState)
             {
+                if (ReferenceEquals(_libraryLoadCancellationSource, refreshCancellationSource))
+                {
+                    _libraryLoadCancellationSource = null;
+                }
+
+                refreshCancellationSource?.Dispose();
                 IsLoading = false;
             }
         }
@@ -657,23 +725,48 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private async Task LoadInitialLibraryDataAsync()
     {
         HasLibraryLoadError = false;
+        WasLibraryLoadCancelled = false;
+        using var cancellationSource = new CancellationTokenSource();
+        _libraryLoadCancellationSource = cancellationSource;
+        IsLoading = true;
 
         try
         {
-            await RefreshLibraryDataAsync();
+            await RefreshLibraryDataAsync(cancellationSource.Token);
+        }
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
+        {
+            _initialDataLoadTask = null;
+            WasLibraryLoadCancelled = true;
         }
         catch (Exception)
         {
             _initialDataLoadTask = null;
             HasLibraryLoadError = true;
         }
+        finally
+        {
+            if (ReferenceEquals(_libraryLoadCancellationSource, cancellationSource))
+            {
+                _libraryLoadCancellationSource = null;
+            }
+
+            IsLoading = false;
+        }
     }
 
     private async Task RetryLibraryLoadAsync() => await EnsureLibraryDataLoadedAsync();
 
-    private async Task RefreshCategoryFiltersAsync()
+    private void CancelLibraryLoad()
     {
-        var categories = await _categoryRepository.GetAllAsync();
+        _libraryLoadCancellationSource?.Cancel();
+        StatusMessage = "Stopping library load…";
+    }
+
+    private async Task RefreshCategoryFiltersAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await _categoryRepository.GetAllAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         var availableCategoryIds = categories.Select(category => category.Id).ToHashSet();
         var removedCategoryFilterIds = _selectedCategoryFilterIds.RemoveWhere(categoryId => !availableCategoryIds.Contains(categoryId));
 
@@ -1132,9 +1225,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Reloads tutorial collections in alphabetical order.</summary>
-    public async Task RefreshTutorialsAsync()
+    public async Task RefreshTutorialsAsync(CancellationToken cancellationToken = default)
     {
-        var courses = await _courseRepository.GetAllAsync();
+        var courses = await _courseRepository.GetAllAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         Tutorials.ReplaceRange(courses.Select(course => new TutorialCollectionViewModel(course)));
 
         SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
@@ -1144,9 +1238,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Reloads television-show collections in alphabetical order.</summary>
-    public async Task RefreshTvShowsAsync()
+    public async Task RefreshTvShowsAsync(CancellationToken cancellationToken = default)
     {
-        var shows = await _tvShowRepository.GetAllAsync();
+        var shows = await _tvShowRepository.GetAllAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         TvShows.ReplaceRange(shows.Select(show => new TvShowCollectionViewModel(show)));
 
         SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
@@ -1190,10 +1285,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 StatusMessage += $" Skipped {scanResult.NonCriticalErrorCount} inaccessible or unreadable path{(scanResult.NonCriticalErrorCount == 1 ? string.Empty : "s")}.";
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
         {
             await RefreshLibraryDataAsync();
             StatusMessage = "Library scan cancelled.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Library refresh cancelled.";
         }
         catch
         {

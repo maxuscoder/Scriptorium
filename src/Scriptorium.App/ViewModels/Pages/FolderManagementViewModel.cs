@@ -148,15 +148,21 @@ public sealed class FolderManagementViewModel : ViewModelBase
         private set => SetProperty(ref _selectedFolderPath, value);
     }
 
-    public async Task RefreshAsync()
+    public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
-        var folders = await _libraryFolderRepository.GetAllAsync();
+        var folders = await _libraryFolderRepository.GetAllAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         var selectedFolderId = SelectedFolder?.Id;
+        var refreshedFolders = folders
+            .OrderBy(folder => folder.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(folder => new ConfiguredFolderViewModel(folder, _libraryFolderValidator.Validate(folder.Path)))
+            .ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
 
         ConfiguredFolders.Clear();
-        foreach (var folder in folders.OrderBy(folder => folder.Name, StringComparer.OrdinalIgnoreCase))
+        foreach (var folder in refreshedFolders)
         {
-            ConfiguredFolders.Add(new ConfiguredFolderViewModel(folder, _libraryFolderValidator.Validate(folder.Path)));
+            ConfiguredFolders.Add(folder);
         }
 
         SelectedFolder = selectedFolderId is null
