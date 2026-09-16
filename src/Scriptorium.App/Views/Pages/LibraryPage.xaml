@@ -3,36 +3,39 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library"
-    Loaded="OnLoaded">
-    <ScrollViewer x:Name="PageScrollViewer" PreviewMouseWheel="OnPagePreviewMouseWheel" ScrollChanged="OnPageScrollChanged" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,28,32,48" MaxWidth="1600">
-            <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Library" />
-                        <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
-                            <TextBlock Style="{StaticResource Text.Badge}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding MediaCountText}" />
-                        </Border>
-                    </StackPanel>
-                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="Your personal collection, organized for the next thing you want to watch." />
+    Loaded="OnLoaded"
+    PreviewMouseWheel="OnPagePreviewMouseWheel"
+    ScrollViewer.ScrollChanged="OnPageScrollChanged">
+    <Grid Margin="32,28,32,32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="Library" />
+                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
+                        <TextBlock Style="{StaticResource Text.Badge}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding MediaCountText}" />
+                    </Border>
                 </StackPanel>
-                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Margin="0,0,8,8" Command="{Binding FolderManagement.ImportFolderCommand}" Content="Add folder" Style="{StaticResource Button.Secondary}" />
-                    <Button Margin="0,0,0,8" Command="{Binding RefreshLibraryCommand}">
-                        <Button.Style>
-                            <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
-                                <Setter Property="Content" Value="Rescan library" />
-                                <Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Content" Value="Scanning&#x2026;" /></DataTrigger></Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
-                </WrapPanel>
-            </Grid>
-            <library:LibraryToolbar x:Name="Toolbar" />
-            <library:LibraryMediaBrowser />
-            <library:WatchedFoldersPanel />
-            <library:TvShowGroupManager />
-        </StackPanel>
-    </ScrollViewer>
+                <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="Your personal collection, organized for the next thing you want to watch." />
+            </StackPanel>
+            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Margin="0,0,8,8" Command="{Binding FolderManagement.ImportFolderCommand}" Content="Add folder" Style="{StaticResource Button.Secondary}" />
+                <Button Margin="0,0,0,8" Command="{Binding RefreshLibraryCommand}">
+                    <Button.Style>
+                        <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
+                            <Setter Property="Content" Value="Rescan library" />
+                            <Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Content" Value="Scanning&#x2026;" /></DataTrigger></Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </WrapPanel>
+        </Grid>
+        <library:LibraryToolbar Grid.Row="1" x:Name="Toolbar" />
+        <library:LibraryMediaBrowser Grid.Row="2" />
+    </Grid>
 </UserControl>
