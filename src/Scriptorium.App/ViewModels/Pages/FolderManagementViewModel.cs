@@ -53,7 +53,9 @@ public sealed class FolderManagementViewModel : ViewModelBase
         _isScanning = isScanning;
 
         ImportFolderCommand = new AsyncRelayCommand(ImportFolderAsync);
-        _removeFolderCommand = new AsyncRelayCommand(RemoveSelectedFolderAsync, () => SelectedFolder is not null);
+        _removeFolderCommand = new AsyncRelayCommand(
+            RemoveSelectedFolderAsync,
+            parameter => parameter is ConfiguredFolderViewModel || SelectedFolder is not null);
         RemoveFolderCommand = _removeFolderCommand;
         _replaceFolderCommand = new AsyncRelayCommand(ReplaceSelectedFolderAsync, () => SelectedFolder is not null && !_isScanning());
         ReplaceFolderCommand = _replaceFolderCommand;
@@ -209,12 +211,18 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
         await RefreshAsync();
         SelectedFolderPath = folderPath;
+        await _refreshLibraryData();
         _setStatusMessage("Library folder added.");
     }
 
-    private async Task RemoveSelectedFolderAsync()
+    private async Task RemoveSelectedFolderAsync(object? parameter)
     {
-        var configuredFolder = SelectedFolder;
+        if (parameter is ConfiguredFolderViewModel requestedFolder)
+        {
+            SelectedFolder = requestedFolder;
+        }
+
+        var configuredFolder = parameter as ConfiguredFolderViewModel ?? SelectedFolder;
         if (configuredFolder is null || !_confirmationDialog.Confirm(
                 $"Remove '{configuredFolder.DisplayName}' from the library? Indexed media will be kept.",
                 "Remove library folder"))
@@ -240,6 +248,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
         await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
         await RefreshAsync();
+        await _refreshLibraryData();
         _setStatusMessage(configuredFolder.IsEnabled
             ? "Folder enabled for future scans."
             : "Folder disabled and excluded from future scans.");

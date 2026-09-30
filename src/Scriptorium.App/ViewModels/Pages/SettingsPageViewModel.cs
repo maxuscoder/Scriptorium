@@ -27,6 +27,10 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     public override string Title => "Settings";
 
+    public FolderManagementViewModel FolderManagement => _libraryPage.FolderManagement;
+
+    public Task RefreshFoldersAsync() => FolderManagement.RefreshAsync();
+
     public IReadOnlyList<string> LayoutOptions { get; } = ["Grid", "List"];
 
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
