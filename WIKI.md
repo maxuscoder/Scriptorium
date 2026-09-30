@@ -174,6 +174,19 @@ Guidelines:
 - Use efficient SQLite queries.
 - Load data lazily whenever possible.
 
+## Runtime performance telemetry
+
+The application records structured timings for library scans, library refreshes,
+search requests, and the underlying media-browse database query. Normal
+operations are logged at `Debug`; operations exceeding their configured
+threshold are logged at `Warning`. Records include elapsed milliseconds,
+outcome, result counts, and relevant query metadata, without recording the
+search text itself.
+
+Thresholds are configured in `src/Scriptorium.App/appsettings.json` under the
+`Performance` section. The timing records are written to the same rolling log
+files as the rest of the application telemetry.
+
 ---
 
 # Development Rules

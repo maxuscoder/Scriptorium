@@ -19,6 +19,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IFavoriteService _favoriteService;
     private readonly ILogger<SearchPageViewModel>? _logger;
+    private readonly IOperationMetrics? _operationMetrics;
     private CancellationTokenSource? _searchCancellationSource;
     private string _query = string.Empty;
     private string? _statusMessage;
@@ -31,12 +32,14 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         IMediaItemRepository mediaItemRepository,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
         IFavoriteService favoriteService,
-        ILogger<SearchPageViewModel>? logger = null)
+        ILogger<SearchPageViewModel>? logger = null,
+        IOperationMetrics? operationMetrics = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _detailsCoordinator = detailsCoordinator;
         _favoriteService = favoriteService;
         _logger = logger;
+        _operationMetrics = operationMetrics;
         OpenResultCommand = new AsyncRelayCommand(OpenResultAsync, parameter => parameter is SearchResultViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
         LoadMoreResultsCommand = new AsyncRelayCommand(LoadMoreResultsAsync, () => HasMoreResults && !IsSearching);
@@ -138,9 +141,13 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         int searchVersion,
         CancellationTokenSource cancellationSource)
     {
+        IOperationMetricScope? timing = null;
         try
         {
             await Task.Delay(SearchDebounceDelay, cancellationSource.Token);
+            timing = _operationMetrics?.Start("Search.Query");
+            timing?.SetTag("QueryLength", query.Length);
+            timing?.SetTag("PageSize", SearchPageSize);
             var page = await _mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
             {
                 SearchText = query,
@@ -149,18 +156,24 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
             }, cancellationToken: cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
+                timing?.SetOutcome("Superseded");
                 return;
             }
 
             _totalResultCount = page.TotalCount ?? page.Items.Count;
             AppendSearchResults(page.Items, query);
+            timing?.SetTag("ResultCount", page.Items.Count);
+            timing?.SetTag("TotalResultCount", _totalResultCount);
+            timing?.SetOutcome("Success");
         }
         catch (OperationCanceledException)
         {
+            timing?.SetOutcome("Cancelled");
             return;
         }
         catch (Exception exception)
         {
+            timing?.SetOutcome("Failed");
             _logger?.LogWarning(exception, "Search failed for query {SearchQuery}.", query);
             if (searchVersion == Volatile.Read(ref _searchVersion))
             {
@@ -169,6 +182,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         }
         finally
         {
+            timing?.Dispose();
             if (searchVersion == Volatile.Read(ref _searchVersion))
             {
                 IsSearching = false;
@@ -199,8 +213,13 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         IsSearching = true;
         NotifyPagingStateChanged();
 
+        IOperationMetricScope? timing = null;
         try
         {
+            timing = _operationMetrics?.Start("Search.LoadMore");
+            timing?.SetTag("QueryLength", query.Length);
+            timing?.SetTag("Skip", Results.Count);
+            timing?.SetTag("PageSize", SearchPageSize);
             var page = await _mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
             {
                 SearchText = query,
@@ -210,17 +229,22 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
             }, includeTotalCount: false, cancellationToken: cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
+                timing?.SetOutcome("Superseded");
                 return;
             }
 
             AppendSearchResults(page.Items, query);
+            timing?.SetTag("ResultCount", page.Items.Count);
+            timing?.SetOutcome("Success");
         }
         catch (OperationCanceledException)
         {
+            timing?.SetOutcome("Cancelled");
             return;
         }
         catch (Exception exception)
         {
+            timing?.SetOutcome("Failed");
             _logger?.LogWarning(exception, "Could not load more search results for {SearchQuery}.", query);
             if (searchVersion == Volatile.Read(ref _searchVersion))
             {
@@ -229,6 +253,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         }
         finally
         {
+            timing?.Dispose();
             if (searchVersion == Volatile.Read(ref _searchVersion))
             {
                 IsSearching = false;

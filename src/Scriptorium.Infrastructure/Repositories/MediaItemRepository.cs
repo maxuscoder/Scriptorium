@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Core.Services;
 using Scriptorium.Infrastructure.Caching;
 using System.Linq.Expressions;
 
@@ -12,7 +13,8 @@ namespace Scriptorium.Infrastructure.Repositories;
 /// </summary>
 public sealed class MediaItemRepository(
     IDbContextFactory<ScriptoriumDbContext> contextFactory,
-    IMetadataCache? metadataCache = null)
+    IMetadataCache? metadataCache = null,
+    IOperationMetrics? operationMetrics = null)
     : Repository<MediaItem>(contextFactory), IMediaItemRepository
 {
     private readonly IMetadataCache _metadataCache = metadataCache ?? MetadataCache.ForOwner(contextFactory);
@@ -164,23 +166,45 @@ public sealed class MediaItemRepository(
             throw new ArgumentOutOfRangeException(nameof(query), "A browse page must contain between 1 and 500 items.");
         }
 
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        var mediaItems = context.MediaItems
-            .AsNoTracking()
-            .Include(item => item.LibraryFolder)
-            .Include(item => item.Category);
+        using var timing = operationMetrics?.Start("Database.MediaBrowse");
+        timing?.SetTag("IncludeTotalCount", includeTotalCount);
+        timing?.SetTag("PageSize", query.PageSize);
+        timing?.SetTag("Skip", query.Skip);
+        timing?.SetTag("HasSearchText", !string.IsNullOrWhiteSpace(query.SearchText));
 
-        var filteredMediaItems = ApplyBrowseFilters(mediaItems, query);
-        int? totalCount = includeTotalCount
-            ? await filteredMediaItems.CountAsync(cancellationToken)
-            : null;
-        var orderedMediaItems = ApplyBrowseOrdering(filteredMediaItems, query);
-        var page = await orderedMediaItems
-            .Skip(query.Skip)
-            .Take(query.PageSize)
-            .ToListAsync(cancellationToken);
+        try
+        {
+            await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+            var mediaItems = context.MediaItems
+                .AsNoTracking()
+                .Include(item => item.LibraryFolder)
+                .Include(item => item.Category);
 
-        return new MediaItemBrowsePage(page, totalCount);
+            var filteredMediaItems = ApplyBrowseFilters(mediaItems, query);
+            int? totalCount = includeTotalCount
+                ? await filteredMediaItems.CountAsync(cancellationToken)
+                : null;
+            var orderedMediaItems = ApplyBrowseOrdering(filteredMediaItems, query);
+            var page = await orderedMediaItems
+                .Skip(query.Skip)
+                .Take(query.PageSize)
+                .ToListAsync(cancellationToken);
+
+            timing?.SetTag("TotalCount", totalCount);
+            timing?.SetTag("ReturnedCount", page.Count);
+            timing?.SetOutcome("Success");
+            return new MediaItemBrowsePage(page, totalCount);
+        }
+        catch (OperationCanceledException)
+        {
+            timing?.SetOutcome("Cancelled");
+            throw;
+        }
+        catch
+        {
+            timing?.SetOutcome("Failed");
+            throw;
+        }
     }
 
     /// <inheritdoc />

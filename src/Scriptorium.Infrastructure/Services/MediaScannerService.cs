@@ -19,7 +19,8 @@ public sealed partial class MediaScannerService(
     IMediaLibrarySynchronizer mediaLibrarySynchronizer,
     ITvShowHierarchySynchronizer tvShowHierarchySynchronizer,
     ITutorialCourseSynchronizer tutorialCourseSynchronizer,
-    ILogger<MediaScannerService>? logger = null) : IMediaScannerService
+    ILogger<MediaScannerService>? logger = null,
+    IOperationMetrics? operationMetrics = null) : IMediaScannerService
 {
     /// <inheritdoc />
     public Task<MediaScanResult> ScanAsync(
@@ -27,7 +28,10 @@ public sealed partial class MediaScannerService(
         IProgress<MediaScanProgress>? progress = null) =>
         Task.Run(async () =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            using var timing = operationMetrics?.Start("Library.Scan");
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
             var folders = await libraryFolderScanSource.GetEligibleFoldersAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -115,7 +119,23 @@ public sealed partial class MediaScannerService(
             await tutorialCourseSynchronizer.SynchronizeAsync(scannedFolders, synchronizedMediaItems, cancellationToken)
                 .ConfigureAwait(false);
 
-            return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
+            timing?.SetTag("FolderCount", scannedFolders.Count);
+            timing?.SetTag("ProcessedFileCount", processedFileCount);
+            timing?.SetTag("DiscoveredMediaCount", discoveredFiles.Count);
+            timing?.SetTag("NonCriticalErrorCount", nonCriticalErrorCount);
+            timing?.SetOutcome("Success");
+                return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
+            }
+            catch (OperationCanceledException)
+            {
+                timing?.SetOutcome("Cancelled");
+                throw;
+            }
+            catch
+            {
+                timing?.SetOutcome("Failed");
+                throw;
+            }
         }, cancellationToken);
 
     private static bool CanSkip(Exception exception) => exception is

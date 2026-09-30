@@ -6,6 +6,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
+using Scriptorium.Core.Services;
 using Scriptorium.Infrastructure;
 
 namespace Scriptorium.App.DependencyInjection;
@@ -27,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(logFileLocation);
         services.AddSingleton(settingsFileLocation);
         services.AddSingleton(databaseLocation);
+        services.AddSingleton(ReadPerformanceOptions(configuration));
         services.AddLogging(logging => logging.AddSerilog(logger, dispose: false));
         services.AddScriptoriumInfrastructure(databaseLocation.ConnectionString);
 
@@ -59,4 +61,13 @@ public static class ServiceCollectionExtensions
 
         return services;
     }
+
+    private static PerformanceOptions ReadPerformanceOptions(IConfiguration configuration) => new(
+        TimeSpan.FromMilliseconds(ReadMilliseconds(configuration, "Performance:SlowScanMilliseconds", 2_000)),
+        TimeSpan.FromMilliseconds(ReadMilliseconds(configuration, "Performance:SlowLibraryLoadMilliseconds", 750)),
+        TimeSpan.FromMilliseconds(ReadMilliseconds(configuration, "Performance:SlowSearchMilliseconds", 500)),
+        TimeSpan.FromMilliseconds(ReadMilliseconds(configuration, "Performance:SlowBrowseMilliseconds", 500)));
+
+    private static int ReadMilliseconds(IConfiguration configuration, string key, int defaultValue) =>
+        int.TryParse(configuration[key], out var value) && value >= 0 ? value : defaultValue;
 }

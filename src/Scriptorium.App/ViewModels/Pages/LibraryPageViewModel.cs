@@ -29,6 +29,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
+    private readonly IOperationMetrics? _operationMetrics;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly AsyncRelayCommand _retryLibraryLoadCommand;
     private readonly RelayCommand _cancelLibraryLoadCommand;
@@ -104,7 +105,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaTypeService? mediaTypeService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
-        IMediaDescriptionService? mediaDescriptionService = null)
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IOperationMetrics? operationMetrics = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -123,6 +125,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
+        _operationMetrics = operationMetrics;
         FolderManagement = folderManagementViewModelFactory.Create(
             () => RefreshLibraryDataAsync(),
             message => StatusMessage = message,
@@ -697,6 +700,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
     public async Task RefreshLibraryDataAsync(CancellationToken cancellationToken = default)
     {
+        using var timing = _operationMetrics?.Start("Library.Load");
+        timing?.SetTag("HasActiveFilters", HasActiveFilters);
         var activeBrowserQuery = Interlocked.Exchange(ref _browserQueryCancellationSource, null);
         activeBrowserQuery?.Cancel();
         Interlocked.Increment(ref _browserQueryGeneration);
@@ -745,9 +750,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             _browserDataInitialized = true;
             HasLibraryLoadError = false;
             WasLibraryLoadCancelled = false;
+            timing?.SetTag("IndexedMediaCount", IndexedMediaCount);
+            timing?.SetTag("SupportedMediaCount", _supportedMediaCount);
+            timing?.SetTag("LoadedBrowserItemCount", _loadedBrowserMediaItems.Count);
+            timing?.SetOutcome("Success");
         }
         catch (OperationCanceledException)
         {
+            timing?.SetOutcome("Cancelled");
             _supportedMediaCount = previousSupportedMediaCount;
             _movieCount = previousMovieCount;
             _browserResultCount = previousBrowserResultCount;
@@ -769,6 +779,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             OnPropertyChanged(nameof(ActiveBrowseDescription));
             OnPropertyChanged(nameof(HasMovies));
             OnPropertyChanged(nameof(MovieCountText));
+            throw;
+        }
+        catch
+        {
+            timing?.SetOutcome("Failed");
             throw;
         }
         finally
