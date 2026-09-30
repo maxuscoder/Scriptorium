@@ -74,11 +74,18 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
 
         _disposed = true;
         _playbackProgressService.PlaybackProgressSaved -= OnPlaybackProgressSaved;
+        IncompleteMedia.Clear();
+        RecentlyWatchedMedia.Clear();
     }
 
     /// <summary>Loads the current resumable media list.</summary>
     public async Task RefreshAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         await _refreshGate.WaitAsync();
         IsRefreshing = true;
         try
@@ -88,6 +95,10 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
             await Task.WhenAll(incompleteMediaTask, recentlyWatchedMediaTask);
             var incompleteMedia = await incompleteMediaTask;
             var recentlyWatchedMedia = await recentlyWatchedMediaTask;
+            if (_disposed)
+            {
+                return;
+            }
 
             IncompleteMedia.Clear();
             foreach (var mediaItem in incompleteMedia)

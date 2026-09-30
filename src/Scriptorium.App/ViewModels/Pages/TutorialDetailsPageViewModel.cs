@@ -132,6 +132,11 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
         _player.PlaybackCompleted -= OnPlaybackCompleted;
         _player.Dispose();
+        _returnPage = null;
+        _courseId = null;
+        _selectedLesson = null;
+        Lessons.Clear();
+        CategoryOptions.Clear();
     }
 
     public string SourceFolder

@@ -81,6 +81,8 @@ public partial class MediaDetailsPage : UserControl
     public MediaDetailsPage()
     {
         InitializeComponent();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public ICommand? BackCommand { get => (ICommand?)GetValue(BackCommandProperty); set => SetValue(BackCommandProperty, value); }
@@ -140,6 +142,21 @@ public partial class MediaDetailsPage : UserControl
 
         SetValue(ThumbnailSourcePropertyKey, thumbnail);
         SetValue(HasUsableThumbnailPropertyKey, thumbnail is not null);
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (ThumbnailSource is null && !string.IsNullOrWhiteSpace(ThumbnailPath))
+        {
+            _ = LoadThumbnailAsync(ThumbnailPath);
+        }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        Interlocked.Increment(ref _thumbnailLoadVersion);
+        SetValue(ThumbnailSourcePropertyKey, null);
+        SetValue(HasUsableThumbnailPropertyKey, false);
     }
 
     private void OnThumbnailImageFailed(object sender, ExceptionRoutedEventArgs eventArgs)

@@ -112,6 +112,11 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         _disposed = true;
         Player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
         Player.Dispose();
+        _returnPage = null;
+        _movie = null;
+        _selectedCategory = null;
+        MetadataItems.Clear();
+        CategoryOptions.Clear();
     }
 
     public string? ThumbnailPath

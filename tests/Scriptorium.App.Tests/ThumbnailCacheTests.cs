@@ -83,6 +83,19 @@ public sealed class ThumbnailCacheTests
         Assert.False(File.Exists(expiredPath));
     }
 
+    [Fact]
+    public async Task Releases_completed_memory_entries_under_memory_pressure()
+    {
+        using var fixture = new ThumbnailFixture();
+        fixture.WriteSourceImage(320, 180);
+        Assert.NotNull(await ThumbnailCache.GetAsync(fixture.SourcePath, fixture.CacheDirectory));
+
+        var releasedEntries = ThumbnailCache.ReleaseCompletedMemoryEntries();
+
+        Assert.True(releasedEntries >= 1);
+        Assert.NotNull(await ThumbnailCache.GetAsync(fixture.SourcePath, fixture.CacheDirectory));
+    }
+
     private sealed class ThumbnailFixture : IDisposable
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"scriptorium-thumbnails-{Guid.NewGuid():N}");

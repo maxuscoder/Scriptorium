@@ -57,6 +57,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         _searchCancellationSource?.Cancel();
         _searchCancellationSource?.Dispose();
         _searchCancellationSource = null;
+        Results.Clear();
     }
 
     /// <summary>Gets the query currently represented by the results.</summary>

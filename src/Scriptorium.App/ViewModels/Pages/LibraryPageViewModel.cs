@@ -286,6 +286,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _browserQueryCancellationSource?.Cancel();
         _browserQueryCancellationSource?.Dispose();
         _browserQueryCancellationSource = null;
+        _loadedBrowserMediaItems.Clear();
+        CategoryFilters.Clear();
+        Tutorials.Clear();
+        TvShows.Clear();
+        BrowserRows.Clear();
     }
 
     /// <summary>

@@ -74,6 +74,26 @@ internal static class ThumbnailCache
         }
     }
 
+    /// <summary>Releases completed thumbnail loads while allowing active UI requests to finish.</summary>
+    internal static int ReleaseCompletedMemoryEntries()
+    {
+        var releasedEntries = 0;
+        foreach (var entry in CachedThumbnails)
+        {
+            if (entry.Value.IsValueCreated && !entry.Value.Value.IsCompleted)
+            {
+                continue;
+            }
+
+            if (CachedThumbnails.TryRemove(entry.Key, out _))
+            {
+                releasedEntries++;
+            }
+        }
+
+        return releasedEntries;
+    }
+
     private static string GetDefaultCacheDirectory() => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Scriptorium",

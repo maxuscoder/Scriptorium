@@ -168,6 +168,8 @@ public partial class MediaCard : UserControl
     {
         InitializeComponent();
         SetBinding(HasManualMetadataProperty, new Binding(nameof(HasManualMetadata)));
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
     }
 
     public string? ThumbnailPath
@@ -428,6 +430,21 @@ public partial class MediaCard : UserControl
 
         SetValue(ThumbnailSourcePropertyKey, thumbnail);
         SetValue(HasUsableThumbnailPropertyKey, thumbnail is not null);
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (ThumbnailSource is null && !string.IsNullOrWhiteSpace(ThumbnailPath))
+        {
+            _ = LoadThumbnailAsync(ThumbnailPath);
+        }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        Interlocked.Increment(ref _thumbnailLoadVersion);
+        SetValue(ThumbnailSourcePropertyKey, null);
+        SetValue(HasUsableThumbnailPropertyKey, false);
     }
 
     private void OnThumbnailImageFailed(object sender, ExceptionRoutedEventArgs eventArgs)
