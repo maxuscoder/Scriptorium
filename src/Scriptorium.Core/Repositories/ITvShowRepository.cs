@@ -7,6 +7,10 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface ITvShowRepository : IRepository<TVShow>
 {
+    /// <summary>Gets lightweight TV-show data for the library browser.</summary>
+    Task<IReadOnlyList<TvShowLibrarySummary>> GetLibrarySummariesAsync(
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets the show that owns an episode for the specified media item.</summary>
     Task<TVShow?> GetByMediaItemIdAsync(
         Guid mediaItemId,

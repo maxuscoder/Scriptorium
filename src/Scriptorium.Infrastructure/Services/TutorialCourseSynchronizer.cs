@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
+using Scriptorium.Infrastructure.Caching;
 
 namespace Scriptorium.Infrastructure.Services;
 
@@ -9,8 +10,11 @@ namespace Scriptorium.Infrastructure.Services;
 /// </summary>
 public sealed class TutorialCourseSynchronizer(
     IDbContextFactory<ScriptoriumDbContext> contextFactory,
-    ILessonFileNameParser lessonFileNameParser) : ITutorialCourseSynchronizer
+    ILessonFileNameParser lessonFileNameParser,
+    IMetadataCache? metadataCache = null) : ITutorialCourseSynchronizer
 {
+    private readonly IMetadataCache _metadataCache = metadataCache ?? MetadataCache.ForOwner(contextFactory);
+
     /// <inheritdoc />
     public event Action? CoursesChanged;
 
@@ -171,6 +175,8 @@ public sealed class TutorialCourseSynchronizer(
         var changeCount = await context.SaveChangesAsync(cancellationToken);
         if (changeCount > 0)
         {
+            _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+            _metadataCache.RemoveByTag(MetadataCacheKeys.AllCoursesTag);
             CoursesChanged?.Invoke();
         }
     }

@@ -31,7 +31,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(23, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(24, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -58,6 +58,14 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("SeasonNumberOverride", mediaItemColumns);
             Assert.Contains("EpisodeNumberOverride", mediaItemColumns);
             Assert.Contains("LastPlayedUnixTimeMilliseconds", mediaItemColumns);
+
+            var browseIndexes = await context.Database
+                .SqlQueryRaw<string>("SELECT name AS Value FROM sqlite_master WHERE type = 'index' AND tbl_name = 'MediaItems'")
+                .ToListAsync();
+            Assert.Contains("IX_MediaItems_MediaType_DisplayTitle", browseIndexes);
+            Assert.Contains("IX_MediaItems_MediaType_CategoryId", browseIndexes);
+            Assert.Contains("IX_MediaItems_MediaType_DateAdded", browseIndexes);
+            Assert.Contains("IX_MediaItems_MediaType_LastPlayedUnixTimeMilliseconds", browseIndexes);
         }
         finally
         {

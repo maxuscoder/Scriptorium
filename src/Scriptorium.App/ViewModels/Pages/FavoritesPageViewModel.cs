@@ -45,6 +45,7 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
 
         _disposed = true;
         _favoriteService.FavoriteChanged -= OnFavoriteChanged;
+        MediaItems.Clear();
     }
 
     public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
@@ -73,11 +74,21 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
 
     public async Task RefreshAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         await _refreshGate.WaitAsync();
         IsRefreshing = true;
         try
         {
             var favorites = await _favoriteService.GetAllAsync();
+            if (_disposed)
+            {
+                return;
+            }
+
             MediaItems.Clear();
             foreach (var mediaItem in favorites)
             {

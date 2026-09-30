@@ -8,6 +8,7 @@ using Serilog.Events;
 using Scriptorium.App.DependencyInjection;
 using Scriptorium.App.Services;
 using Scriptorium.App.Views;
+using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
 using System.Windows.Threading;
 
@@ -18,6 +19,7 @@ public partial class App : Application
     private ServiceProvider? _serviceProvider;
     private ILogger<App>? _logger;
     private ISettingsService? _settingsService;
+    private IMemoryUsageMonitor? _memoryUsageMonitor;
     private bool _settingsFlushInProgress;
     private bool _allowWindowClose;
 
@@ -67,6 +69,10 @@ public partial class App : Application
             _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
             await _settingsService.LoadAsync();
             await _settingsService.SaveAsync();
+
+            _memoryUsageMonitor = _serviceProvider.GetRequiredService<IMemoryUsageMonitor>();
+            _memoryUsageMonitor.HighMemoryUsageDetected += OnHighMemoryUsageDetected;
+            _memoryUsageMonitor.Start();
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             mainWindow.Closing += OnMainWindowClosing;
@@ -127,9 +133,22 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _logger?.LogInformation("Shutting down Scriptorium with exit code {ExitCode}.", e.ApplicationExitCode);
+        if (_memoryUsageMonitor is not null)
+        {
+            _memoryUsageMonitor.HighMemoryUsageDetected -= OnHighMemoryUsageDetected;
+        }
+        ThumbnailCache.ReleaseCompletedMemoryEntries();
         _serviceProvider?.Dispose();
         Log.CloseAndFlush();
         base.OnExit(e);
+    }
+
+    private void OnHighMemoryUsageDetected(Models.MemoryUsageSnapshot snapshot)
+    {
+        var releasedEntries = ThumbnailCache.ReleaseCompletedMemoryEntries();
+        _logger?.LogWarning(
+            "Released {ThumbnailEntryCount} completed thumbnail cache entries after high memory usage was detected.",
+            releasedEntries);
     }
 
     private static Serilog.ILogger CreateLogger(

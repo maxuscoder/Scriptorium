@@ -2,54 +2,35 @@ using Scriptorium.Core.Models;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
-/// <summary>
-/// Presents a tutorial collection in the library browser.
-/// </summary>
-public sealed class TutorialCollectionViewModel(Course course)
+/// <summary>Presents a lightweight tutorial collection in the library browser.</summary>
+public sealed class TutorialCollectionViewModel
 {
-    private IEnumerable<MediaItem> MediaItems => course.Lessons.Select(lesson => lesson.MediaItem);
+    private readonly Course? _course;
+    private readonly CourseLibrarySummary? _summary;
 
-    public Guid Id => course.Id;
+    public TutorialCollectionViewModel(Course course) => _course = course;
+    public TutorialCollectionViewModel(CourseLibrarySummary summary) => _summary = summary;
 
-    public string Title => MediaDisplayText.TitleOrFallback(course.Title, "Untitled tutorial");
-
-    public bool HasManualMetadata => MediaItems.Any(mediaItem => mediaItem.HasManualMetadata);
-
-    public string SourceFolder => course.LibraryFolder.DisplayNameOrName;
-
-    public string? ThumbnailPath => course.Lessons
-        .Select(lesson => lesson.MediaItem.ThumbnailPath)
-        .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
-
-    public int LessonCount => course.Lessons.Count;
-
+    public Guid Id => _summary?.Id ?? _course!.Id;
+    public string Title => MediaDisplayText.TitleOrFallback(_summary?.Title ?? _course!.Title, "Untitled tutorial");
+    public bool HasManualMetadata => _summary?.HasManualMetadata ?? _course!.Lessons.Any(lesson => lesson.MediaItem.HasManualMetadata);
+    public string SourceFolder => _summary?.SourceFolder ?? _course!.LibraryFolder.DisplayNameOrName;
+    public string? ThumbnailPath => _summary is { } summary
+        ? summary.ThumbnailPath
+        : _course!.Lessons
+            .Select(lesson => lesson.MediaItem.ThumbnailPath)
+            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+    public int LessonCount => _summary?.LessonCount ?? _course!.Lessons.Count;
     public string LessonCountText => $"{LessonCount} lesson{(LessonCount == 1 ? string.Empty : "s")}";
-
-    public DateTimeOffset OldestImportDate => MediaItems.Select(mediaItem => mediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min();
-
-    public DateTimeOffset NewestImportDate => MediaItems.Select(mediaItem => mediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
-
-    public DateTimeOffset? EarliestPlayback => MediaItems
-        .Where(mediaItem => mediaItem.LastPlayed is not null)
-        .Select(mediaItem => mediaItem.LastPlayed)
-        .DefaultIfEmpty()
-        .Min();
-
-    public DateTimeOffset? LatestPlayback => MediaItems
-        .Where(mediaItem => mediaItem.LastPlayed is not null)
-        .Select(mediaItem => mediaItem.LastPlayed)
-        .DefaultIfEmpty()
-        .Max();
-
-    public double LowestPlaybackProgress => MediaItems
-        .Select(MediaPlaybackProgress.ProgressPercentage)
-        .DefaultIfEmpty(0)
-        .Min();
-
-    public double HighestPlaybackProgress => MediaItems
-        .Select(MediaPlaybackProgress.ProgressPercentage)
-        .DefaultIfEmpty(0)
-        .Max();
-
-    public bool HasFavorite => MediaItems.Any(mediaItem => mediaItem.IsFavorite);
+    public DateTimeOffset OldestImportDate => _summary?.OldestImportDate ?? _course!.Lessons.Select(lesson => lesson.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min();
+    public DateTimeOffset NewestImportDate => _summary?.NewestImportDate ?? _course!.Lessons.Select(lesson => lesson.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
+    public DateTimeOffset? EarliestPlayback => _summary is { } summary
+        ? summary.EarliestPlayback
+        : _course!.Lessons.Select(lesson => lesson.MediaItem.LastPlayed).Where(value => value is not null).DefaultIfEmpty().Min();
+    public DateTimeOffset? LatestPlayback => _summary is { } summary
+        ? summary.LatestPlayback
+        : _course!.Lessons.Select(lesson => lesson.MediaItem.LastPlayed).Where(value => value is not null).DefaultIfEmpty().Max();
+    public double LowestPlaybackProgress => _summary?.LowestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Min();
+    public double HighestPlaybackProgress => _summary?.HighestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Max();
+    public bool HasFavorite => _summary?.HasFavorite ?? _course!.Lessons.Any(lesson => lesson.MediaItem.IsFavorite);
 }

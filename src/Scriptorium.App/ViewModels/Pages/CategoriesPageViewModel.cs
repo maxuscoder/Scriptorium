@@ -71,6 +71,10 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         {
             _selectedCategory.PropertyChanged -= OnSelectedCategoryPropertyChanged;
         }
+        _selectedCategory = null;
+        _availableMediaItems = [];
+        MediaItems.Clear();
+        Categories.Clear();
     }
 
     public ObservableCollection<CategoryItemViewModel> Categories { get; } = [];
@@ -166,6 +170,11 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     /// <summary>Loads the current categories and their assigned-media counts.</summary>
     public async Task RefreshAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         await _refreshGate.WaitAsync();
         IsRefreshing = true;
         try
@@ -173,16 +182,22 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
             var categoriesTask = _categoryRepository.GetAllAsync();
             var mediaItemsTask = _mediaItemRepository.GetAllAsync();
             await Task.WhenAll(categoriesTask, mediaItemsTask);
+            if (_disposed)
+            {
+                return;
+            }
 
             var selectedCategoryId = SelectedCategory?.Id;
             _availableMediaItems = mediaItemsTask.Result;
+            var mediaByCategory = _availableMediaItems
+                .Where(mediaItem => mediaItem.CategoryId is not null)
+                .GroupBy(mediaItem => mediaItem.CategoryId!.Value)
+                .ToDictionary(group => group.Key, group => (IReadOnlyList<MediaItem>)group.ToArray());
 
             Categories.Clear();
             foreach (var category in categoriesTask.Result.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
             {
-                var assignedMedia = _availableMediaItems
-                    .Where(mediaItem => mediaItem.CategoryId == category.Id)
-                    .ToArray();
+                var assignedMedia = mediaByCategory.GetValueOrDefault(category.Id) ?? [];
                 Categories.Add(new CategoryItemViewModel(
                     category,
                     assignedMedia));

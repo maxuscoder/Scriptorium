@@ -19,15 +19,35 @@ public sealed partial class MediaScannerService(
     IMediaLibrarySynchronizer mediaLibrarySynchronizer,
     ITvShowHierarchySynchronizer tvShowHierarchySynchronizer,
     ITutorialCourseSynchronizer tutorialCourseSynchronizer,
-    ILogger<MediaScannerService>? logger = null) : IMediaScannerService
+    ILogger<MediaScannerService>? logger = null,
+    IOperationMetrics? operationMetrics = null) : IMediaScannerService
 {
+    private readonly SemaphoreSlim _scanGate = new(1, 1);
+    private int _isScanning;
+
     /// <inheritdoc />
-    public Task<MediaScanResult> ScanAsync(
+    public bool IsScanning => Volatile.Read(ref _isScanning) != 0;
+
+    /// <inheritdoc />
+    public async Task<MediaScanResult> ScanAsync(
         CancellationToken cancellationToken = default,
-        IProgress<MediaScanProgress>? progress = null) =>
-        Task.Run(async () =>
+        IProgress<MediaScanProgress>? progress = null)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_scanGate.Wait(0))
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            throw new ScanAlreadyRunningException();
+        }
+
+        Volatile.Write(ref _isScanning, 1);
+        try
+        {
+            return await Task.Run(async () =>
+            {
+                using var timing = operationMetrics?.Start("Library.Scan");
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
             var folders = await libraryFolderScanSource.GetEligibleFoldersAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -115,8 +135,31 @@ public sealed partial class MediaScannerService(
             await tutorialCourseSynchronizer.SynchronizeAsync(scannedFolders, synchronizedMediaItems, cancellationToken)
                 .ConfigureAwait(false);
 
-            return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
-        }, cancellationToken);
+            timing?.SetTag("FolderCount", scannedFolders.Count);
+            timing?.SetTag("ProcessedFileCount", processedFileCount);
+            timing?.SetTag("DiscoveredMediaCount", discoveredFiles.Count);
+            timing?.SetTag("NonCriticalErrorCount", nonCriticalErrorCount);
+            timing?.SetOutcome("Success");
+                return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
+            }
+            catch (OperationCanceledException)
+            {
+                timing?.SetOutcome("Cancelled");
+                throw;
+            }
+            catch
+            {
+                timing?.SetOutcome("Failed");
+                throw;
+            }
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Volatile.Write(ref _isScanning, 0);
+            _scanGate.Release();
+        }
+    }
 
     private static bool CanSkip(Exception exception) => exception is
         IOException or

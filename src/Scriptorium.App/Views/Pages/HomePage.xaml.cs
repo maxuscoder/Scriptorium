@@ -15,7 +15,7 @@ public partial class HomePage : UserControl
     {
         if (DataContext is MainWindowViewModel viewModel)
         {
-            await viewModel.RefreshAsync();
+            await viewModel.EnsureHomepageDataLoadedAsync();
         }
     }
 }

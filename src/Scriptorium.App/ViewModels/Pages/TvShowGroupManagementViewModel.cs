@@ -21,6 +21,7 @@ public sealed class TvShowGroupManagementViewModel : ViewModelBase
     private ManualTvShowGroupViewModel? _targetGroup;
     private ManualTvShowMediaViewModel? _selectedMedia;
     private string? _groupName;
+    private bool _isLoaded;
 
     public TvShowGroupManagementViewModel(
         IMediaGroupingService mediaGroupingService,
@@ -101,14 +102,29 @@ public sealed class TvShowGroupManagementViewModel : ViewModelBase
 
     public ICommand SplitGroupCommand { get; }
 
-    public async Task RefreshAsync()
+    /// <summary>Loads the detailed group graph when the management panel is actually displayed.</summary>
+    public async Task EnsureLoadedAsync(CancellationToken cancellationToken = default)
+    {
+        _isLoaded = true;
+        await RefreshAsync(cancellationToken);
+    }
+
+    /// <summary>Refreshes the detailed group graph only after the panel has been displayed.</summary>
+    public Task RefreshIfLoadedAsync(CancellationToken cancellationToken = default) =>
+        _isLoaded ? RefreshAsync(cancellationToken) : Task.CompletedTask;
+
+    public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
         var selectedGroupId = SelectedGroup?.Id;
         var targetGroupId = TargetGroup?.Id;
+        var groups = await _mediaGroupingService.GetTvShowGroupsAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var refreshedGroups = groups.Select(group => new ManualTvShowGroupViewModel(group)).ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
         Groups.Clear();
-        foreach (var group in await _mediaGroupingService.GetTvShowGroupsAsync())
+        foreach (var group in refreshedGroups)
         {
-            Groups.Add(new ManualTvShowGroupViewModel(group));
+            Groups.Add(group);
         }
 
         SelectedGroup = selectedGroupId is { } selectedId

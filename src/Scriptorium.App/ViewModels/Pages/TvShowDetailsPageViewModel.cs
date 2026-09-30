@@ -165,6 +165,11 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         {
             _tvShowHierarchySynchronizer.ShowsChanged -= OnShowsChanged;
         }
+        _returnPage = null;
+        _showId = null;
+        _selectedEpisode = null;
+        Seasons.Clear();
+        CategoryOptions.Clear();
     }
 
     public string SourceFolder

@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using Scriptorium.App.Behaviors;
 using Scriptorium.App.ViewModels.Pages;
 using System.Windows.Threading;
 
@@ -29,17 +28,6 @@ public partial class LibraryPage : UserControl
     private void OnPagePreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         CloseOpenDropdowns();
-
-        if (FindParentScrollViewer(Mouse.DirectlyOver as DependencyObject) is { } innerScrollViewer &&
-            innerScrollViewer != PageScrollViewer &&
-            DropdownScrollBehavior.GetIsEnabled(innerScrollViewer))
-        {
-            e.Handled = true;
-            return;
-        }
-
-        PageScrollViewer.ScrollToVerticalOffset(PageScrollViewer.VerticalOffset - e.Delta);
-        e.Handled = true;
     }
 
     private void OnPageScrollChanged(object sender, ScrollChangedEventArgs e)
@@ -80,20 +68,5 @@ public partial class LibraryPage : UserControl
                 yield return descendant;
             }
         }
-    }
-
-    private static ScrollViewer? FindParentScrollViewer(DependencyObject? element)
-    {
-        while (element is not null)
-        {
-            if (element is ScrollViewer scrollViewer)
-            {
-                return scrollViewer;
-            }
-
-            element = VisualTreeHelper.GetParent(element);
-        }
-
-        return null;
     }
 }

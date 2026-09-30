@@ -306,6 +306,12 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("MediaType", "CategoryId");
+
+                    b.HasIndex("MediaType", "DateAdded");
+
+                    b.HasIndex("MediaType", "LastPlayedUnixTimeMilliseconds");
+
                     b.HasIndex("LibraryFolderId");
 
                     b.HasIndex("LastPlayedUnixTimeMilliseconds");

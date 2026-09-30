@@ -1,14 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
+using Scriptorium.Infrastructure.Caching;
 
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
 /// Applies manual corrections to television-show groups without changing source media files.
 /// </summary>
-public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext> contextFactory) : IMediaGroupingService
+public sealed class MediaGroupingService(
+    IDbContextFactory<ScriptoriumDbContext> contextFactory,
+    IMetadataCache? metadataCache = null) : IMediaGroupingService
 {
+    private readonly IMetadataCache _metadataCache = metadataCache ?? MetadataCache.ForOwner(contextFactory);
+
     /// <inheritdoc />
     public event Action<Guid>? EpisodeSeasonChanged;
 
@@ -40,6 +45,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateMediaMetadata();
     }
 
     /// <inheritdoc />
@@ -72,6 +78,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         ReorderEpisodes(sourceSeason.TVShow);
         ReorderEpisodes(targetGroup);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateMediaMetadata();
     }
 
     /// <inheritdoc />
@@ -129,6 +136,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         episode.MediaItem.SeasonNumber = seasonNumber;
         ReorderEpisodes(targetShow);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateMediaMetadata();
         EpisodeSeasonChanged?.Invoke(mediaItemId);
     }
 
@@ -159,6 +167,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         episode.MediaItem.EpisodeNumber = episodeNumber;
         ReorderEpisodes(episode.Season);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateMediaMetadata();
         EpisodeNumberChanged?.Invoke(mediaItemId);
     }
 
@@ -188,6 +197,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         context.TVShows.Remove(sourceGroup);
         ReorderEpisodes(targetGroup);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateMediaMetadata();
     }
 
     /// <inheritdoc />
@@ -238,6 +248,7 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
         ReorderEpisodes(sourceGroup);
         ReorderEpisodes(newGroup);
         await context.SaveChangesAsync(cancellationToken);
+        InvalidateMediaMetadata();
     }
 
     private static IQueryable<TVShow> Groups(ScriptoriumDbContext context) => context.TVShows
@@ -345,6 +356,12 @@ public sealed class MediaGroupingService(IDbContextFactory<ScriptoriumDbContext>
 
         season.TVShow.Seasons.Remove(season);
         context.Seasons.Remove(season);
+    }
+
+    private void InvalidateMediaMetadata()
+    {
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllTvShowsTag);
     }
 
     private static void ReorderEpisodes(TVShow group)

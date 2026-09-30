@@ -47,7 +47,7 @@ public abstract class Repository<TEntity>(IDbContextFactory<ScriptoriumDbContext
     }
 
     /// <inheritdoc />
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         var entity = await context.Set<TEntity>().FindAsync([id], cancellationToken);

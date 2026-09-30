@@ -1,9 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Scriptorium.Core.Repositories;
 using Scriptorium.Core.Services;
 using Scriptorium.Infrastructure.Repositories;
 using Scriptorium.Infrastructure.Services;
+using Scriptorium.Infrastructure.Caching;
 
 namespace Scriptorium.Infrastructure;
 
@@ -17,7 +19,10 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         string connectionString)
     {
+        services.TryAddSingleton(PerformanceOptions.Default);
+        services.AddSingleton<IOperationMetrics, OperationMetrics>();
         services.AddDbContextFactory<ScriptoriumDbContext>(options => options.UseSqlite(connectionString));
+        services.AddSingleton<IMetadataCache, MetadataCache>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
         services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
         services.AddSingleton<ICourseRepository, CourseRepository>();

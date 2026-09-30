@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Collections;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
@@ -28,7 +29,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaThumbnailService? _mediaThumbnailService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
+    private readonly IOperationMetrics? _operationMetrics;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
+    private readonly AsyncRelayCommand _retryLibraryLoadCommand;
+    private readonly RelayCommand _cancelLibraryLoadCommand;
     private readonly RelayCommand _cancelScanCommand;
     private readonly AsyncRelayCommand _openTutorialCommand;
     private readonly AsyncRelayCommand _openTvShowCommand;
@@ -39,12 +43,25 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly AsyncRelayCommand _resetLibraryCommand;
     private string? _statusMessage;
     private bool _isScanning;
+    private bool _isLoading;
+    private bool _hasLibraryLoadError;
+    private bool _wasLibraryLoadCancelled;
     private int _indexedMediaCount;
     private int _missingMediaCount;
     private CancellationTokenSource? _scanCancellationSource;
+    private CancellationTokenSource? _libraryLoadCancellationSource;
     private string? _currentScanPath;
     private int _processedFileCount;
     private int _discoveredMediaCount;
+    private int _supportedMediaCount;
+    private int _movieCount;
+    private int _browserResultCount;
+    private bool _isBrowserPageLoading;
+    private bool _isBrowserPageLoadingMore;
+    private int _browserTotalCount;
+    private bool _browserDataInitialized;
+    private long _browserQueryGeneration;
+    private CancellationTokenSource? _browserQueryCancellationSource;
     private bool _isListLayout;
     private bool _showFavoritesOnly;
     private bool _favoritesFirst;
@@ -54,7 +71,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private LibrarySortOrder _selectedSortOrder;
     private readonly HashSet<Guid> _selectedCategoryFilterIds = [];
     private bool _suppressFilterStateSaving;
-    private IReadOnlyList<MediaItem> _availableMediaItems = [];
+    private readonly List<object> _loadedBrowserMediaItems = [];
+    private int _browserColumnCount = 4;
+    private double _browserWidth;
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
@@ -86,7 +105,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaTypeService? mediaTypeService = null,
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
-        IMediaDescriptionService? mediaDescriptionService = null)
+        IMediaDescriptionService? mediaDescriptionService = null,
+        IOperationMetrics? operationMetrics = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -105,16 +125,30 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaThumbnailService = mediaThumbnailService;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
+        _operationMetrics = operationMetrics;
         FolderManagement = folderManagementViewModelFactory.Create(
-            RefreshLibraryDataAsync,
+            () => RefreshLibraryDataAsync(),
             message => StatusMessage = message,
             () => IsScanning);
         TvShowGroupManagement = new TvShowGroupManagementViewModel(
             mediaGroupingService,
-            RefreshLibraryDataAsync,
+            () => RefreshLibraryDataAsync(),
             message => StatusMessage = message);
-        _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning);
+        _refreshLibraryCommand = new AsyncRelayCommand(
+            RefreshLibraryAsync,
+            () => !IsScanning && !IsLoading,
+            () =>
+            {
+                if (IsScanning || _mediaScannerService.IsScanning)
+                {
+                    StatusMessage = "A library scan is already in progress.";
+                }
+            });
         RefreshLibraryCommand = _refreshLibraryCommand;
+        _retryLibraryLoadCommand = new AsyncRelayCommand(RetryLibraryLoadAsync, () => !IsScanning && !IsLoading);
+        RetryLibraryLoadCommand = _retryLibraryLoadCommand;
+        _cancelLibraryLoadCommand = new RelayCommand(CancelLibraryLoad, () => IsLoading);
+        CancelLibraryLoadCommand = _cancelLibraryLoadCommand;
         _cancelScanCommand = new RelayCommand(CancelScan, () => IsScanning);
         CancelScanCommand = _cancelScanCommand;
         _openTutorialCommand = new AsyncRelayCommand(OpenTutorialAsync, parameter => parameter is TutorialCollectionViewModel);
@@ -149,7 +183,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         SetListLayoutCommand = _setListLayoutCommand;
         _clearFiltersCommand = new RelayCommand(ClearFilters, () => HasActiveFilters);
         ClearFiltersCommand = _clearFiltersCommand;
-        _resetLibraryCommand = new AsyncRelayCommand(ResetLibraryAsync, () => !IsScanning);
+        _resetLibraryCommand = new AsyncRelayCommand(ResetLibraryAsync, () => !IsScanning && !IsLoading);
         ResetLibraryCommand = _resetLibraryCommand;
         MediaTypeFilters =
         [
@@ -259,6 +293,16 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _scanCancellationSource?.Cancel();
         _scanCancellationSource?.Dispose();
         _scanCancellationSource = null;
+        _libraryLoadCancellationSource?.Cancel();
+        _libraryLoadCancellationSource = null;
+        _browserQueryCancellationSource?.Cancel();
+        _browserQueryCancellationSource?.Dispose();
+        _browserQueryCancellationSource = null;
+        _loadedBrowserMediaItems.Clear();
+        CategoryFilters.Clear();
+        Tutorials.Clear();
+        TvShows.Clear();
+        BrowserRows.Clear();
     }
 
     /// <summary>
@@ -292,14 +336,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Coordinates the independent manual TV-show grouping workflow.</summary>
     public TvShowGroupManagementViewModel TvShowGroupManagement { get; }
 
-    /// <summary>Gets every supported media item currently indexed in the library.</summary>
-    public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
-
     /// <summary>Gets the selectable media-type filters.</summary>
     public IReadOnlyList<LibraryFilterOptionViewModel<MediaType>> MediaTypeFilters { get; }
 
     /// <summary>Gets the selectable category filters.</summary>
-    public ObservableCollection<LibraryFilterOptionViewModel<Guid>> CategoryFilters { get; } = [];
+    public BatchObservableCollection<LibraryFilterOptionViewModel<Guid>> CategoryFilters { get; } = [];
 
     /// <summary>Gets the category-selection summary used by the filter panel.</summary>
     public string CategoryFilterSummary => CategoryFilters.Count(filter => filter.IsSelected) switch
@@ -353,7 +394,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             if (SetProperty(ref _searchQuery, value))
             {
-                ApplyFilters();
+                ApplyFilters(debounceSearch: true);
                 OnPropertyChanged(nameof(ActiveBrowseDescription));
             }
         }
@@ -400,20 +441,28 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Clears library state and restores the default presentation without changing the view mode.</summary>
     public ICommand ResetLibraryCommand { get; }
 
+    /// <summary>Retries loading the library after an initial-load failure.</summary>
+    public ICommand RetryLibraryLoadCommand { get; }
+
+    /// <summary>Requests cancellation of an active library data load.</summary>
+    public ICommand CancelLibraryLoadCommand { get; }
+
     /// <summary>Gets the tutorial collections available in the library.</summary>
-    public ObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
+    public BatchObservableCollection<TutorialCollectionViewModel> Tutorials { get; } = [];
 
     /// <summary>Gets the television-show collections available in the library.</summary>
-    public ObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
+    public BatchObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
 
-    /// <summary>Gets the movies available in the library.</summary>
-    public ObservableCollection<MovieItemViewModel> Movies { get; } = [];
+    /// <summary>Gets the virtualized sequence of cards, section labels, and management panels.</summary>
+    public BatchObservableCollection<object> BrowserRows { get; } = [];
 
     /// <summary>Gets whether the browser has no media items to display.</summary>
-    public bool IsLibraryEmpty => MediaItems.Count == 0;
+    public bool IsLibraryEmpty => HasActiveFilters
+        ? _browserResultCount == 0
+        : _supportedMediaCount == 0;
 
     /// <summary>Gets whether the indexed library has media before filters are applied.</summary>
-    public bool HasIndexedMedia => _availableMediaItems.Count != 0;
+    public bool HasIndexedMedia => _supportedMediaCount != 0;
 
     /// <summary>Gets the empty-state heading appropriate for the current filters.</summary>
     public string EmptyLibraryTitle => HasIndexedMedia ? "No media matches your filters" : "Your library is empty";
@@ -424,7 +473,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         : "Add a library folder, then rescan it to bring your supported media here.";
 
     /// <summary>Gets a concise count suitable for the library browser header.</summary>
-    public string MediaCountText => $"{MediaItems.Count} item{(MediaItems.Count == 1 ? string.Empty : "s")}";
+    public string MediaCountText
+    {
+        get
+        {
+            var count = HasActiveFilters ? _browserResultCount : _supportedMediaCount;
+            return $"{count} item{(count == 1 ? string.Empty : "s")}";
+        }
+    }
 
     /// <summary>Gets a compact, contextual summary shown under the browsing controls.</summary>
     public string ActiveBrowseDescription => !HasActiveFilters
@@ -437,7 +493,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     public bool HasTvShows => TvShows.Count != 0;
 
-    public bool HasMovies => Movies.Count != 0;
+    public bool HasMovies => _movieCount != 0;
+
+    /// <summary>Gets whether another library page is currently being fetched.</summary>
+    public bool IsBrowserPageLoadingMore => _isBrowserPageLoadingMore;
 
     /// <summary>Gets the command that opens a tutorial collection's lesson list.</summary>
     public ICommand OpenTutorialCommand { get; }
@@ -468,6 +527,17 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 OnPropertyChanged(nameof(IsGridLayout));
                 _setGridLayoutCommand.NotifyCanExecuteChanged();
                 _setListLayoutCommand.NotifyCanExecuteChanged();
+                _browserColumnCount = value || _browserWidth <= 0
+                    ? 1
+                    : Math.Clamp((int)Math.Floor((_browserWidth + 16) / 296), 1, 8);
+                if (_browserDataInitialized && !IsLoading)
+                {
+                    _ = ReloadBrowserItemsAsync();
+                }
+                else
+                {
+                    RefreshBrowserRows();
+                }
             }
         }
     }
@@ -482,7 +552,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public string TvShowCountText => $"{TvShows.Count} show{(TvShows.Count == 1 ? string.Empty : "s")}";
 
     /// <summary>Gets the count shown in the movies section header.</summary>
-    public string MovieCountText => $"{Movies.Count} movie{(Movies.Count == 1 ? string.Empty : "s")}";
+    public string MovieCountText => $"{_movieCount} movie{(_movieCount == 1 ? string.Empty : "s")}";
 
     /// <summary>Gets feedback about the latest import action.</summary>
     public string? StatusMessage
@@ -490,6 +560,61 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         get => _statusMessage;
         private set => SetProperty(ref _statusMessage, value);
     }
+
+    /// <summary>Gets whether library data is being refreshed.</summary>
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set
+        {
+            if (SetProperty(ref _isLoading, value))
+            {
+                _refreshLibraryCommand.NotifyCanExecuteChanged();
+                _retryLibraryLoadCommand.NotifyCanExecuteChanged();
+                _cancelLibraryLoadCommand.NotifyCanExecuteChanged();
+                _resetLibraryCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(LibrarySummary));
+                OnPropertyChanged(nameof(IsLibraryEmpty));
+                RefreshBrowserRows();
+            }
+        }
+    }
+
+    /// <summary>Gets whether the latest initial library load failed.</summary>
+    public bool HasLibraryLoadError
+    {
+        get => _hasLibraryLoadError;
+        private set
+        {
+            if (SetProperty(ref _hasLibraryLoadError, value))
+            {
+                OnPropertyChanged(nameof(HasLibraryLoadIssue));
+                OnPropertyChanged(nameof(LibraryLoadMessage));
+            }
+        }
+    }
+
+    /// <summary>Gets whether library loading ended before a complete refresh.</summary>
+    public bool WasLibraryLoadCancelled
+    {
+        get => _wasLibraryLoadCancelled;
+        private set
+        {
+            if (SetProperty(ref _wasLibraryLoadCancelled, value))
+            {
+                OnPropertyChanged(nameof(HasLibraryLoadIssue));
+                OnPropertyChanged(nameof(LibraryLoadMessage));
+            }
+        }
+    }
+
+    /// <summary>Gets whether a load failure or cancellation needs user attention.</summary>
+    public bool HasLibraryLoadIssue => HasLibraryLoadError || WasLibraryLoadCancelled;
+
+    /// <summary>Gets the user-facing load failure or cancellation message.</summary>
+    public string LibraryLoadMessage => WasLibraryLoadCancelled
+        ? "Library loading was cancelled. Try again to load it."
+        : "The library could not be loaded. Check the database and try again.";
 
     /// <summary>Gets whether a library scan is currently in progress.</summary>
     public bool IsScanning
@@ -500,6 +625,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             if (SetProperty(ref _isScanning, value))
             {
                 _refreshLibraryCommand.NotifyCanExecuteChanged();
+                _retryLibraryLoadCommand.NotifyCanExecuteChanged();
                 _cancelScanCommand.NotifyCanExecuteChanged();
                 FolderManagement.NotifyScanningStateChanged();
                 _resetLibraryCommand.NotifyCanExecuteChanged();
@@ -536,7 +662,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Gets the current high-level library state for display.</summary>
-    public string LibrarySummary => IsScanning
+    public string LibrarySummary => IsLoading
+        ? "Loading library…"
+        : IsScanning
         ? "Scanning configured folders…"
         : $"{IndexedMediaCount} indexed media file{(IndexedMediaCount == 1 ? string.Empty : "s")}; {MissingMediaCount} missing.";
 
@@ -579,53 +707,501 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         : string.Empty;
 
     /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
-    public async Task RefreshLibraryDataAsync()
+    public async Task RefreshLibraryDataAsync(CancellationToken cancellationToken = default)
     {
-        await FolderManagement.RefreshAsync();
-        var mediaItems = await _mediaItemRepository.GetAllAsync();
-        _availableMediaItems = mediaItems
-            .Where(mediaItem => mediaItem.MediaType.IsSupported())
-            .ToArray();
-        await RefreshCategoryFiltersAsync();
-        ApplyFilters();
+        using var timing = _operationMetrics?.Start("Library.Load");
+        timing?.SetTag("HasActiveFilters", HasActiveFilters);
+        var activeBrowserQuery = Interlocked.Exchange(ref _browserQueryCancellationSource, null);
+        activeBrowserQuery?.Cancel();
+        Interlocked.Increment(ref _browserQueryGeneration);
+        _isBrowserPageLoading = false;
+        _isBrowserPageLoadingMore = false;
+        OnPropertyChanged(nameof(IsBrowserPageLoadingMore));
 
-        IndexedMediaCount = mediaItems.Count;
-        MissingMediaCount = mediaItems.Count(mediaItem => mediaItem.IsMissing);
-        RefreshMovies(mediaItems);
-        await RefreshTutorialsAsync();
-        await RefreshTvShowsAsync();
-        await TvShowGroupManagement.RefreshAsync();
+        var ownsLoadingState = !IsLoading;
+        CancellationTokenSource? refreshCancellationSource = null;
+        var previousSupportedMediaCount = _supportedMediaCount;
+        var previousMovieCount = _movieCount;
+        var previousBrowserResultCount = _browserResultCount;
+        var previousBrowserTotalCount = _browserTotalCount;
+        var previousLoadedBrowserMediaItems = _loadedBrowserMediaItems.ToArray();
+        var previousBrowserDataInitialized = _browserDataInitialized;
+        var previousCategoryFilters = CategoryFilters.ToArray();
+        var previousTutorials = Tutorials.ToArray();
+        var previousTvShows = TvShows.ToArray();
+        var previousBrowserRows = BrowserRows.ToArray();
+        var previousIndexedMediaCount = IndexedMediaCount;
+        var previousMissingMediaCount = MissingMediaCount;
+        if (ownsLoadingState)
+        {
+            refreshCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _libraryLoadCancellationSource = refreshCancellationSource;
+            cancellationToken = refreshCancellationSource.Token;
+            IsLoading = true;
+        }
+
+        try
+        {
+            await FolderManagement.RefreshAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            var summary = await _mediaItemRepository.GetLibrarySummaryAsync(cancellationToken);
+            _supportedMediaCount = summary.SupportedMediaCount;
+            _movieCount = summary.MovieCount;
+            await RefreshCategoryFiltersAsync(cancellationToken);
+
+            IndexedMediaCount = summary.IndexedMediaCount;
+            MissingMediaCount = summary.MissingMediaCount;
+            await RefreshTutorialsAsync(cancellationToken);
+            await RefreshTvShowsAsync(cancellationToken);
+            await TvShowGroupManagement.RefreshIfLoadedAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            await ReloadBrowserItemsAsync(cancellationToken);
+            _browserDataInitialized = true;
+            HasLibraryLoadError = false;
+            WasLibraryLoadCancelled = false;
+            timing?.SetTag("IndexedMediaCount", IndexedMediaCount);
+            timing?.SetTag("SupportedMediaCount", _supportedMediaCount);
+            timing?.SetTag("LoadedBrowserItemCount", _loadedBrowserMediaItems.Count);
+            timing?.SetOutcome("Success");
+        }
+        catch (OperationCanceledException)
+        {
+            timing?.SetOutcome("Cancelled");
+            _supportedMediaCount = previousSupportedMediaCount;
+            _movieCount = previousMovieCount;
+            _browserResultCount = previousBrowserResultCount;
+            _browserTotalCount = previousBrowserTotalCount;
+            _isBrowserPageLoading = false;
+            _isBrowserPageLoadingMore = false;
+            OnPropertyChanged(nameof(IsBrowserPageLoadingMore));
+            _loadedBrowserMediaItems.Clear();
+            _loadedBrowserMediaItems.AddRange(previousLoadedBrowserMediaItems);
+            _browserDataInitialized = previousBrowserDataInitialized;
+            CategoryFilters.ReplaceRange(previousCategoryFilters);
+            Tutorials.ReplaceRange(previousTutorials);
+            TvShows.ReplaceRange(previousTvShows);
+            BrowserRows.ReplaceRange(previousBrowserRows);
+            IndexedMediaCount = previousIndexedMediaCount;
+            MissingMediaCount = previousMissingMediaCount;
+            OnPropertyChanged(nameof(HasIndexedMedia));
+            OnPropertyChanged(nameof(MediaCountText));
+            OnPropertyChanged(nameof(ActiveBrowseDescription));
+            OnPropertyChanged(nameof(HasMovies));
+            OnPropertyChanged(nameof(MovieCountText));
+            throw;
+        }
+        catch
+        {
+            timing?.SetOutcome("Failed");
+            throw;
+        }
+        finally
+        {
+            if (ownsLoadingState)
+            {
+                if (ReferenceEquals(_libraryLoadCancellationSource, refreshCancellationSource))
+                {
+                    _libraryLoadCancellationSource = null;
+                }
+
+                refreshCancellationSource?.Dispose();
+                IsLoading = false;
+            }
+        }
     }
 
     private async Task LoadInitialLibraryDataAsync()
     {
+        HasLibraryLoadError = false;
+        WasLibraryLoadCancelled = false;
+        using var cancellationSource = new CancellationTokenSource();
+        _libraryLoadCancellationSource = cancellationSource;
+        IsLoading = true;
+
         try
         {
-            await RefreshLibraryDataAsync();
+            await RefreshLibraryDataAsync(cancellationSource.Token);
         }
-        catch
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
         {
             _initialDataLoadTask = null;
-            throw;
+            WasLibraryLoadCancelled = true;
+        }
+        catch (Exception)
+        {
+            _initialDataLoadTask = null;
+            HasLibraryLoadError = true;
+        }
+        finally
+        {
+            if (ReferenceEquals(_libraryLoadCancellationSource, cancellationSource))
+            {
+                _libraryLoadCancellationSource = null;
+            }
+
+            IsLoading = false;
         }
     }
 
-    private async Task RefreshCategoryFiltersAsync()
+    private async Task RetryLibraryLoadAsync() => await EnsureLibraryDataLoadedAsync();
+
+    private void CancelLibraryLoad()
     {
-        var categories = await _categoryRepository.GetAllAsync();
+        _libraryLoadCancellationSource?.Cancel();
+        StatusMessage = "Stopping library load…";
+    }
+
+    /// <summary>Updates the number of card columns to fit the browser viewport.</summary>
+    public void UpdateBrowserWidth(double width)
+    {
+        if (!double.IsFinite(width) || width <= 0)
+        {
+            return;
+        }
+
+        _browserWidth = width;
+        var columnCount = IsListLayout
+            ? 1
+            : Math.Clamp((int)Math.Floor((width + 16) / 296), 1, 8);
+        if (columnCount == _browserColumnCount)
+        {
+            return;
+        }
+
+        _browserColumnCount = columnCount;
+        if (_browserDataInitialized && !IsLoading)
+        {
+            _ = ReloadBrowserItemsAsync();
+        }
+        else
+        {
+            RefreshBrowserRows();
+        }
+    }
+
+    private void RefreshBrowserRows()
+    {
+        var rows = new List<object>();
+        if (HasActiveFilters)
+        {
+            rows.Add(new LibraryBrowserSectionRow("Browse results"));
+            AddBrowserCardRows(rows, _loadedBrowserMediaItems, mediaItem => new LibraryMediaItemViewModel((MediaItem)mediaItem));
+        }
+        else
+        {
+            rows.Add(new LibraryBrowserSectionRow("Tutorials"));
+            AddBrowserCardRows(rows, Tutorials);
+            rows.Add(new LibraryBrowserSectionRow("TV shows"));
+            AddBrowserCardRows(rows, TvShows);
+            rows.Add(new LibraryBrowserSectionRow("Movies"));
+            AddBrowserCardRows(rows, _loadedBrowserMediaItems, mediaItem => new MovieItemViewModel((MediaItem)mediaItem));
+        }
+
+        AddBrowserFooterRows(rows);
+        BrowserRows.ReplaceRange(rows);
+    }
+
+    private void AddBrowserFooterRows(ICollection<object> rows)
+    {
+        if (_isBrowserPageLoadingMore || (_isBrowserPageLoading && _loadedBrowserMediaItems.Count == 0))
+        {
+            rows.Add(new LibraryBrowserLoadingRow());
+        }
+        else if (_browserDataInitialized && IsLibraryEmpty && !IsLoading && !HasLibraryLoadIssue)
+        {
+            rows.Add(new LibraryBrowserEmptyRow());
+        }
+
+        rows.Add(new LibraryBrowserFoldersRow());
+        rows.Add(new LibraryBrowserTvShowGroupsRow());
+    }
+
+    private void RefreshBrowserFooter()
+    {
+        while (BrowserRows.Count > 0 && BrowserRows[^1] is
+               LibraryBrowserEmptyRow or LibraryBrowserLoadingRow or LibraryBrowserFoldersRow or LibraryBrowserTvShowGroupsRow)
+        {
+            BrowserRows.RemoveAt(BrowserRows.Count - 1);
+        }
+
+        var footerRows = new List<object>();
+        AddBrowserFooterRows(footerRows);
+        foreach (var row in footerRows)
+        {
+            BrowserRows.Add(row);
+        }
+    }
+
+    private void AddBrowserCardRows(
+        ICollection<object> rows,
+        IReadOnlyList<object> cards,
+        Func<object, object>? createCardViewModel = null)
+    {
+        for (var startIndex = 0; startIndex < cards.Count; startIndex += _browserColumnCount)
+        {
+            var count = Math.Min(_browserColumnCount, cards.Count - startIndex);
+            rows.Add(new LibraryBrowserCardsRow(cards, startIndex, count, createCardViewModel));
+        }
+    }
+
+    private async Task ReloadBrowserItemsAsync(
+        CancellationToken cancellationToken = default,
+        bool debounceSearch = false)
+    {
+        var cancellationSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var previousCancellationSource = Interlocked.Exchange(ref _browserQueryCancellationSource, cancellationSource);
+        previousCancellationSource?.Cancel();
+        var generation = Interlocked.Increment(ref _browserQueryGeneration);
+
+        _loadedBrowserMediaItems.Clear();
+        _browserTotalCount = HasActiveFilters ? 0 : _movieCount;
+        _browserResultCount = HasActiveFilters ? 0 : _supportedMediaCount;
+        _isBrowserPageLoading = true;
+        _isBrowserPageLoadingMore = false;
+        OnPropertyChanged(nameof(IsBrowserPageLoadingMore));
+        OnPropertyChanged(nameof(IsLibraryEmpty));
+        OnPropertyChanged(nameof(MediaCountText));
+        OnPropertyChanged(nameof(ActiveBrowseDescription));
+        RefreshBrowserRows();
+
+        try
+        {
+            if (debounceSearch)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(180), cancellationSource.Token);
+            }
+
+            var query = CreateBrowserQuery(skip: 0);
+            var isFilteredBrowse = HasActiveFilters;
+            var page = await _mediaItemRepository.GetBrowsePageAsync(
+                query,
+                includeTotalCount: isFilteredBrowse,
+                cancellationSource.Token);
+            cancellationSource.Token.ThrowIfCancellationRequested();
+            if (generation != Volatile.Read(ref _browserQueryGeneration))
+            {
+                return;
+            }
+
+            _loadedBrowserMediaItems.AddRange(page.Items.Cast<object>());
+            _browserTotalCount = isFilteredBrowse ? page.TotalCount ?? page.Items.Count : _movieCount;
+            _browserResultCount = isFilteredBrowse ? _browserTotalCount : _supportedMediaCount;
+            _isBrowserPageLoading = false;
+            _browserDataInitialized = true;
+            HasLibraryLoadError = false;
+            WasLibraryLoadCancelled = false;
+            NotifyBrowserCountsChanged();
+            RefreshBrowserRows();
+        }
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+
+            if (generation == Volatile.Read(ref _browserQueryGeneration))
+            {
+                _isBrowserPageLoading = false;
+                RefreshBrowserRows();
+            }
+        }
+        catch (Exception)
+        {
+            if (generation == Volatile.Read(ref _browserQueryGeneration))
+            {
+                _isBrowserPageLoading = false;
+                HasLibraryLoadError = true;
+                RefreshBrowserRows();
+                if (cancellationToken.CanBeCanceled)
+                {
+                    throw;
+                }
+            }
+        }
+        finally
+        {
+            if (ReferenceEquals(_browserQueryCancellationSource, cancellationSource))
+            {
+                _browserQueryCancellationSource = null;
+            }
+
+            cancellationSource.Dispose();
+        }
+    }
+
+    private MediaItemBrowseQuery CreateBrowserQuery(int skip)
+    {
+        var hasActiveFilters = HasActiveFilters;
+        var selectedMediaTypes = hasActiveFilters
+            ? MediaTypeFilters.Where(filter => filter.IsSelected).Select(filter => filter.Value).ToArray()
+            : [MediaType.Movie];
+        var selectedCategoryIds = CategoryFilters
+            .Where(filter => filter.IsSelected)
+            .Select(filter => filter.Value)
+            .ToArray();
+
+        return new MediaItemBrowseQuery
+        {
+            SearchText = hasActiveFilters ? SearchQuery : null,
+            MediaTypes = selectedMediaTypes,
+            CategoryIds = selectedCategoryIds,
+            FavoritesOnly = ShowFavoritesOnly,
+            FavoritesFirst = FavoritesFirst,
+            PlaybackFilter = SelectedPlaybackFilter switch
+            {
+                PlaybackFilter.Watched => MediaItemPlaybackFilter.Watched,
+                PlaybackFilter.Unwatched => MediaItemPlaybackFilter.Unwatched,
+                _ => MediaItemPlaybackFilter.All
+            },
+            CompletionFilter = SelectedCompletionFilter switch
+            {
+                CompletionFilter.Completed => MediaItemCompletionFilter.Completed,
+                CompletionFilter.Incomplete => MediaItemCompletionFilter.Incomplete,
+                _ => MediaItemCompletionFilter.All
+            },
+            SortOrder = Enum.TryParse<MediaItemBrowseSortOrder>(SelectedSortOrder.ToString(), out var sortOrder)
+                ? sortOrder
+                : MediaItemBrowseSortOrder.Ascending,
+            Skip = skip,
+            PageSize = Math.Clamp(_browserColumnCount * 20, _browserColumnCount, 500)
+        };
+    }
+
+    private async Task LoadNextBrowserPageAsync()
+    {
+        if (!_browserDataInitialized || _isBrowserPageLoading || _isBrowserPageLoadingMore ||
+            _loadedBrowserMediaItems.Count >= _browserTotalCount)
+        {
+            return;
+        }
+
+        var cancellationSource = new CancellationTokenSource();
+        var previousCancellationSource = Interlocked.Exchange(ref _browserQueryCancellationSource, cancellationSource);
+        previousCancellationSource?.Cancel();
+        var generation = Volatile.Read(ref _browserQueryGeneration);
+        _isBrowserPageLoadingMore = true;
+        OnPropertyChanged(nameof(IsBrowserPageLoadingMore));
+        RefreshBrowserFooter();
+
+        try
+        {
+            var query = CreateBrowserQuery(_loadedBrowserMediaItems.Count);
+            var page = await _mediaItemRepository.GetBrowsePageAsync(
+                query,
+                includeTotalCount: false,
+                cancellationSource.Token);
+            cancellationSource.Token.ThrowIfCancellationRequested();
+            if (generation != Volatile.Read(ref _browserQueryGeneration))
+            {
+                return;
+            }
+
+            if (page.Items.Count == 0)
+            {
+                _browserTotalCount = _loadedBrowserMediaItems.Count;
+                _browserResultCount = HasActiveFilters ? _browserTotalCount : _supportedMediaCount;
+                NotifyBrowserCountsChanged();
+                return;
+            }
+
+            var startIndex = _loadedBrowserMediaItems.Count;
+            _loadedBrowserMediaItems.AddRange(page.Items.Cast<object>());
+            RemoveBrowserFooterRows();
+            AddBrowserCardRowsForRange(
+                BrowserRows,
+                _loadedBrowserMediaItems,
+                startIndex,
+                page.Items.Count,
+                HasActiveFilters
+                    ? item => new LibraryMediaItemViewModel((MediaItem)item)
+                    : item => new MovieItemViewModel((MediaItem)item));
+            RefreshBrowserFooter();
+        }
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
+        {
+            // A changed filter or refresh superseded this page request.
+        }
+        catch (Exception)
+        {
+            if (generation == Volatile.Read(ref _browserQueryGeneration))
+            {
+                HasLibraryLoadError = true;
+                RefreshBrowserFooter();
+            }
+        }
+        finally
+        {
+            if (generation == Volatile.Read(ref _browserQueryGeneration))
+            {
+                _isBrowserPageLoadingMore = false;
+                OnPropertyChanged(nameof(IsBrowserPageLoadingMore));
+                RefreshBrowserFooter();
+            }
+
+            if (ReferenceEquals(_browserQueryCancellationSource, cancellationSource))
+            {
+                _browserQueryCancellationSource = null;
+            }
+
+            cancellationSource.Dispose();
+        }
+    }
+
+    /// <summary>Requests another page when the virtualized browser approaches its end.</summary>
+    public Task RequestNextBrowserPageAsync() => LoadNextBrowserPageAsync();
+
+    private void AddBrowserCardRowsForRange(
+        IList<object> rows,
+        IReadOnlyList<object> cards,
+        int startIndex,
+        int count,
+        Func<object, object> createCardViewModel)
+    {
+        var insertionIndex = rows.Count;
+        for (var index = startIndex; index < startIndex + count; index += _browserColumnCount)
+        {
+            var rowCount = Math.Min(_browserColumnCount, startIndex + count - index);
+            rows.Insert(insertionIndex++, new LibraryBrowserCardsRow(cards, index, rowCount, createCardViewModel));
+        }
+    }
+
+    private void RemoveBrowserFooterRows()
+    {
+        while (BrowserRows.Count > 0 && BrowserRows[^1] is
+               LibraryBrowserEmptyRow or LibraryBrowserLoadingRow or LibraryBrowserFoldersRow or LibraryBrowserTvShowGroupsRow)
+        {
+            BrowserRows.RemoveAt(BrowserRows.Count - 1);
+        }
+    }
+
+    private void NotifyBrowserCountsChanged()
+    {
+        OnPropertyChanged(nameof(IsLibraryEmpty));
+        OnPropertyChanged(nameof(HasIndexedMedia));
+        OnPropertyChanged(nameof(EmptyLibraryTitle));
+        OnPropertyChanged(nameof(EmptyLibraryDescription));
+        OnPropertyChanged(nameof(MediaCountText));
+        OnPropertyChanged(nameof(ActiveBrowseDescription));
+        OnPropertyChanged(nameof(HasMovies));
+        OnPropertyChanged(nameof(MovieCountText));
+    }
+
+    private async Task RefreshCategoryFiltersAsync(CancellationToken cancellationToken = default)
+    {
+        var categories = await _categoryRepository.GetAllAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         var availableCategoryIds = categories.Select(category => category.Id).ToHashSet();
         var removedCategoryFilterIds = _selectedCategoryFilterIds.RemoveWhere(categoryId => !availableCategoryIds.Contains(categoryId));
 
         _suppressFilterStateSaving = true;
-        CategoryFilters.Clear();
-        foreach (var category in categories.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
-        {
-            var filter = new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFiltersAndSaveFilterState)
+        CategoryFilters.ReplaceRange(
+            categories
+                .OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(category => new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFiltersAndSaveFilterState)
             {
                 IsSelected = _selectedCategoryFilterIds.Contains(category.Id)
-            };
-            CategoryFilters.Add(filter);
-        }
+            }));
 
         _suppressFilterStateSaving = false;
 
@@ -637,67 +1213,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
     }
 
-    private IReadOnlyList<MediaItem> FilterMediaItems()
+    private void ApplyFilters(bool updateGroupedMedia = false, bool debounceSearch = false)
     {
-        var selectedMediaTypes = MediaTypeFilters
-            .Where(filter => filter.IsSelected)
-            .Select(filter => filter.Value)
-            .ToHashSet();
-        var selectedCategoryIds = CategoryFilters
-            .Where(filter => filter.IsSelected)
-            .Select(filter => filter.Value)
-            .ToHashSet();
-
-        var filteredMediaItems = _availableMediaItems
-            .Where(mediaItem => MatchesSearchQuery(mediaItem, SearchQuery))
-            .Where(mediaItem => selectedMediaTypes.Count == 0 || selectedMediaTypes.Contains(mediaItem.MediaType))
-            .Where(mediaItem => selectedCategoryIds.Count == 0 ||
-                                (mediaItem.CategoryId is { } categoryId && selectedCategoryIds.Contains(categoryId)))
-            .Where(mediaItem => !ShowFavoritesOnly || mediaItem.IsFavorite)
-            .Where(mediaItem => SelectedPlaybackFilter switch
-            {
-                PlaybackFilter.Watched => mediaItem.LastPlayed is not null,
-                PlaybackFilter.Unwatched => mediaItem.LastPlayed is null,
-                _ => true
-            })
-            .Where(mediaItem => SelectedCompletionFilter switch
-            {
-                CompletionFilter.Completed => mediaItem.IsCompleted,
-                CompletionFilter.Incomplete => !mediaItem.IsCompleted,
-                _ => true
-            });
-
-        return OrderMediaItems(filteredMediaItems).ToArray();
-    }
-
-    private static bool MatchesSearchQuery(MediaItem mediaItem, string? query)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return true;
-        }
-
-        var comparison = StringComparison.OrdinalIgnoreCase;
-        var term = query.Trim();
-        return mediaItem.DisplayTitle.Contains(term, comparison) ||
-               mediaItem.Path.Contains(term, comparison) ||
-               (mediaItem.TVShowTitle?.Contains(term, comparison) ?? false) ||
-               (mediaItem.EffectiveReleaseYear?.ToString().Contains(term, comparison) ?? false) ||
-               (mediaItem.LibraryFolder?.DisplayNameOrName.Contains(term, comparison) ?? false) ||
-               (mediaItem.Category?.Name.Contains(term, comparison) ?? false);
-    }
-
-    private void ApplyFilters(bool updateGroupedMedia = false)
-    {
-        MediaItems.Clear();
-        foreach (var mediaItem in FilterMediaItems())
-        {
-            MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
-        }
-
         if (updateGroupedMedia)
         {
-            RefreshMovies(_availableMediaItems);
             SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
             SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
         }
@@ -711,6 +1230,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(CategoryFilterSummary));
         OnPropertyChanged(nameof(ActiveBrowseDescription));
         _clearFiltersCommand?.NotifyCanExecuteChanged();
+        if (_browserDataInitialized && !IsLoading)
+        {
+            _ = ReloadBrowserItemsAsync(debounceSearch: debounceSearch);
+        }
     }
 
     private void ApplyFiltersAndSaveFilterState()
@@ -1077,14 +1600,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Reloads tutorial collections in alphabetical order.</summary>
-    public async Task RefreshTutorialsAsync()
+    public async Task RefreshTutorialsAsync(CancellationToken cancellationToken = default)
     {
-        var courses = await _courseRepository.GetAllAsync();
-        Tutorials.Clear();
-        foreach (var course in courses)
-        {
-            Tutorials.Add(new TutorialCollectionViewModel(course));
-        }
+        var courses = await _courseRepository.GetLibrarySummariesAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        Tutorials.ReplaceRange(courses.Select(course => new TutorialCollectionViewModel(course)));
 
         SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
 
@@ -1093,14 +1613,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Reloads television-show collections in alphabetical order.</summary>
-    public async Task RefreshTvShowsAsync()
+    public async Task RefreshTvShowsAsync(CancellationToken cancellationToken = default)
     {
-        var shows = await _tvShowRepository.GetAllAsync();
-        TvShows.Clear();
-        foreach (var show in shows)
-        {
-            TvShows.Add(new TvShowCollectionViewModel(show));
-        }
+        var shows = await _tvShowRepository.GetLibrarySummariesAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        TvShows.ReplaceRange(shows.Select(show => new TvShowCollectionViewModel(show)));
 
         SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
 
@@ -1108,20 +1625,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(HasTvShows));
     }
 
-    private void RefreshMovies(IEnumerable<MediaItem> mediaItems)
-    {
-        Movies.Clear();
-        foreach (var movie in OrderMediaItems(mediaItems.Where(mediaItem => mediaItem.MediaType == MediaType.Movie)))
-        {
-            Movies.Add(new MovieItemViewModel(movie));
-        }
-
-        OnPropertyChanged(nameof(MovieCountText));
-        OnPropertyChanged(nameof(HasMovies));
-    }
-
     private async Task RefreshLibraryAsync()
     {
+        if (IsScanning || _mediaScannerService.IsScanning)
+        {
+            StatusMessage = "A library scan is already in progress.";
+            return;
+        }
+
         IsScanning = true;
         ProcessedFileCount = 0;
         DiscoveredMediaCount = 0;
@@ -1145,10 +1656,18 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 StatusMessage += $" Skipped {scanResult.NonCriticalErrorCount} inaccessible or unreadable path{(scanResult.NonCriticalErrorCount == 1 ? string.Empty : "s")}.";
             }
         }
-        catch (OperationCanceledException)
+        catch (ScanAlreadyRunningException)
+        {
+            StatusMessage = "A library scan is already in progress.";
+        }
+        catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
         {
             await RefreshLibraryDataAsync();
             StatusMessage = "Library scan cancelled.";
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "Library refresh cancelled.";
         }
         catch
         {
@@ -1248,40 +1767,6 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         await _settingsService.SaveAsync();
     }
 
-    private IEnumerable<MediaItem> OrderMediaItems(IEnumerable<MediaItem> mediaItems) =>
-        SelectedSortOrder switch
-        {
-            LibrarySortOrder.ReleaseYearNewest => OrderByReleaseYear(mediaItems, descending: true),
-            LibrarySortOrder.ReleaseYearOldest => OrderByReleaseYear(mediaItems, descending: false),
-            _ => OrderLibraryItems(
-                mediaItems,
-                mediaItem => mediaItem.DisplayTitle,
-                mediaItem => mediaItem.DateAdded,
-                mediaItem => mediaItem.DateAdded,
-                mediaItem => mediaItem.LastPlayed,
-                mediaItem => mediaItem.LastPlayed,
-                MediaPlaybackProgress.ProgressPercentage,
-                MediaPlaybackProgress.ProgressPercentage,
-                mediaItem => mediaItem.IsFavorite)
-        };
-
-    private IEnumerable<MediaItem> OrderByReleaseYear(IEnumerable<MediaItem> mediaItems, bool descending)
-    {
-        var orderedItems = descending
-            ? mediaItems
-                .OrderByDescending(mediaItem => mediaItem.EffectiveReleaseYear.HasValue)
-                .ThenByDescending(mediaItem => mediaItem.EffectiveReleaseYear)
-                .ThenBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase)
-            : mediaItems
-                .OrderBy(mediaItem => mediaItem.EffectiveReleaseYear.HasValue ? 0 : 1)
-                .ThenBy(mediaItem => mediaItem.EffectiveReleaseYear)
-                .ThenBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase);
-
-        return FavoritesFirst
-            ? orderedItems.OrderByDescending(mediaItem => mediaItem.IsFavorite)
-            : orderedItems;
-    }
-
     private IEnumerable<TutorialCollectionViewModel> OrderTutorials(IEnumerable<TutorialCollectionViewModel> tutorials) =>
         OrderLibraryItems(
             tutorials,
@@ -1352,6 +1837,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private static void SortDisplayedGroups<T>(ObservableCollection<T> groups, IEnumerable<T> orderedGroups)
     {
         var reorderedGroups = orderedGroups.ToArray();
+        if (groups is BatchObservableCollection<T> batchGroups)
+        {
+            batchGroups.ReplaceRange(reorderedGroups);
+            return;
+        }
+
         groups.Clear();
         foreach (var group in reorderedGroups)
         {
