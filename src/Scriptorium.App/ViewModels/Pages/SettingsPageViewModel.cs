@@ -2,6 +2,7 @@ using Scriptorium.App.Models;
 using Scriptorium.App.Services;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Views.Controls;
+using Scriptorium.Infrastructure;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -12,6 +13,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     private readonly LibraryPageViewModel _libraryPage;
     private readonly INotificationService? _notifications;
     private readonly IConfirmationDialog _confirmationDialog;
+    private readonly IApplicationInfoService _applicationInfo;
+    private readonly DatabaseLocation _databaseLocation;
     private long _thumbnailCacheSizeBytes;
     private bool _isClearingThumbnailCache;
     private string _libraryLayout;
@@ -34,6 +37,8 @@ public sealed class SettingsPageViewModel : PageViewModel
         LibraryPageViewModel libraryPage,
         Scriptorium.App.Services.IThemeService themeService,
         IConfirmationDialog confirmationDialog,
+        IApplicationInfoService applicationInfo,
+        DatabaseLocation databaseLocation,
         INotificationService? notifications = null)
     {
         _settingsService = settingsService;
@@ -41,6 +46,8 @@ public sealed class SettingsPageViewModel : PageViewModel
         _libraryPage = libraryPage;
         _notifications = notifications;
         _confirmationDialog = confirmationDialog;
+        _applicationInfo = applicationInfo;
+        _databaseLocation = databaseLocation;
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
             ? sortOrder
@@ -66,6 +73,20 @@ public sealed class SettingsPageViewModel : PageViewModel
     public override string Title => "Settings";
 
     public FolderManagementViewModel FolderManagement => _libraryPage.FolderManagement;
+
+    public LibraryPageViewModel LibraryPage => _libraryPage;
+
+    public string ApplicationName => _applicationInfo.ApplicationName;
+
+    public string ApplicationVersion => _applicationInfo.Version;
+
+    public string BuildInformation => _applicationInfo.BuildInformation;
+
+    public string DatabaseLocation => _databaseLocation.FilePath;
+
+    public string ThumbnailCacheLocation => ThumbnailCache.CacheDirectory;
+
+    public Task EnsureLibraryStatisticsLoadedAsync() => _libraryPage.EnsureLibraryDataLoadedAsync();
 
     public Task RefreshFoldersAsync() => FolderManagement.RefreshAsync();
 

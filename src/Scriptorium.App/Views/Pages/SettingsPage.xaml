@@ -321,6 +321,58 @@
                 </StackPanel>
             </Border>
 
+            <Border Margin="0,20,0,0" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="About Scriptorium" />
+                    <TextBlock Margin="0,5,0,18" Style="{StaticResource Text.Helper}" Text="Application, storage, and library information." />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="160" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Margin="0,0,16,8" Style="{StaticResource Text.Label}" Text="Application" />
+                        <TextBlock Grid.Column="1" Margin="0,0,0,8" Style="{StaticResource Text.Helper}" Text="{Binding ApplicationName}" />
+
+                        <TextBlock Grid.Row="1" Margin="0,0,16,8" Style="{StaticResource Text.Label}" Text="Version" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,0,0,8" Style="{StaticResource Text.Helper}" Text="{Binding ApplicationVersion}" TextWrapping="Wrap" />
+
+                        <TextBlock Grid.Row="2" Margin="0,0,16,8" Style="{StaticResource Text.Label}" Text="Build" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" Style="{StaticResource Text.Helper}" Text="{Binding BuildInformation}" TextWrapping="Wrap" />
+
+                        <TextBlock Grid.Row="3" Margin="0,0,16,8" Style="{StaticResource Text.Label}" Text="Database" />
+                        <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,8" Style="{StaticResource Text.Metadata}" Text="{Binding DatabaseLocation}" TextWrapping="Wrap" />
+
+                        <TextBlock Grid.Row="4" Margin="0,0,16,8" Style="{StaticResource Text.Label}" Text="Thumbnail cache" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,0,0,8" Style="{StaticResource Text.Metadata}" Text="{Binding ThumbnailCacheLocation}" TextWrapping="Wrap" />
+
+                        <TextBlock Grid.Row="5" Margin="0,0,16,8" Style="{StaticResource Text.Label}" Text="Library" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" Margin="0,0,0,8" Style="{StaticResource Text.Helper}" Text="{Binding LibraryPage.LibrarySummary}" TextWrapping="Wrap" />
+
+                        <TextBlock Grid.Row="6" Style="{StaticResource Text.Label}" Text="Media types" />
+                        <TextBlock Grid.Row="6" Grid.Column="1" Style="{StaticResource Text.Helper}" TextWrapping="Wrap">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0}, {1}, {2}">
+                                    <Binding Path="LibraryPage.MovieCountText" />
+                                    <Binding Path="LibraryPage.TutorialCountText" />
+                                    <Binding Path="LibraryPage.TvShowCountText" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <TextBlock Margin="2,16,0,0" Style="{StaticResource Text.Metadata}" Text="Changes are saved automatically." />
         </StackPanel>
     </ScrollViewer>

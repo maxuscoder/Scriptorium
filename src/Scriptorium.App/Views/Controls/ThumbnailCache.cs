@@ -22,6 +22,8 @@ internal static class ThumbnailCache
 
     internal static event EventHandler? CacheCleared;
 
+    internal static string CacheDirectory => GetDefaultCacheDirectory();
+
     /// <summary>Gets a cached, resized preview without blocking the UI thread.</summary>
     public static Task<BitmapSource?> GetAsync(string? thumbnailPath) =>
         GetAsync(thumbnailPath, GetDefaultCacheDirectory());
