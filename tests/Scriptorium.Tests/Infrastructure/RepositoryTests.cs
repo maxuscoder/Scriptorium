@@ -1648,6 +1648,31 @@ public sealed class RepositoryTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => scanner.ScanAsync(cancellationSource.Token));
     }
 
+    [Fact]
+    public async Task Library_scanner_rejects_a_second_scan_and_releases_state_after_cancellation()
+    {
+        var scanner = new MediaScannerService(
+            new BlockingScanSource(),
+            new FileSystemService(),
+            new MediaFormatService(),
+            new SeasonFolderDetector(),
+            new EpisodeFileNameParser(),
+            new ThrowingDuplicateDetector(),
+            new ThrowingMetadataReader(),
+            new ThrowingSynchronizer(),
+            new ThrowingHierarchySynchronizer(),
+            new ThrowingCourseSynchronizer());
+        using var cancellationSource = new CancellationTokenSource();
+
+        var firstScan = scanner.ScanAsync(cancellationSource.Token);
+        Assert.True(scanner.IsScanning);
+        await Assert.ThrowsAsync<ScanAlreadyRunningException>(() => scanner.ScanAsync());
+
+        cancellationSource.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => firstScan);
+        Assert.False(scanner.IsScanning);
+    }
+
     [Theory]
     [InlineData("Season 1", 1)]
     [InlineData("Season 02", 2)]
@@ -2310,6 +2335,16 @@ public sealed class RepositoryTests
     {
         public Task<IReadOnlyList<LibraryFolder>> GetEligibleFoldersAsync(CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("The cancelled scan should not read configured folders.");
+    }
+
+    private sealed class BlockingScanSource : ILibraryFolderScanSource
+    {
+        public async Task<IReadOnlyList<LibraryFolder>> GetEligibleFoldersAsync(
+            CancellationToken cancellationToken = default)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return [];
+        }
     }
 
     private sealed class ThrowingDuplicateDetector : IMediaDuplicateDetector

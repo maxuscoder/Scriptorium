@@ -5,6 +5,9 @@ namespace Scriptorium.Core.Services;
 /// </summary>
 public interface IMediaScannerService
 {
+    /// <summary>Gets whether a scan is currently active.</summary>
+    bool IsScanning { get; }
+
     /// <summary>
     /// Scans enabled library folders, synchronizes their supported files, and returns a scan summary.
     /// </summary>

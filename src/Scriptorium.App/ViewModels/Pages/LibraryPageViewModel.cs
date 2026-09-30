@@ -134,7 +134,16 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             mediaGroupingService,
             () => RefreshLibraryDataAsync(),
             message => StatusMessage = message);
-        _refreshLibraryCommand = new AsyncRelayCommand(RefreshLibraryAsync, () => !IsScanning && !IsLoading);
+        _refreshLibraryCommand = new AsyncRelayCommand(
+            RefreshLibraryAsync,
+            () => !IsScanning && !IsLoading,
+            () =>
+            {
+                if (IsScanning || _mediaScannerService.IsScanning)
+                {
+                    StatusMessage = "A library scan is already in progress.";
+                }
+            });
         RefreshLibraryCommand = _refreshLibraryCommand;
         _retryLibraryLoadCommand = new AsyncRelayCommand(RetryLibraryLoadAsync, () => !IsScanning && !IsLoading);
         RetryLibraryLoadCommand = _retryLibraryLoadCommand;
@@ -1618,6 +1627,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private async Task RefreshLibraryAsync()
     {
+        if (IsScanning || _mediaScannerService.IsScanning)
+        {
+            StatusMessage = "A library scan is already in progress.";
+            return;
+        }
+
         IsScanning = true;
         ProcessedFileCount = 0;
         DiscoveredMediaCount = 0;
@@ -1640,6 +1655,10 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             {
                 StatusMessage += $" Skipped {scanResult.NonCriticalErrorCount} inaccessible or unreadable path{(scanResult.NonCriticalErrorCount == 1 ? string.Empty : "s")}.";
             }
+        }
+        catch (ScanAlreadyRunningException)
+        {
+            StatusMessage = "A library scan is already in progress.";
         }
         catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
         {

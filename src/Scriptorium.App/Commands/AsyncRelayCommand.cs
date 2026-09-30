@@ -10,22 +10,31 @@ public sealed class AsyncRelayCommand : ICommand
 {
     private readonly Func<object?, Task> _executeAsync;
     private readonly Func<object?, bool>? _canExecute;
+    private readonly Action? _onRejected;
     private bool _isExecuting;
 
-    public AsyncRelayCommand(Func<Task> executeAsync, Func<bool>? canExecute = null)
+    public AsyncRelayCommand(
+        Func<Task> executeAsync,
+        Func<bool>? canExecute = null,
+        Action? onRejected = null)
         : this(
             _ => executeAsync(),
-            canExecute is null ? null : _ => canExecute())
+            canExecute is null ? null : _ => canExecute(),
+            onRejected)
     {
         ArgumentNullException.ThrowIfNull(executeAsync);
     }
 
-    public AsyncRelayCommand(Func<object?, Task> executeAsync, Func<object?, bool>? canExecute = null)
+    public AsyncRelayCommand(
+        Func<object?, Task> executeAsync,
+        Func<object?, bool>? canExecute = null,
+        Action? onRejected = null)
     {
         ArgumentNullException.ThrowIfNull(executeAsync);
 
         _executeAsync = executeAsync;
         _canExecute = canExecute;
+        _onRejected = onRejected;
     }
 
     public event EventHandler? CanExecuteChanged;
@@ -44,6 +53,7 @@ public sealed class AsyncRelayCommand : ICommand
     {
         if (!CanExecute(parameter))
         {
+            _onRejected?.Invoke();
             return;
         }
 

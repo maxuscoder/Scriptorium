@@ -22,16 +22,32 @@ public sealed partial class MediaScannerService(
     ILogger<MediaScannerService>? logger = null,
     IOperationMetrics? operationMetrics = null) : IMediaScannerService
 {
+    private readonly SemaphoreSlim _scanGate = new(1, 1);
+    private int _isScanning;
+
     /// <inheritdoc />
-    public Task<MediaScanResult> ScanAsync(
+    public bool IsScanning => Volatile.Read(ref _isScanning) != 0;
+
+    /// <inheritdoc />
+    public async Task<MediaScanResult> ScanAsync(
         CancellationToken cancellationToken = default,
-        IProgress<MediaScanProgress>? progress = null) =>
-        Task.Run(async () =>
+        IProgress<MediaScanProgress>? progress = null)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_scanGate.Wait(0))
         {
-            using var timing = operationMetrics?.Start("Library.Scan");
-            try
+            throw new ScanAlreadyRunningException();
+        }
+
+        Volatile.Write(ref _isScanning, 1);
+        try
+        {
+            return await Task.Run(async () =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                using var timing = operationMetrics?.Start("Library.Scan");
+                try
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
             var folders = await libraryFolderScanSource.GetEligibleFoldersAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -136,7 +152,14 @@ public sealed partial class MediaScannerService(
                 timing?.SetOutcome("Failed");
                 throw;
             }
-        }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Volatile.Write(ref _isScanning, 0);
+            _scanGate.Release();
+        }
+    }
 
     private static bool CanSkip(Exception exception) => exception is
         IOException or
