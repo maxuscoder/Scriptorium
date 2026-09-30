@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
@@ -21,6 +22,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     private readonly ICreateCategoryDialog _createCategoryDialog;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IFavoriteService _favoriteService;
+    private readonly ILogger<CategoriesPageViewModel>? _logger;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string _statusMessage = string.Empty;
     private CategoryItemViewModel? _selectedCategory;
@@ -36,7 +38,8 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         IConfirmationDialog confirmationDialog,
         ICreateCategoryDialog createCategoryDialog,
         IMediaItemRepository mediaItemRepository,
-        IFavoriteService favoriteService)
+        IFavoriteService favoriteService,
+        ILogger<CategoriesPageViewModel>? logger = null)
     {
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
@@ -44,6 +47,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         _createCategoryDialog = createCategoryDialog;
         _mediaItemRepository = mediaItemRepository;
         _favoriteService = favoriteService;
+        _logger = logger;
 
         CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
         RenameCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync);
@@ -212,7 +216,10 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            StatusMessage = "Categories could not be loaded. Try refreshing again.";
+            _logger?.LogWarning(exception, "Categories could not be refreshed.");
+            StatusMessage = DatabaseFailureClassifier.IsDatabaseFailure(exception)
+                ? "Categories couldn't be loaded from the local database. Try refreshing again."
+                : "Categories could not be loaded. Try refreshing again.";
         }
         finally
         {

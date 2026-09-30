@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Collections;
 using Scriptorium.App.Services;
@@ -30,6 +31,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly IOperationMetrics? _operationMetrics;
+    private readonly ILogger<LibraryPageViewModel>? _logger;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly AsyncRelayCommand _retryLibraryLoadCommand;
     private readonly RelayCommand _cancelLibraryLoadCommand;
@@ -106,7 +108,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IMediaDescriptionService? mediaDescriptionService = null,
-        IOperationMetrics? operationMetrics = null)
+        IOperationMetrics? operationMetrics = null,
+        ILogger<LibraryPageViewModel>? logger = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -126,6 +129,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
         _operationMetrics = operationMetrics;
+        _logger = logger;
         FolderManagement = folderManagementViewModelFactory.Create(
             () => RefreshLibraryDataAsync(),
             message => StatusMessage = message,
@@ -829,8 +833,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             _initialDataLoadTask = null;
             WasLibraryLoadCancelled = true;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger?.LogError(exception, "The initial library data load failed.");
             _initialDataLoadTask = null;
             HasLibraryLoadError = true;
         }
@@ -1008,8 +1013,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 RefreshBrowserRows();
             }
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger?.LogWarning(exception, "The library browser query failed.");
             if (generation == Volatile.Read(ref _browserQueryGeneration))
             {
                 _isBrowserPageLoading = false;
@@ -1124,8 +1130,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             // A changed filter or refresh superseded this page request.
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger?.LogWarning(exception, "The next library browser page could not be loaded.");
             if (generation == Volatile.Read(ref _browserQueryGeneration))
             {
                 HasLibraryLoadError = true;
@@ -1679,9 +1686,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             StatusMessage = "Library refresh cancelled.";
         }
-        catch
+        catch (Exception exception)
         {
-            StatusMessage = "Library scan could not be completed.";
+            _logger?.LogError(exception, "The library scan or the refresh following it failed.");
+            StatusMessage = DatabaseFailureClassifier.IsDatabaseFailure(exception)
+                ? "The local library database couldn't complete this refresh. Try scanning again; if the problem continues, restart Scriptorium."
+                : "Library scan could not be completed.";
         }
         finally
         {

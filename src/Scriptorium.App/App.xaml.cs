@@ -64,7 +64,11 @@ public partial class App : Application
                 logFileLocation.DirectoryPath);
 
             var databaseInitializer = _serviceProvider.GetRequiredService<IDatabaseInitializer>();
-            await databaseInitializer.InitializeAsync();
+            if (!await InitializeDatabaseWithRetryAsync(databaseInitializer, databaseLocation.FilePath))
+            {
+                Shutdown(-1);
+                return;
+            }
 
             _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
             await _settingsService.LoadAsync();
@@ -130,6 +134,33 @@ public partial class App : Application
         }
     }
 
+    private async Task<bool> InitializeDatabaseWithRetryAsync(
+        IDatabaseInitializer databaseInitializer,
+        string databasePath)
+    {
+        while (true)
+        {
+            try
+            {
+                await databaseInitializer.InitializeAsync();
+                return true;
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogError(exception, "Could not initialize the local database at {DatabasePath}.", databasePath);
+                var choice = MessageBox.Show(
+                    "Scriptorium couldn't open or update its local library database. Close any other app using the database, then choose Yes to retry or No to exit. Details are in the application log.",
+                    "Scriptorium database problem",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Error);
+                if (choice != MessageBoxResult.Yes)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         _logger?.LogInformation("Shutting down Scriptorium with exit code {ExitCode}.", e.ApplicationExitCode);
@@ -178,6 +209,18 @@ public partial class App : Application
         object sender,
         DispatcherUnhandledExceptionEventArgs e)
     {
+        if (DatabaseFailureClassifier.IsDatabaseFailure(e.Exception))
+        {
+            Log.Error(e.Exception, "A database operation failed while handling a user action.");
+            MessageBox.Show(
+                "Scriptorium couldn't complete that library database operation. Refresh the page and try again; if the problem continues, restart Scriptorium. Details are in the application log.",
+                "Scriptorium database problem",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            e.Handled = true;
+            return;
+        }
+
         Log.Fatal(e.Exception, "Unhandled exception on the UI thread.");
     }
 
