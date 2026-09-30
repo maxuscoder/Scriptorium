@@ -2,20 +2,88 @@
     x:Class="Scriptorium.App.Views.Pages.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Grid>
-        <StackPanel
-            MaxWidth="520"
-            HorizontalAlignment="Center"
-            VerticalAlignment="Center">
-            <TextBlock
-                HorizontalAlignment="Center"
-                Style="{StaticResource Text.PageTitle}"
-                Text="Settings" />
-            <TextBlock
-                Margin="0,12,0,0"
-                HorizontalAlignment="Center"
-                Style="{StaticResource Text.Body.Center}"
-                Text="Theme and library preferences will be managed here." />
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel MaxWidth="840" Margin="48,40" HorizontalAlignment="Left">
+            <TextBlock Style="{StaticResource Text.PageTitle}" Text="Settings" />
+            <TextBlock Margin="0,8,0,28" Style="{StaticResource Text.Body}" Text="Set up your library and playback preferences." />
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Library" />
+                    <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how your media is displayed and ordered." />
+
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Default layout" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Grid cards or a compact list." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding LayoutOptions}" SelectedItem="{Binding LibraryLayout, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Sort library by" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Set the order used for library items." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" DisplayMemberPath="DisplayName" ItemsSource="{Binding SortOrderOptions}" SelectedValue="{Binding LibrarySortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Value" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Show favorites first" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Keep favorite items at the top of the library." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding FavoritesFirst, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Playback" />
+                    <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Defaults are used when you open new media." />
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                            <ColumnDefinition Width="48" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Default volume" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Volume for newly opened media." />
+                        </StackPanel>
+                        <Slider Grid.Column="1" VerticalAlignment="Center" Maximum="1" Minimum="0" TickFrequency="0.05" Value="{Binding PlaybackVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Default playback speed" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Playback rate for newly opened media." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding PlaybackSpeedOptions}" SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Margin="2,16,0,0" Style="{StaticResource Text.Metadata}" Text="Changes are saved automatically." />
         </StackPanel>
-    </Grid>
+    </ScrollViewer>
 </UserControl>

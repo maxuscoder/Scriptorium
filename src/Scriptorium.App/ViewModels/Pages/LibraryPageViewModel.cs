@@ -554,6 +554,16 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Gets whether media is currently displayed as a card grid.</summary>
     public bool IsGridLayout => !IsListLayout;
 
+    /// <summary>Applies a layout preference selected from the Settings page.</summary>
+    public void ApplyPreferredLayout(string layout)
+    {
+        var useListLayout = string.Equals(layout, "List", StringComparison.OrdinalIgnoreCase);
+        if (IsListLayout != useListLayout)
+        {
+            _ = SetLayoutAsync(useListLayout);
+        }
+    }
+
     /// <summary>Gets the count shown in the tutorials section header.</summary>
     public string TutorialCountText => $"{Tutorials.Count} collection{(Tutorials.Count == 1 ? string.Empty : "s")}";
 
