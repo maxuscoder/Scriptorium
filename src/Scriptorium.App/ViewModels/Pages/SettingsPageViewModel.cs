@@ -31,8 +31,6 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     public Task RefreshFoldersAsync() => FolderManagement.RefreshAsync();
 
-    public IReadOnlyList<string> LayoutOptions { get; } = ["Grid", "List"];
-
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
 
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -43,10 +41,24 @@ public sealed class SettingsPageViewModel : PageViewModel
         set
         {
             if (!SetProperty(ref _libraryLayout, value)) return;
+            OnPropertyChanged(nameof(IsGridView));
+            OnPropertyChanged(nameof(IsListView));
             _settingsService.Settings.LibraryLayout = value;
             _libraryPage.ApplyPreferredLayout(value);
             SaveChanges();
         }
+    }
+
+    public bool IsGridView
+    {
+        get => string.Equals(LibraryLayout, "Grid", StringComparison.OrdinalIgnoreCase);
+        set { if (value) LibraryLayout = "Grid"; }
+    }
+
+    public bool IsListView
+    {
+        get => string.Equals(LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
+        set { if (value) LibraryLayout = "List"; }
     }
 
     public LibrarySortOrder LibrarySortOrder

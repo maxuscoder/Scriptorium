@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using System.ComponentModel;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Models;
 using Scriptorium.App.Services;
@@ -15,6 +16,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     private readonly SearchPageViewModel _searchPage;
     private readonly ISearchQueryResetService _searchQueryResetService;
     private readonly ISettingsService _settingsService;
+    private readonly LibraryPageViewModel _libraryPage;
     private NavigationItem? _selectedNavigationItem;
     private string _searchQuery = string.Empty;
     private bool _disposed;
@@ -32,9 +34,11 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         INotificationService notifications)
     {
         _navigationService = navigationService;
+        _libraryPage = libraryPage;
         _searchPage = searchPage;
         _searchQueryResetService = searchQueryResetService;
         _settingsService = settingsService;
+        _libraryPage.PropertyChanged += OnLibraryPagePropertyChanged;
         Notifications = notifications;
         _navigationService.Navigated += OnNavigated;
         _searchQueryResetService.ClearRequested += ClearSearchQuery;
@@ -80,6 +84,9 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
 
     public string PageTitle => CurrentPage?.Title ?? string.Empty;
 
+    /// <summary>Gets the shared media presentation preference used by collection pages.</summary>
+    public bool IsListLayout => _libraryPage.IsListLayout;
+
     /// <summary>Gets or sets the query entered in the persistent media search field.</summary>
     public string SearchQuery
     {
@@ -121,6 +128,15 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         _disposed = true;
         _navigationService.Navigated -= OnNavigated;
         _searchQueryResetService.ClearRequested -= ClearSearchQuery;
+        _libraryPage.PropertyChanged -= OnLibraryPagePropertyChanged;
+    }
+
+    private void OnLibraryPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LibraryPageViewModel.IsListLayout))
+        {
+            OnPropertyChanged(nameof(IsListLayout));
+        }
     }
 
     private void OnNavigated(PageViewModel page)

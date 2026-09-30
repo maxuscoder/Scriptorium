@@ -21,7 +21,10 @@
                             <TextBlock Style="{StaticResource Text.Label}" Text="Default layout" />
                             <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Grid cards or a compact list." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding LayoutOptions}" SelectedItem="{Binding LibraryLayout, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.ComboBox}" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                            <RadioButton Margin="0,0,18,0" Content="Grid View" GroupName="MediaLayout" IsChecked="{Binding IsGridView, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            <RadioButton Content="List View" GroupName="MediaLayout" IsChecked="{Binding IsListView, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        </StackPanel>
                     </Grid>
 
                     <Grid Margin="0,0,0,16">
