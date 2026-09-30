@@ -55,7 +55,7 @@
                             <Style BasedOn="{StaticResource Text.Navigation}" TargetType="TextBlock">
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                                         <Setter Property="FontWeight" Value="SemiBold" />
                                     </DataTrigger>
                                     <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
@@ -70,8 +70,8 @@
         </DataTemplate>
     </UserControl.Resources>
     <Border
-        Background="{StaticResource Brush.SurfaceHeader}"
-        BorderBrush="{StaticResource Brush.Border}"
+        Background="{DynamicResource Brush.SurfaceHeader}"
+        BorderBrush="{DynamicResource Brush.Border}"
         BorderThickness="0,0,1,0">
         <DockPanel Margin="12,18,12,14" LastChildFill="True">
             <Grid Height="64" Margin="4,0,4,10" DockPanel.Dock="Top">
@@ -117,8 +117,8 @@
                 DockPanel.Dock="Bottom"
                 Margin="4,18,4,0"
                 Padding="12,14"
-                Background="{StaticResource Brush.Surface}"
-                BorderBrush="{StaticResource Brush.Border}"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="1"
                 CornerRadius="{StaticResource CornerRadius.M}">
                 <Border.Style>

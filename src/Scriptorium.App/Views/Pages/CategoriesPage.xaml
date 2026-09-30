@@ -17,12 +17,12 @@
                         <Border
                             Margin="12,0,0,0"
                             VerticalAlignment="Center"
-                            Background="{StaticResource Brush.SurfaceOverlay}"
+                            Background="{DynamicResource Brush.SurfaceOverlay}"
                             CornerRadius="{StaticResource CornerRadius.S}"
                             Padding="9,3">
                             <TextBlock
                                 Style="{StaticResource Text.Badge}"
-                                Foreground="{StaticResource Brush.TextPrimary}"
+                                Foreground="{DynamicResource Brush.TextPrimary}"
                                 Text="{Binding CategoryCountText}" />
                         </Border>
                     </StackPanel>
@@ -51,7 +51,7 @@
                 </StackPanel>
             </Grid>
 
-            <Border Margin="0,20,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+            <Border Margin="0,20,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -68,7 +68,7 @@
             <TextBlock
                 MinHeight="24"
                 Margin="0,32,0,0"
-                Foreground="{StaticResource Brush.TextSecondary}"
+                Foreground="{DynamicResource Brush.TextSecondary}"
                 Text="{Binding StatusMessage}" />
 
             <StackPanel
@@ -80,12 +80,12 @@
                         <TextBlock
                             Margin="10,2,0,0"
                             VerticalAlignment="Center"
-                            Foreground="{StaticResource Brush.TextMuted}"
+                            Foreground="{DynamicResource Brush.TextMuted}"
                             Text="Select a category to see its media" />
                     </StackPanel>
                     <TextBlock
                         HorizontalAlignment="Right"
-                        Foreground="{StaticResource Brush.TextMuted}"
+                        Foreground="{DynamicResource Brush.TextMuted}"
                         Text="{Binding SelectedCategoryMediaCountText}" />
                 </Grid>
 
@@ -108,8 +108,8 @@
                                     <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
-                                                <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                                <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -137,7 +137,7 @@
                                             Text="{Binding MediaCountText}" />
                                         <TextBlock
                                             Margin="0,3,0,0"
-                                            Foreground="{StaticResource Brush.TextMuted}"
+                                            Foreground="{DynamicResource Brush.TextMuted}"
                                             Text="{Binding MediaTypeSummaryText}"
                                             TextTrimming="CharacterEllipsis"
                                             ToolTip="{Binding MediaTypeSummaryText}" />
@@ -156,7 +156,7 @@
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding SelectedCategoryName}" />
                     <TextBlock
                         HorizontalAlignment="Right"
-                        Foreground="{StaticResource Brush.TextMuted}">
+                        Foreground="{DynamicResource Brush.TextMuted}">
                         <TextBlock.Style>
                             <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -231,8 +231,8 @@
                             <Border
                                 Margin="0,0,0,12"
                                 Padding="18"
-                                Background="{StaticResource Brush.Surface}"
-                                BorderBrush="{StaticResource Brush.Border}"
+                                Background="{DynamicResource Brush.Surface}"
+                                BorderBrush="{DynamicResource Brush.Border}"
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource CornerRadius.M}">
                                 <Grid>
@@ -255,7 +255,7 @@
                                             Text="{Binding MediaCountText}" />
                                         <TextBlock
                                             Margin="0,3,0,0"
-                                            Foreground="{StaticResource Brush.TextMuted}"
+                                            Foreground="{DynamicResource Brush.TextMuted}"
                                             Text="{Binding MediaTypeSummaryText}"
                                             TextTrimming="CharacterEllipsis"
                                             ToolTip="{Binding MediaTypeSummaryText}" />

@@ -23,7 +23,7 @@
         </Grid>
         <TextBlock
             Margin="0,8,0,0"
-            Foreground="{StaticResource Brush.TextSecondary}"
+            Foreground="{DynamicResource Brush.TextSecondary}"
             Text="{Binding CategoryStatus}"
             TextWrapping="Wrap" />
     </StackPanel>

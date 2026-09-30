@@ -11,23 +11,23 @@
         <StackPanel>
             <Grid Margin="0,12,0,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <TextBlock VerticalAlignment="Center" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding ActiveBrowseDescription}" />
+                <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding ActiveBrowseDescription}" />
                 <Button Grid.Column="1" Command="{Binding ClearFiltersCommand}" Content="Clear filters">
                     <Button.Style><Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Button.Style>
                 </Button>
             </Grid>
-            <Border Margin="0,12,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+            <Border Margin="0,12,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsLoading}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <controls:LoadingIndicator Message="Loading your library…" Detail="Reading indexed media and collections. You can continue using the app." />
                     <Button Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding CancelLibraryLoadCommand}" Content="Stop loading" Style="{StaticResource Button.Secondary}" />
                 </Grid>
             </Border>
-            <Border Margin="0,12,0,0" Background="{StaticResource Brush.DangerSurface}" BorderBrush="{StaticResource Brush.Danger}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+            <Border Margin="0,12,0,0" Background="{DynamicResource Brush.DangerSurface}" BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasLibraryLoadIssue}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
-                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Foreground="{StaticResource Brush.Danger}" Text="{Binding LibraryLoadMessage}" TextWrapping="Wrap" /><Button Grid.Column="1" Margin="16,0,0,0" Command="{Binding RetryLibraryLoadCommand}" Content="Try again" Style="{StaticResource Button.Secondary}" /></Grid>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" Foreground="{DynamicResource Brush.Danger}" Text="{Binding LibraryLoadMessage}" TextWrapping="Wrap" /><Button Grid.Column="1" Margin="16,0,0,0" Command="{Binding RetryLibraryLoadCommand}" Content="Try again" Style="{StaticResource Button.Secondary}" /></Grid>
             </Border>
-            <Border Margin="0,12,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+            <Border Margin="0,12,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><controls:LoadingIndicator Message="{Binding ScanProgressMessage}" Detail="{Binding CurrentScanPath}" /><Button Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding CancelScanCommand}" Content="Stop scan" Style="{StaticResource Button.Secondary}" /></Grid>
             </Border>

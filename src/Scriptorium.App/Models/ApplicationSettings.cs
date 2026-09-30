@@ -7,7 +7,7 @@ public sealed class ApplicationSettings
 {
     public string StartupPage { get; set; } = StartupPageNames.Home;
 
-    public string Theme { get; set; } = "System";
+    public string Theme { get; set; } = ThemeNames.System;
 
     public bool OpenLastLibraryOnStartup { get; set; } = true;
 

@@ -265,9 +265,9 @@ public partial class VideoPlayer : UserControl
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Width = owner?.ActualWidth ?? 960,
             Height = owner?.ActualHeight ?? 540,
-            Content = playerContent,
-            Background = (Brush)FindResource("Brush.Background")
+            Content = playerContent
         };
+        fullscreenWindow.SetResourceReference(Window.BackgroundProperty, "Brush.Background");
         _fullscreenWindow = fullscreenWindow;
         IsFullscreen = true;
         fullscreenWindow.PreviewKeyDown += OnPreviewKeyDown;

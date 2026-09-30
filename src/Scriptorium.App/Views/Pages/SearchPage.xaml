@@ -11,12 +11,12 @@
                 Text="Search results" />
             <TextBlock
                 Margin="0,4,0,0"
-                Foreground="{StaticResource Brush.TextSecondary}"
+                Foreground="{DynamicResource Brush.TextSecondary}"
                 Text="Searches media titles, categories, and imported library-folder names across every movie, tutorial lesson, and TV episode." />
 
             <Grid Margin="0,20,0,0">
                 <TextBlock
-                    Foreground="{StaticResource Brush.TextMuted}"
+                    Foreground="{DynamicResource Brush.TextMuted}"
                     Text="{Binding ResultCountText}">
                     <TextBlock.Style>
                         <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
@@ -31,7 +31,7 @@
                 </TextBlock>
                 <TextBlock
                     HorizontalAlignment="Right"
-                    Foreground="{StaticResource Brush.TextMuted}"
+                    Foreground="{DynamicResource Brush.TextMuted}"
                     Text="Searching…">
                     <TextBlock.Style>
                         <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
@@ -48,7 +48,7 @@
 
             <TextBlock
                 Margin="0,12,0,0"
-                Foreground="{StaticResource Brush.Warning}"
+                Foreground="{DynamicResource Brush.Warning}"
                 Text="{Binding StatusMessage}"
                 TextWrapping="Wrap" />
 
@@ -139,7 +139,7 @@
                 <TextBlock
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
-                    Foreground="{StaticResource Brush.TextSecondary}"
+                    Foreground="{DynamicResource Brush.TextSecondary}"
                     Text="Start typing in the search bar above to find media by title, category, or library-folder name."
                     TextAlignment="Center"
                     TextWrapping="Wrap" />
@@ -168,7 +168,7 @@
                 <TextBlock
                     Margin="0,12,0,0"
                     HorizontalAlignment="Center"
-                    Foreground="{StaticResource Brush.TextSecondary}"
+                    Foreground="{DynamicResource Brush.TextSecondary}"
                     Text="Try another complete or partial media title, category, or library-folder name."
                     TextAlignment="Center"
                     TextWrapping="Wrap" />

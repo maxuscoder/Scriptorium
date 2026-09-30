@@ -5,6 +5,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class SettingsPageViewModel : PageViewModel
 {
     private readonly Scriptorium.App.Services.ISettingsService _settingsService;
+    private readonly Scriptorium.App.Services.IThemeService _themeService;
     private readonly LibraryPageViewModel _libraryPage;
     private string _libraryLayout;
     private LibrarySortOrder _librarySortOrder;
@@ -12,12 +13,15 @@ public sealed class SettingsPageViewModel : PageViewModel
     private double _playbackVolume;
     private double _playbackSpeed;
     private string _startupPage;
+    private string _theme;
 
     public SettingsPageViewModel(
         Scriptorium.App.Services.ISettingsService settingsService,
-        LibraryPageViewModel libraryPage)
+        LibraryPageViewModel libraryPage,
+        Scriptorium.App.Services.IThemeService themeService)
     {
         _settingsService = settingsService;
+        _themeService = themeService;
         _libraryPage = libraryPage;
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
@@ -27,6 +31,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         _playbackVolume = settingsService.Settings.PlaybackVolume;
         _playbackSpeed = settingsService.Settings.PlaybackSpeed;
         _startupPage = StartupPageNames.Normalize(settingsService.Settings.StartupPage);
+        _theme = ThemeNames.Normalize(settingsService.Settings.Theme);
     }
 
     public override string Title => "Settings";
@@ -38,6 +43,21 @@ public sealed class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
 
     public IReadOnlyList<string> StartupPageOptions => StartupPageNames.Available;
+
+    public IReadOnlyList<string> ThemeOptions => ThemeNames.Available;
+
+    public string Theme
+    {
+        get => _theme;
+        set
+        {
+            var normalized = ThemeNames.Normalize(value);
+            if (!SetProperty(ref _theme, normalized)) return;
+            _themeService.Apply(normalized);
+            _settingsService.Settings.Theme = normalized;
+            SaveChanges();
+        }
+    }
 
     public string StartupPage
     {

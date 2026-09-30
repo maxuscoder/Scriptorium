@@ -15,7 +15,7 @@
                 Text="What does this folder contain?" />
             <TextBlock
                 Margin="0,8,0,0"
-                Foreground="{StaticResource Brush.TextSecondary}"
+                Foreground="{DynamicResource Brush.TextSecondary}"
                 Text="Choose one supported media type. All media found in this folder will be classified with it."
                 TextWrapping="Wrap" />
             <ComboBox

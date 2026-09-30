@@ -43,8 +43,8 @@
                 <Border
                     Width="230" Margin="0,0,24,0"
                     Height="300"
-                    Background="{StaticResource Brush.SurfaceOverlay}"
-                    BorderBrush="{StaticResource Brush.Border}"
+                    Background="{DynamicResource Brush.SurfaceOverlay}"
+                    BorderBrush="{DynamicResource Brush.Border}"
                     BorderThickness="1"
                     CornerRadius="{StaticResource CornerRadius.M}">
                     <Border.Style>
@@ -76,7 +76,7 @@
                             <TextBlock
                                 HorizontalAlignment="Center"
                                 Style="{StaticResource Text.ArtworkGlyph.Large}"
-                                Foreground="{StaticResource Brush.Accent}"
+                                Foreground="{DynamicResource Brush.Accent}"
                                 Text="{Binding FallbackGlyph, ElementName=Root}" />
                             <TextBlock
                                 Margin="0,8,0,0"
@@ -92,7 +92,7 @@
                         Text="{Binding TypeLabel, ElementName=Root}" />
                     <TextBlock
                         Margin="0,6,0,0"
-                        Foreground="{StaticResource Brush.Accent}"
+                        Foreground="{DynamicResource Brush.Accent}"
                         Text="Edited metadata">
                         <TextBlock.Style>
                             <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
@@ -175,11 +175,11 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Width="200" Margin="0,0,20,16">
-                                    <TextBlock Style="{StaticResource Text.Label}" Foreground="{StaticResource Brush.TextMuted}" Text="{Binding Label}" />
+                                    <TextBlock Style="{StaticResource Text.Label}" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding Label}" />
                                     <TextBlock
                                         Margin="0,4,0,0"
                                         Style="{StaticResource Text.Body}"
-                                        Foreground="{StaticResource Brush.TextPrimary}"
+                                        Foreground="{DynamicResource Brush.TextPrimary}"
                                         Text="{Binding Value}"
                                         TextTrimming="CharacterEllipsis"
                                         ToolTip="{Binding Value}" />

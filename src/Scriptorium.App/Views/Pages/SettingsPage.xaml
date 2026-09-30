@@ -7,7 +7,7 @@
             <TextBlock Style="{StaticResource Text.PageTitle}" Text="Settings" />
             <TextBlock Margin="0,8,0,28" Style="{StaticResource Text.Body}" Text="Set up your library and playback preferences." />
 
-            <Border Margin="0,0,0,20" Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Startup" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose the page Scriptorium opens when it starts." />
@@ -25,7 +25,25 @@
                 </StackPanel>
             </Border>
 
-            <Border Margin="0,0,0,20" Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Appearance" />
+                    <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how Scriptorium looks." />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Theme" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="System follows your Windows app theme." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding Theme, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Library" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how your media is displayed and ordered." />
@@ -71,7 +89,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Margin="0,0,0,20" Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" DataContext="{Binding FolderManagement}">
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" DataContext="{Binding FolderManagement}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -101,7 +119,7 @@
                     <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding ConfiguredFolders}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,0,0,8" Padding="14" Background="{StaticResource Brush.SurfaceElevated}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.S}">
+                                <Border Margin="0,0,0,8" Padding="14" Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.S}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />
@@ -115,7 +133,7 @@
                                             <TextBlock Margin="0,3,8,0" Text="{Binding ValidationWarning}">
                                                 <TextBlock.Style>
                                                     <Style BasedOn="{StaticResource Text.Helper}" TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
                                                         <Setter Property="Visibility" Value="Collapsed" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsValidForScanning}" Value="False">
@@ -137,7 +155,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+            <Border Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Playback" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Defaults are used when you open new media." />
