@@ -289,6 +289,13 @@ public sealed class FolderManagementViewModel : ViewModelBase
             return;
         }
 
+        if (!_confirmationDialog.Confirm(
+                $"Replace the configured location for \"{configuredFolder.DisplayName}\"? Its indexed media metadata will be kept, but scanning the new location may add new media and leave old file paths unavailable.",
+                "Replace library folder location"))
+        {
+            return;
+        }
+
         folder.Path = replacementPath;
         folder.Name = GetFolderName(replacementPath);
         folder.LastScanned = null;

@@ -1043,7 +1043,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private async Task RestoreThumbnailAsync()
     {
         var lesson = SelectedLesson;
-        if (lesson is null || !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Thumbnail))
+        if (lesson is null ||
+            (_confirmationDialog is not null &&
+             !_confirmationDialog.Confirm(
+                 $"Remove the custom thumbnail for \"{lesson.Title}\" and restore its detected artwork?",
+                 "Remove custom thumbnail")) ||
+            !await ResetMetadataFieldAsync(lesson.MediaItemId, MediaMetadataField.Thumbnail))
         {
             ThumbnailStatus = "The detected thumbnail could not be restored.";
             return;

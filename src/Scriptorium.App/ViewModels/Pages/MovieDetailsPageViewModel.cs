@@ -396,6 +396,14 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
             return;
         }
 
+        if (_confirmationDialog is not null &&
+            !_confirmationDialog.Confirm(
+                $"Reset playback progress for \"{movie.DisplayTitle}\"? Its saved position and watched status will be cleared.",
+                "Reset playback progress"))
+        {
+            return;
+        }
+
         var lastWatched = DateTimeOffset.UtcNow;
         await Player.FlushPendingProgressSaveAsync();
         if (!await _playbackProgressService.SaveAsync(
@@ -785,7 +793,12 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private async Task RestoreThumbnailAsync()
     {
         var movie = _movie;
-        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Thumbnail))
+        if (movie is null ||
+            (_confirmationDialog is not null &&
+             !_confirmationDialog.Confirm(
+                 $"Remove the custom thumbnail for \"{movie.DisplayTitle}\" and restore its detected artwork?",
+                 "Remove custom thumbnail")) ||
+            !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Thumbnail))
         {
             ThumbnailStatus = "The detected thumbnail could not be restored.";
             return;
