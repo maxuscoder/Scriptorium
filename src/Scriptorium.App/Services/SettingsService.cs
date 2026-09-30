@@ -190,6 +190,7 @@ public sealed class SettingsService : ISettingsService
 
     private static ApplicationSettings Normalize(ApplicationSettings settings)
     {
+        settings.StartupPage = StartupPageNames.Normalize(settings.StartupPage);
         settings.Theme = string.IsNullOrWhiteSpace(settings.Theme) ? "System" : settings.Theme;
         settings.LibraryLayout = string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase)
             ? "List"

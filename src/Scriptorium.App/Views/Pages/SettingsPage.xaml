@@ -9,6 +9,24 @@
 
             <Border Margin="0,0,0,20" Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Startup" />
+                    <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose the page Scriptorium opens when it starts." />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Open on startup" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="This takes effect the next time you open Scriptorium." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding StartupPageOptions}" SelectedItem="{Binding StartupPage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{StaticResource Brush.Surface}" BorderBrush="{StaticResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Library" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how your media is displayed and ordered." />
 

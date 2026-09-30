@@ -5,6 +5,8 @@ namespace Scriptorium.App.Models;
 /// </summary>
 public sealed class ApplicationSettings
 {
+    public string StartupPage { get; set; } = StartupPageNames.Home;
+
     public string Theme { get; set; } = "System";
 
     public bool OpenLastLibraryOnStartup { get; set; } = true;
@@ -47,4 +49,25 @@ public sealed class ApplicationSettings
     /// subtitle-track support is added to the playback engine.
     /// </summary>
     public bool SubtitlesEnabled { get; set; }
+}
+
+/// <summary>Names of pages that can be selected as the application startup destination.</summary>
+public static class StartupPageNames
+{
+    public const string Home = "Home";
+    public const string Library = "Library";
+    public const string Favorites = "Favorites";
+    public const string Categories = "Categories";
+    public const string Search = "Search";
+    public const string Settings = "Settings";
+
+    public static IReadOnlyList<string> Available { get; } =
+    [Home, Library, Favorites, Categories, Search, Settings];
+
+    public static bool IsSupported(string? pageName) =>
+        Available.Contains(pageName, StringComparer.OrdinalIgnoreCase);
+
+    public static string Normalize(string? pageName) => IsSupported(pageName)
+        ? Available.First(page => string.Equals(page, pageName, StringComparison.OrdinalIgnoreCase))
+        : Home;
 }

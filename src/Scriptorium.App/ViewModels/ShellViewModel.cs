@@ -57,8 +57,15 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         ];
 
         NavigateCommand = new RelayCommand(Navigate);
-        _navigationService.NavigateTo(homePage);
         SearchQuery = _settingsService.Settings.LastSearchQuery;
+        _navigationService.NavigateTo(ResolveStartupPage(
+            _settingsService.Settings.StartupPage,
+            homePage,
+            libraryPage,
+            favoritesPage,
+            categoriesPage,
+            searchPage,
+            settingsPage));
     }
 
     /// <summary>Primary destinations displayed at the top of the application sidebar.</summary>
@@ -117,6 +124,23 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     }
 
     private void ClearSearchQuery() => SearchQuery = string.Empty;
+
+    private static PageViewModel ResolveStartupPage(
+        string? pageName,
+        MainWindowViewModel homePage,
+        LibraryPageViewModel libraryPage,
+        FavoritesPageViewModel favoritesPage,
+        CategoriesPageViewModel categoriesPage,
+        SearchPageViewModel searchPage,
+        SettingsPageViewModel settingsPage) => StartupPageNames.Normalize(pageName) switch
+    {
+        StartupPageNames.Library => libraryPage,
+        StartupPageNames.Favorites => favoritesPage,
+        StartupPageNames.Categories => categoriesPage,
+        StartupPageNames.Search => searchPage,
+        StartupPageNames.Settings => settingsPage,
+        _ => homePage
+    };
 
     public void Dispose()
     {

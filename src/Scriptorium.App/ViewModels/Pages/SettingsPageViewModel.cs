@@ -1,3 +1,5 @@
+using Scriptorium.App.Models;
+
 namespace Scriptorium.App.ViewModels.Pages;
 
 public sealed class SettingsPageViewModel : PageViewModel
@@ -9,6 +11,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     private bool _favoritesFirst;
     private double _playbackVolume;
     private double _playbackSpeed;
+    private string _startupPage;
 
     public SettingsPageViewModel(
         Scriptorium.App.Services.ISettingsService settingsService,
@@ -23,6 +26,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         _favoritesFirst = settingsService.Settings.LibraryFavoritesFirst;
         _playbackVolume = settingsService.Settings.PlaybackVolume;
         _playbackSpeed = settingsService.Settings.PlaybackSpeed;
+        _startupPage = StartupPageNames.Normalize(settingsService.Settings.StartupPage);
     }
 
     public override string Title => "Settings";
@@ -32,6 +36,20 @@ public sealed class SettingsPageViewModel : PageViewModel
     public Task RefreshFoldersAsync() => FolderManagement.RefreshAsync();
 
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
+
+    public IReadOnlyList<string> StartupPageOptions => StartupPageNames.Available;
+
+    public string StartupPage
+    {
+        get => _startupPage;
+        set
+        {
+            var normalized = StartupPageNames.Normalize(value);
+            if (!SetProperty(ref _startupPage, normalized)) return;
+            _settingsService.Settings.StartupPage = normalized;
+            SaveChanges();
+        }
+    }
 
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
