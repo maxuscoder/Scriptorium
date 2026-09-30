@@ -44,6 +44,9 @@ public sealed class ApplicationSettings
     /// <summary>Gets or sets the playback rate used for newly opened media.</summary>
     public double PlaybackSpeed { get; set; } = 1;
 
+    /// <summary>Gets or sets whether video playback starts in fullscreen mode.</summary>
+    public bool StartFullscreenOnPlayback { get; set; }
+
     /// <summary>
     /// Gets or sets the preferred subtitle state. It is retained now so it can be applied when
     /// subtitle-track support is added to the playback engine.

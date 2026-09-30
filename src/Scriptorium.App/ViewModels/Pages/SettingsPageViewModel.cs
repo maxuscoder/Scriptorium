@@ -12,6 +12,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     private bool _favoritesFirst;
     private double _playbackVolume;
     private double _playbackSpeed;
+    private bool _startFullscreenOnPlayback;
     private string _startupPage;
     private string _theme;
 
@@ -30,6 +31,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         _favoritesFirst = settingsService.Settings.LibraryFavoritesFirst;
         _playbackVolume = settingsService.Settings.PlaybackVolume;
         _playbackSpeed = settingsService.Settings.PlaybackSpeed;
+        _startFullscreenOnPlayback = settingsService.Settings.StartFullscreenOnPlayback;
         _startupPage = StartupPageNames.Normalize(settingsService.Settings.StartupPage);
         _theme = ThemeNames.Normalize(settingsService.Settings.Theme);
     }
@@ -142,6 +144,17 @@ public sealed class SettingsPageViewModel : PageViewModel
         {
             if (!SetProperty(ref _playbackSpeed, value)) return;
             _settingsService.Settings.PlaybackSpeed = value;
+            SaveChanges();
+        }
+    }
+
+    public bool StartFullscreenOnPlayback
+    {
+        get => _startFullscreenOnPlayback;
+        set
+        {
+            if (!SetProperty(ref _startFullscreenOnPlayback, value)) return;
+            _settingsService.Settings.StartFullscreenOnPlayback = value;
             SaveChanges();
         }
     }

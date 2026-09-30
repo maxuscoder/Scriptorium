@@ -92,6 +92,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    public bool StartFullscreenOnPlayback => _settingsService?.Settings.StartFullscreenOnPlayback ?? false;
     /// <summary>An engine-neutral token consumed only by the WPF video surface adapter.</summary>
     public IVideoOutput? VideoOutput => _playback?.VideoOutput;
     public bool IsReady
@@ -259,6 +260,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void OpenPlayback()
     {
         if (_request is null) return;
+        SynchronizePlaybackPreferences();
         Status = "Loading video...";
         try
         {
@@ -740,6 +742,21 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void ApplyVolume()
     {
         if (_playback is not null) _playback.Volume = IsMuted ? 0 : Volume;
+    }
+
+    private void SynchronizePlaybackPreferences()
+    {
+        if (_settingsService is null) return;
+
+        var volume = NormalizeVolume(_settingsService.Settings.PlaybackVolume);
+        if (SetProperty(ref _volume, volume, nameof(Volume)))
+        {
+            _volumeBeforeMute = volume;
+            OnPropertyChanged(nameof(IsMutedIconVisible));
+        }
+
+        var speed = NormalizePlaybackSpeed(_settingsService.Settings.PlaybackSpeed);
+        SetProperty(ref _playbackSpeed, speed, nameof(PlaybackSpeed));
     }
 
     private void ApplyPlaybackSpeed()

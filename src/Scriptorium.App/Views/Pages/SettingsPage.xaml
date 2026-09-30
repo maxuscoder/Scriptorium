@@ -174,7 +174,7 @@
                         <TextBlock Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
                     </Grid>
 
-                    <Grid>
+                    <Grid Margin="0,0,0,18">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="240" />
@@ -184,6 +184,18 @@
                             <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Playback rate for newly opened media." />
                         </StackPanel>
                         <ComboBox Grid.Column="1" ItemsSource="{Binding PlaybackSpeedOptions}" SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Start videos fullscreen" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Open video playback in fullscreen when you press Play." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding StartFullscreenOnPlayback, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" />
                     </Grid>
                 </StackPanel>
             </Border>
