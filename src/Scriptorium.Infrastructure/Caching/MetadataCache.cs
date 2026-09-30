@@ -100,9 +100,9 @@ public sealed class MetadataCache : IMetadataCache, IDisposable
         if (!string.IsNullOrWhiteSpace(key))
         {
             _cache.Remove(key);
-            if (_entries.TryRemove(key, out var removed))
+            if (_entries.TryGetValue(key, out var removed) && TryRemoveTracked(key, removed))
             {
-                RemoveKeyReferences(key, removed.Tags);
+                Interlocked.Increment(ref _evictions);
             }
         }
     }
@@ -123,10 +123,9 @@ public sealed class MetadataCache : IMetadataCache, IDisposable
             }
 
             _cache.Remove(entry.Key);
-            if (_entries.TryGetValue(entry.Key, out var current) && ReferenceEquals(current, entry.Value))
+            if (TryRemoveTracked(entry.Key, entry.Value))
             {
-                _entries.TryRemove(entry.Key, out _);
-                RemoveKeyReferences(entry.Key, entry.Value.Tags);
+                Interlocked.Increment(ref _evictions);
             }
         }
 
@@ -154,15 +153,22 @@ public sealed class MetadataCache : IMetadataCache, IDisposable
             return;
         }
 
-        if (reason != EvictionReason.Replaced)
+        if (TryRemoveTracked(key, value) && reason != EvictionReason.Replaced)
         {
             Interlocked.Increment(ref _evictions);
         }
-        if (_entries.TryGetValue(key, out var tracked) && ReferenceEquals(tracked, value))
+    }
+
+    private bool TryRemoveTracked(string key, CachedValue expected)
+    {
+        var entry = new KeyValuePair<string, CachedValue>(key, expected);
+        if (!((ICollection<KeyValuePair<string, CachedValue>>)_entries).Remove(entry))
         {
-            _entries.TryRemove(key, out _);
+            return false;
         }
-        RemoveKeyReferences(key, value.Tags);
+
+        RemoveKeyReferences(key, expected.Tags);
+        return true;
     }
 
     private void RemoveKeyReferences(string key, IReadOnlyList<string> tags)
