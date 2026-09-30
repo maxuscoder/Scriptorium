@@ -9,6 +9,49 @@
 
             <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Continue Watching" />
+                    <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how playback progress and the Home section behave." />
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Resume from last position" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Continue videos where you stopped instead of starting over." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding ResumePlaybackEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Completion threshold" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Mark media complete after this portion has played." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" DisplayMemberPath="DisplayName" ItemsSource="{Binding PlaybackCompletionThresholdOptions}" SelectedValue="{Binding PlaybackCompletionThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Percent" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Show Continue Watching" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Show or hide this section on the Home page." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding ShowContinueWatching, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Startup" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose the page Scriptorium opens when it starts." />
                     <Grid>

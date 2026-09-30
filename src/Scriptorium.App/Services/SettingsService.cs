@@ -193,6 +193,8 @@ public sealed class SettingsService : ISettingsService
         settings.StartupPage = StartupPageNames.Normalize(settings.StartupPage);
         settings.Theme = ThemeNames.Normalize(settings.Theme);
         settings.LibraryScanFrequencyMinutes = LibraryScanFrequency.Normalize(settings.LibraryScanFrequencyMinutes);
+        settings.PlaybackCompletionThresholdPercent = PlaybackCompletionThreshold.Normalize(
+            settings.PlaybackCompletionThresholdPercent);
         settings.LibraryLayout = string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase)
             ? "List"
             : "Grid";

@@ -6,6 +6,7 @@
     Loaded="OnLoaded">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,28,32,48">
+            <StackPanel Visibility="{Binding Settings.ShowContinueWatching, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -113,6 +114,8 @@
                     HorizontalAlignment="Center"
                     Style="{StaticResource Text.Body.Center}"
                     Text="Media you start but do not finish will appear here automatically." />
+            </StackPanel>
+
             </StackPanel>
 
             <StackPanel Margin="0,48,0,0">

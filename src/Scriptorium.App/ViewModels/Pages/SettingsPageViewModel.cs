@@ -16,6 +16,9 @@ public sealed class SettingsPageViewModel : PageViewModel
     private double _playbackVolume;
     private double _playbackSpeed;
     private bool _startFullscreenOnPlayback;
+    private bool _resumePlaybackEnabled;
+    private int _playbackCompletionThresholdPercent;
+    private bool _showContinueWatching;
     private string _startupPage;
     private string _theme;
 
@@ -38,6 +41,10 @@ public sealed class SettingsPageViewModel : PageViewModel
         _playbackVolume = settingsService.Settings.PlaybackVolume;
         _playbackSpeed = settingsService.Settings.PlaybackSpeed;
         _startFullscreenOnPlayback = settingsService.Settings.StartFullscreenOnPlayback;
+        _resumePlaybackEnabled = settingsService.Settings.ResumePlaybackEnabled;
+        _playbackCompletionThresholdPercent = PlaybackCompletionThreshold.Normalize(
+            settingsService.Settings.PlaybackCompletionThresholdPercent);
+        _showContinueWatching = settingsService.Settings.ShowContinueWatching;
         _startupPage = StartupPageNames.Normalize(settingsService.Settings.StartupPage);
         _theme = ThemeNames.Normalize(settingsService.Settings.Theme);
     }
@@ -55,6 +62,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<string> ThemeOptions => ThemeNames.Available;
 
     public IReadOnlyList<LibraryScanFrequencyOption> LibraryScanFrequencyOptions => LibraryScanFrequency.Options;
+
+    public IReadOnlyList<PlaybackCompletionThresholdOption> PlaybackCompletionThresholdOptions => PlaybackCompletionThreshold.Options;
 
     public bool AutomaticLibraryScanningEnabled
     {
@@ -199,6 +208,40 @@ public sealed class SettingsPageViewModel : PageViewModel
         {
             if (!SetProperty(ref _startFullscreenOnPlayback, value)) return;
             _settingsService.Settings.StartFullscreenOnPlayback = value;
+            SaveChanges();
+        }
+    }
+
+    public bool ResumePlaybackEnabled
+    {
+        get => _resumePlaybackEnabled;
+        set
+        {
+            if (!SetProperty(ref _resumePlaybackEnabled, value)) return;
+            _settingsService.Settings.ResumePlaybackEnabled = value;
+            SaveChanges();
+        }
+    }
+
+    public int PlaybackCompletionThresholdPercent
+    {
+        get => _playbackCompletionThresholdPercent;
+        set
+        {
+            var normalized = PlaybackCompletionThreshold.Normalize(value);
+            if (!SetProperty(ref _playbackCompletionThresholdPercent, normalized)) return;
+            _settingsService.Settings.PlaybackCompletionThresholdPercent = normalized;
+            SaveChanges();
+        }
+    }
+
+    public bool ShowContinueWatching
+    {
+        get => _showContinueWatching;
+        set
+        {
+            if (!SetProperty(ref _showContinueWatching, value)) return;
+            _settingsService.Settings.ShowContinueWatching = value;
             SaveChanges();
         }
     }

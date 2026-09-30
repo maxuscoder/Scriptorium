@@ -1,10 +1,16 @@
+using System.ComponentModel;
+
 namespace Scriptorium.App.Models;
 
 /// <summary>
 /// User preferences persisted locally between application launches.
 /// </summary>
-public sealed class ApplicationSettings
+public sealed class ApplicationSettings : INotifyPropertyChanged
 {
+    private bool _showContinueWatching = true;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
     public string StartupPage { get; set; } = StartupPageNames.Home;
 
     public string Theme { get; set; } = ThemeNames.System;
@@ -19,6 +25,24 @@ public sealed class ApplicationSettings
 
     /// <summary>Gets or sets whether enabled library folders are scanned when the app starts.</summary>
     public bool ScanLibraryOnStartup { get; set; }
+
+    /// <summary>Gets or sets whether the Continue Watching section is shown on Home.</summary>
+    public bool ShowContinueWatching
+    {
+        get => _showContinueWatching;
+        set
+        {
+            if (_showContinueWatching == value) return;
+            _showContinueWatching = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ShowContinueWatching)));
+        }
+    }
+
+    /// <summary>Gets or sets whether playback resumes from the saved position.</summary>
+    public bool ResumePlaybackEnabled { get; set; } = true;
+
+    /// <summary>Gets or sets the playback percentage that marks media complete.</summary>
+    public int PlaybackCompletionThresholdPercent { get; set; } = 95;
 
     /// <summary>Gets or sets the preferred layout for media cards in the library.</summary>
     public string LibraryLayout { get; set; } = "Grid";

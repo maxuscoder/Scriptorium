@@ -896,7 +896,8 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         movie.RuntimeSeconds = args.DurationSeconds;
         movie.IsCompleted = MediaPlaybackProgress.MeetsCompletionThreshold(
             args.PositionSeconds,
-            args.DurationSeconds);
+            args.DurationSeconds,
+            args.CompletionThreshold);
         movie.LastPlayed = args.LastWatched;
         PopulateMetadata(movie);
         NotifyStateChanged();
