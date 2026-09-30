@@ -507,6 +507,15 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Clears library state and restores the default presentation without changing the view mode.</summary>
     public ICommand ResetLibraryCommand { get; }
 
+    /// <summary>Restores the default search, filters, and ordering preferences.</summary>
+    public void RestoreDefaultPreferences()
+    {
+        _searchQueryResetService.Clear();
+        ClearFilters();
+        FavoritesFirst = false;
+        SelectedSortOrder = LibrarySortOrder.Ascending;
+    }
+
     /// <summary>Retries loading the library after an initial-load failure.</summary>
     public ICommand RetryLibraryLoadCommand { get; }
 
@@ -1356,10 +1365,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private async Task ResetLibraryAsync()
     {
-        _searchQueryResetService.Clear();
-        ClearFilters();
-        FavoritesFirst = false;
-        SelectedSortOrder = LibrarySortOrder.Ascending;
+        RestoreDefaultPreferences();
         await RefreshLibraryDataAsync();
     }
 

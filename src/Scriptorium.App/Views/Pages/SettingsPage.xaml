@@ -31,6 +31,20 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Reset settings" />
+                        <TextBlock Margin="0,5,18,0" Style="{StaticResource Text.Helper}" Text="Restore all preferences to their default values. Your library and playback history will stay intact." TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding ResetSettingsCommand}" Content="Reset settings" Style="{StaticResource Button.Secondary}" />
+                </Grid>
+            </Border>
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Thumbnail cache" />
                         <TextBlock Margin="0,5,18,0" Style="{StaticResource Text.Helper}" Text="Cached previews use disk space and can be recreated from your artwork." />
                         <StackPanel Margin="0,8,0,0" Orientation="Horizontal">

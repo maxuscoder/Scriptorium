@@ -68,6 +68,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         ClearThumbnailCacheCommand = new AsyncRelayCommand(
             ClearThumbnailCacheAsync,
             () => !IsClearingThumbnailCache);
+        ResetSettingsCommand = new AsyncRelayCommand(ResetSettingsAsync);
     }
 
     public override string Title => "Settings";
@@ -91,6 +92,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public Task RefreshFoldersAsync() => FolderManagement.RefreshAsync();
 
     public AsyncRelayCommand ClearThumbnailCacheCommand { get; }
+
+    public AsyncRelayCommand ResetSettingsCommand { get; }
 
     public long ThumbnailCacheSizeBytes
     {
@@ -363,6 +366,30 @@ public sealed class SettingsPageViewModel : PageViewModel
         finally
         {
             IsClearingThumbnailCache = false;
+        }
+    }
+
+    private async Task ResetSettingsAsync()
+    {
+        if (!_confirmationDialog.Confirm(
+                "Restore all Scriptorium preferences to their defaults? Your library files and playback history will not be changed.",
+                "Reset settings"))
+        {
+            return;
+        }
+
+        try
+        {
+            await _settingsService.FlushAsync();
+            _settingsService.Settings.ResetToDefaults();
+            ApplyImportedSettings();
+            _libraryPage.RestoreDefaultPreferences();
+            await _settingsService.FlushAsync();
+            _notifications?.Show("All settings were restored to their defaults.");
+        }
+        catch (Exception exception)
+        {
+            _notifications?.Report(exception, "Settings could not be reset and saved.", NotificationSeverity.Warning);
         }
     }
 

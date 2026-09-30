@@ -85,6 +85,19 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
     /// subtitle-track support is added to the playback engine.
     /// </summary>
     public bool SubtitlesEnabled { get; set; }
+
+    /// <summary>Restores every persisted preference to its declared default value.</summary>
+    public void ResetToDefaults()
+    {
+        var defaults = new ApplicationSettings();
+        foreach (var property in typeof(ApplicationSettings).GetProperties())
+        {
+            if (property.CanRead && property.CanWrite)
+            {
+                property.SetValue(this, property.GetValue(defaults));
+            }
+        }
+    }
 }
 
 /// <summary>Names of pages that can be selected as the application startup destination.</summary>
