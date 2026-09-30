@@ -96,6 +96,71 @@ public sealed class MetadataCacheTests
         Assert.True(statistics.Misses >= 2);
     }
 
+    [Fact]
+    public async Task Course_summaries_are_cached_and_detail_cache_is_invalidated_by_updates()
+    {
+        await using var database = new SqliteConnection("Data Source=:memory:");
+        await database.OpenAsync();
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(database).Options;
+        var folder = new LibraryFolder
+        {
+            Name = "Tutorials",
+            Path = @"C:\Tutorials",
+            MediaType = MediaType.Tutorial
+        };
+        var mediaItem = new MediaItem
+        {
+            Title = "Lesson",
+            Path = @"C:\Tutorials\lesson.mp4",
+            MediaType = MediaType.Tutorial,
+            RuntimeSeconds = 100,
+            PlaybackPositionSeconds = 25,
+            LibraryFolderId = folder.Id
+        };
+        var course = new Course
+        {
+            Title = "Course",
+            LibraryFolderId = folder.Id,
+            LibraryFolder = folder
+        };
+        var lesson = new Lesson
+        {
+            Course = course,
+            CourseId = course.Id,
+            MediaItem = mediaItem,
+            MediaItemId = mediaItem.Id,
+            Title = mediaItem.Title,
+            FilePath = mediaItem.Path,
+            SortOrder = 0
+        };
+        course.Lessons.Add(lesson);
+
+        await using (var context = new ScriptoriumDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            context.Courses.Add(course);
+            await context.SaveChangesAsync();
+        }
+
+        using var cache = new MetadataCache();
+        var repository = new CourseRepository(new TestDbContextFactory(options), cache);
+
+        var firstSummary = Assert.Single(await repository.GetLibrarySummariesAsync());
+        var secondSummary = Assert.Single(await repository.GetLibrarySummariesAsync());
+        Assert.Equal(1, firstSummary.LessonCount);
+        Assert.Equal(25, firstSummary.LowestPlaybackProgress);
+        Assert.Equal(firstSummary.Title, secondSummary.Title);
+
+        var detail = await repository.GetByIdAsync(course.Id);
+        Assert.Single(detail!.Lessons);
+        Assert.True(await repository.UpdateLessonOrderAsync(course.Id, [lesson.Id]));
+
+        var refreshedDetail = await repository.GetByIdAsync(course.Id);
+        Assert.True(refreshedDetail!.IsOrderCustomized);
+        Assert.True(cache.GetStatistics().Hits >= 1);
+        Assert.True(cache.GetStatistics().Misses >= 3);
+    }
+
     private sealed class TestMetadata(string value)
     {
         public string Value { get; set; } = value;

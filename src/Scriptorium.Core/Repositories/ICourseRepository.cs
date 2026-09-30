@@ -7,6 +7,10 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface ICourseRepository : IRepository<Course>
 {
+    /// <summary>Gets lightweight course data for the library browser.</summary>
+    Task<IReadOnlyList<CourseLibrarySummary>> GetLibrarySummariesAsync(
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets the course that owns a lesson for the specified media item.</summary>
     Task<Course?> GetByMediaItemIdAsync(
         Guid mediaItemId,

@@ -71,4 +71,85 @@ public static class MetadataCacheCloner
 
     public static IReadOnlyList<LibraryFolder> CloneFolders(IReadOnlyList<LibraryFolder> source) =>
         source.Select(Clone).ToArray();
+
+    public static Course Clone(Course source)
+    {
+        var course = new Course
+        {
+            Id = source.Id,
+            LibraryFolderId = source.LibraryFolderId,
+            LibraryFolder = Clone(source.LibraryFolder),
+            Title = source.Title,
+            IsOrderCustomized = source.IsOrderCustomized
+        };
+
+        course.Lessons = source.Lessons.Select(lesson => new Lesson
+        {
+            Id = lesson.Id,
+            CourseId = lesson.CourseId,
+            Course = course,
+            MediaItemId = lesson.MediaItemId,
+            MediaItem = Clone(lesson.MediaItem),
+            LessonNumber = lesson.LessonNumber,
+            SortOrder = lesson.SortOrder,
+            Title = lesson.Title,
+            FilePath = lesson.FilePath
+        }).ToList();
+        return course;
+    }
+
+    public static TVShow Clone(TVShow source)
+    {
+        var show = new TVShow
+        {
+            Id = source.Id,
+            Title = source.Title,
+            LibraryFolderId = source.LibraryFolderId,
+            LibraryFolder = source.LibraryFolder is null ? null : Clone(source.LibraryFolder),
+            EpisodeCount = source.EpisodeCount
+        };
+
+        show.Seasons = source.Seasons.Select(season =>
+        {
+            var clonedSeason = new Season
+            {
+                Id = season.Id,
+                TVShowId = season.TVShowId,
+                TVShow = show,
+                SeasonNumber = season.SeasonNumber
+            };
+            clonedSeason.Episodes = season.Episodes.Select(episode => new Episode
+            {
+                Id = episode.Id,
+                SeasonId = episode.SeasonId,
+                Season = clonedSeason,
+                MediaItemId = episode.MediaItemId,
+                MediaItem = Clone(episode.MediaItem),
+                EpisodeNumber = episode.EpisodeNumber,
+                SortOrder = episode.SortOrder,
+                Title = episode.Title,
+                Duration = episode.Duration,
+                FilePath = episode.FilePath,
+                PlaybackProgress = episode.PlaybackProgress is null
+                    ? null
+                    : new PlaybackProgress
+                    {
+                        Id = episode.PlaybackProgress.Id,
+                        MediaItemId = episode.PlaybackProgress.MediaItemId,
+                        EpisodeId = episode.PlaybackProgress.EpisodeId,
+                        CurrentPosition = episode.PlaybackProgress.CurrentPosition,
+                        Duration = episode.PlaybackProgress.Duration,
+                        LastUpdated = episode.PlaybackProgress.LastUpdated
+                    }
+            }).ToList();
+            return clonedSeason;
+        }).ToList();
+        return show;
+    }
+
+    public static IReadOnlyList<Course> CloneCourses(IReadOnlyList<Course> source) =>
+        source.Select(Clone).ToArray();
+
+    public static IReadOnlyList<TVShow> CloneTvShows(IReadOnlyList<TVShow> source) =>
+        source.Select(Clone).ToArray();
 }

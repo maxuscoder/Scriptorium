@@ -156,5 +156,7 @@ public sealed class LibraryFolderRepository(
         _metadataCache.RemoveByTag(MetadataCacheKeys.FolderTag(folderId));
         _metadataCache.RemoveByTag(MetadataCacheKeys.MediaFolderTag(folderId));
         _metadataCache.RemoveByTag(MetadataCacheKeys.AllFoldersTag);
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllCoursesTag);
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllTvShowsTag);
     }
 }

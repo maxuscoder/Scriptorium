@@ -734,7 +734,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             MissingMediaCount = summary.MissingMediaCount;
             await RefreshTutorialsAsync(cancellationToken);
             await RefreshTvShowsAsync(cancellationToken);
-            await TvShowGroupManagement.RefreshAsync(cancellationToken);
+            await TvShowGroupManagement.RefreshIfLoadedAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             await ReloadBrowserItemsAsync(cancellationToken);
             _browserDataInitialized = true;
@@ -1573,7 +1573,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Reloads tutorial collections in alphabetical order.</summary>
     public async Task RefreshTutorialsAsync(CancellationToken cancellationToken = default)
     {
-        var courses = await _courseRepository.GetAllAsync(cancellationToken);
+        var courses = await _courseRepository.GetLibrarySummariesAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         Tutorials.ReplaceRange(courses.Select(course => new TutorialCollectionViewModel(course)));
 
@@ -1586,7 +1586,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Reloads television-show collections in alphabetical order.</summary>
     public async Task RefreshTvShowsAsync(CancellationToken cancellationToken = default)
     {
-        var shows = await _tvShowRepository.GetAllAsync(cancellationToken);
+        var shows = await _tvShowRepository.GetLibrarySummariesAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         TvShows.ReplaceRange(shows.Select(show => new TvShowCollectionViewModel(show)));
 

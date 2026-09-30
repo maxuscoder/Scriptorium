@@ -21,6 +21,7 @@ public sealed class TvShowGroupManagementViewModel : ViewModelBase
     private ManualTvShowGroupViewModel? _targetGroup;
     private ManualTvShowMediaViewModel? _selectedMedia;
     private string? _groupName;
+    private bool _isLoaded;
 
     public TvShowGroupManagementViewModel(
         IMediaGroupingService mediaGroupingService,
@@ -100,6 +101,17 @@ public sealed class TvShowGroupManagementViewModel : ViewModelBase
     public ICommand MergeGroupsCommand { get; }
 
     public ICommand SplitGroupCommand { get; }
+
+    /// <summary>Loads the detailed group graph when the management panel is actually displayed.</summary>
+    public async Task EnsureLoadedAsync(CancellationToken cancellationToken = default)
+    {
+        _isLoaded = true;
+        await RefreshAsync(cancellationToken);
+    }
+
+    /// <summary>Refreshes the detailed group graph only after the panel has been displayed.</summary>
+    public Task RefreshIfLoadedAsync(CancellationToken cancellationToken = default) =>
+        _isLoaded ? RefreshAsync(cancellationToken) : Task.CompletedTask;
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {

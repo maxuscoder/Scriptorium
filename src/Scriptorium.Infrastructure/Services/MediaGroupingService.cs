@@ -358,8 +358,11 @@ public sealed class MediaGroupingService(
         context.Seasons.Remove(season);
     }
 
-    private void InvalidateMediaMetadata() =>
+    private void InvalidateMediaMetadata()
+    {
         _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllTvShowsTag);
+    }
 
     private static void ReorderEpisodes(TVShow group)
     {

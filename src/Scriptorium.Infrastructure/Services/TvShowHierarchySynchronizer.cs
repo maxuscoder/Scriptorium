@@ -124,6 +124,7 @@ public sealed class TvShowHierarchySynchronizer(
         if (changeCount > 0)
         {
             _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+            _metadataCache.RemoveByTag(MetadataCacheKeys.AllTvShowsTag);
             ShowsChanged?.Invoke();
         }
     }

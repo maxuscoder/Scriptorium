@@ -8,6 +8,10 @@ public static class MetadataCacheKeys
     public const string AllCategoriesTag = "metadata:categories:all";
     public const string AllFoldersTag = "metadata:folders:all";
     public const string AllMediaTag = "metadata:media:all";
+    public const string AllCoursesTag = "metadata:courses:all";
+    public const string AllTvShowsTag = "metadata:tvshows:all";
+    public const string CourseSummariesKey = "metadata:courses:summaries";
+    public const string TvShowSummariesKey = "metadata:tvshows:summaries";
 
     public static string MediaById(Guid id) => $"metadata:media:id:{id:N}";
 
@@ -20,6 +24,18 @@ public static class MetadataCacheKeys
     public static string MediaCategoryTag(Guid id) => $"metadata:media:category:{id:N}";
 
     public static string MediaFolderTag(Guid id) => $"metadata:media:folder:{id:N}";
+
+    public static string CourseById(Guid id) => $"metadata:course:id:{id:N}";
+
+    public static string CourseByMediaItemId(Guid id) => $"metadata:course:media:{id:N}";
+
+    public static string CourseTag(Guid id) => $"metadata:course:{id:N}";
+
+    public static string TvShowById(Guid id) => $"metadata:tvshow:id:{id:N}";
+
+    public static string TvShowByMediaItemId(Guid id) => $"metadata:tvshow:media:{id:N}";
+
+    public static string TvShowTag(Guid id) => $"metadata:tvshow:{id:N}";
 
     public static string CategoryById(Guid id) => $"metadata:category:id:{id:N}";
 

@@ -709,6 +709,8 @@ public sealed class MediaItemRepository(
     {
         _metadataCache.Remove(MetadataCacheKeys.MediaById(mediaItemId));
         _metadataCache.RemoveByTag(MetadataCacheKeys.MediaTag(mediaItemId));
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllCoursesTag);
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllTvShowsTag);
     }
 
     private static IReadOnlyCollection<string> GetMediaTags(MediaItem item)

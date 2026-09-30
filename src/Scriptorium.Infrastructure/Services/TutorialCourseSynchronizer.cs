@@ -176,6 +176,7 @@ public sealed class TutorialCourseSynchronizer(
         if (changeCount > 0)
         {
             _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+            _metadataCache.RemoveByTag(MetadataCacheKeys.AllCoursesTag);
             CoursesChanged?.Invoke();
         }
     }
