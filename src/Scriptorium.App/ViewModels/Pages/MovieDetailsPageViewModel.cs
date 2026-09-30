@@ -326,12 +326,21 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         Description = FormatDescription(movie.DisplayDescription);
         EditableDescription = movie.DisplayDescription ?? string.Empty;
         DescriptionStatus = string.Empty;
-        Availability = movie.IsMissing ? "File unavailable" : "Available";
-        Player.SetMedia(new MediaPlaybackRequest(
-            movie.Path,
-            movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds,
-            movie.Id,
-            movie.RuntimeSeconds ?? 0));
+        Availability = movie.IsMissing
+            ? "File unavailable. Reconnect its folder and rescan the library to restore playback."
+            : "Available";
+        if (movie.IsMissing)
+        {
+            Player.SetUnavailable("This video file is unavailable. Reconnect its folder and rescan the library to restore playback.");
+        }
+        else
+        {
+            Player.SetMedia(new MediaPlaybackRequest(
+                movie.Path,
+                movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds,
+                movie.Id,
+                movie.RuntimeSeconds ?? 0));
+        }
         PopulateMetadata(movie);
         NotifyStateChanged();
         return true;
@@ -383,6 +392,14 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     {
         var movie = _movie;
         if (movie?.RuntimeSeconds is not > 0)
+        {
+            return;
+        }
+
+        if (_confirmationDialog is not null &&
+            !_confirmationDialog.Confirm(
+                $"Reset playback progress for \"{movie.DisplayTitle}\"? Its saved position and watched status will be cleared.",
+                "Reset playback progress"))
         {
             return;
         }
@@ -776,7 +793,12 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
     private async Task RestoreThumbnailAsync()
     {
         var movie = _movie;
-        if (movie is null || !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Thumbnail))
+        if (movie is null ||
+            (_confirmationDialog is not null &&
+             !_confirmationDialog.Confirm(
+                 $"Remove the custom thumbnail for \"{movie.DisplayTitle}\" and restore its detected artwork?",
+                 "Remove custom thumbnail")) ||
+            !await ResetMetadataFieldAsync(movie.Id, MediaMetadataField.Thumbnail))
         {
             ThumbnailStatus = "The detected thumbnail could not be restored.";
             return;

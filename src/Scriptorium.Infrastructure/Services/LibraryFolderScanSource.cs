@@ -12,19 +12,29 @@ public sealed class LibraryFolderScanSource(
     ILibraryFolderValidator libraryFolderValidator) : ILibraryFolderScanSource
 {
     /// <inheritdoc />
-    public async Task<IReadOnlyList<LibraryFolder>> GetEligibleFoldersAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<LibraryFolder>> GetEligibleFoldersAsync(CancellationToken cancellationToken = default) =>
+        (await GetFolderScanSelectionAsync(cancellationToken)).EligibleFolders;
+
+    /// <inheritdoc />
+    public async Task<LibraryFolderScanSelection> GetFolderScanSelectionAsync(CancellationToken cancellationToken = default)
     {
         var enabledFolders = await libraryFolderRepository.GetEnabledAsync(cancellationToken);
         var eligibleFolders = new List<LibraryFolder>();
+        var permissionDeniedFolders = new List<LibraryFolder>();
         foreach (var folder in enabledFolders)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (libraryFolderValidator.Validate(folder.Path).IsValidForScanning)
+            var validation = libraryFolderValidator.Validate(folder.Path);
+            if (validation.IsValidForScanning)
             {
                 eligibleFolders.Add(folder);
             }
+            else if (validation.Status == LibraryFolderValidationStatus.PermissionDenied)
+            {
+                permissionDeniedFolders.Add(folder);
+            }
         }
 
-        return eligibleFolders;
+        return new LibraryFolderScanSelection(eligibleFolders, permissionDeniedFolders);
     }
 }

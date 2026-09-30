@@ -17,12 +17,23 @@ public sealed class MediaFormatService : IMediaFormatService
         ".wmv"
     };
 
+    private static readonly IReadOnlySet<string> VideoExtensions = new HashSet<string>(StringComparer.Ordinal)
+    {
+        ".3g2", ".3gp", ".asf", ".divx", ".f4v", ".flv", ".m2t", ".m2ts", ".m2v", ".m4v",
+        ".mpe", ".mpeg", ".mpg", ".mts", ".mxf", ".ogv", ".rm", ".rmvb", ".ts", ".vob"
+    };
+
     /// <inheritdoc />
     public IReadOnlySet<string> SupportedExtensions => Extensions;
 
     /// <inheritdoc />
     public bool IsSupportedExtension(string? extension) =>
         extension is not null && Extensions.Contains(NormalizeExtension(extension));
+
+    /// <inheritdoc />
+    public bool IsVideoExtension(string? extension) =>
+        extension is not null && (Extensions.Contains(NormalizeExtension(extension)) ||
+                                  VideoExtensions.Contains(NormalizeExtension(extension)));
 
     private static string NormalizeExtension(string extension)
     {

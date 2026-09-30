@@ -139,6 +139,15 @@
                 MinWidth="0"
                 MinHeight="0"
                 Content="{Binding CurrentPage}" />
+
+            <controls:NotificationCenter
+                Grid.ColumnSpan="2"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="16"
+                DataContext="{Binding Notifications}"
+                Panel.ZIndex="10"
+                IsHitTestVisible="True" />
         </Grid>
     </Grid>
     </Border>

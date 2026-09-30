@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Collections;
 using Scriptorium.App.Services;
@@ -30,6 +31,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly IOperationMetrics? _operationMetrics;
+    private readonly ILogger<LibraryPageViewModel>? _logger;
+    private readonly INotificationService? _notifications;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly AsyncRelayCommand _retryLibraryLoadCommand;
     private readonly RelayCommand _cancelLibraryLoadCommand;
@@ -106,7 +109,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IMediaDescriptionService? mediaDescriptionService = null,
-        IOperationMetrics? operationMetrics = null)
+        IOperationMetrics? operationMetrics = null,
+        ILogger<LibraryPageViewModel>? logger = null,
+        INotificationService? notifications = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -126,6 +131,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
         _operationMetrics = operationMetrics;
+        _logger = logger;
+        _notifications = notifications;
         FolderManagement = folderManagementViewModelFactory.Create(
             () => RefreshLibraryDataAsync(),
             message => StatusMessage = message,
@@ -465,12 +472,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public bool HasIndexedMedia => _supportedMediaCount != 0;
 
     /// <summary>Gets the empty-state heading appropriate for the current filters.</summary>
-    public string EmptyLibraryTitle => HasIndexedMedia ? "No media matches your filters" : "Your library is empty";
+    public string EmptyLibraryTitle => HasIndexedMedia ? "No matching media" : "Your library is empty";
 
     /// <summary>Gets the empty-state guidance appropriate for the current filters.</summary>
-    public string EmptyLibraryDescription => HasIndexedMedia
-        ? "Adjust or clear the filters to see more media."
-        : "Add a library folder, then rescan it to bring your supported media here.";
+    public string EmptyLibraryDescription => !HasIndexedMedia
+        ? "Add a folder to start building your Scriptorium library, then scan it to find your media."
+        : !string.IsNullOrWhiteSpace(SearchQuery)
+            ? $"No media matches “{SearchQuery.Trim()}”. Try another search or clear your search and filters."
+            : "No media matches your current filters. Adjust them or clear your search and filters.";
 
     /// <summary>Gets a concise count suitable for the library browser header.</summary>
     public string MediaCountText
@@ -827,8 +836,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             _initialDataLoadTask = null;
             WasLibraryLoadCancelled = true;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger?.LogError(exception, "The initial library data load failed.");
+            _notifications?.Show(
+                "Library data could not be loaded. Check that the local database is available, then try again.",
+                NotificationSeverity.Error);
             _initialDataLoadTask = null;
             HasLibraryLoadError = true;
         }
@@ -1006,8 +1019,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 RefreshBrowserRows();
             }
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger?.LogWarning(exception, "The library browser query failed.");
             if (generation == Volatile.Read(ref _browserQueryGeneration))
             {
                 _isBrowserPageLoading = false;
@@ -1122,8 +1136,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             // A changed filter or refresh superseded this page request.
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            _logger?.LogWarning(exception, "The next library browser page could not be loaded.");
             if (generation == Volatile.Read(ref _browserQueryGeneration))
             {
                 HasLibraryLoadError = true;
@@ -1651,6 +1666,28 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 ? "Library scan complete. No supported media files were found."
                 : $"Library scan complete. Processed {scanResult.ProcessedFileCount} files and found {scanResult.DiscoveredMediaCount} media files.";
 
+            if (scanResult.UnsupportedVideoFileCount > 0)
+            {
+                var examples = scanResult.UnsupportedVideoFileExamples.Count == 0
+                    ? string.Empty
+                    : $" Examples: {string.Join(", ", scanResult.UnsupportedVideoFileExamples)}.";
+                StatusMessage += $" Skipped {scanResult.UnsupportedVideoFileCount} video file{(scanResult.UnsupportedVideoFileCount == 1 ? string.Empty : "s")} with unsupported formats. Scriptorium currently imports AVI, MKV, MOV, MP4, WebM, and WMV.{examples}";
+                _notifications?.Show(
+                    $"Skipped {scanResult.UnsupportedVideoFileCount} video file{(scanResult.UnsupportedVideoFileCount == 1 ? string.Empty : "s")} with unsupported formats. Scriptorium currently imports AVI, MKV, MOV, MP4, WebM, and WMV.",
+                    NotificationSeverity.Warning);
+            }
+
+            if (scanResult.PermissionDeniedPathCount > 0)
+            {
+                var paths = scanResult.PermissionDeniedPathExamples.Count == 0
+                    ? string.Empty
+                    : $" Affected locations: {string.Join(", ", scanResult.PermissionDeniedPathExamples)}.";
+                StatusMessage += $" Scriptorium couldn't read {scanResult.PermissionDeniedPathCount} folder path{(scanResult.PermissionDeniedPathCount == 1 ? string.Empty : "s")} because access was denied; those locations were skipped. Grant read permission and rescan, or replace/remove the folder in Library management.{paths}";
+                _notifications?.Show(
+                    $"Scriptorium couldn't read {scanResult.PermissionDeniedPathCount} folder path{(scanResult.PermissionDeniedPathCount == 1 ? string.Empty : "s")} because access was denied. Grant read permission and rescan, or replace/remove the folder in Library management.{paths}",
+                    NotificationSeverity.Warning);
+            }
+
             if (scanResult.NonCriticalErrorCount > 0)
             {
                 StatusMessage += $" Skipped {scanResult.NonCriticalErrorCount} inaccessible or unreadable path{(scanResult.NonCriticalErrorCount == 1 ? string.Empty : "s")}.";
@@ -1669,9 +1706,13 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             StatusMessage = "Library refresh cancelled.";
         }
-        catch
+        catch (Exception exception)
         {
-            StatusMessage = "Library scan could not be completed.";
+            _logger?.LogError(exception, "The library scan or the refresh following it failed.");
+            StatusMessage = DatabaseFailureClassifier.IsDatabaseFailure(exception)
+                ? "The local library database couldn't complete this refresh. Try scanning again; if the problem continues, restart Scriptorium."
+                : "Library scan could not be completed.";
+            _notifications?.Show(StatusMessage, NotificationSeverity.Error);
         }
         finally
         {

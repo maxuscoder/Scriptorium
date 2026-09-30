@@ -32,17 +32,38 @@
                         Text="Create and organize custom labels for your media library." />
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
-                    <Button
-                        Margin="0,0,8,0"
-                        Command="{Binding RefreshCommand}"
-                        Content="Refresh"
-                        Style="{StaticResource Button.Secondary}" />
+                    <Button Margin="0,0,8,0" Command="{Binding RefreshCommand}">
+                        <Button.Style>
+                            <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+                                <Setter Property="Content" Value="Refresh" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                        <Setter Property="Content" Value="Refreshing…" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Button
                         Command="{Binding CreateCategoryCommand}"
                         Content="Create category"
                         Style="{StaticResource Button.Primary}" />
                 </StackPanel>
             </Grid>
+
+            <Border Margin="0,20,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <controls:LoadingIndicator Message="Loading categories…" Detail="Updating categories and their assigned media." />
+            </Border>
 
             <TextBlock
                 MinHeight="24"
@@ -266,8 +287,21 @@
             <StackPanel
                 MaxWidth="520"
                 Margin="0,44,0,0"
-                HorizontalAlignment="Center"
-                Visibility="{Binding HasCategories, Converter={StaticResource BooleanToVisibilityConverter}, ConverterParameter=Invert}">
+                HorizontalAlignment="Center">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasCategories}" Value="False" />
+                                    <Condition Binding="{Binding IsRefreshing}" Value="False" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <TextBlock
                     HorizontalAlignment="Center"
                     Style="{StaticResource Text.EmptyStateTitle}"

@@ -28,12 +28,14 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         SettingsPageViewModel settingsPage,
         SearchPageViewModel searchPage,
         ISearchQueryResetService searchQueryResetService,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        INotificationService notifications)
     {
         _navigationService = navigationService;
         _searchPage = searchPage;
         _searchQueryResetService = searchQueryResetService;
         _settingsService = settingsService;
+        Notifications = notifications;
         _navigationService.Navigated += OnNavigated;
         _searchQueryResetService.ClearRequested += ClearSearchQuery;
 
@@ -65,6 +67,8 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     public IEnumerable<NavigationItem> NavigationItems => PrimaryNavigationItems.Concat(SecondaryNavigationItems);
 
     public ICommand NavigateCommand { get; }
+
+    public INotificationService Notifications { get; }
 
     public NavigationItem? SelectedNavigationItem
     {

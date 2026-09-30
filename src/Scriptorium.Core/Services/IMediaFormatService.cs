@@ -10,4 +10,7 @@ public interface IMediaFormatService
 
     /// <summary>Determines whether an extension is one of the supported media formats.</summary>
     bool IsSupportedExtension(string? extension);
+
+    /// <summary>Determines whether an unsupported extension is still recognizable as a video format.</summary>
+    bool IsVideoExtension(string? extension);
 }

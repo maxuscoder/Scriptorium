@@ -614,6 +614,14 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             return;
         }
 
+        if (_confirmationDialog is not null &&
+            !_confirmationDialog.Confirm(
+                $"Reset playback progress for \"{episode.Title}\"? Its saved position and watched status will be cleared.",
+                "Reset playback progress"))
+        {
+            return;
+        }
+
         await _player.FlushPendingProgressSaveAsync();
         if (!await _playbackProgressService.SaveAsync(
                 episode.MediaItemId,
@@ -638,6 +646,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         var episode = SelectedEpisode;
         if (episode is null)
         {
+            return;
+        }
+
+        if (episode.IsMissing)
+        {
+            _player?.SetUnavailable("This episode file is unavailable. Reconnect its folder and rescan the library to restore playback.");
             return;
         }
 
@@ -1128,7 +1142,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private async Task RestoreThumbnailAsync()
     {
         var episode = SelectedEpisode;
-        if (episode is null || !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.Thumbnail))
+        if (episode is null ||
+            (_confirmationDialog is not null &&
+             !_confirmationDialog.Confirm(
+                 $"Remove the custom thumbnail for \"{episode.Title}\" and restore its detected artwork?",
+                 "Remove custom thumbnail")) ||
+            !await ResetMetadataFieldAsync(episode.MediaItemId, MediaMetadataField.Thumbnail))
         {
             ThumbnailStatus = "The detected thumbnail could not be restored.";
             return;

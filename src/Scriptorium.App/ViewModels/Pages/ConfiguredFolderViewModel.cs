@@ -57,7 +57,9 @@ public sealed class ConfiguredFolderViewModel(
     public string ValidationStatus => validation.Message;
 
     /// <summary>Gets the warning shown when the folder cannot currently be scanned.</summary>
-    public string ValidationWarning => $"⚠ Unavailable — {ValidationStatus}";
+    public string ValidationWarning => validation.Status == LibraryFolderValidationStatus.PermissionDenied
+        ? "Scriptorium cannot access this folder. Grant it read permission, replace the location, or remove the folder."
+        : $"Unavailable: {ValidationStatus}";
 
     /// <summary>Gets whether the folder can currently be scanned.</summary>
     public bool IsValidForScanning => validation.IsValidForScanning;

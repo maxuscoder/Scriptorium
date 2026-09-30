@@ -1,13 +1,21 @@
 using System.Windows;
+using Scriptorium.App.Views;
 
 namespace Scriptorium.App.Services;
 
 /// <summary>
-/// Shows native Windows confirmation prompts.
+/// Shows the shared Scriptorium confirmation dialog.
 /// </summary>
 public sealed class ConfirmationDialog : IConfirmationDialog
 {
     /// <inheritdoc />
-    public bool Confirm(string message, string title) =>
-        MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+    public bool Confirm(string message, string title)
+    {
+        var dialog = new ConfirmationDialogWindow(title, message)
+        {
+            Owner = Application.Current?.MainWindow
+        };
+
+        return dialog.ShowDialog() == true;
+    }
 }
