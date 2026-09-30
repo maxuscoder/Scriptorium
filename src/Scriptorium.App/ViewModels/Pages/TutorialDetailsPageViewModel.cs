@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
@@ -33,6 +34,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly VideoPlayerViewModel _player;
     private readonly ILogger<TutorialDetailsPageViewModel>? _logger;
+    private readonly Dispatcher _dispatcher;
     private readonly SemaphoreSlim _lessonOrderGate = new(1, 1);
     private PageViewModel? _returnPage;
     private Guid? _courseId;
@@ -91,6 +93,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         _mediaReleaseYearService = mediaReleaseYearService;
         _player = player;
         _logger = logger;
+        _dispatcher = Dispatcher.CurrentDispatcher;
         BackCommand = new RelayCommand(GoBack, () => _returnPage is not null);
         SelectLessonCommand = new RelayCommand(SelectLesson, lesson => lesson is TutorialLessonViewModel);
         ContinueLearningCommand = new RelayCommand(ContinueLearning, CanContinueLearning);
@@ -457,10 +460,9 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             return;
         }
 
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
+        if (!_dispatcher.CheckAccess())
         {
-            _ = dispatcher.InvokeAsync(RefreshLoadedCourseAsync);
+            _ = _dispatcher.InvokeAsync(RefreshLoadedCourseAsync);
             return;
         }
 
@@ -623,10 +625,9 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 
     private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)
     {
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
+        if (!_dispatcher.CheckAccess())
         {
-            _ = dispatcher.InvokeAsync(() =>
+            _ = _dispatcher.InvokeAsync(() =>
             {
                 if (Lessons.FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId) is { } lesson)
                 {

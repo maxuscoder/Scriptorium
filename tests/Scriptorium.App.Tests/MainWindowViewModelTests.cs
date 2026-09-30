@@ -276,6 +276,18 @@ public sealed class MainWindowViewModelTests
         }
         finally
         {
+            if (tutorialDetails is not null)
+            {
+                await tutorialDetails.Player.DeactivateAsync();
+            }
+            if (tvShowDetails?.Player is { } tvShowPlayer)
+            {
+                await tvShowPlayer.DeactivateAsync();
+            }
+            if (movieDetails is not null)
+            {
+                await movieDetails.Player.DeactivateAsync();
+            }
             viewModel?.Dispose();
             tutorialDetails?.Dispose();
             tvShowDetails?.Dispose();
