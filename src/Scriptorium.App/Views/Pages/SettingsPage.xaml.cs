@@ -18,6 +18,7 @@ public partial class SettingsPage : UserControl
         if (DataContext is SettingsPageViewModel viewModel)
         {
             await viewModel.RefreshFoldersAsync();
+            await viewModel.RefreshThumbnailCacheSizeAsync();
         }
     }
 

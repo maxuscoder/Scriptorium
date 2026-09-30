@@ -434,6 +434,8 @@ public partial class MediaCard : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ThumbnailCache.CacheCleared -= OnThumbnailCacheCleared;
+        ThumbnailCache.CacheCleared += OnThumbnailCacheCleared;
         if (ThumbnailSource is null && !string.IsNullOrWhiteSpace(ThumbnailPath))
         {
             _ = LoadThumbnailAsync(ThumbnailPath);
@@ -442,9 +444,18 @@ public partial class MediaCard : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        ThumbnailCache.CacheCleared -= OnThumbnailCacheCleared;
         Interlocked.Increment(ref _thumbnailLoadVersion);
         SetValue(ThumbnailSourcePropertyKey, null);
         SetValue(HasUsableThumbnailPropertyKey, false);
+    }
+
+    private void OnThumbnailCacheCleared(object? sender, EventArgs args)
+    {
+        if (IsLoaded)
+        {
+            _ = LoadThumbnailAsync(ThumbnailPath);
+        }
     }
 
     private void OnThumbnailImageFailed(object sender, ExceptionRoutedEventArgs eventArgs)

@@ -1,5 +1,7 @@
 using Scriptorium.App.Models;
 using Scriptorium.App.Services;
+using Scriptorium.App.Commands;
+using Scriptorium.App.Views.Controls;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -9,6 +11,9 @@ public sealed class SettingsPageViewModel : PageViewModel
     private readonly Scriptorium.App.Services.IThemeService _themeService;
     private readonly LibraryPageViewModel _libraryPage;
     private readonly INotificationService? _notifications;
+    private readonly IConfirmationDialog _confirmationDialog;
+    private long _thumbnailCacheSizeBytes;
+    private bool _isClearingThumbnailCache;
     private string _libraryLayout;
     private LibrarySortOrder _librarySortOrder;
     private bool _favoritesFirst;
@@ -28,12 +33,14 @@ public sealed class SettingsPageViewModel : PageViewModel
         Scriptorium.App.Services.ISettingsService settingsService,
         LibraryPageViewModel libraryPage,
         Scriptorium.App.Services.IThemeService themeService,
+        IConfirmationDialog confirmationDialog,
         INotificationService? notifications = null)
     {
         _settingsService = settingsService;
         _themeService = themeService;
         _libraryPage = libraryPage;
         _notifications = notifications;
+        _confirmationDialog = confirmationDialog;
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
             ? sortOrder
@@ -51,6 +58,9 @@ public sealed class SettingsPageViewModel : PageViewModel
         _showContinueWatching = settingsService.Settings.ShowContinueWatching;
         _startupPage = StartupPageNames.Normalize(settingsService.Settings.StartupPage);
         _theme = ThemeNames.Normalize(settingsService.Settings.Theme);
+        ClearThumbnailCacheCommand = new AsyncRelayCommand(
+            ClearThumbnailCacheAsync,
+            () => !IsClearingThumbnailCache);
     }
 
     public override string Title => "Settings";
@@ -58,6 +68,33 @@ public sealed class SettingsPageViewModel : PageViewModel
     public FolderManagementViewModel FolderManagement => _libraryPage.FolderManagement;
 
     public Task RefreshFoldersAsync() => FolderManagement.RefreshAsync();
+
+    public AsyncRelayCommand ClearThumbnailCacheCommand { get; }
+
+    public long ThumbnailCacheSizeBytes
+    {
+        get => _thumbnailCacheSizeBytes;
+        private set
+        {
+            if (!SetProperty(ref _thumbnailCacheSizeBytes, value)) return;
+            OnPropertyChanged(nameof(ThumbnailCacheSizeText));
+        }
+    }
+
+    public string ThumbnailCacheSizeText => FormatCacheSize(ThumbnailCacheSizeBytes);
+
+    public bool IsClearingThumbnailCache
+    {
+        get => _isClearingThumbnailCache;
+        private set
+        {
+            if (!SetProperty(ref _isClearingThumbnailCache, value)) return;
+            ClearThumbnailCacheCommand.NotifyCanExecuteChanged();
+        }
+    }
+
+    public async Task RefreshThumbnailCacheSizeAsync() =>
+        ThumbnailCacheSizeBytes = await ThumbnailCache.GetDiskCacheSizeAsync();
 
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
 
@@ -279,6 +316,42 @@ public sealed class SettingsPageViewModel : PageViewModel
                 NotificationSeverity.Warning);
         }
     }
+
+    private async Task ClearThumbnailCacheAsync()
+    {
+        var sizeText = ThumbnailCacheSizeText;
+        if (!_confirmationDialog.Confirm(
+                $"Delete {sizeText} of cached thumbnails? They will be recreated as needed. Your original artwork will not be changed.",
+                "Clear thumbnail cache"))
+        {
+            return;
+        }
+
+        IsClearingThumbnailCache = true;
+        try
+        {
+            await ThumbnailCache.ClearDiskCacheAsync();
+            await RefreshThumbnailCacheSizeAsync();
+            _notifications?.Show("The thumbnail cache was cleared. Previews will regenerate when needed.");
+        }
+        catch (Exception exception)
+        {
+            await RefreshThumbnailCacheSizeAsync();
+            _notifications?.Report(exception, "Some cached thumbnails could not be removed.");
+        }
+        finally
+        {
+            IsClearingThumbnailCache = false;
+        }
+    }
+
+    private static string FormatCacheSize(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} bytes",
+        < 1024 * 1024 => $"{bytes / 1024d:0.#} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / (1024d * 1024):0.#} MB",
+        _ => $"{bytes / (1024d * 1024 * 1024):0.##} GB"
+    };
 
     private void ApplyImportedSettings()
     {

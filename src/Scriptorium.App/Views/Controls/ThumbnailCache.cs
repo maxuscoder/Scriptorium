@@ -20,6 +20,8 @@ internal static class ThumbnailCache
     private static readonly ConcurrentDictionary<ThumbnailCacheKey, Lazy<Task<BitmapSource?>>> CachedThumbnails = new();
     private static readonly ConcurrentDictionary<string, long> CleanupScheduledDirectories = new(StringComparer.OrdinalIgnoreCase);
 
+    internal static event EventHandler? CacheCleared;
+
     /// <summary>Gets a cached, resized preview without blocking the UI thread.</summary>
     public static Task<BitmapSource?> GetAsync(string? thumbnailPath) =>
         GetAsync(thumbnailPath, GetDefaultCacheDirectory());
@@ -72,6 +74,50 @@ internal static class ThumbnailCache
                 CachedThumbnails.TryRemove(key, out _);
             }
         }
+    }
+
+    internal static Task<long> GetDiskCacheSizeAsync() => Task.Run(() =>
+    {
+        var cacheDirectory = GetDefaultCacheDirectory();
+        if (!Directory.Exists(cacheDirectory)) return 0L;
+
+        try
+        {
+            return Directory.EnumerateFiles(cacheDirectory, "*", SearchOption.AllDirectories)
+                .Select(path =>
+                {
+                    try { return new FileInfo(path).Length; }
+                    catch (Exception) { return 0L; }
+                })
+                .Sum();
+        }
+        catch (Exception)
+        {
+            return 0L;
+        }
+    });
+
+    internal static async Task ClearDiskCacheAsync()
+    {
+        var cacheDirectory = GetDefaultCacheDirectory();
+        await Task.Run(() =>
+        {
+            ClearMemoryCache(cacheDirectory);
+            if (!Directory.Exists(cacheDirectory)) return;
+
+            foreach (var path in Directory.EnumerateFiles(cacheDirectory, "*", SearchOption.AllDirectories))
+            {
+                File.Delete(path);
+            }
+
+            foreach (var directory in Directory.EnumerateDirectories(cacheDirectory, "*", SearchOption.AllDirectories)
+                         .OrderByDescending(path => path.Length))
+            {
+                Directory.Delete(directory, recursive: false);
+            }
+        });
+
+        CacheCleared?.Invoke(null, EventArgs.Empty);
     }
 
     /// <summary>Releases completed thumbnail loads while allowing active UI requests to finish.</summary>

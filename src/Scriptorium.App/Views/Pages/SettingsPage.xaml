@@ -25,6 +25,24 @@
             </Border>
 
             <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Thumbnail cache" />
+                        <TextBlock Margin="0,5,18,0" Style="{StaticResource Text.Helper}" Text="Cached previews use disk space and can be recreated from your artwork." />
+                        <StackPanel Margin="0,8,0,0" Orientation="Horizontal">
+                            <TextBlock Margin="0,0,6,0" Style="{StaticResource Text.Label}" Text="Cache size:" />
+                            <TextBlock Style="{StaticResource Text.Helper}" Text="{Binding ThumbnailCacheSizeText}" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding ClearThumbnailCacheCommand}" Content="Clear cache" Style="{StaticResource Button.Secondary}" />
+                </Grid>
+            </Border>
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Continue Watching" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how playback progress and the Home section behave." />
