@@ -7,13 +7,13 @@
         <ProgressBar
             Height="4"
             IsIndeterminate="{Binding IsIndeterminate, ElementName=Root}"
-            Background="{StaticResource Brush.Border}"
-            Foreground="{StaticResource Brush.Accent}"
+            Background="{DynamicResource Brush.Border}"
+            Foreground="{DynamicResource Brush.Accent}"
             Width="{Binding ProgressWidth, ElementName=Root}" />
         <TextBlock
             Margin="0,8,0,0"
             Style="{StaticResource Text.Label}"
-            Foreground="{StaticResource Brush.TextPrimary}"
+            Foreground="{DynamicResource Brush.TextPrimary}"
             Text="{Binding Message, ElementName=Root}" />
         <TextBlock
             Margin="0,3,0,0"

@@ -10,6 +10,10 @@ public interface ISettingsService
 
     Task SaveAsync(CancellationToken cancellationToken = default);
 
+    Task ExportAsync(string filePath, CancellationToken cancellationToken = default);
+
+    Task ImportAsync(string filePath, CancellationToken cancellationToken = default);
+
     Task SaveDebouncedAsync(CancellationToken cancellationToken = default);
 
     Task FlushAsync(CancellationToken cancellationToken = default);

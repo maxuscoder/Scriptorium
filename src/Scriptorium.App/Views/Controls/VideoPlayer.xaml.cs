@@ -43,8 +43,16 @@ public partial class VideoPlayer : UserControl
     private static void OnPlayerChanged(DependencyObject target, DependencyPropertyChangedEventArgs args)
     {
         var view = (VideoPlayer)target;
-        if (args.OldValue is VideoPlayerViewModel oldPlayer) oldPlayer.PlaybackActionPerformed -= view.OnPlaybackActionPerformed;
-        if (view.Player is { } newPlayer) newPlayer.PlaybackActionPerformed += view.OnPlaybackActionPerformed;
+        if (args.OldValue is VideoPlayerViewModel oldPlayer)
+        {
+            oldPlayer.PlaybackActionPerformed -= view.OnPlaybackActionPerformed;
+            oldPlayer.PlaybackStarted -= view.OnPlaybackStarted;
+        }
+        if (view.Player is { } newPlayer)
+        {
+            newPlayer.PlaybackActionPerformed += view.OnPlaybackActionPerformed;
+            newPlayer.PlaybackStarted += view.OnPlaybackStarted;
+        }
         if (!view.IsLoaded) return;
         view.CloseFullscreen();
         (args.OldValue as VideoPlayerViewModel)?.Deactivate();
@@ -57,6 +65,8 @@ public partial class VideoPlayer : UserControl
         {
             player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
             player.PlaybackActionPerformed += OnPlaybackActionPerformed;
+            player.PlaybackStarted -= OnPlaybackStarted;
+            player.PlaybackStarted += OnPlaybackStarted;
         }
         if (IsFullscreen) return;
         _ownerWindow = Window.GetWindow(this);
@@ -66,7 +76,11 @@ public partial class VideoPlayer : UserControl
 
     private async void OnUnloaded(object sender, RoutedEventArgs args)
     {
-        if (Player is { } player) player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
+        if (Player is { } player)
+        {
+            player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
+            player.PlaybackStarted -= OnPlaybackStarted;
+        }
         _actionFeedbackTimer.Stop();
         CloseFullscreen();
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
@@ -227,6 +241,12 @@ public partial class VideoPlayer : UserControl
         _actionFeedbackTimer.Start();
     }
 
+    private void OnPlaybackStarted(object? sender, EventArgs args)
+    {
+        if (!ReferenceEquals(sender, Player) || Player?.StartFullscreenOnPlayback != true || IsFullscreen) return;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ToggleFullscreen));
+    }
+
     private static bool IsTextInput(DependencyObject? element)
     {
         while (element is not null)
@@ -265,9 +285,9 @@ public partial class VideoPlayer : UserControl
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Width = owner?.ActualWidth ?? 960,
             Height = owner?.ActualHeight ?? 540,
-            Content = playerContent,
-            Background = (Brush)FindResource("Brush.Background")
+            Content = playerContent
         };
+        fullscreenWindow.SetResourceReference(Window.BackgroundProperty, "Brush.Background");
         _fullscreenWindow = fullscreenWindow;
         IsFullscreen = true;
         fullscreenWindow.PreviewKeyDown += OnPreviewKeyDown;

@@ -1,3 +1,5 @@
+using Scriptorium.Core.Models;
+
 namespace Scriptorium.Core.Services;
 
 /// <summary>
@@ -6,4 +8,5 @@ namespace Scriptorium.Core.Services;
 public sealed record PlaybackProgressUpdate(
     long PositionSeconds,
     long DurationSeconds,
-    DateTimeOffset? LastWatched = null);
+    DateTimeOffset? LastWatched = null,
+    double CompletionThreshold = MediaPlaybackProgress.CompletionThreshold);

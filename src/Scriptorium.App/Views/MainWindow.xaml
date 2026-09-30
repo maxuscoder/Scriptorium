@@ -31,8 +31,8 @@
     </WindowChrome.WindowChrome>
     <Border
         x:Name="WindowFrame"
-        Background="{StaticResource Brush.Background}"
-        BorderBrush="{StaticResource Brush.BorderStrong}"
+        Background="{DynamicResource Brush.Background}"
+        BorderBrush="{DynamicResource Brush.BorderStrong}"
         BorderThickness="1"
         CornerRadius="8"
         SizeChanged="OnWindowFrameSizeChanged">
@@ -43,8 +43,8 @@
         </Grid.RowDefinitions>
 
         <Border
-            Background="{StaticResource Brush.SurfaceHeader}"
-            BorderBrush="{StaticResource Brush.Border}"
+            Background="{DynamicResource Brush.SurfaceHeader}"
+            BorderBrush="{DynamicResource Brush.Border}"
             BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -64,13 +64,13 @@
                         VerticalAlignment="Center"
                         Style="{StaticResource Text.Label}"
                         FontSize="11"
-                        Foreground="{StaticResource Brush.TextPrimary}"
+                        Foreground="{DynamicResource Brush.TextPrimary}"
                         Text="Scriptorium" />
                     <Border
                         Width="1"
                         Height="11"
                         Margin="12,0"
-                        Background="{StaticResource Brush.BorderStrong}" />
+                        Background="{DynamicResource Brush.BorderStrong}" />
                     <TextBlock
                         VerticalAlignment="Center"
                         Style="{StaticResource Text.Metadata}"

@@ -31,7 +31,8 @@ public sealed class PlaybackProgressService(IMediaItemRepository mediaItemReposi
             positionSeconds,
             progressUpdate.DurationSeconds,
             lastWatched,
-            cancellationToken);
+            cancellationToken,
+            progressUpdate.CompletionThreshold);
 
         if (wasSaved)
         {

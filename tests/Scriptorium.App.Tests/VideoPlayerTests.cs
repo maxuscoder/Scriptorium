@@ -429,6 +429,10 @@ public sealed class VideoPlayerTests
 
         public Task LoadAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public Task ExportAsync(string filePath, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task ImportAsync(string filePath, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task SaveAsync(CancellationToken cancellationToken = default)
         {
             SaveCount++;

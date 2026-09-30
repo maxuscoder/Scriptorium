@@ -6,8 +6,8 @@
     xmlns:local="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
     Focusable="True">
-    <Border Background="{StaticResource Brush.Background}"
-            BorderBrush="{StaticResource Brush.Border}" BorderThickness="1"
+    <Border Background="{DynamicResource Brush.Background}"
+            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
             CornerRadius="{StaticResource CornerRadius.M}">
         <Grid DataContext="{Binding Player, ElementName=Root}" ClipToBounds="True">
             <Grid.RowDefinitions>
@@ -28,8 +28,8 @@
                             IsHitTestVisible="False">
                         <Path x:Name="ActionFeedbackIcon" Width="36" Height="36"
                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                              Fill="{StaticResource Brush.TextPrimary}"
-                              Stroke="{StaticResource Brush.TextPrimary}" StrokeThickness="2"
+                              Fill="{DynamicResource Brush.TextOnAccent}"
+                              Stroke="{DynamicResource Brush.TextOnAccent}" StrokeThickness="2"
                               StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                               Stretch="Uniform" />
                     </Border>
@@ -47,7 +47,7 @@
                     </TextBlock>
                 </Grid>
             </vlc:VideoView>
-            <Border Grid.Row="1" Background="{StaticResource Brush.Surface}" Padding="8,0">
+            <Border Grid.Row="1" Background="{DynamicResource Brush.Surface}" Padding="8,0">
                 <Grid VerticalAlignment="Center">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />

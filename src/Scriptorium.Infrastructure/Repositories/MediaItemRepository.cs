@@ -665,7 +665,8 @@ public sealed class MediaItemRepository(
         long playbackPositionSeconds,
         long durationSeconds,
         DateTimeOffset lastWatched,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        double completionThreshold = MediaPlaybackProgress.CompletionThreshold)
     {
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         var affectedRows = await context.MediaItems
@@ -677,7 +678,10 @@ public sealed class MediaItemRepository(
                     .SetProperty(item => item.LastPlayed, lastWatched)
                     .SetProperty(item => item.LastPlayedUnixTimeMilliseconds, lastWatched.ToUnixTimeMilliseconds())
                     .SetProperty(item => item.IsCompleted,
-                        MediaPlaybackProgress.MeetsCompletionThreshold(playbackPositionSeconds, durationSeconds)),
+                        MediaPlaybackProgress.MeetsCompletionThreshold(
+                            playbackPositionSeconds,
+                            durationSeconds,
+                            completionThreshold)),
                 cancellationToken);
 
         if (affectedRows == 1)

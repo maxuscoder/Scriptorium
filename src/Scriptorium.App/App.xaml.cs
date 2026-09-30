@@ -3,10 +3,12 @@ using System.Windows;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using Serilog;
 using Serilog.Events;
 using Scriptorium.App.DependencyInjection;
 using Scriptorium.App.Services;
+using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
@@ -19,6 +21,7 @@ public partial class App : Application
     private ServiceProvider? _serviceProvider;
     private ILogger<App>? _logger;
     private ISettingsService? _settingsService;
+    private IThemeService? _themeService;
     private IMemoryUsageMonitor? _memoryUsageMonitor;
     private bool _settingsFlushInProgress;
     private bool _allowWindowClose;
@@ -72,6 +75,9 @@ public partial class App : Application
 
             _settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
             await _settingsService.LoadAsync();
+            _themeService = _serviceProvider.GetRequiredService<IThemeService>();
+            _themeService.Apply(_settingsService.Settings.Theme);
+            SystemEvents.UserPreferenceChanged += OnSystemUserPreferenceChanged;
             await _settingsService.SaveAsync();
 
             _memoryUsageMonitor = _serviceProvider.GetRequiredService<IMemoryUsageMonitor>();
@@ -79,6 +85,8 @@ public partial class App : Application
             _memoryUsageMonitor.Start();
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            var libraryPage = _serviceProvider.GetRequiredService<LibraryPageViewModel>();
+            mainWindow.Loaded += (_, _) => libraryPage.StartAutomaticScanning();
             mainWindow.Closing += OnMainWindowClosing;
             mainWindow.Show();
         }
@@ -163,6 +171,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.UserPreferenceChanged -= OnSystemUserPreferenceChanged;
         _logger?.LogInformation("Shutting down Scriptorium with exit code {ExitCode}.", e.ApplicationExitCode);
         if (_memoryUsageMonitor is not null)
         {
@@ -172,6 +181,13 @@ public partial class App : Application
         _serviceProvider?.Dispose();
         Log.CloseAndFlush();
         base.OnExit(e);
+    }
+
+    private void OnSystemUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (_settingsService?.Settings.Theme != Models.ThemeNames.System) return;
+
+        Dispatcher.BeginInvoke(() => _themeService?.Apply(Models.ThemeNames.System));
     }
 
     private void OnHighMemoryUsageDetected(Models.MemoryUsageSnapshot snapshot)

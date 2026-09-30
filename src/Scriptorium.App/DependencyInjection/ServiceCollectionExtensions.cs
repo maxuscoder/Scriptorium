@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<ISearchQueryResetService, SearchQueryResetService>();
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IMemoryUsageMonitor, MemoryUsageMonitor>();
         services.AddSingleton<IMediaDetailsNavigationCoordinator, MediaDetailsNavigationCoordinator>();
         services.AddSingleton<IFolderManagementViewModelFactory, FolderManagementViewModelFactory>();
@@ -49,7 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<VideoPlayerViewModel>();
 
         services.AddTransient<MainWindowViewModel>();
-        services.AddTransient<LibraryPageViewModel>();
+        services.AddSingleton<LibraryPageViewModel>();
         services.AddSingleton<TutorialDetailsPageViewModel>();
         services.AddSingleton<TvShowDetailsPageViewModel>();
         services.AddSingleton<MovieDetailsPageViewModel>();

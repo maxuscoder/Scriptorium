@@ -1182,7 +1182,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.RuntimeSeconds = args.DurationSeconds;
         lesson.MediaItem.IsCompleted = MediaPlaybackProgress.MeetsCompletionThreshold(
             args.PositionSeconds,
-            args.DurationSeconds);
+            args.DurationSeconds,
+            args.CompletionThreshold);
         lesson.MediaItem.LastPlayed = args.LastWatched;
         OnPropertyChanged(nameof(PlaybackPositionSeconds));
         OnPropertyChanged(nameof(RuntimeSeconds));

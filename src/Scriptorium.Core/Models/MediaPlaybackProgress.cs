@@ -12,13 +12,20 @@ public static class MediaPlaybackProgress
     /// Gets whether the recorded position is sufficiently close to the end of a known-duration item
     /// to count as completed.
     /// </summary>
-    public static bool MeetsCompletionThreshold(long playbackPositionSeconds, long durationSeconds)
+    public static bool MeetsCompletionThreshold(
+        long playbackPositionSeconds,
+        long durationSeconds,
+        double completionThreshold = CompletionThreshold)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(playbackPositionSeconds);
         ArgumentOutOfRangeException.ThrowIfNegative(durationSeconds);
+        if (!double.IsFinite(completionThreshold) || completionThreshold is < 0 or > 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(completionThreshold));
+        }
 
         return durationSeconds > 0 &&
-               playbackPositionSeconds >= Math.Ceiling(durationSeconds * CompletionThreshold);
+               playbackPositionSeconds >= Math.Ceiling(durationSeconds * completionThreshold);
     }
 
     /// <summary>

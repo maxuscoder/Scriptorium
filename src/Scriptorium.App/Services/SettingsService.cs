@@ -1,7 +1,10 @@
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Models;
+using Scriptorium.App.ViewModels.Pages;
+using Scriptorium.Core.Models;
 
 namespace Scriptorium.App.Services;
 
@@ -13,8 +16,14 @@ public sealed class SettingsService : ISettingsService
     private static readonly TimeSpan DebouncedSaveDelay = TimeSpan.FromMilliseconds(300);
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        WriteIndented = true
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true
     };
+    private static readonly HashSet<string> KnownSettingsProperties =
+        typeof(ApplicationSettings)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .Select(property => property.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private readonly ISettingsFileLocation _fileLocation;
     private readonly ILogger<SettingsService> _logger;
@@ -123,6 +132,96 @@ public sealed class SettingsService : ISettingsService
         }
     }
 
+    public async Task ExportAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        await FlushAsync(cancellationToken);
+        var fullPath = Path.GetFullPath(filePath);
+        await _operationLock.WaitAsync(cancellationToken);
+
+        var temporaryFilePath = $"{fullPath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            var directoryPath = Path.GetDirectoryName(fullPath);
+            if (string.IsNullOrWhiteSpace(directoryPath))
+            {
+                throw new InvalidOperationException("The export path must include a directory.");
+            }
+
+            Directory.CreateDirectory(directoryPath);
+            await using (var stream = File.Create(temporaryFilePath))
+            {
+                await JsonSerializer.SerializeAsync(stream, Normalize(_settings), SerializerOptions, cancellationToken);
+            }
+
+            File.Move(temporaryFilePath, fullPath, overwrite: true);
+            _logger.LogInformation("Exported user settings to {SettingsExportPath}.", fullPath);
+        }
+        finally
+        {
+            if (File.Exists(temporaryFilePath)) File.Delete(temporaryFilePath);
+            _operationLock.Release();
+        }
+    }
+
+    public async Task ImportAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        ApplicationSettings? imported;
+        await using (var stream = File.OpenRead(filePath))
+        {
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            if (document.RootElement.ValueKind != JsonValueKind.Object ||
+                !document.RootElement.EnumerateObject().Any(property => KnownSettingsProperties.Contains(property.Name)))
+            {
+                throw new InvalidDataException("The selected file does not contain recognized application settings.");
+            }
+
+            imported = document.RootElement.Deserialize<ApplicationSettings>(SerializerOptions);
+        }
+
+        if (imported is null)
+        {
+            throw new InvalidDataException("The selected file does not contain application settings.");
+        }
+
+        ValidateImportedSettings(imported);
+        imported = Normalize(imported);
+
+        ApplicationSettings previous;
+        await _operationLock.WaitAsync(cancellationToken);
+        try
+        {
+            previous = Clone(_settings);
+            CopySettings(_settings, imported);
+        }
+        finally
+        {
+            _operationLock.Release();
+        }
+
+        try
+        {
+            await SaveAsync(cancellationToken);
+            _logger.LogInformation("Imported user settings from {SettingsImportPath}.", filePath);
+        }
+        catch
+        {
+            await _operationLock.WaitAsync(CancellationToken.None);
+            try
+            {
+                CopySettings(_settings, previous);
+            }
+            finally
+            {
+                _operationLock.Release();
+            }
+
+            throw;
+        }
+    }
+
     public Task SaveDebouncedAsync(CancellationToken cancellationToken = default)
     {
         lock (_scheduledSaveGate)
@@ -190,7 +289,11 @@ public sealed class SettingsService : ISettingsService
 
     private static ApplicationSettings Normalize(ApplicationSettings settings)
     {
-        settings.Theme = string.IsNullOrWhiteSpace(settings.Theme) ? "System" : settings.Theme;
+        settings.StartupPage = StartupPageNames.Normalize(settings.StartupPage);
+        settings.Theme = ThemeNames.Normalize(settings.Theme);
+        settings.LibraryScanFrequencyMinutes = LibraryScanFrequency.Normalize(settings.LibraryScanFrequencyMinutes);
+        settings.PlaybackCompletionThresholdPercent = PlaybackCompletionThreshold.Normalize(
+            settings.PlaybackCompletionThresholdPercent);
         settings.LibraryLayout = string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase)
             ? "List"
             : "Grid";
@@ -213,5 +316,50 @@ public sealed class SettingsService : ISettingsService
             ? Math.Clamp(settings.PlaybackSpeed, 0.5, 2)
             : 1;
         return settings;
+    }
+
+    private static void ValidateImportedSettings(ApplicationSettings settings)
+    {
+        if (!ThemeNames.Available.Contains(settings.Theme, StringComparer.OrdinalIgnoreCase))
+            throw new InvalidDataException("The settings file contains an unsupported theme.");
+        if (!StartupPageNames.IsSupported(settings.StartupPage))
+            throw new InvalidDataException("The settings file contains an unsupported startup page.");
+        if (!string.Equals(settings.LibraryLayout, "Grid", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The settings file contains an unsupported library layout.");
+        if (LibraryScanFrequency.Normalize(settings.LibraryScanFrequencyMinutes) != settings.LibraryScanFrequencyMinutes)
+            throw new InvalidDataException("The settings file contains an unsupported library scan frequency.");
+        if (PlaybackCompletionThreshold.Normalize(settings.PlaybackCompletionThresholdPercent) != settings.PlaybackCompletionThresholdPercent)
+            throw new InvalidDataException("The settings file contains an unsupported playback completion threshold.");
+        if (!double.IsFinite(settings.PlaybackVolume) || settings.PlaybackVolume is < 0 or > 1)
+            throw new InvalidDataException("The settings file contains an invalid playback volume.");
+        if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed is < 0.5 or > 2)
+            throw new InvalidDataException("The settings file contains an invalid playback speed.");
+        if (!Enum.TryParse<LibrarySortOrder>(settings.LibrarySortOrder, true, out var sortOrder) || !Enum.IsDefined(sortOrder))
+            throw new InvalidDataException("The settings file contains an unsupported library sort order.");
+        if (settings.LibraryMediaTypeFilters is not null && settings.LibraryMediaTypeFilters.Any(value =>
+                !Enum.TryParse<MediaType>(value, true, out var mediaType) || !Enum.IsDefined(mediaType)))
+            throw new InvalidDataException("The settings file contains an unsupported media type filter.");
+        if (settings.LibraryCategoryFilterIds is not null && settings.LibraryCategoryFilterIds.Any(value => !Guid.TryParse(value, out _)))
+            throw new InvalidDataException("The settings file contains an invalid category filter identifier.");
+        if (!new[] { "All", "Watched", "Unwatched" }.Contains(settings.LibraryPlaybackFilter, StringComparer.OrdinalIgnoreCase))
+            throw new InvalidDataException("The settings file contains an unsupported playback filter.");
+        if (!new[] { "All", "Completed", "Incomplete" }.Contains(settings.LibraryCompletionFilter, StringComparer.OrdinalIgnoreCase))
+            throw new InvalidDataException("The settings file contains an unsupported completion filter.");
+    }
+
+    private static ApplicationSettings Clone(ApplicationSettings settings) =>
+        JsonSerializer.Deserialize<ApplicationSettings>(JsonSerializer.Serialize(settings, SerializerOptions), SerializerOptions)
+        ?? new ApplicationSettings();
+
+    private static void CopySettings(ApplicationSettings destination, ApplicationSettings source)
+    {
+        foreach (var property in typeof(ApplicationSettings).GetProperties(BindingFlags.Instance | BindingFlags.Public))
+        {
+            if (property.CanRead && property.CanWrite)
+            {
+                property.SetValue(destination, property.GetValue(source));
+            }
+        }
     }
 }

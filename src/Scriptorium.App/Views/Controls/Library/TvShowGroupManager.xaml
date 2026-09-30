@@ -6,8 +6,8 @@
     <Border Margin="0,16,0,0" DataContext="{Binding TvShowGroupManagement}" Style="{StaticResource Library.ManagementCard}">
         <StackPanel>
             <StackPanel Orientation="Horizontal">
-                <Border Width="32" Height="32" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}">
-                    <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M21,17H3V5H21M21,3H3C1.89,3 1,3.89 1,5V17A2,2 0 0,0 3,19H8V21H16V19H21A2,2 0 0,0 23,17V5C23,3.89 22.1,3 21,3Z" Fill="{StaticResource Brush.TextPrimary}" Stretch="Uniform" />
+                <Border Width="32" Height="32" VerticalAlignment="Center" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}">
+                    <Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" HorizontalAlignment="Center" VerticalAlignment="Center" Data="M21,17H3V5H21M21,3H3C1.89,3 1,3.89 1,5V17A2,2 0 0,0 3,19H8V21H16V19H21A2,2 0 0,0 23,17V5C23,3.89 22.1,3 21,3Z" Fill="{DynamicResource Brush.TextPrimary}" Stretch="Uniform" />
                 </Border>
                 <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Organize TV-show groups" />
@@ -49,7 +49,7 @@
             <TextBox Margin="0,6,0,0" Style="{StaticResource Input.TextBox}" Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Used when renaming a group or splitting selected media" />
 
             <Border Margin="0,16,0,0" Style="{StaticResource Library.InfoBanner}">
-                <StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" VerticalAlignment="Center" Data="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12 10,10 0 0,0 12,22 10,10 0 0,0 22,12 10,10 0 0,0 12,2Z" Fill="{StaticResource Brush.TextMuted}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="Choose a source group, select media, and pick a destination group to organize your library." /></StackPanel>
+                <StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" VerticalAlignment="Center" Data="M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12 10,10 0 0,0 12,22 10,10 0 0,0 22,12 10,10 0 0,0 12,2Z" Fill="{DynamicResource Brush.TextMuted}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="Choose a source group, select media, and pick a destination group to organize your library." /></StackPanel>
             </Border>
 
             <WrapPanel Margin="0,16,0,0">
@@ -59,10 +59,10 @@
                 <Button Margin="0,0,0,8" Command="{Binding SplitGroupCommand}" Style="{StaticResource Button.Secondary}"><StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M9,3H7V9H9V3M17,3H15V9H17V3M14,11H10V13H14V11M21,11H19V13H21V11M5,11H3V13H5V11M17,15H7V21H17V15Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Split selected media" /></StackPanel></Button>
             </WrapPanel>
 
-            <Border Margin="0,8,0,0" Background="{StaticResource Brush.DangerSurface}" BorderBrush="{StaticResource Brush.Danger}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" Padding="16,14">
+            <Border Margin="0,8,0,0" Background="{DynamicResource Brush.DangerSurface}" BorderBrush="{DynamicResource Brush.Danger}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}" Padding="16,14">
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Margin="0,0,16,0"><TextBlock Style="{StaticResource Text.CardTitle}" Foreground="{StaticResource Brush.Danger}" Text="Reset library view" /><TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Helper}" Text="Clears saved filters and returns to the default sort. Your media and folders stay intact." /></StackPanel>
+                    <StackPanel Margin="0,0,16,0"><TextBlock Style="{StaticResource Text.CardTitle}" Foreground="{DynamicResource Brush.Danger}" Text="Reset library view" /><TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Helper}" Text="Clears saved filters and returns to the default sort. Your media and folders stay intact." /></StackPanel>
                     <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding DataContext.ResetLibraryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Style="{StaticResource Button.Destructive}"><StackPanel Orientation="Horizontal"><Path Width="{StaticResource Icon.Size.Compact}" Height="{StaticResource Icon.Size.Compact}" Data="M12,5V1L7,6 12,11V7A6,6 0 0,1 18,13 6,6 0 0,1 12,19 6,6 0 0,1 6,13H4A8,8 0 0,0 12,21 8,8 0 0,0 20,13 8,8 0 0,0 12,5Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" /><TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Text="Reset view" /></StackPanel></Button>
                 </Grid>
             </Border>

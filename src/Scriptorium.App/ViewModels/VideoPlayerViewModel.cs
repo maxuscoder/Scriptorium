@@ -2,7 +2,9 @@ using System.IO;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Models;
 using Scriptorium.App.Services;
+using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels;
@@ -92,6 +94,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    public bool StartFullscreenOnPlayback => _settingsService?.Settings.StartFullscreenOnPlayback ?? false;
     /// <summary>An engine-neutral token consumed only by the WPF video surface adapter.</summary>
     public IVideoOutput? VideoOutput => _playback?.VideoOutput;
     public bool IsReady
@@ -162,7 +165,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
         _completionOverrideMediaItemId = null;
-        _request = request;
+        _request = _settingsService?.Settings.ResumePlaybackEnabled == false
+            ? request with { ResumePositionSeconds = 0 }
+            : request;
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
         ResetProgressSaveTracking();
@@ -259,6 +264,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void OpenPlayback()
     {
         if (_request is null) return;
+        SynchronizePlaybackPreferences();
         Status = "Loading video...";
         try
         {
@@ -634,7 +640,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                     new PlaybackProgressUpdate(
                         snapshot.PositionSeconds,
                         snapshot.DurationSeconds,
-                        snapshot.LastWatched))
+                        snapshot.LastWatched,
+                        snapshot.CompletionThreshold))
                 .ConfigureAwait(false))
             {
                 _lastSavedMediaItemId = snapshot.MediaItemId;
@@ -646,7 +653,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                         snapshot.MediaItemId,
                         snapshot.PositionSeconds,
                         snapshot.DurationSeconds,
-                        snapshot.LastWatched));
+                        snapshot.LastWatched,
+                        snapshot.CompletionThreshold));
             }
         }
         catch (Exception exception)
@@ -685,7 +693,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             mediaItemId,
             positionSeconds,
             durationSeconds,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            _settingsService is null
+                ? MediaPlaybackProgress.CompletionThreshold
+                : PlaybackCompletionThreshold.Normalize(
+                    _settingsService.Settings.PlaybackCompletionThresholdPercent) / 100d);
     }
 
     private void ResetProgressSaveTracking()
@@ -700,7 +712,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         Guid MediaItemId,
         long PositionSeconds,
         long DurationSeconds,
-        DateTimeOffset LastWatched);
+        DateTimeOffset LastWatched,
+        double CompletionThreshold);
 
     private void NotifyPlaybackChanged()
     {
@@ -740,6 +753,21 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void ApplyVolume()
     {
         if (_playback is not null) _playback.Volume = IsMuted ? 0 : Volume;
+    }
+
+    private void SynchronizePlaybackPreferences()
+    {
+        if (_settingsService is null) return;
+
+        var volume = NormalizeVolume(_settingsService.Settings.PlaybackVolume);
+        if (SetProperty(ref _volume, volume, nameof(Volume)))
+        {
+            _volumeBeforeMute = volume;
+            OnPropertyChanged(nameof(IsMutedIconVisible));
+        }
+
+        var speed = NormalizePlaybackSpeed(_settingsService.Settings.PlaybackSpeed);
+        SetProperty(ref _playbackSpeed, speed, nameof(PlaybackSpeed));
     }
 
     private void ApplyPlaybackSpeed()
@@ -829,12 +857,14 @@ public sealed class PlaybackProgressSavedEventArgs(
     Guid mediaItemId,
     long positionSeconds,
     long durationSeconds,
-    DateTimeOffset lastWatched) : EventArgs
+    DateTimeOffset lastWatched,
+    double completionThreshold = MediaPlaybackProgress.CompletionThreshold) : EventArgs
 {
     public Guid MediaItemId { get; } = mediaItemId;
     public long PositionSeconds { get; } = positionSeconds;
     public long DurationSeconds { get; } = durationSeconds;
     public DateTimeOffset LastWatched { get; } = lastWatched;
+    public double CompletionThreshold { get; } = completionThreshold;
 }
 
 /// <summary>Identifies the media item that reached the end of playback.</summary>

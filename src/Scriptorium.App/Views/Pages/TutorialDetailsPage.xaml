@@ -81,7 +81,7 @@
                             Margin="0,4,0,0"
                             Style="{StaticResource Text.CardTitle}"
                             Text="{Binding SelectedLesson.Title}" />
-                        <TextBlock Margin="0,6,0,0" Foreground="{StaticResource Brush.Accent}" Text="Edited metadata">
+                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource Brush.Accent}" Text="Edited metadata">
                             <TextBlock.Style>
                                 <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -95,7 +95,7 @@
                         </TextBlock>
                         <TextBlock
                             Margin="0,8,0,0"
-                            Foreground="{StaticResource Brush.TextSecondary}"
+                            Foreground="{DynamicResource Brush.TextSecondary}"
                             Text="{Binding SelectedLesson.Description}"
                             TextWrapping="Wrap" />
                     </StackPanel>
@@ -123,19 +123,19 @@
                 </Grid>
             </Border>
             <controls:MediaThumbnailEditor Margin="0,16,0,0" />
-            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaTypeEditor />
-            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaTitleEditor />
-            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaDescriptionEditor />
-            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaReleaseYearEditor />
-            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaCategoryEditor />
-            <Border Height="1" Margin="0,20,0,20" Background="{StaticResource Brush.Border}" />
+            <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaMetadataResetEditor />
-            <TextBlock Margin="0,16,0,0" Foreground="{StaticResource Brush.Accent}" Text="{Binding OrderStatus}">
+            <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource Brush.Accent}" Text="{Binding OrderStatus}">
                 <TextBlock.Style>
                     <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -158,8 +158,8 @@
                                 <Style BasedOn="{StaticResource Card}" TargetType="Border">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource Brush.SelectionSurface}" />
-                                            <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                                            <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -173,7 +173,7 @@
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock
                                         Style="{StaticResource Text.Metadata}"
-                                        Foreground="{StaticResource Brush.Accent}"
+                                        Foreground="{DynamicResource Brush.Accent}"
                                         Text="{Binding Position}" />
                                     <TextBlock Margin="0,4,0,0" Text="{Binding Runtime}">
                                         <TextBlock.Style>
@@ -199,7 +199,7 @@
                                         Style="{StaticResource Text.Metadata}"
                                         Text="{Binding FilePath}"
                                         TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Margin="0,4,0,0" Foreground="{StaticResource Brush.Warning}" Text="★">
+                                    <TextBlock Margin="0,4,0,0" Foreground="{DynamicResource Brush.Warning}" Text="★">
                                         <TextBlock.Style>
                                             <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
                                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -216,7 +216,7 @@
                                     <TextBlock
                                         HorizontalAlignment="Right"
                                         Style="{StaticResource Text.Metadata}"
-                                        Foreground="{StaticResource Brush.TextSecondary}"
+                                        Foreground="{DynamicResource Brush.TextSecondary}"
                                         Text="{Binding Availability}" />
                                     <TextBlock
                                         Margin="0,4,0,0"
@@ -226,7 +226,7 @@
                                             <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsCompleted}" Value="True">
-                                                        <Setter Property="Foreground" Value="{StaticResource Brush.Success}" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -235,7 +235,7 @@
                                     <TextBlock
                                         Margin="0,4,0,0"
                                         HorizontalAlignment="Right"
-                                        Foreground="{StaticResource Brush.Accent}"
+                                        Foreground="{DynamicResource Brush.Accent}"
                                         Text="Current lesson">
                                         <TextBlock.Style>
                                             <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">

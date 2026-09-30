@@ -672,7 +672,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
                 return;
             }
 
-            episode.SetPlaybackProgress(args.PositionSeconds, args.DurationSeconds, isCompleted: false, lastWatched: args.LastWatched);
+            episode.SetPlaybackProgress(
+                args.PositionSeconds,
+                args.DurationSeconds,
+                isCompleted: false,
+                lastWatched: args.LastWatched,
+                completionThreshold: args.CompletionThreshold);
             NotifyShowStateChanged();
         };
 
@@ -1420,11 +1425,15 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         long positionSeconds,
         long durationSeconds,
         bool isCompleted,
-        DateTimeOffset? lastWatched = null)
+        DateTimeOffset? lastWatched = null,
+        double completionThreshold = MediaPlaybackProgress.CompletionThreshold)
     {
         episode.MediaItem.PlaybackPositionSeconds = positionSeconds;
         episode.MediaItem.RuntimeSeconds = durationSeconds;
-        episode.MediaItem.IsCompleted = isCompleted || MediaPlaybackProgress.MeetsCompletionThreshold(positionSeconds, durationSeconds);
+        episode.MediaItem.IsCompleted = isCompleted || MediaPlaybackProgress.MeetsCompletionThreshold(
+            positionSeconds,
+            durationSeconds,
+            completionThreshold);
         episode.MediaItem.LastPlayed = lastWatched ?? DateTimeOffset.UtcNow;
         NotifyPlaybackStateChanged();
     }

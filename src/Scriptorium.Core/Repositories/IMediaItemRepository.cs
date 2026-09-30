@@ -100,5 +100,6 @@ public interface IMediaItemRepository : IRepository<MediaItem>
         long playbackPositionSeconds,
         long durationSeconds,
         DateTimeOffset lastWatched,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        double completionThreshold = MediaPlaybackProgress.CompletionThreshold);
 }

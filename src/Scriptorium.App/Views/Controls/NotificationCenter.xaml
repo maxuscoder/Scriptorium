@@ -15,18 +15,18 @@
                     Width="360"
                     Margin="0,0,0,10"
                     Padding="14"
-                    Background="{StaticResource Brush.Surface}"
+                    Background="{DynamicResource Brush.Surface}"
                     BorderThickness="1"
                     CornerRadius="{StaticResource CornerRadius.M}">
                     <Border.Style>
                         <Style TargetType="Border">
-                            <Setter Property="BorderBrush" Value="{StaticResource Brush.Accent}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Severity}" Value="{x:Static services:NotificationSeverity.Warning}">
-                                    <Setter Property="BorderBrush" Value="{StaticResource Brush.Warning}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Warning}" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Severity}" Value="{x:Static services:NotificationSeverity.Error}">
-                                    <Setter Property="BorderBrush" Value="{StaticResource Brush.Danger}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -43,13 +43,13 @@
                                 Text="{Binding SeverityLabel}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="{StaticResource Brush.Accent}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Severity}" Value="{x:Static services:NotificationSeverity.Warning}">
-                                                <Setter Property="Foreground" Value="{StaticResource Brush.Warning}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding Severity}" Value="{x:Static services:NotificationSeverity.Error}">
-                                                <Setter Property="Foreground" Value="{StaticResource Brush.Danger}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -57,7 +57,7 @@
                             </TextBlock>
                             <TextBlock
                                 Margin="0,5,8,0"
-                                Foreground="{StaticResource Brush.TextPrimary}"
+                                Foreground="{DynamicResource Brush.TextPrimary}"
                                 Text="{Binding Message}"
                                 TextWrapping="Wrap" />
                         </StackPanel>

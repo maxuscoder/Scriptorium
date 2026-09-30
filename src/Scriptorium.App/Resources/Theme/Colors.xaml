@@ -54,5 +54,6 @@
     <SolidColorBrush x:Key="Brush.TextDisabled" Color="{StaticResource Color.TextDisabled}" />
     <SolidColorBrush x:Key="Brush.TextOnAccent" Color="{StaticResource Color.TextOnAccent}" />
     <SolidColorBrush x:Key="Brush.FocusRing" Color="{StaticResource Color.FocusRing}" />
+    <SolidColorBrush x:Key="Brush.Shadow" Color="{StaticResource Color.Shadow}" />
     <SolidColorBrush x:Key="Brush.Overlay" Color="{StaticResource Color.Overlay}" />
 </ResourceDictionary>

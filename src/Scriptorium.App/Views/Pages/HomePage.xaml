@@ -6,6 +6,7 @@
     Loaded="OnLoaded">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,28,32,48">
+            <StackPanel Visibility="{Binding Settings.ShowContinueWatching, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -17,12 +18,12 @@
                         <Border
                             Margin="12,0,0,0"
                             VerticalAlignment="Center"
-                            Background="{StaticResource Brush.SurfaceOverlay}"
+                            Background="{DynamicResource Brush.SurfaceOverlay}"
                             CornerRadius="{StaticResource CornerRadius.S}"
                             Padding="9,3">
                             <TextBlock
                                 Style="{StaticResource Text.Badge}"
-                                Foreground="{StaticResource Brush.TextPrimary}"
+                                Foreground="{DynamicResource Brush.TextPrimary}"
                                 Text="{Binding IncompleteMediaCountText}" />
                         </Border>
                     </StackPanel>
@@ -45,7 +46,7 @@
                 </Button>
             </Grid>
 
-            <Border Margin="0,20,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+            <Border Margin="0,20,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -61,7 +62,7 @@
 
             <TextBlock
                 Margin="0,16,0,0"
-                Foreground="{StaticResource Brush.Warning}"
+                Foreground="{DynamicResource Brush.Warning}"
                 Text="{Binding StatusMessage}"
                 TextWrapping="Wrap" />
 
@@ -113,6 +114,8 @@
                     HorizontalAlignment="Center"
                     Style="{StaticResource Text.Body.Center}"
                     Text="Media you start but do not finish will appear here automatically." />
+            </StackPanel>
+
             </StackPanel>
 
             <StackPanel Margin="0,48,0,0">

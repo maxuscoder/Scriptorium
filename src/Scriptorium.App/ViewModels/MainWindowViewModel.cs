@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Models;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.Core.Models;
@@ -19,6 +20,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IPlaybackProgressService _playbackProgressService;
     private readonly INotificationService? _notifications;
+    private readonly ApplicationSettings _settings;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string? _statusMessage;
     private bool _isRefreshing;
@@ -31,7 +33,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         IMediaDetailsNavigationCoordinator detailsCoordinator,
         IPlaybackProgressService playbackProgressService,
         ILogger<MainWindowViewModel> logger,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        ISettingsService? settingsService = null)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
         ArgumentNullException.ThrowIfNull(detailsCoordinator);
@@ -40,6 +43,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
 
         _logger = logger;
         _notifications = notifications;
+        _settings = settingsService?.Settings ?? new ApplicationSettings();
         _mediaItemRepository = mediaItemRepository;
         _detailsCoordinator = detailsCoordinator;
         _playbackProgressService = playbackProgressService;
@@ -53,6 +57,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     public ObservableCollection<LibraryMediaItemViewModel> IncompleteMedia { get; } = [];
 
     public ObservableCollection<LibraryMediaItemViewModel> RecentlyWatchedMedia { get; } = [];
+
+    public ApplicationSettings Settings => _settings;
 
     public bool HasIncompleteMedia => IncompleteMedia.Count != 0;
 

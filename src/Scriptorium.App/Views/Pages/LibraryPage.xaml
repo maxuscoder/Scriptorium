@@ -17,8 +17,8 @@
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource Text.PageTitle}" Text="Library" />
-                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
-                        <TextBlock Style="{StaticResource Text.Badge}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding MediaCountText}" />
+                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
+                        <TextBlock Style="{StaticResource Text.Badge}" Foreground="{DynamicResource Brush.TextPrimary}" Text="{Binding MediaCountText}" />
                     </Border>
                 </StackPanel>
                 <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="Your personal collection, organized for the next thing you want to watch." />
