@@ -14,6 +14,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class SearchPageViewModel : PageViewModel, IDisposable
 {
     private static readonly TimeSpan SearchDebounceDelay = TimeSpan.FromMilliseconds(250);
+    private const int SearchPageSize = 80;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IFavoriteService _favoriteService;
@@ -22,6 +23,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
     private string _query = string.Empty;
     private string? _statusMessage;
     private bool _isSearching;
+    private int _totalResultCount;
     private int _searchVersion;
     private bool _disposed;
 
@@ -37,6 +39,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         _logger = logger;
         OpenResultCommand = new AsyncRelayCommand(OpenResultAsync, parameter => parameter is SearchResultViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
+        LoadMoreResultsCommand = new AsyncRelayCommand(LoadMoreResultsAsync, () => HasMoreResults && !IsSearching);
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
     }
 
@@ -69,6 +72,8 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
 
     public ICommand ToggleFavoriteCommand { get; }
 
+    public ICommand LoadMoreResultsCommand { get; }
+
     public bool IsSearching
     {
         get => _isSearching;
@@ -79,7 +84,11 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
 
     public bool HasResults => Results.Count > 0;
 
-    public string ResultCountText => $"{Results.Count} result{(Results.Count == 1 ? string.Empty : "s")}";
+    public bool HasMoreResults => Results.Count < _totalResultCount;
+
+    public string ResultCountText => HasMoreResults
+        ? $"Showing {Results.Count} of {_totalResultCount} results"
+        : $"{_totalResultCount} result{(_totalResultCount == 1 ? string.Empty : "s")}";
 
     public string? StatusMessage
     {
@@ -104,18 +113,22 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         {
             _searchCancellationSource = null;
             Results.Clear();
+            _totalResultCount = 0;
             StatusMessage = null;
             IsSearching = false;
             NotifyResultsChanged();
+            NotifyPagingStateChanged();
             return;
         }
 
         var cancellationSource = new CancellationTokenSource();
         _searchCancellationSource = cancellationSource;
         Results.Clear();
+        _totalResultCount = 0;
         StatusMessage = null;
         IsSearching = true;
         NotifyResultsChanged();
+        NotifyPagingStateChanged();
         _ = SearchAfterDebounceAsync(normalizedQuery, searchVersion, cancellationSource);
     }
 
@@ -127,18 +140,19 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         try
         {
             await Task.Delay(SearchDebounceDelay, cancellationSource.Token);
-            var mediaItems = await _mediaItemRepository.SearchAsync(query, cancellationSource.Token);
+            var page = await _mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+            {
+                SearchText = query,
+                SortOrder = MediaItemBrowseSortOrder.Ascending,
+                PageSize = SearchPageSize
+            }, cancellationToken: cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
                 return;
             }
 
-            foreach (var mediaItem in mediaItems
-                         .Where(mediaItem => mediaItem.MediaType.IsSupported())
-                         .OrderBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase))
-            {
-                Results.Add(new SearchResultViewModel(mediaItem, query));
-            }
+            _totalResultCount = page.TotalCount ?? page.Items.Count;
+            AppendSearchResults(page.Items, query);
         }
         catch (OperationCanceledException)
         {
@@ -158,6 +172,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
             {
                 IsSearching = false;
                 NotifyResultsChanged();
+                NotifyPagingStateChanged();
             }
 
             if (ReferenceEquals(_searchCancellationSource, cancellationSource))
@@ -167,6 +182,81 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
 
             cancellationSource.Dispose();
         }
+    }
+
+    private async Task LoadMoreResultsAsync()
+    {
+        if (!HasMoreResults || IsSearching || !HasQuery)
+        {
+            return;
+        }
+
+        var query = Query;
+        var searchVersion = Volatile.Read(ref _searchVersion);
+        var cancellationSource = new CancellationTokenSource();
+        _searchCancellationSource = cancellationSource;
+        IsSearching = true;
+        NotifyPagingStateChanged();
+
+        try
+        {
+            var page = await _mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+            {
+                SearchText = query,
+                SortOrder = MediaItemBrowseSortOrder.Ascending,
+                Skip = Results.Count,
+                PageSize = SearchPageSize
+            }, includeTotalCount: false, cancellationToken: cancellationSource.Token);
+            if (searchVersion != Volatile.Read(ref _searchVersion))
+            {
+                return;
+            }
+
+            AppendSearchResults(page.Items, query);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Could not load more search results for {SearchQuery}.", query);
+            if (searchVersion == Volatile.Read(ref _searchVersion))
+            {
+                StatusMessage = "More search results could not be loaded.";
+            }
+        }
+        finally
+        {
+            if (searchVersion == Volatile.Read(ref _searchVersion))
+            {
+                IsSearching = false;
+                NotifyResultsChanged();
+                NotifyPagingStateChanged();
+            }
+
+            if (ReferenceEquals(_searchCancellationSource, cancellationSource))
+            {
+                _searchCancellationSource = null;
+            }
+
+            cancellationSource.Dispose();
+        }
+    }
+
+    private void AppendSearchResults(IEnumerable<MediaItem> mediaItems, string query)
+    {
+        foreach (var mediaItem in mediaItems)
+        {
+            Results.Add(new SearchResultViewModel(mediaItem, query));
+        }
+    }
+
+    private void NotifyPagingStateChanged()
+    {
+        OnPropertyChanged(nameof(HasMoreResults));
+        OnPropertyChanged(nameof(ResultCountText));
+        ((AsyncRelayCommand)LoadMoreResultsCommand).NotifyCanExecuteChanged();
     }
 
     private async Task OpenResultAsync(object? parameter)

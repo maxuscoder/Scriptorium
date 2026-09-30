@@ -46,3 +46,6 @@ public sealed class LibraryBrowserTvShowGroupsRow;
 
 /// <summary>Marker row for the library's empty state.</summary>
 public sealed class LibraryBrowserEmptyRow;
+
+/// <summary>Marker row shown while the browser fetches another page.</summary>
+public sealed class LibraryBrowserLoadingRow;

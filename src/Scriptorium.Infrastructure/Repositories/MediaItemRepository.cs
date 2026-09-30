@@ -109,6 +109,229 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
     }
 
     /// <inheritdoc />
+    public async Task<MediaItemBrowsePage> GetBrowsePageAsync(
+        MediaItemBrowseQuery query,
+        bool includeTotalCount = true,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentOutOfRangeException.ThrowIfNegative(query.Skip);
+        if (query.PageSize is < 1 or > 500)
+        {
+            throw new ArgumentOutOfRangeException(nameof(query), "A browse page must contain between 1 and 500 items.");
+        }
+
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        var mediaItems = context.MediaItems
+            .AsNoTracking()
+            .Include(item => item.LibraryFolder)
+            .Include(item => item.Category);
+
+        var filteredMediaItems = ApplyBrowseFilters(mediaItems, query);
+        int? totalCount = includeTotalCount
+            ? await filteredMediaItems.CountAsync(cancellationToken)
+            : null;
+        var orderedMediaItems = ApplyBrowseOrdering(filteredMediaItems, query);
+        var page = await orderedMediaItems
+            .Skip(query.Skip)
+            .Take(query.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return new MediaItemBrowsePage(page, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task<MediaItemLibrarySummary> GetLibrarySummaryAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        var summary = await context.MediaItems
+            .AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(items => new
+            {
+                IndexedMediaCount = items.Count(),
+                SupportedMediaCount = items.Count(item =>
+                    item.MediaType == MediaType.Tutorial ||
+                    item.MediaType == MediaType.TvShow ||
+                    item.MediaType == MediaType.Movie),
+                MissingMediaCount = items.Count(item => item.IsMissing),
+                MovieCount = items.Count(item => item.MediaType == MediaType.Movie)
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return summary is null
+            ? new MediaItemLibrarySummary(0, 0, 0, 0)
+            : new MediaItemLibrarySummary(
+                summary.IndexedMediaCount,
+                summary.SupportedMediaCount,
+                summary.MissingMediaCount,
+                summary.MovieCount);
+    }
+
+    private static IQueryable<MediaItem> ApplyBrowseFilters(
+        IQueryable<MediaItem> mediaItems,
+        MediaItemBrowseQuery query)
+    {
+        mediaItems = mediaItems.Where(item =>
+            item.MediaType == MediaType.Tutorial ||
+            item.MediaType == MediaType.TvShow ||
+            item.MediaType == MediaType.Movie);
+
+        var mediaTypes = query.MediaTypes.Distinct().ToArray();
+        if (mediaTypes.Length != 0)
+        {
+            mediaItems = mediaItems.Where(item => mediaTypes.Contains(item.MediaType));
+        }
+
+        var categoryIds = query.CategoryIds.Where(id => id != Guid.Empty).Distinct().ToArray();
+        if (categoryIds.Length != 0)
+        {
+            mediaItems = mediaItems.Where(item => item.CategoryId != null && categoryIds.Contains(item.CategoryId.Value));
+        }
+
+        if (query.FavoritesOnly)
+        {
+            mediaItems = mediaItems.Where(item => item.IsFavorite);
+        }
+
+        mediaItems = query.PlaybackFilter switch
+        {
+            MediaItemPlaybackFilter.Watched => mediaItems.Where(item => item.LastPlayedUnixTimeMilliseconds != null),
+            MediaItemPlaybackFilter.Unwatched => mediaItems.Where(item => item.LastPlayedUnixTimeMilliseconds == null),
+            _ => mediaItems
+        };
+
+        mediaItems = query.CompletionFilter switch
+        {
+            MediaItemCompletionFilter.Completed => mediaItems.Where(item => item.IsCompleted),
+            MediaItemCompletionFilter.Incomplete => mediaItems.Where(item => !item.IsCompleted),
+            _ => mediaItems
+        };
+
+        if (!string.IsNullOrWhiteSpace(query.SearchText))
+        {
+            var searchText = query.SearchText.Trim();
+            var pattern = $"%{EscapeLikePattern(searchText)}%";
+            var matchesUncategorized = "Uncategorized".Contains(searchText, StringComparison.OrdinalIgnoreCase);
+            mediaItems = mediaItems.Where(item =>
+                EF.Functions.Like(
+                    EF.Functions.Collate(
+                        item.TitleOverride != null && item.TitleOverride.Trim() != ""
+                            ? item.TitleOverride.Trim()
+                            : item.Title,
+                        "NOCASE"),
+                    pattern,
+                    "\\") ||
+                EF.Functions.Like(EF.Functions.Collate(item.Path, "NOCASE"), pattern, "\\") ||
+                (item.TVShowTitle != null &&
+                 EF.Functions.Like(EF.Functions.Collate(item.TVShowTitle, "NOCASE"), pattern, "\\")) ||
+                ((item.ReleaseYearOverride ?? item.ReleaseYear) != null &&
+                 EF.Functions.Like((item.ReleaseYearOverride ?? item.ReleaseYear)!.Value.ToString(), pattern, "\\")) ||
+                (item.LibraryFolder != null &&
+                 EF.Functions.Like(
+                     EF.Functions.Collate(
+                         item.LibraryFolder.DisplayName != null && item.LibraryFolder.DisplayName.Trim() != ""
+                             ? item.LibraryFolder.DisplayName.Trim()
+                             : item.LibraryFolder.Name,
+                         "NOCASE"),
+                     pattern,
+                     "\\")) ||
+                (item.Category != null &&
+                 EF.Functions.Like(EF.Functions.Collate(item.Category.Name, "NOCASE"), pattern, "\\")) ||
+                (matchesUncategorized && item.CategoryId == null));
+        }
+
+        return mediaItems;
+    }
+
+    private static IOrderedQueryable<MediaItem> ApplyBrowseOrdering(
+        IQueryable<MediaItem> mediaItems,
+        MediaItemBrowseQuery query)
+    {
+        var orderedItems = query.SortOrder switch
+        {
+            MediaItemBrowseSortOrder.Descending => OrderBy(mediaItems, item => EF.Functions.Collate(
+                item.TitleOverride != null && item.TitleOverride.Trim() != "" ? item.TitleOverride.Trim() : item.Title,
+                "NOCASE"), descending: true, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.ImportDateNewest => OrderBy(mediaItems, item => item.DateAdded.ToString(), descending: true, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.ImportDateOldest => OrderBy(mediaItems, item => item.DateAdded.ToString(), descending: false, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.MostRecentlyWatched => OrderBy(mediaItems, item => item.LastPlayedUnixTimeMilliseconds, descending: true, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.LeastRecentlyWatched => OrderBy(mediaItems, item => item.LastPlayedUnixTimeMilliseconds, descending: false, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.HighestPlaybackProgress => OrderBy(mediaItems, item =>
+                item.IsCompleted ? 100d : item.RuntimeSeconds > 0
+                    ? (double)item.PlaybackPositionSeconds / item.RuntimeSeconds.Value * 100d
+                    : 0d, descending: true, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.LowestPlaybackProgress => OrderBy(mediaItems, item =>
+                item.IsCompleted ? 100d : item.RuntimeSeconds > 0
+                    ? (double)item.PlaybackPositionSeconds / item.RuntimeSeconds.Value * 100d
+                    : 0d, descending: false, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.ReleaseYearNewest => OrderByReleaseYear(mediaItems, descending: true, query.FavoritesFirst),
+            MediaItemBrowseSortOrder.ReleaseYearOldest => OrderByReleaseYear(mediaItems, descending: false, query.FavoritesFirst),
+            _ => OrderBy(mediaItems, item => EF.Functions.Collate(
+                item.TitleOverride != null && item.TitleOverride.Trim() != "" ? item.TitleOverride.Trim() : item.Title,
+                "NOCASE"), descending: false, query.FavoritesFirst)
+        };
+
+        var hasTitleSort = query.SortOrder is MediaItemBrowseSortOrder.Ascending or MediaItemBrowseSortOrder.Descending;
+        var orderedWithTitleTieBreaker = hasTitleSort
+            ? orderedItems
+            : orderedItems.ThenBy(item => EF.Functions.Collate(
+                item.TitleOverride != null && item.TitleOverride.Trim() != "" ? item.TitleOverride.Trim() : item.Title,
+                "NOCASE"));
+        return orderedWithTitleTieBreaker.ThenBy(item => item.Id);
+    }
+
+    private static IOrderedQueryable<MediaItem> OrderBy<TKey>(
+        IQueryable<MediaItem> mediaItems,
+        Expression<Func<MediaItem, TKey>> keySelector,
+        bool descending,
+        bool favoritesFirst)
+    {
+        if (favoritesFirst)
+        {
+            var favoriteOrdering = mediaItems.OrderByDescending(item => item.IsFavorite);
+            return descending
+                ? favoriteOrdering.ThenByDescending(keySelector)
+                : favoriteOrdering.ThenBy(keySelector);
+        }
+
+        return descending
+            ? mediaItems.OrderByDescending(keySelector)
+            : mediaItems.OrderBy(keySelector);
+    }
+
+    private static IOrderedQueryable<MediaItem> OrderByReleaseYear(
+        IQueryable<MediaItem> mediaItems,
+        bool descending,
+        bool favoritesFirst)
+    {
+        IOrderedQueryable<MediaItem> ordering;
+        if (favoritesFirst)
+        {
+            var favoriteOrdering = mediaItems.OrderByDescending(item => item.IsFavorite);
+            ordering = descending
+                ? favoriteOrdering
+                    .ThenByDescending(item => (item.ReleaseYearOverride ?? item.ReleaseYear).HasValue)
+                    .ThenByDescending(item => item.ReleaseYearOverride ?? item.ReleaseYear)
+                : favoriteOrdering
+                    .ThenBy(item => (item.ReleaseYearOverride ?? item.ReleaseYear).HasValue ? 0 : 1)
+                    .ThenBy(item => item.ReleaseYearOverride ?? item.ReleaseYear);
+        }
+        else
+        {
+            ordering = descending
+                ? mediaItems
+                    .OrderByDescending(item => (item.ReleaseYearOverride ?? item.ReleaseYear).HasValue)
+                    .ThenByDescending(item => item.ReleaseYearOverride ?? item.ReleaseYear)
+                : mediaItems
+                    .OrderBy(item => (item.ReleaseYearOverride ?? item.ReleaseYear).HasValue ? 0 : 1)
+                    .ThenBy(item => item.ReleaseYearOverride ?? item.ReleaseYear);
+        }
+
+        return ordering;
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> GetByLibraryFolderIdAsync(
         Guid libraryFolderId,
         CancellationToken cancellationToken = default)

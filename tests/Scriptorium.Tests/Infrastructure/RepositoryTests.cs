@@ -816,6 +816,97 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Library_browse_filters_sorts_and_pages_in_the_database()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={databasePath};Foreign Keys=True;Pooling=False")
+            .Options;
+
+        try
+        {
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+            }
+
+            var contextFactory = new TestDbContextFactory(options);
+            var mediaItemRepository = new MediaItemRepository(contextFactory);
+            var category = new Category { Name = "Documentaries", Color = "#6B46C1" };
+            var folder = new LibraryFolder { Name = "Films", DisplayName = "Drama films", Path = "C:\\Films" };
+            await new CategoryRepository(contextFactory).AddAsync(category);
+            await new LibraryFolderRepository(contextFactory).AddAsync(folder);
+
+            var matchingMovie = new MediaItem
+            {
+                Title = "Original name",
+                TitleOverride = "Alpha City",
+                Path = "C:\\Films\\alpha.mp4",
+                LibraryFolderId = folder.Id,
+                CategoryId = category.Id,
+                MediaType = MediaType.Movie,
+                IsFavorite = true,
+                IsMissing = true,
+                ReleaseYear = 2024
+            };
+            var otherMovie = new MediaItem
+            {
+                Title = "Beta City",
+                Path = "C:\\Films\\beta.mp4",
+                LibraryFolderId = folder.Id,
+                CategoryId = category.Id,
+                MediaType = MediaType.Movie
+            };
+            var tutorial = new MediaItem
+            {
+                Title = "Alpha lesson",
+                Path = "C:\\Films\\lesson.mp4",
+                MediaType = MediaType.Tutorial
+            };
+            await mediaItemRepository.AddRangeAsync([matchingMovie, otherMovie, tutorial]);
+
+            var summary = await mediaItemRepository.GetLibrarySummaryAsync();
+            var firstPage = await mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+            {
+                SearchText = "alpha",
+                MediaTypes = [MediaType.Movie],
+                CategoryIds = [category.Id],
+                FavoritesOnly = true,
+                SortOrder = MediaItemBrowseSortOrder.Ascending,
+                PageSize = 1
+            });
+            var laterPage = await mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+            {
+                MediaTypes = [MediaType.Movie],
+                SortOrder = MediaItemBrowseSortOrder.Ascending,
+                Skip = 1,
+                PageSize = 1
+            }, includeTotalCount: false);
+            foreach (var sortOrder in Enum.GetValues<MediaItemBrowseSortOrder>())
+            {
+                var sortedPage = await mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+                {
+                    MediaTypes = [MediaType.Movie],
+                    FavoritesFirst = true,
+                    SortOrder = sortOrder,
+                    PageSize = 2
+                }, includeTotalCount: false);
+                Assert.Equal(2, sortedPage.Items.Count);
+            }
+
+            Assert.Equal(new MediaItemLibrarySummary(3, 3, 1, 2), summary);
+            Assert.Equal(1, firstPage.TotalCount);
+            Assert.Equal(matchingMovie.Id, Assert.Single(firstPage.Items).Id);
+            Assert.Null(laterPage.TotalCount);
+            Assert.Equal(otherMovie.Id, Assert.Single(laterPage.Items).Id);
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
     public async Task Deleting_a_library_folder_preserves_its_media_metadata()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");

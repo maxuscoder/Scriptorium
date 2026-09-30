@@ -7,6 +7,15 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface IMediaItemRepository : IRepository<MediaItem>
 {
+    /// <summary>Gets a filtered, database-sorted page for the library browser.</summary>
+    Task<MediaItemBrowsePage> GetBrowsePageAsync(
+        MediaItemBrowseQuery query,
+        bool includeTotalCount = true,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Gets library totals without materializing media rows.</summary>
+    Task<MediaItemLibrarySummary> GetLibrarySummaryAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Adds media items in one database save operation.</summary>
     Task AddRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default);
 

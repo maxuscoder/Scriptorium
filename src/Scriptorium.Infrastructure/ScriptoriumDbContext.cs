@@ -170,6 +170,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.HasIndex(item => item.Path).IsUnique();
             entity.HasIndex(item => item.LibraryFolderId);
             entity.HasIndex(item => item.CategoryId);
+            entity.HasIndex(item => new { item.MediaType, item.CategoryId });
+            entity.HasIndex(item => new { item.MediaType, item.DateAdded });
+            entity.HasIndex(item => new { item.MediaType, item.LastPlayedUnixTimeMilliseconds });
 
             entity.HasOne(item => item.LibraryFolder)
                 .WithMany(folder => folder.MediaItems)
