@@ -326,12 +326,21 @@ public sealed class MovieDetailsPageViewModel : PageViewModel, IDisposable
         Description = FormatDescription(movie.DisplayDescription);
         EditableDescription = movie.DisplayDescription ?? string.Empty;
         DescriptionStatus = string.Empty;
-        Availability = movie.IsMissing ? "File unavailable" : "Available";
-        Player.SetMedia(new MediaPlaybackRequest(
-            movie.Path,
-            movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds,
-            movie.Id,
-            movie.RuntimeSeconds ?? 0));
+        Availability = movie.IsMissing
+            ? "File unavailable. Reconnect its folder and rescan the library to restore playback."
+            : "Available";
+        if (movie.IsMissing)
+        {
+            Player.SetUnavailable("This video file is unavailable. Reconnect its folder and rescan the library to restore playback.");
+        }
+        else
+        {
+            Player.SetMedia(new MediaPlaybackRequest(
+                movie.Path,
+                movie.IsCompleted ? 0 : movie.PlaybackPositionSeconds,
+                movie.Id,
+                movie.RuntimeSeconds ?? 0));
+        }
         PopulateMetadata(movie);
         NotifyStateChanged();
         return true;

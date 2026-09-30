@@ -616,6 +616,12 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             return;
         }
 
+        if (lesson.IsMissing)
+        {
+            _player.SetUnavailable("This lesson file is unavailable. Reconnect its folder and rescan the library to restore playback.");
+            return;
+        }
+
         _player.SetMedia(new MediaPlaybackRequest(
             lesson.FilePath,
             lesson.IsCompleted ? 0 : lesson.PlaybackPositionSeconds,

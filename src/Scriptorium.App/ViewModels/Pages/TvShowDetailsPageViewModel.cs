@@ -641,6 +641,12 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             return;
         }
 
+        if (episode.IsMissing)
+        {
+            _player?.SetUnavailable("This episode file is unavailable. Reconnect its folder and rescan the library to restore playback.");
+            return;
+        }
+
         _player?.SetMedia(new MediaPlaybackRequest(
             episode.FilePath,
             episode.IsCompleted ? 0 : episode.PlaybackPositionSeconds,

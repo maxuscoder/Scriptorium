@@ -170,6 +170,23 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         if (_active) OpenPlayback();
     }
 
+    /// <summary>Clears the current media without opening a playback session and shows why it is unavailable.</summary>
+    public void SetUnavailable(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        QueuePlaybackProgressSave(force: true);
+        ReleasePlayback();
+        _completionOverrideMediaItemId = null;
+        _request = null;
+        _position = TimeSpan.Zero;
+        _duration = TimeSpan.Zero;
+        ResetProgressSaveTracking();
+        Status = message;
+        NotifyPositionChanged();
+        OnPropertyChanged(nameof(DurationSeconds));
+        OnPropertyChanged(nameof(DurationText));
+    }
+
     /// <summary>Waits for any playback snapshot already queued for persistence.</summary>
     public async Task FlushPendingProgressSaveAsync()
     {
