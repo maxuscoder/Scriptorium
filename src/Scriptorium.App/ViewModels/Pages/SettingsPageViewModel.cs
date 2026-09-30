@@ -1,4 +1,5 @@
 using Scriptorium.App.Models;
+using Scriptorium.App.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -7,6 +8,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     private readonly Scriptorium.App.Services.ISettingsService _settingsService;
     private readonly Scriptorium.App.Services.IThemeService _themeService;
     private readonly LibraryPageViewModel _libraryPage;
+    private readonly INotificationService? _notifications;
     private string _libraryLayout;
     private LibrarySortOrder _librarySortOrder;
     private bool _favoritesFirst;
@@ -25,11 +27,13 @@ public sealed class SettingsPageViewModel : PageViewModel
     public SettingsPageViewModel(
         Scriptorium.App.Services.ISettingsService settingsService,
         LibraryPageViewModel libraryPage,
-        Scriptorium.App.Services.IThemeService themeService)
+        Scriptorium.App.Services.IThemeService themeService,
+        INotificationService? notifications = null)
     {
         _settingsService = settingsService;
         _themeService = themeService;
         _libraryPage = libraryPage;
+        _notifications = notifications;
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
             ? sortOrder
@@ -244,6 +248,58 @@ public sealed class SettingsPageViewModel : PageViewModel
             _settingsService.Settings.ShowContinueWatching = value;
             SaveChanges();
         }
+    }
+
+    public async Task ExportSettingsAsync(string filePath)
+    {
+        try
+        {
+            await _settingsService.ExportAsync(filePath);
+            _notifications?.Show("Settings were exported successfully.");
+        }
+        catch (Exception exception)
+        {
+            _notifications?.Report(exception, "Settings could not be exported.");
+        }
+    }
+
+    public async Task ImportSettingsAsync(string filePath)
+    {
+        try
+        {
+            await _settingsService.ImportAsync(filePath);
+            ApplyImportedSettings();
+            _notifications?.Show("Settings were imported and applied.");
+        }
+        catch (Exception exception)
+        {
+            _notifications?.Report(
+                exception,
+                "Settings could not be imported. Check that the file is valid; your current settings were kept.",
+                NotificationSeverity.Warning);
+        }
+    }
+
+    private void ApplyImportedSettings()
+    {
+        var settings = _settingsService.Settings;
+        Theme = settings.Theme;
+        StartupPage = settings.StartupPage;
+        LibraryLayout = settings.LibraryLayout;
+        if (Enum.TryParse<LibrarySortOrder>(settings.LibrarySortOrder, true, out var sortOrder))
+        {
+            LibrarySortOrder = sortOrder;
+        }
+        FavoritesFirst = settings.LibraryFavoritesFirst;
+        AutomaticLibraryScanningEnabled = settings.AutomaticLibraryScanningEnabled;
+        LibraryScanFrequencyMinutes = settings.LibraryScanFrequencyMinutes;
+        ScanLibraryOnStartup = settings.ScanLibraryOnStartup;
+        PlaybackVolume = settings.PlaybackVolume;
+        PlaybackSpeed = settings.PlaybackSpeed;
+        StartFullscreenOnPlayback = settings.StartFullscreenOnPlayback;
+        ResumePlaybackEnabled = settings.ResumePlaybackEnabled;
+        PlaybackCompletionThresholdPercent = settings.PlaybackCompletionThresholdPercent;
+        ShowContinueWatching = settings.ShowContinueWatching;
     }
 
     private void SaveChanges() => _ = _settingsService.SaveDebouncedAsync();

@@ -8,6 +8,23 @@
             <TextBlock Margin="0,8,0,28" Style="{StaticResource Text.Body}" Text="Set up your library and playback preferences." />
 
             <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Back up settings" />
+                        <TextBlock Margin="0,5,18,0" Style="{StaticResource Text.Helper}" Text="Export your preferences to a JSON file or restore them from a saved file." />
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
+                        <Button Margin="0,0,8,0" Click="OnExportSettingsClick" Content="Export" Style="{StaticResource Button.Secondary}" />
+                        <Button Click="OnImportSettingsClick" Content="Import" Style="{StaticResource Button.Secondary}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Continue Watching" />
                     <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose how playback progress and the Home section behave." />
