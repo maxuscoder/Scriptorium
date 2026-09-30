@@ -511,7 +511,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         Status = kind switch
         {
             MediaPlaybackFailureKind.MissingFile =>
-                "This video could not be found. It may have been moved, renamed, or deleted.",
+                "This video is unavailable because it could not be found. It may have been moved, renamed, or deleted.",
             MediaPlaybackFailureKind.UnsupportedFormat =>
                 "This video could not be played because its format or codec isn't supported by the configured player.",
             _ => "This video could not be played. Check the file and player configuration."
