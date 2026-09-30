@@ -33,6 +33,7 @@ public sealed class ThemeService : IThemeService
         ["TextDisabled"] = Parse("#898989"),
         ["TextOnAccent"] = Colors.White,
         ["FocusRing"] = Parse("#B84000"),
+        ["Shadow"] = Colors.Black,
         ["Overlay"] = Parse("#66000000")
     };
 
