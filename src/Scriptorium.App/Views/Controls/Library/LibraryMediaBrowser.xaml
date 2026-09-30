@@ -65,6 +65,18 @@
                     <StackPanel Margin="0,40,0,40" HorizontalAlignment="Center" MaxWidth="420">
                         <TextBlock Style="{StaticResource Text.Display}" Text="{Binding DataContext.EmptyLibraryTitle, RelativeSource={RelativeSource AncestorType=ListBox}}" />
                         <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding DataContext.EmptyLibraryDescription, RelativeSource={RelativeSource AncestorType=ListBox}}" />
+                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.ClearFiltersCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Clear search and filters">
+                            <Button.Style>
+                                <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DataContext.HasActiveFilters, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.FolderManagement.ImportFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Add Folder">
                             <Button.Style>
                                 <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">

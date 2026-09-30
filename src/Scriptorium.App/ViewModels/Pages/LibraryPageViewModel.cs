@@ -465,12 +465,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     public bool HasIndexedMedia => _supportedMediaCount != 0;
 
     /// <summary>Gets the empty-state heading appropriate for the current filters.</summary>
-    public string EmptyLibraryTitle => HasIndexedMedia ? "No media matches your filters" : "Your library is empty";
+    public string EmptyLibraryTitle => HasIndexedMedia ? "No matching media" : "Your library is empty";
 
     /// <summary>Gets the empty-state guidance appropriate for the current filters.</summary>
-    public string EmptyLibraryDescription => HasIndexedMedia
-        ? "Adjust or clear the filters to see more media."
-        : "Add a folder to start building your Scriptorium library, then scan it to find your media.";
+    public string EmptyLibraryDescription => !HasIndexedMedia
+        ? "Add a folder to start building your Scriptorium library, then scan it to find your media."
+        : !string.IsNullOrWhiteSpace(SearchQuery)
+            ? $"No media matches “{SearchQuery.Trim()}”. Try another search or clear your search and filters."
+            : "No media matches your current filters. Adjust them or clear your search and filters.";
 
     /// <summary>Gets a concise count suitable for the library browser header.</summary>
     public string MediaCountText
