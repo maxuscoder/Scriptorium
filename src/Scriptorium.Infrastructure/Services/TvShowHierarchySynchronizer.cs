@@ -1,15 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
+using Scriptorium.Infrastructure.Caching;
 
 namespace Scriptorium.Infrastructure.Services;
 
 /// <summary>
 /// Reconciles television-show seasons and episodes with the current indexed media records.
 /// </summary>
-public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbContext> contextFactory)
+public sealed class TvShowHierarchySynchronizer(
+    IDbContextFactory<ScriptoriumDbContext> contextFactory,
+    IMetadataCache? metadataCache = null)
     : ITvShowHierarchySynchronizer
 {
+    private readonly IMetadataCache _metadataCache = metadataCache ?? MetadataCache.ForOwner(contextFactory);
+
     /// <inheritdoc />
     public event Action? ShowsChanged;
 
@@ -118,6 +123,7 @@ public sealed class TvShowHierarchySynchronizer(IDbContextFactory<ScriptoriumDbC
         var changeCount = await context.SaveChangesAsync(cancellationToken);
         if (changeCount > 0)
         {
+            _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
             ShowsChanged?.Invoke();
         }
     }

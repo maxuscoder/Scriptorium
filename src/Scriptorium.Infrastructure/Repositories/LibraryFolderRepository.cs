@@ -1,29 +1,76 @@
 using Microsoft.EntityFrameworkCore;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Infrastructure.Caching;
 
 namespace Scriptorium.Infrastructure.Repositories;
 
 /// <summary>
 /// Provides SQLite-backed data access for library folders.
 /// </summary>
-public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbContext> contextFactory)
+public sealed class LibraryFolderRepository(
+    IDbContextFactory<ScriptoriumDbContext> contextFactory,
+    IMetadataCache? metadataCache = null)
     : Repository<LibraryFolder>(contextFactory), ILibraryFolderRepository
 {
+    private readonly IMetadataCache _metadataCache = metadataCache ?? MetadataCache.ForOwner(contextFactory);
+
     /// <inheritdoc />
-    public override Task AddAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
+    public override async Task<LibraryFolder?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        NormalizePath(entity);
-        ValidateMediaType(entity);
-        return base.AddAsync(entity, cancellationToken);
+        var folder = await _metadataCache.GetOrCreateAsync(
+            MetadataCacheKeys.FolderById(id),
+            [MetadataCacheKeys.FolderTag(id)],
+            async token =>
+            {
+                await using var context = await ContextFactory.CreateDbContextAsync(token);
+                return await context.LibraryFolders.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, token);
+            },
+            MetadataCacheCloner.Clone,
+            cancellationToken);
+
+        CacheAliases(folder);
+        return folder;
     }
 
     /// <inheritdoc />
-    public override Task UpdateAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
+    public override async Task<IReadOnlyList<LibraryFolder>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await _metadataCache.GetOrCreateAsync(
+            MetadataCacheKeys.AllFoldersKey,
+            [MetadataCacheKeys.AllFoldersTag],
+            async token =>
+            {
+                await using var context = await ContextFactory.CreateDbContextAsync(token);
+                return (IReadOnlyList<LibraryFolder>)await context.LibraryFolders.AsNoTracking().OrderBy(item => item.Name).ToListAsync(token);
+            },
+            MetadataCacheCloner.CloneFolders,
+            cancellationToken) ?? [];
+    }
+
+    /// <inheritdoc />
+    public override async Task AddAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
     {
         NormalizePath(entity);
         ValidateMediaType(entity);
-        return base.UpdateAsync(entity, cancellationToken);
+        await base.AddAsync(entity, cancellationToken);
+        RefreshFolderCache(entity);
+    }
+
+    /// <inheritdoc />
+    public override async Task UpdateAsync(LibraryFolder entity, CancellationToken cancellationToken = default)
+    {
+        NormalizePath(entity);
+        ValidateMediaType(entity);
+        await base.UpdateAsync(entity, cancellationToken);
+        RefreshFolderCache(entity);
+    }
+
+    /// <inheritdoc />
+    public override async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await base.DeleteAsync(id, cancellationToken);
+        InvalidateFolder(id);
     }
 
     /// <inheritdoc />
@@ -32,21 +79,40 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = NormalizePath(path);
 
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.LibraryFolders
-            .AsNoTracking()
-            .SingleOrDefaultAsync(folder => EF.Functions.Collate(folder.Path, "NOCASE") == path, cancellationToken);
+        var folder = await _metadataCache.GetOrCreateAsync(
+            MetadataCacheKeys.FolderByPath(path),
+            [],
+            async token =>
+            {
+                await using var context = await ContextFactory.CreateDbContextAsync(token);
+                return await context.LibraryFolders
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(item => EF.Functions.Collate(item.Path, "NOCASE") == path, token);
+            },
+            MetadataCacheCloner.Clone,
+            cancellationToken);
+
+        CacheAliases(folder);
+        return folder;
     }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<LibraryFolder>> GetEnabledAsync(CancellationToken cancellationToken = default)
     {
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.LibraryFolders
-            .AsNoTracking()
-            .Where(folder => folder.IsEnabled)
-            .OrderBy(folder => folder.Name)
-            .ToListAsync(cancellationToken);
+        return await _metadataCache.GetOrCreateAsync(
+            MetadataCacheKeys.EnabledFoldersKey,
+            [MetadataCacheKeys.AllFoldersTag],
+            async token =>
+            {
+                await using var context = await ContextFactory.CreateDbContextAsync(token);
+                return (IReadOnlyList<LibraryFolder>)await context.LibraryFolders
+                    .AsNoTracking()
+                    .Where(item => item.IsEnabled)
+                    .OrderBy(item => item.Name)
+                    .ToListAsync(token);
+            },
+            MetadataCacheCloner.CloneFolders,
+            cancellationToken) ?? [];
     }
 
     private static void ValidateMediaType(LibraryFolder folder)
@@ -64,5 +130,31 @@ public sealed class LibraryFolderRepository(IDbContextFactory<ScriptoriumDbConte
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+    }
+
+    private void RefreshFolderCache(LibraryFolder folder)
+    {
+        InvalidateFolder(folder.Id);
+        var tags = new[] { MetadataCacheKeys.FolderTag(folder.Id) };
+        _metadataCache.Set(MetadataCacheKeys.FolderById(folder.Id), tags, folder, MetadataCacheCloner.Clone);
+        _metadataCache.Set(MetadataCacheKeys.FolderByPath(folder.Path), tags, folder, MetadataCacheCloner.Clone);
+    }
+
+    private void CacheAliases(LibraryFolder? folder)
+    {
+        if (folder is not null)
+        {
+            var tags = new[] { MetadataCacheKeys.FolderTag(folder.Id) };
+            _metadataCache.Set(MetadataCacheKeys.FolderById(folder.Id), tags, folder, MetadataCacheCloner.Clone);
+            _metadataCache.Set(MetadataCacheKeys.FolderByPath(folder.Path), tags, folder, MetadataCacheCloner.Clone);
+        }
+    }
+
+    private void InvalidateFolder(Guid folderId)
+    {
+        _metadataCache.Remove(MetadataCacheKeys.FolderById(folderId));
+        _metadataCache.RemoveByTag(MetadataCacheKeys.FolderTag(folderId));
+        _metadataCache.RemoveByTag(MetadataCacheKeys.MediaFolderTag(folderId));
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllFoldersTag);
     }
 }

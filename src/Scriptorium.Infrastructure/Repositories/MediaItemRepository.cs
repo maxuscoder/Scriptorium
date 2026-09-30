@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
+using Scriptorium.Infrastructure.Caching;
 using System.Linq.Expressions;
 
 namespace Scriptorium.Infrastructure.Repositories;
@@ -9,21 +10,31 @@ namespace Scriptorium.Infrastructure.Repositories;
 /// <summary>
 /// Provides SQLite-backed data access for media items.
 /// </summary>
-public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> contextFactory)
+public sealed class MediaItemRepository(
+    IDbContextFactory<ScriptoriumDbContext> contextFactory,
+    IMetadataCache? metadataCache = null)
     : Repository<MediaItem>(contextFactory), IMediaItemRepository
 {
+    private readonly IMetadataCache _metadataCache = metadataCache ?? MetadataCache.ForOwner(contextFactory);
+
     /// <inheritdoc />
     public override Task AddAsync(MediaItem entity, CancellationToken cancellationToken = default)
     {
         NormalizeForPersistence(entity);
-        return base.AddAsync(entity, cancellationToken);
+        return AddAndInvalidateAsync(entity, cancellationToken);
     }
 
     /// <inheritdoc />
     public override Task UpdateAsync(MediaItem entity, CancellationToken cancellationToken = default)
     {
         NormalizeForPersistence(entity);
-        return base.UpdateAsync(entity, cancellationToken);
+        return UpdateAndInvalidateAsync(entity, cancellationToken);
+    }
+
+    public override async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await base.DeleteAsync(id, cancellationToken);
+        InvalidateMediaItem(id);
     }
 
     /// <inheritdoc />
@@ -45,6 +56,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
         await context.MediaItems.AddRangeAsync(items, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
+
+        foreach (var item in items)
+        {
+            InvalidateMediaItem(item.Id);
+        }
     }
 
     /// <inheritdoc />
@@ -78,6 +94,11 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        foreach (var item in items)
+        {
+            InvalidateMediaItem(item.Id);
+        }
     }
 
     /// <inheritdoc />
@@ -86,19 +107,41 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = NormalizePath(path);
 
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await MediaItems(context)
-            .SingleOrDefaultAsync(
-                item => EF.Functions.Collate(item.Path, "NOCASE") == path,
-                cancellationToken);
+        var item = await _metadataCache.GetOrCreateAsync(
+            MetadataCacheKeys.MediaByPath(path),
+            [MetadataCacheKeys.MediaTagForPath(path)],
+            async token =>
+            {
+                await using var context = await ContextFactory.CreateDbContextAsync(token);
+                return await MediaItems(context)
+                    .SingleOrDefaultAsync(
+                        item => EF.Functions.Collate(item.Path, "NOCASE") == path,
+                        token);
+            },
+            MetadataCacheCloner.Clone,
+            cancellationToken);
+
+        CacheMediaAliases(item);
+        return item;
     }
 
     /// <inheritdoc />
     public override async Task<MediaItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await MediaItems(context)
-            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        var item = await _metadataCache.GetOrCreateAsync(
+            MetadataCacheKeys.MediaById(id),
+            [MetadataCacheKeys.MediaTag(id)],
+            async token =>
+            {
+                await using var context = await ContextFactory.CreateDbContextAsync(token);
+                return await MediaItems(context)
+                    .SingleOrDefaultAsync(mediaItem => mediaItem.Id == id, token);
+            },
+            MetadataCacheCloner.Clone,
+            cancellationToken);
+
+        CacheMediaAliases(item);
+        return item;
     }
 
     /// <inheritdoc />
@@ -418,6 +461,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                 cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
+        _metadataCache.RemoveByTag(MetadataCacheKeys.MediaFolderTag(libraryFolderId));
         return updatedCount;
     }
 
@@ -474,6 +518,7 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
 
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        InvalidateMediaItem(mediaItemId);
         return true;
     }
 
@@ -545,11 +590,14 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
         CancellationToken cancellationToken = default)
     {
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        return await context.MediaItems
+        var updatedCount = await context.MediaItems
             .Where(item => item.CategoryId == categoryId)
             .ExecuteUpdateAsync(
                 setters => setters.SetProperty(item => item.CategoryId, (Guid?)null),
                 cancellationToken);
+
+        _metadataCache.RemoveByTag(MetadataCacheKeys.MediaCategoryTag(categoryId));
+        return updatedCount;
     }
 
     /// <inheritdoc />
@@ -624,7 +672,63 @@ public sealed class MediaItemRepository(IDbContextFactory<ScriptoriumDbContext> 
                         MediaPlaybackProgress.MeetsCompletionThreshold(playbackPositionSeconds, durationSeconds)),
                 cancellationToken);
 
+        if (affectedRows == 1)
+        {
+            InvalidateMediaItem(mediaItemId);
+        }
+
         return affectedRows == 1;
+    }
+
+    private async Task AddAndInvalidateAsync(MediaItem entity, CancellationToken cancellationToken)
+    {
+        await base.AddAsync(entity, cancellationToken);
+        InvalidateMediaItem(entity.Id);
+    }
+
+    private async Task UpdateAndInvalidateAsync(MediaItem entity, CancellationToken cancellationToken)
+    {
+        await base.UpdateAsync(entity, cancellationToken);
+        InvalidateMediaItem(entity.Id);
+    }
+
+    private void CacheMediaAliases(MediaItem? item)
+    {
+        if (item is null)
+        {
+            return;
+        }
+
+        var tags = GetMediaTags(item);
+        var clone = MetadataCacheCloner.Clone(item);
+        _metadataCache.Set(MetadataCacheKeys.MediaById(item.Id), tags, clone, MetadataCacheCloner.Clone);
+        _metadataCache.Set(MetadataCacheKeys.MediaByPath(item.Path), tags, clone, MetadataCacheCloner.Clone);
+    }
+
+    private void InvalidateMediaItem(Guid mediaItemId)
+    {
+        _metadataCache.Remove(MetadataCacheKeys.MediaById(mediaItemId));
+        _metadataCache.RemoveByTag(MetadataCacheKeys.MediaTag(mediaItemId));
+    }
+
+    private static IReadOnlyCollection<string> GetMediaTags(MediaItem item)
+    {
+        var tags = new List<string>
+        {
+            MetadataCacheKeys.MediaTag(item.Id),
+            MetadataCacheKeys.AllMediaTag
+        };
+        if (item.CategoryId is { } categoryId)
+        {
+            tags.Add(MetadataCacheKeys.MediaCategoryTag(categoryId));
+        }
+
+        if (item.LibraryFolderId is { } folderId)
+        {
+            tags.Add(MetadataCacheKeys.MediaFolderTag(folderId));
+        }
+
+        return tags;
     }
 
     private static IQueryable<MediaItem> MediaItems(ScriptoriumDbContext context) =>
