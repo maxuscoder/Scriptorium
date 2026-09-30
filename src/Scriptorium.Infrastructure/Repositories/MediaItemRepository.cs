@@ -534,22 +534,12 @@ public sealed class MediaItemRepository(
     /// <inheritdoc />
     public async Task<IReadOnlyList<MediaItem>> GetIncompleteAsync(CancellationToken cancellationToken = default)
     {
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        var incompleteMedia = await context.MediaItems
-            .AsNoTracking()
-            .Include(item => item.LibraryFolder)
-            .Include(item => item.Category)
-            .Where(item =>
-                !item.IsCompleted &&
-                item.LastPlayedUnixTimeMilliseconds != null &&
-                item.RuntimeSeconds > 0 &&
-                item.PlaybackPositionSeconds > 0 &&
-                item.PlaybackPositionSeconds < item.RuntimeSeconds)
-            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
-            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
-            .ToListAsync(cancellationToken);
-
-        return incompleteMedia;
+        return await _metadataCache.GetOrCreateAsync<IReadOnlyList<MediaItem>>(
+            MetadataCacheKeys.IncompleteMediaKey,
+            [MetadataCacheKeys.AllMediaTag],
+            LoadIncompleteMediaAsync,
+            MetadataCacheCloner.CloneMediaItems,
+            cancellationToken) ?? [];
     }
 
     /// <inheritdoc />
@@ -559,18 +549,12 @@ public sealed class MediaItemRepository(
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximumCount);
 
-        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
-        var recentlyWatchedMedia = await context.MediaItems
-            .AsNoTracking()
-            .Include(item => item.LibraryFolder)
-            .Include(item => item.Category)
-            .Where(item => item.LastPlayedUnixTimeMilliseconds != null)
-            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
-            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
-            .Take(maximumCount)
-            .ToListAsync(cancellationToken);
-
-        return recentlyWatchedMedia;
+        return await _metadataCache.GetOrCreateAsync<IReadOnlyList<MediaItem>>(
+            MetadataCacheKeys.RecentlyWatchedMedia(maximumCount),
+            [MetadataCacheKeys.AllMediaTag],
+            token => LoadRecentlyWatchedMediaAsync(maximumCount, token),
+            MetadataCacheCloner.CloneMediaItems,
+            cancellationToken) ?? [];
     }
 
     /// <inheritdoc />
@@ -709,8 +693,43 @@ public sealed class MediaItemRepository(
     {
         _metadataCache.Remove(MetadataCacheKeys.MediaById(mediaItemId));
         _metadataCache.RemoveByTag(MetadataCacheKeys.MediaTag(mediaItemId));
+        _metadataCache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
         _metadataCache.RemoveByTag(MetadataCacheKeys.AllCoursesTag);
         _metadataCache.RemoveByTag(MetadataCacheKeys.AllTvShowsTag);
+    }
+
+    private async Task<IReadOnlyList<MediaItem>?> LoadIncompleteMediaAsync(CancellationToken cancellationToken)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems
+            .AsNoTracking()
+            .Include(item => item.LibraryFolder)
+            .Include(item => item.Category)
+            .Where(item =>
+                !item.IsCompleted &&
+                item.LastPlayedUnixTimeMilliseconds != null &&
+                item.RuntimeSeconds > 0 &&
+                item.PlaybackPositionSeconds > 0 &&
+                item.PlaybackPositionSeconds < item.RuntimeSeconds)
+            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
+            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
+            .ToListAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyList<MediaItem>?> LoadRecentlyWatchedMediaAsync(
+        int maximumCount,
+        CancellationToken cancellationToken)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems
+            .AsNoTracking()
+            .Include(item => item.LibraryFolder)
+            .Include(item => item.Category)
+            .Where(item => item.LastPlayedUnixTimeMilliseconds != null)
+            .OrderByDescending(item => item.LastPlayedUnixTimeMilliseconds)
+            .ThenBy(item => EF.Functions.Collate(item.Title, "NOCASE"))
+            .Take(maximumCount)
+            .ToListAsync(cancellationToken);
     }
 
     private static IReadOnlyCollection<string> GetMediaTags(MediaItem item)

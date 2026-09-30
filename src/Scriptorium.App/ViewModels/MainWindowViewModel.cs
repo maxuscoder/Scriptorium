@@ -21,6 +21,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string? _statusMessage;
     private bool _isRefreshing;
+    private bool _hasLoadedHomepageData;
+    private Task? _initialHomepageLoadTask;
     private bool _disposed;
 
     public MainWindowViewModel(
@@ -78,6 +80,23 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         RecentlyWatchedMedia.Clear();
     }
 
+    /// <summary>Loads homepage cards once; later navigation reuses the already-rendered data.</summary>
+    public Task EnsureHomepageDataLoadedAsync()
+    {
+        if (_hasLoadedHomepageData)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_initialHomepageLoadTask is { IsCompleted: false } loadTask)
+        {
+            return loadTask;
+        }
+
+        _initialHomepageLoadTask = RefreshAsync();
+        return _initialHomepageLoadTask;
+    }
+
     /// <summary>Loads the current resumable media list.</summary>
     public async Task RefreshAsync()
     {
@@ -113,6 +132,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
             }
 
             StatusMessage = null;
+            _hasLoadedHomepageData = true;
             OnPropertyChanged(nameof(HasIncompleteMedia));
             OnPropertyChanged(nameof(IncompleteMediaCountText));
             OnPropertyChanged(nameof(HasRecentlyWatchedMedia));

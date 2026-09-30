@@ -161,6 +161,45 @@ public sealed class MetadataCacheTests
         Assert.True(cache.GetStatistics().Misses >= 3);
     }
 
+    [Fact]
+    public async Task Homepage_lists_are_cached_and_invalidated_when_playback_changes()
+    {
+        await using var database = new SqliteConnection("Data Source=:memory:");
+        await database.OpenAsync();
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(database).Options;
+        var mediaItem = new MediaItem
+        {
+            Title = "Episode",
+            Path = @"C:\Videos\episode.mp4",
+            MediaType = MediaType.Movie,
+            RuntimeSeconds = 100,
+            PlaybackPositionSeconds = 25,
+            LastPlayed = DateTimeOffset.UtcNow,
+            LastPlayedUnixTimeMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        };
+
+        await using (var context = new ScriptoriumDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            context.Add(mediaItem);
+            await context.SaveChangesAsync();
+        }
+
+        using var cache = new MetadataCache();
+        var repository = new MediaItemRepository(new TestDbContextFactory(options), cache);
+
+        Assert.Single(await repository.GetIncompleteAsync());
+        Assert.Single(await repository.GetRecentlyWatchedAsync(10));
+        Assert.Single(await repository.GetIncompleteAsync());
+        Assert.Single(await repository.GetRecentlyWatchedAsync(10));
+        Assert.True(cache.GetStatistics().Hits >= 2);
+
+        Assert.True(await repository.UpdatePlaybackAsync(mediaItem.Id, 100, 100, DateTimeOffset.UtcNow));
+
+        Assert.Empty(await repository.GetIncompleteAsync());
+        Assert.True(cache.GetStatistics().Misses >= 3);
+    }
+
     private sealed class TestMetadata(string value)
     {
         public string Value { get; set; } = value;

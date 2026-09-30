@@ -72,6 +72,9 @@ public static class MetadataCacheCloner
     public static IReadOnlyList<LibraryFolder> CloneFolders(IReadOnlyList<LibraryFolder> source) =>
         source.Select(Clone).ToArray();
 
+    public static IReadOnlyList<MediaItem> CloneMediaItems(IReadOnlyList<MediaItem> source) =>
+        source.Select(Clone).ToArray();
+
     public static Course Clone(Course source)
     {
         var course = new Course

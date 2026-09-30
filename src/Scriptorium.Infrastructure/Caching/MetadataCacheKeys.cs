@@ -52,6 +52,10 @@ public static class MetadataCacheKeys
     public const string AllCategoriesKey = "metadata:categories:all";
     public const string AllFoldersKey = "metadata:folders:all";
     public const string EnabledFoldersKey = "metadata:folders:enabled";
+    public const string IncompleteMediaKey = "metadata:media:incomplete";
+
+    public static string RecentlyWatchedMedia(int maximumCount) =>
+        $"metadata:media:recent:{maximumCount}";
 
     private static string NormalizePath(string path) =>
         Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
