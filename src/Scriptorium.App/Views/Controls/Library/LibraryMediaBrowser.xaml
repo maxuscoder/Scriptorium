@@ -65,7 +65,18 @@
                     <StackPanel Margin="0,40,0,40" HorizontalAlignment="Center" MaxWidth="420">
                         <TextBlock Style="{StaticResource Text.Display}" Text="{Binding DataContext.EmptyLibraryTitle, RelativeSource={RelativeSource AncestorType=ListBox}}" />
                         <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding DataContext.EmptyLibraryDescription, RelativeSource={RelativeSource AncestorType=ListBox}}" />
-                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.FolderManagement.ImportFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Add library folder" Style="{StaticResource Button.Primary}" />
+                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.FolderManagement.ImportFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Add Folder">
+                            <Button.Style>
+                                <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding DataContext.HasIndexedMedia, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                     </StackPanel>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserLoadingRow}"><controls:LoadingIndicator Margin="0,18,0,18" HorizontalAlignment="Center" ProgressWidth="110" Message="Loading more items…" /></DataTemplate>

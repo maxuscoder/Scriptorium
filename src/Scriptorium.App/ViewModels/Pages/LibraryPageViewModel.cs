@@ -470,7 +470,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Gets the empty-state guidance appropriate for the current filters.</summary>
     public string EmptyLibraryDescription => HasIndexedMedia
         ? "Adjust or clear the filters to see more media."
-        : "Add a library folder, then rescan it to bring your supported media here.";
+        : "Add a folder to start building your Scriptorium library, then scan it to find your media.";
 
     /// <summary>Gets a concise count suitable for the library browser header.</summary>
     public string MediaCountText
