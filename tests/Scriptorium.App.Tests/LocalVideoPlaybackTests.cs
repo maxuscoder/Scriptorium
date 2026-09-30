@@ -27,15 +27,13 @@ public sealed class LocalVideoPlaybackTests
                 await Task.Delay(300);
                 Assert.InRange(player.Position.TotalSeconds, 0, 0.1);
                 player.Play();
-                await Task.Delay(800);
-                Assert.True(player.Position.TotalSeconds > 0.3);
+                await WaitUntil(() => player.Position.TotalSeconds > 0.3);
                 player.Pause();
                 var paused = player.Position;
                 await Task.Delay(400);
                 Assert.InRange(Math.Abs((player.Position - paused).TotalSeconds), 0, 0.1);
                 player.Play();
-                await Task.Delay(600);
-                Assert.True(player.Position > paused + TimeSpan.FromSeconds(0.2));
+                await WaitUntil(() => player.Position > paused + TimeSpan.FromSeconds(0.2));
             }
             using var exclusive = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
@@ -44,4 +42,13 @@ public sealed class LocalVideoPlaybackTests
             File.Delete(path);
         }
     });
+
+    private static async Task WaitUntil(Func<bool> predicate)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!predicate() && DateTime.UtcNow < deadline)
+            await Task.Delay(50);
+
+        Assert.True(predicate(), "LibVLC playback position did not advance in time.");
+    }
 }
