@@ -1668,6 +1668,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 StatusMessage += $" Skipped {scanResult.UnsupportedVideoFileCount} video file{(scanResult.UnsupportedVideoFileCount == 1 ? string.Empty : "s")} with unsupported formats. Scriptorium currently imports AVI, MKV, MOV, MP4, WebM, and WMV.{examples}";
             }
 
+            if (scanResult.PermissionDeniedPathCount > 0)
+            {
+                var paths = scanResult.PermissionDeniedPathExamples.Count == 0
+                    ? string.Empty
+                    : $" Affected locations: {string.Join(", ", scanResult.PermissionDeniedPathExamples)}.";
+                StatusMessage += $" Scriptorium couldn't read {scanResult.PermissionDeniedPathCount} folder path{(scanResult.PermissionDeniedPathCount == 1 ? string.Empty : "s")} because access was denied; those locations were skipped. Grant read permission and rescan, or replace/remove the folder in Library management.{paths}";
+            }
+
             if (scanResult.NonCriticalErrorCount > 0)
             {
                 StatusMessage += $" Skipped {scanResult.NonCriticalErrorCount} inaccessible or unreadable path{(scanResult.NonCriticalErrorCount == 1 ? string.Empty : "s")}.";

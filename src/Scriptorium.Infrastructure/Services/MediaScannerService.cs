@@ -1,6 +1,7 @@
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Services;
 using Microsoft.Extensions.Logging;
+using System.Security;
 using System.Text.RegularExpressions;
 
 namespace Scriptorium.Infrastructure.Services;
@@ -48,15 +49,34 @@ public sealed partial class MediaScannerService(
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-            var folders = await libraryFolderScanSource.GetEligibleFoldersAsync(cancellationToken)
+            var folderSelection = await libraryFolderScanSource.GetFolderScanSelectionAsync(cancellationToken)
                 .ConfigureAwait(false);
+            var folders = folderSelection.EligibleFolders;
 
             var supportedCandidates = new List<MediaFileCandidate>();
             var unsupportedVideoFileExamples = new List<string>();
+            var permissionDeniedPathExamples = new List<string>();
+            var permissionDeniedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var processedFileCount = 0;
             var unsupportedVideoFileCount = 0;
             var nonCriticalErrorCount = 0;
             var scannedFolders = new List<LibraryFolder>(folders.Count);
+
+            void RecordPermissionDeniedPath(string path)
+            {
+                if (permissionDeniedPaths.Add(path) && permissionDeniedPathExamples.Count < 3)
+                {
+                    permissionDeniedPathExamples.Add(path);
+                }
+            }
+
+            foreach (var folder in folderSelection.PermissionDeniedFolders)
+            {
+                RecordPermissionDeniedPath(folder.Path);
+                logger?.LogWarning(
+                    "Skipping configured library folder {FolderPath} because Scriptorium does not have permission to read it.",
+                    folder.Path);
+            }
 
             foreach (var folder in folders)
             {
@@ -91,6 +111,14 @@ public sealed partial class MediaScannerService(
                     {
                         nonCriticalErrorCount++;
                         logger?.LogDebug(exception, "Skipped file-system path during library scan: {Path}", path);
+                        if (exception is UnauthorizedAccessException or SecurityException)
+                        {
+                            RecordPermissionDeniedPath(path);
+                            logger?.LogWarning(
+                                exception,
+                                "Skipping library folder path {FolderPath} because Scriptorium does not have permission to read it.",
+                                path);
+                        }
                     });
 
                 foreach (var path in folderFiles)
@@ -160,7 +188,9 @@ public sealed partial class MediaScannerService(
                 return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount)
                 {
                     UnsupportedVideoFileCount = unsupportedVideoFileCount,
-                    UnsupportedVideoFileExamples = unsupportedVideoFileExamples
+                    UnsupportedVideoFileExamples = unsupportedVideoFileExamples,
+                    PermissionDeniedPathCount = permissionDeniedPaths.Count,
+                    PermissionDeniedPathExamples = permissionDeniedPathExamples
                 };
             }
             catch (OperationCanceledException)

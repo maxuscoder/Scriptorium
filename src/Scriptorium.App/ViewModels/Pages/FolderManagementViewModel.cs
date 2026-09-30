@@ -23,6 +23,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
     private readonly Action<string> _setStatusMessage;
     private readonly Func<bool> _isScanning;
     private readonly AsyncRelayCommand _removeFolderCommand;
+    private readonly AsyncRelayCommand _replaceFolderCommand;
     private readonly AsyncRelayCommand _reconnectFolderCommand;
     private readonly AsyncRelayCommand _saveDisplayNameCommand;
     private readonly AsyncRelayCommand _saveFolderChangesCommand;
@@ -54,6 +55,8 @@ public sealed class FolderManagementViewModel : ViewModelBase
         ImportFolderCommand = new AsyncRelayCommand(ImportFolderAsync);
         _removeFolderCommand = new AsyncRelayCommand(RemoveSelectedFolderAsync, () => SelectedFolder is not null);
         RemoveFolderCommand = _removeFolderCommand;
+        _replaceFolderCommand = new AsyncRelayCommand(ReplaceSelectedFolderAsync, () => SelectedFolder is not null && !_isScanning());
+        ReplaceFolderCommand = _replaceFolderCommand;
         _reconnectFolderCommand = new AsyncRelayCommand(
             ReconnectSelectedFolderAsync,
             () => SelectedFolder is { IsValidForScanning: false });
@@ -82,6 +85,8 @@ public sealed class FolderManagementViewModel : ViewModelBase
     public ICommand ImportFolderCommand { get; }
 
     public ICommand RemoveFolderCommand { get; }
+
+    public ICommand ReplaceFolderCommand { get; }
 
     public ICommand ReconnectFolderCommand { get; }
 
@@ -112,6 +117,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
             if (SetProperty(ref _selectedFolder, value))
             {
                 _removeFolderCommand.NotifyCanExecuteChanged();
+                _replaceFolderCommand.NotifyCanExecuteChanged();
                 _reconnectFolderCommand.NotifyCanExecuteChanged();
                 _saveDisplayNameCommand.NotifyCanExecuteChanged();
                 _saveFolderChangesCommand.NotifyCanExecuteChanged();
@@ -170,7 +176,11 @@ public sealed class FolderManagementViewModel : ViewModelBase
             : ConfiguredFolders.SingleOrDefault(folder => folder.Id == selectedFolderId);
     }
 
-    public void NotifyScanningStateChanged() => _changeMediaTypeCommand.NotifyCanExecuteChanged();
+    public void NotifyScanningStateChanged()
+    {
+        _changeMediaTypeCommand.NotifyCanExecuteChanged();
+        _replaceFolderCommand.NotifyCanExecuteChanged();
+    }
 
     private async Task ImportFolderAsync()
     {
@@ -249,6 +259,43 @@ public sealed class FolderManagementViewModel : ViewModelBase
         _setStatusMessage(folder?.IsValidForScanning == true
             ? "Folder is available again. Its configuration was preserved."
             : "Folder is still unavailable and will be skipped during scans.");
+    }
+
+    private async Task ReplaceSelectedFolderAsync()
+    {
+        var configuredFolder = SelectedFolder;
+        if (configuredFolder is null)
+        {
+            return;
+        }
+
+        var replacementPath = _importFolderDialog.SelectFolderPath(configuredFolder.Path);
+        if (replacementPath is null)
+        {
+            return;
+        }
+
+        var folder = configuredFolder.Folder;
+        if (string.Equals(folder.Path, replacementPath, StringComparison.OrdinalIgnoreCase))
+        {
+            _setStatusMessage("The selected location is already configured for this folder.");
+            return;
+        }
+
+        var existingFolder = await _libraryFolderRepository.GetByPathAsync(replacementPath);
+        if (existingFolder is not null && existingFolder.Id != folder.Id)
+        {
+            _setStatusMessage("That location is already configured as another library folder.");
+            return;
+        }
+
+        folder.Path = replacementPath;
+        folder.Name = GetFolderName(replacementPath);
+        folder.LastScanned = null;
+        await _libraryFolderRepository.UpdateAsync(folder);
+        await _refreshLibraryData();
+        SelectedFolderPath = replacementPath;
+        _setStatusMessage("Folder location replaced. Rescan the library to index its media.");
     }
 
     private async Task SaveDisplayNameAsync()

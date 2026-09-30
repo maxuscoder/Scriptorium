@@ -13,6 +13,25 @@ public sealed class ImportFolderDialog : IImportFolderDialog
     /// <inheritdoc />
     public ImportFolderSelection? SelectFolder(string? initialDirectory = null)
     {
+        var folderPath = SelectFolderPath(initialDirectory);
+        if (folderPath is null)
+        {
+            return null;
+        }
+
+        var mediaTypeDialog = new MediaTypeSelectionDialog
+        {
+            Owner = Application.Current?.MainWindow
+        };
+
+        return mediaTypeDialog.ShowDialog() == true && mediaTypeDialog.SelectedMediaType is { } mediaType
+            ? new ImportFolderSelection(folderPath, mediaType)
+            : null;
+    }
+
+    /// <inheritdoc />
+    public string? SelectFolderPath(string? initialDirectory = null)
+    {
         while (true)
         {
             var dialog = new OpenFolderDialog
@@ -29,14 +48,7 @@ public sealed class ImportFolderDialog : IImportFolderDialog
 
             if (TryNormalizeLocalFolderPath(dialog.FolderName, out var folderPath))
             {
-                var mediaTypeDialog = new MediaTypeSelectionDialog
-                {
-                    Owner = Application.Current?.MainWindow
-                };
-
-                return mediaTypeDialog.ShowDialog() == true && mediaTypeDialog.SelectedMediaType is { } mediaType
-                    ? new ImportFolderSelection(folderPath, mediaType)
-                    : null;
+                return folderPath;
             }
 
             MessageBox.Show(
