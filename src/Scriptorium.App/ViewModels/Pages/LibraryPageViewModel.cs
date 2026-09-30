@@ -1653,6 +1653,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 ? "Library scan complete. No supported media files were found."
                 : $"Library scan complete. Processed {scanResult.ProcessedFileCount} files and found {scanResult.DiscoveredMediaCount} media files.";
 
+            if (scanResult.UnsupportedVideoFileCount > 0)
+            {
+                var examples = scanResult.UnsupportedVideoFileExamples.Count == 0
+                    ? string.Empty
+                    : $" Examples: {string.Join(", ", scanResult.UnsupportedVideoFileExamples)}.";
+                StatusMessage += $" Skipped {scanResult.UnsupportedVideoFileCount} video file{(scanResult.UnsupportedVideoFileCount == 1 ? string.Empty : "s")} with unsupported formats. Scriptorium currently imports AVI, MKV, MOV, MP4, WebM, and WMV.{examples}";
+            }
+
             if (scanResult.NonCriticalErrorCount > 0)
             {
                 StatusMessage += $" Skipped {scanResult.NonCriticalErrorCount} inaccessible or unreadable path{(scanResult.NonCriticalErrorCount == 1 ? string.Empty : "s")}.";

@@ -52,7 +52,9 @@ public sealed partial class MediaScannerService(
                 .ConfigureAwait(false);
 
             var supportedCandidates = new List<MediaFileCandidate>();
+            var unsupportedVideoFileExamples = new List<string>();
             var processedFileCount = 0;
+            var unsupportedVideoFileCount = 0;
             var nonCriticalErrorCount = 0;
             var scannedFolders = new List<LibraryFolder>(folders.Count);
 
@@ -94,10 +96,24 @@ public sealed partial class MediaScannerService(
                 foreach (var path in folderFiles)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (mediaFormatService.IsSupportedExtension(Path.GetExtension(path)))
+                    var extension = Path.GetExtension(path);
+                    if (mediaFormatService.IsSupportedExtension(extension))
                     {
                         supportedCandidates.Add(new MediaFileCandidate(folder.Id, folder.MediaType, path));
                         progress?.Report(new MediaScanProgress(folder.Path, path, processedFileCount, supportedCandidates.Count));
+                    }
+                    else if (mediaFormatService.IsVideoExtension(extension))
+                    {
+                        unsupportedVideoFileCount++;
+                        if (unsupportedVideoFileExamples.Count < 3)
+                        {
+                            unsupportedVideoFileExamples.Add(Path.GetFileName(path));
+                        }
+
+                        logger?.LogWarning(
+                            "Skipped video file with unsupported extension {Extension}: {FilePath}",
+                            extension,
+                            path);
                     }
                 }
             }
@@ -138,9 +154,14 @@ public sealed partial class MediaScannerService(
             timing?.SetTag("FolderCount", scannedFolders.Count);
             timing?.SetTag("ProcessedFileCount", processedFileCount);
             timing?.SetTag("DiscoveredMediaCount", discoveredFiles.Count);
+            timing?.SetTag("UnsupportedVideoFileCount", unsupportedVideoFileCount);
             timing?.SetTag("NonCriticalErrorCount", nonCriticalErrorCount);
             timing?.SetOutcome("Success");
-                return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount);
+                return new MediaScanResult(discoveredFiles, processedFileCount, discoveredFiles.Count, nonCriticalErrorCount)
+                {
+                    UnsupportedVideoFileCount = unsupportedVideoFileCount,
+                    UnsupportedVideoFileExamples = unsupportedVideoFileExamples
+                };
             }
             catch (OperationCanceledException)
             {
