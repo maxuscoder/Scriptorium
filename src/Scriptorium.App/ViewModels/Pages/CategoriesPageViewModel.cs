@@ -23,6 +23,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IFavoriteService _favoriteService;
     private readonly ILogger<CategoriesPageViewModel>? _logger;
+    private readonly INotificationService? _notifications;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string _statusMessage = string.Empty;
     private CategoryItemViewModel? _selectedCategory;
@@ -39,7 +40,8 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         ICreateCategoryDialog createCategoryDialog,
         IMediaItemRepository mediaItemRepository,
         IFavoriteService favoriteService,
-        ILogger<CategoriesPageViewModel>? logger = null)
+        ILogger<CategoriesPageViewModel>? logger = null,
+        INotificationService? notifications = null)
     {
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
@@ -48,6 +50,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         _mediaItemRepository = mediaItemRepository;
         _favoriteService = favoriteService;
         _logger = logger;
+        _notifications = notifications;
 
         CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
         RenameCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync);
@@ -216,10 +219,17 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _logger?.LogWarning(exception, "Categories could not be refreshed.");
             StatusMessage = DatabaseFailureClassifier.IsDatabaseFailure(exception)
                 ? "Categories couldn't be loaded from the local database. Try refreshing again."
                 : "Categories could not be loaded. Try refreshing again.";
+            if (_notifications is not null)
+            {
+                _notifications.Report(exception, StatusMessage);
+            }
+            else
+            {
+                _logger?.LogWarning(exception, "Categories could not be refreshed.");
+            }
         }
         finally
         {

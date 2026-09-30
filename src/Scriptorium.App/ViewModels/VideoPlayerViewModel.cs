@@ -15,6 +15,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly IPlaybackProgressService? _playbackProgressService;
     private readonly ISettingsService? _settingsService;
     private readonly ILogger<VideoPlayerViewModel>? _logger;
+    private readonly INotificationService? _notifications;
     private readonly DispatcherTimer _timer;
     private readonly object _progressSaveGate = new();
     private readonly object _preferenceSaveGate = new();
@@ -48,12 +49,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         IVideoPlaybackFactory factory,
         ILogger<VideoPlayerViewModel>? logger = null,
         IPlaybackProgressService? playbackProgressService = null,
-        ISettingsService? settingsService = null)
+        ISettingsService? settingsService = null,
+        INotificationService? notifications = null)
     {
         _factory = factory;
         _playbackProgressService = playbackProgressService;
         _settingsService = settingsService;
         _logger = logger;
+        _notifications = notifications;
         if (settingsService is not null)
         {
             _volume = NormalizeVolume(settingsService.Settings.PlaybackVolume);
@@ -495,21 +498,33 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void Fail(Exception exception)
     {
         var kind = ClassifyFailure(exception);
-        _logger?.LogError(
-            exception,
-            "Video playback failed. FailureKind: {FailureKind}; FilePath: {FilePath}.",
-            kind,
-            _request?.FilePath ?? "(none)");
+        if (_notifications is null)
+        {
+            _logger?.LogError(
+                exception,
+                "Video playback failed. FailureKind: {FailureKind}; FilePath: {FilePath}.",
+                kind,
+                _request?.FilePath ?? "(none)");
+        }
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
         Status = kind switch
         {
             MediaPlaybackFailureKind.MissingFile =>
-                "Video file unavailable. Check that the file or drive is connected.",
+                "This video could not be found. It may have been moved, renamed, or deleted.",
             MediaPlaybackFailureKind.UnsupportedFormat =>
                 "This video could not be played because its format or codec isn't supported by the configured player.",
             _ => "This video could not be played. Check the file and player configuration."
         };
+        var affectedFile = _request?.FilePath is { Length: > 0 } filePath
+            ? $" ({Path.GetFileName(filePath)})"
+            : string.Empty;
+        _notifications?.Report(exception, Status + affectedFile, kind switch
+        {
+            MediaPlaybackFailureKind.MissingFile => NotificationSeverity.Warning,
+            MediaPlaybackFailureKind.UnsupportedFormat => NotificationSeverity.Warning,
+            _ => NotificationSeverity.Error
+        });
     }
 
     private static MediaPlaybackFailureKind ClassifyFailure(Exception exception) => exception switch

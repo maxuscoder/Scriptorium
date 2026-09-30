@@ -32,6 +32,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly IOperationMetrics? _operationMetrics;
     private readonly ILogger<LibraryPageViewModel>? _logger;
+    private readonly INotificationService? _notifications;
     private readonly AsyncRelayCommand _refreshLibraryCommand;
     private readonly AsyncRelayCommand _retryLibraryLoadCommand;
     private readonly RelayCommand _cancelLibraryLoadCommand;
@@ -109,7 +110,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IMediaDescriptionService? mediaDescriptionService = null,
         IOperationMetrics? operationMetrics = null,
-        ILogger<LibraryPageViewModel>? logger = null)
+        ILogger<LibraryPageViewModel>? logger = null,
+        INotificationService? notifications = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -130,6 +132,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaGroupingService = mediaGroupingService;
         _operationMetrics = operationMetrics;
         _logger = logger;
+        _notifications = notifications;
         FolderManagement = folderManagementViewModelFactory.Create(
             () => RefreshLibraryDataAsync(),
             message => StatusMessage = message,
@@ -836,6 +839,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         catch (Exception exception)
         {
             _logger?.LogError(exception, "The initial library data load failed.");
+            _notifications?.Show(
+                "Library data could not be loaded. Check that the local database is available, then try again.",
+                NotificationSeverity.Error);
             _initialDataLoadTask = null;
             HasLibraryLoadError = true;
         }
@@ -1666,6 +1672,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                     ? string.Empty
                     : $" Examples: {string.Join(", ", scanResult.UnsupportedVideoFileExamples)}.";
                 StatusMessage += $" Skipped {scanResult.UnsupportedVideoFileCount} video file{(scanResult.UnsupportedVideoFileCount == 1 ? string.Empty : "s")} with unsupported formats. Scriptorium currently imports AVI, MKV, MOV, MP4, WebM, and WMV.{examples}";
+                _notifications?.Show(
+                    $"Skipped {scanResult.UnsupportedVideoFileCount} video file{(scanResult.UnsupportedVideoFileCount == 1 ? string.Empty : "s")} with unsupported formats. Scriptorium currently imports AVI, MKV, MOV, MP4, WebM, and WMV.",
+                    NotificationSeverity.Warning);
             }
 
             if (scanResult.PermissionDeniedPathCount > 0)
@@ -1674,6 +1683,9 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                     ? string.Empty
                     : $" Affected locations: {string.Join(", ", scanResult.PermissionDeniedPathExamples)}.";
                 StatusMessage += $" Scriptorium couldn't read {scanResult.PermissionDeniedPathCount} folder path{(scanResult.PermissionDeniedPathCount == 1 ? string.Empty : "s")} because access was denied; those locations were skipped. Grant read permission and rescan, or replace/remove the folder in Library management.{paths}";
+                _notifications?.Show(
+                    $"Scriptorium couldn't read {scanResult.PermissionDeniedPathCount} folder path{(scanResult.PermissionDeniedPathCount == 1 ? string.Empty : "s")} because access was denied. Grant read permission and rescan, or replace/remove the folder in Library management.{paths}",
+                    NotificationSeverity.Warning);
             }
 
             if (scanResult.NonCriticalErrorCount > 0)
@@ -1700,6 +1712,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
             StatusMessage = DatabaseFailureClassifier.IsDatabaseFailure(exception)
                 ? "The local library database couldn't complete this refresh. Try scanning again; if the problem continues, restart Scriptorium."
                 : "Library scan could not be completed.";
+            _notifications?.Show(StatusMessage, NotificationSeverity.Error);
         }
         finally
         {

@@ -18,6 +18,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IPlaybackProgressService _playbackProgressService;
+    private readonly INotificationService? _notifications;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string? _statusMessage;
     private bool _isRefreshing;
@@ -29,7 +30,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         IMediaItemRepository mediaItemRepository,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
         IPlaybackProgressService playbackProgressService,
-        ILogger<MainWindowViewModel> logger)
+        ILogger<MainWindowViewModel> logger,
+        INotificationService? notifications = null)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
         ArgumentNullException.ThrowIfNull(detailsCoordinator);
@@ -37,6 +39,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         ArgumentNullException.ThrowIfNull(logger);
 
         _logger = logger;
+        _notifications = notifications;
         _mediaItemRepository = mediaItemRepository;
         _detailsCoordinator = detailsCoordinator;
         _playbackProgressService = playbackProgressService;
@@ -139,7 +142,14 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _logger.LogWarning(exception, "Incomplete media could not be loaded.");
+            if (_notifications is not null)
+            {
+                _notifications.Report(exception, "Homepage media could not be loaded. Try refreshing again.");
+            }
+            else
+            {
+                _logger.LogWarning(exception, "Incomplete media could not be loaded.");
+            }
             StatusMessage = "Homepage media could not be loaded. Try refreshing again.";
         }
         finally
@@ -159,6 +169,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         if (!await _detailsCoordinator.OpenMediaAsync(item.MediaItem, this))
         {
             StatusMessage = "This media is no longer available in the library.";
+            _notifications?.Show(StatusMessage, NotificationSeverity.Warning);
         }
     }
 

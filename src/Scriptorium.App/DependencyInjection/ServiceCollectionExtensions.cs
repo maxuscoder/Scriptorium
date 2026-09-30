@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
+        services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<ICreateCategoryDialog, CreateCategoryDialogService>();
         services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
         services.AddSingleton<INavigationService, NavigationService>();

@@ -15,6 +15,7 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
     private readonly IFavoriteService _favoriteService;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly ILogger<FavoritesPageViewModel>? _logger;
+    private readonly INotificationService? _notifications;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private string? _statusMessage;
     private bool _isRefreshing;
@@ -23,11 +24,13 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
     public FavoritesPageViewModel(
         IFavoriteService favoriteService,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
-        ILogger<FavoritesPageViewModel>? logger = null)
+        ILogger<FavoritesPageViewModel>? logger = null,
+        INotificationService? notifications = null)
     {
         _favoriteService = favoriteService;
         _detailsCoordinator = detailsCoordinator;
         _logger = logger;
+        _notifications = notifications;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         OpenFavoriteCommand = new AsyncRelayCommand(OpenFavoriteAsync, parameter => parameter is LibraryMediaItemViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
@@ -101,8 +104,15 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _logger?.LogWarning(exception, "Favorites could not be refreshed.");
             StatusMessage = "Favorites could not be loaded. Try refreshing again.";
+            if (_notifications is not null)
+            {
+                _notifications.Report(exception, StatusMessage);
+            }
+            else
+            {
+                _logger?.LogWarning(exception, "Favorites could not be refreshed.");
+            }
         }
         finally
         {
@@ -138,6 +148,7 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
         if (!await _detailsCoordinator.OpenMediaAsync(item.MediaItem, this))
         {
             StatusMessage = "This media is no longer available in the library.";
+            _notifications?.Show(StatusMessage, NotificationSeverity.Warning);
         }
     }
 
