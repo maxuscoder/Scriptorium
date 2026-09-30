@@ -8,6 +8,7 @@ using Serilog;
 using Serilog.Events;
 using Scriptorium.App.DependencyInjection;
 using Scriptorium.App.Services;
+using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
@@ -84,6 +85,8 @@ public partial class App : Application
             _memoryUsageMonitor.Start();
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            var libraryPage = _serviceProvider.GetRequiredService<LibraryPageViewModel>();
+            mainWindow.Loaded += (_, _) => libraryPage.StartAutomaticScanning();
             mainWindow.Closing += OnMainWindowClosing;
             mainWindow.Show();
         }

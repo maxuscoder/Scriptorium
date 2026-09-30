@@ -11,6 +11,15 @@ public sealed class ApplicationSettings
 
     public bool OpenLastLibraryOnStartup { get; set; } = true;
 
+    /// <summary>Gets or sets whether library folders are scanned on a recurring schedule.</summary>
+    public bool AutomaticLibraryScanningEnabled { get; set; }
+
+    /// <summary>Gets or sets the recurring library scan interval in minutes.</summary>
+    public int LibraryScanFrequencyMinutes { get; set; } = LibraryScanFrequency.DefaultMinutes;
+
+    /// <summary>Gets or sets whether enabled library folders are scanned when the app starts.</summary>
+    public bool ScanLibraryOnStartup { get; set; }
+
     /// <summary>Gets or sets the preferred layout for media cards in the library.</summary>
     public string LibraryLayout { get; set; } = "Grid";
 

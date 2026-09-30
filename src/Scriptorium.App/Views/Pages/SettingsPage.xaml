@@ -155,6 +155,49 @@
                 </StackPanel>
             </Border>
 
+            <Border Margin="0,0,0,20" Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Library scanning" />
+                    <TextBlock Margin="0,5,0,20" Style="{StaticResource Text.Helper}" Text="Choose when Scriptorium checks configured folders for new or changed media." />
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Automatic scanning" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Scan folders repeatedly while Scriptorium is open." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding AutomaticLibraryScanningEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" />
+                    </Grid>
+
+                    <Grid Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="240" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Scan frequency" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="How often automatic scans run." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" DisplayMemberPath="DisplayName" ItemsSource="{Binding LibraryScanFrequencyOptions}" SelectedValue="{Binding LibraryScanFrequencyMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Minutes" Style="{StaticResource Input.ComboBox}" />
+                    </Grid>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Label}" Text="Scan on startup" />
+                            <TextBlock Margin="0,3,18,0" Style="{StaticResource Text.Helper}" Text="Scan configured folders when the app opens." />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding ScanLibraryOnStartup, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
             <Border Padding="24" Background="{DynamicResource Brush.Surface}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.M}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Playback" />

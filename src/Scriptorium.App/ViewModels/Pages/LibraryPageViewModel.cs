@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Collections;
+using Scriptorium.App.Models;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
@@ -88,6 +90,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private int _isThumbnailRefreshQueued;
     private int _isMetadataResetRefreshQueued;
     private Task? _initialDataLoadTask;
+    private DispatcherTimer? _automaticScanTimer;
+    private bool _automaticScanningStarted;
     private bool _disposed;
 
     public LibraryPageViewModel(
@@ -272,6 +276,12 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
 
         _disposed = true;
+        if (_automaticScanTimer is not null)
+        {
+            _automaticScanTimer.Stop();
+            _automaticScanTimer.Tick -= OnAutomaticScanTimerTick;
+            _automaticScanTimer = null;
+        }
         _playbackProgressService.PlaybackProgressSaved -= OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged -= OnFavoriteChanged;
         _categoryService.CategoriesChanged -= OnCategoriesChanged;
@@ -329,6 +339,55 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
 
         return _initialDataLoadTask = LoadInitialLibraryDataAsync();
+    }
+
+    /// <summary>Starts configured startup and recurring scans after the application window loads.</summary>
+    public void StartAutomaticScanning()
+    {
+        if (_automaticScanningStarted || _disposed) return;
+        _automaticScanningStarted = true;
+        _automaticScanTimer = new DispatcherTimer();
+        _automaticScanTimer.Tick += OnAutomaticScanTimerTick;
+        UpdateAutomaticScanSchedule();
+
+        if (_settingsService.Settings.ScanLibraryOnStartup)
+        {
+            _ = ScanLibraryOnStartupAsync();
+        }
+    }
+
+    /// <summary>Applies saved scan interval changes to the active recurring schedule.</summary>
+    public void UpdateAutomaticScanSchedule()
+    {
+        if (_automaticScanTimer is null) return;
+
+        _automaticScanTimer.Stop();
+        _automaticScanTimer.Interval = TimeSpan.FromMinutes(
+            LibraryScanFrequency.Normalize(_settingsService.Settings.LibraryScanFrequencyMinutes));
+        if (_settingsService.Settings.AutomaticLibraryScanningEnabled)
+        {
+            _automaticScanTimer.Start();
+        }
+    }
+
+    private async Task ScanLibraryOnStartupAsync()
+    {
+        await EnsureLibraryDataLoadedAsync();
+        if (!_disposed)
+        {
+            await RefreshLibraryAsync();
+        }
+    }
+
+    private async void OnAutomaticScanTimerTick(object? sender, EventArgs args)
+    {
+        if (_disposed || !_settingsService.Settings.AutomaticLibraryScanningEnabled ||
+            IsScanning || IsLoading || _mediaScannerService.IsScanning)
+        {
+            return;
+        }
+
+        await RefreshLibraryAsync();
     }
 
     /// <summary>Scans enabled folders and synchronizes the library.</summary>

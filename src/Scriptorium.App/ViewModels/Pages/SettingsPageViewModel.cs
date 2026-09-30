@@ -10,6 +10,9 @@ public sealed class SettingsPageViewModel : PageViewModel
     private string _libraryLayout;
     private LibrarySortOrder _librarySortOrder;
     private bool _favoritesFirst;
+    private bool _automaticLibraryScanningEnabled;
+    private int _libraryScanFrequencyMinutes;
+    private bool _scanLibraryOnStartup;
     private double _playbackVolume;
     private double _playbackSpeed;
     private bool _startFullscreenOnPlayback;
@@ -29,6 +32,9 @@ public sealed class SettingsPageViewModel : PageViewModel
             ? sortOrder
             : LibrarySortOrder.Ascending;
         _favoritesFirst = settingsService.Settings.LibraryFavoritesFirst;
+        _automaticLibraryScanningEnabled = settingsService.Settings.AutomaticLibraryScanningEnabled;
+        _libraryScanFrequencyMinutes = LibraryScanFrequency.Normalize(settingsService.Settings.LibraryScanFrequencyMinutes);
+        _scanLibraryOnStartup = settingsService.Settings.ScanLibraryOnStartup;
         _playbackVolume = settingsService.Settings.PlaybackVolume;
         _playbackSpeed = settingsService.Settings.PlaybackSpeed;
         _startFullscreenOnPlayback = settingsService.Settings.StartFullscreenOnPlayback;
@@ -47,6 +53,44 @@ public sealed class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<string> StartupPageOptions => StartupPageNames.Available;
 
     public IReadOnlyList<string> ThemeOptions => ThemeNames.Available;
+
+    public IReadOnlyList<LibraryScanFrequencyOption> LibraryScanFrequencyOptions => LibraryScanFrequency.Options;
+
+    public bool AutomaticLibraryScanningEnabled
+    {
+        get => _automaticLibraryScanningEnabled;
+        set
+        {
+            if (!SetProperty(ref _automaticLibraryScanningEnabled, value)) return;
+            _settingsService.Settings.AutomaticLibraryScanningEnabled = value;
+            _libraryPage.UpdateAutomaticScanSchedule();
+            SaveChanges();
+        }
+    }
+
+    public int LibraryScanFrequencyMinutes
+    {
+        get => _libraryScanFrequencyMinutes;
+        set
+        {
+            var normalized = LibraryScanFrequency.Normalize(value);
+            if (!SetProperty(ref _libraryScanFrequencyMinutes, normalized)) return;
+            _settingsService.Settings.LibraryScanFrequencyMinutes = normalized;
+            _libraryPage.UpdateAutomaticScanSchedule();
+            SaveChanges();
+        }
+    }
+
+    public bool ScanLibraryOnStartup
+    {
+        get => _scanLibraryOnStartup;
+        set
+        {
+            if (!SetProperty(ref _scanLibraryOnStartup, value)) return;
+            _settingsService.Settings.ScanLibraryOnStartup = value;
+            SaveChanges();
+        }
+    }
 
     public string Theme
     {
