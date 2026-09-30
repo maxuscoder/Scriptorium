@@ -19,7 +19,7 @@
             <Border Margin="0,12,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsLoading}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel><ProgressBar Height="4" IsIndeterminate="True" Background="{StaticResource Brush.Border}" Foreground="{StaticResource Brush.Accent}" /><TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Label}" Foreground="{StaticResource Brush.TextPrimary}" Text="Loading your library…" /><TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Metadata}" Text="Reading indexed media and collections. You can continue using the app." /></StackPanel>
+                    <controls:LoadingIndicator Message="Loading your library…" Detail="Reading indexed media and collections. You can continue using the app." />
                     <Button Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding CancelLibraryLoadCommand}" Content="Stop loading" Style="{StaticResource Button.Secondary}" />
                 </Grid>
             </Border>
@@ -29,7 +29,7 @@
             </Border>
             <Border Margin="0,12,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
-                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Style="{StaticResource Text.Label}" Foreground="{StaticResource Brush.TextPrimary}" Text="{Binding ScanProgressMessage}" /><TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Metadata}" Foreground="{StaticResource Brush.TextSecondary}" Text="{Binding CurrentScanPath}" TextTrimming="CharacterEllipsis" /></StackPanel><Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding CancelScanCommand}" Content="Stop scan" Style="{StaticResource Button.Secondary}" /></Grid>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><controls:LoadingIndicator Message="{Binding ScanProgressMessage}" Detail="{Binding CurrentScanPath}" /><Button Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding CancelScanCommand}" Content="Stop scan" Style="{StaticResource Button.Secondary}" /></Grid>
             </Border>
             <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding StatusMessage}" TextTrimming="CharacterEllipsis" />
         </StackPanel>
@@ -68,7 +68,7 @@
                         <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.FolderManagement.ImportFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Add library folder" Style="{StaticResource Button.Primary}" />
                     </StackPanel>
                 </DataTemplate>
-                <DataTemplate DataType="{x:Type pages:LibraryBrowserLoadingRow}"><StackPanel Margin="0,18,0,18" HorizontalAlignment="Center" Orientation="Horizontal"><ProgressBar Width="110" Height="4" IsIndeterminate="True" Background="{StaticResource Brush.Border}" Foreground="{StaticResource Brush.Accent}" /><TextBlock Margin="10,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="Loading more itemsâ€¦" /></StackPanel></DataTemplate>
+                <DataTemplate DataType="{x:Type pages:LibraryBrowserLoadingRow}"><controls:LoadingIndicator Margin="0,18,0,18" HorizontalAlignment="Center" ProgressWidth="110" Message="Loading more items…" /></DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserFoldersRow}"><library:WatchedFoldersPanel DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" /></DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserTvShowGroupsRow}"><library:TvShowGroupManager DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" /></DataTemplate>
             </ListBox.Resources>

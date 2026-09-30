@@ -31,13 +31,33 @@
                         Style="{StaticResource Text.Body}"
                         Text="Pick up where you left off. Your most recently watched media appears first." />
                 </StackPanel>
-                <Button
-                    Grid.Column="1"
-                    VerticalAlignment="Center"
-                    Command="{Binding RefreshCommand}"
-                    Content="Refresh"
-                    Style="{StaticResource Button.Secondary}" />
+                <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding RefreshCommand}">
+                    <Button.Style>
+                        <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+                            <Setter Property="Content" Value="Refresh" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                    <Setter Property="Content" Value="Refreshing…" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
             </Grid>
+
+            <Border Margin="0,20,0,0" Background="{StaticResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <controls:LoadingIndicator Message="Loading homepage media…" Detail="Updating your continue watching and recent activity lists." />
+            </Border>
 
             <TextBlock
                 Margin="0,16,0,0"
@@ -77,9 +97,13 @@
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding HasIncompleteMedia}" Value="False">
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding HasIncompleteMedia}" Value="False" />
+                                    <Condition Binding="{Binding IsRefreshing}" Value="False" />
+                                </MultiDataTrigger.Conditions>
                                 <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
+                            </MultiDataTrigger>
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
@@ -130,9 +154,13 @@
                         <Style TargetType="StackPanel">
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasRecentlyWatchedMedia}" Value="False">
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding HasRecentlyWatchedMedia}" Value="False" />
+                                        <Condition Binding="{Binding IsRefreshing}" Value="False" />
+                                    </MultiDataTrigger.Conditions>
                                     <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
+                                </MultiDataTrigger>
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
