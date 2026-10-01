@@ -32,6 +32,13 @@ public partial class MediaCard : UserControl
             typeof(MediaCard),
             new PropertyMetadata(CreateDefaultCategoryBrush()));
 
+    private static readonly DependencyPropertyKey CategoryTextBrushPropertyKey =
+        DependencyProperty.RegisterReadOnly(
+            nameof(CategoryTextBrush),
+            typeof(Brush),
+            typeof(MediaCard),
+            new PropertyMetadata(Brushes.White));
+
     private static readonly DependencyPropertyKey HasCategoryPropertyKey =
         DependencyProperty.RegisterReadOnly(
             nameof(HasCategory),
@@ -157,6 +164,8 @@ public partial class MediaCard : UserControl
     public static readonly DependencyProperty ThumbnailSourceProperty = ThumbnailSourcePropertyKey.DependencyProperty;
 
     public static readonly DependencyProperty CategoryBrushProperty = CategoryBrushPropertyKey.DependencyProperty;
+
+    public static readonly DependencyProperty CategoryTextBrushProperty = CategoryTextBrushPropertyKey.DependencyProperty;
 
     public static readonly DependencyProperty HasCategoryProperty = HasCategoryPropertyKey.DependencyProperty;
 
@@ -349,6 +358,8 @@ public partial class MediaCard : UserControl
     /// <summary>Gets the validated category-color brush used by the category chip.</summary>
     public Brush CategoryBrush => (Brush)GetValue(CategoryBrushProperty);
 
+    public Brush CategoryTextBrush => (Brush)GetValue(CategoryTextBrushProperty);
+
     public bool HasCategory => (bool)GetValue(HasCategoryProperty);
 
     private static void OnThumbnailPathChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
@@ -369,7 +380,27 @@ public partial class MediaCard : UserControl
     private static void OnCategoryColorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
         var brush = TryCreateCategoryBrush((string?)eventArgs.NewValue) ?? CreateDefaultCategoryBrush();
-        ((MediaCard)dependencyObject).SetValue(CategoryBrushPropertyKey, brush);
+        var card = (MediaCard)dependencyObject;
+        card.SetValue(CategoryBrushPropertyKey, brush);
+        card.SetValue(CategoryTextBrushPropertyKey, ChooseCategoryTextBrush(brush));
+    }
+
+    private static Brush ChooseCategoryTextBrush(Brush brush)
+    {
+        if (brush is not SolidColorBrush solid)
+        {
+            return Brushes.White;
+        }
+
+        static double Linearize(byte channel)
+        {
+            var value = channel / 255d;
+            return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
+        }
+
+        var color = solid.Color;
+        var luminance = 0.2126 * Linearize(color.R) + 0.7152 * Linearize(color.G) + 0.0722 * Linearize(color.B);
+        return luminance > 0.179 ? Brushes.Black : Brushes.White;
     }
 
     private static void OnCategoryNameChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs) =>

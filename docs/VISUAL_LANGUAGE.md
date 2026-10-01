@@ -6,7 +6,7 @@ Scriptorium is a calm, dark, media-library desktop application. The interface us
 
 The shell has three layers: a persistent navigation rail, a compact 28 px window title bar, and the page canvas. The title bar uses a 16 px Scriptorium logo, exposes square 28 px window controls, and is visually integrated with the dark shell. On normal widths, the navigation rail is 256 px wide and includes the Scriptorium identity, section label, full navigation labels, and a small library-status card. Below 1060 px it becomes a 76 px icon rail, while the search field reduces from 400 px to 260 px; all commands and destinations remain available.
 
-Use the `Logo.Size.TitleBar` and `Logo.Size.Sidebar` tokens for the cropped Scriptorium mark. They preserve the intended visual scale without relying on transparent padding inside the image asset.
+Use `logo-16px.png` in the title bar, `logo-90px.png` in the sidebar, and the 16/32 px `scriptorium.ico` for the window and taskbar icon. The `Logo.Size.TitleBar` and `Logo.Size.Sidebar` tokens set their display sizes.
 
 The header is 80 px high and places a small contextual label above the current page title. Global search sits on the right and always keeps its visible search glyph and placeholder. Pages supply their own content and actions beneath the header; do not duplicate global navigation or search inside a page.
 
@@ -36,7 +36,7 @@ Use `TextPrimary` for headings and important values, `TextSecondary` for normal 
 
 Surfaces are ordered from `Brush.Background` to `Brush.Surface`, `Brush.SurfaceElevated`, and `Brush.SurfaceOverlay`. Use `Brush.SurfaceHeader` only for persistent chrome. Boundaries use `Brush.Border`; reserve `Brush.BorderStrong` for a selected, active, or emphasized boundary.
 
-`Brush.Accent` is the logo-orange primary-action, selected-state indicator, link, and progress color; `Brush.AccentStrong` is its hover state. Use `Brush.SelectionSurface` for selected or active backgrounds, `Brush.SurfaceOverlay` for hover and supporting surfaces, and `Brush.TextOnAccent` for text and glyphs placed directly on the vivid accent. Feedback must use semantic brushes: `Success`, `Warning`, or `Danger` with the equivalent `*Surface` brush for a contained status. `Brush.FocusRing` is exclusively for keyboard focus. Never use status colors as decoration or as the sole way to communicate a state.
+`Brush.Accent` is the logo-orange primary-action, selected-state indicator, link, and progress color; `Brush.AccentStrong` is its hover state. The dark theme uses `#FF9803`, with dark `Brush.TextOnAccent` for readable text on the bright orange; the light theme uses `#C25200` with white text. Use `Brush.SelectionSurface` for selected or active backgrounds, `Brush.SurfaceOverlay` for hover and supporting surfaces, and `Brush.TextOnDark` for text on dark overlays or destructive buttons. Feedback must use semantic brushes: `Success`, `Warning`, or `Danger` with the equivalent `*Surface` brush for a contained status. `Brush.FocusRing` is exclusively for keyboard focus. Never use status colors as decoration or as the sole way to communicate a state.
 
 Scrollbars use a conventional Windows-inspired form: a subtle visible track with a compact, softly squared thumb. The thumb becomes brighter on hover and while dragging; its hit area remains 14 px wide or high for reliable targeting.
 

@@ -10,8 +10,8 @@
     <Color x:Key="Color.BorderStrong">#3A3A3A</Color>
 
     <!-- Brand and feedback colors are semantic: consume the named role, not a hex value. -->
-    <Color x:Key="Color.Accent">#CC4B08</Color>
-    <Color x:Key="Color.AccentStrong">#B83E06</Color>
+    <Color x:Key="Color.Accent">#FF9803</Color>
+    <Color x:Key="Color.AccentStrong">#E57C00</Color>
     <!-- Selected states use a neutral surface; orange remains for high-salience accents. -->
     <Color x:Key="Color.SelectionSurface">#252525</Color>
     <Color x:Key="Color.NavigationHover">#171717</Color>
@@ -26,7 +26,8 @@
     <Color x:Key="Color.TextSecondary">#B3B3B3</Color>
     <Color x:Key="Color.TextMuted">#858585</Color>
     <Color x:Key="Color.TextDisabled">#5E5E5E</Color>
-    <Color x:Key="Color.TextOnAccent">#FFFFFF</Color>
+    <Color x:Key="Color.TextOnAccent">#1A1005</Color>
+    <Color x:Key="Color.TextOnDark">#FFFFFF</Color>
     <Color x:Key="Color.FocusRing">#FFB56F</Color>
     <Color x:Key="Color.Shadow">#000000</Color>
     <Color x:Key="Color.Overlay">#99000000</Color>
@@ -53,6 +54,7 @@
     <SolidColorBrush x:Key="Brush.TextMuted" Color="{StaticResource Color.TextMuted}" />
     <SolidColorBrush x:Key="Brush.TextDisabled" Color="{StaticResource Color.TextDisabled}" />
     <SolidColorBrush x:Key="Brush.TextOnAccent" Color="{StaticResource Color.TextOnAccent}" />
+    <SolidColorBrush x:Key="Brush.TextOnDark" Color="{StaticResource Color.TextOnDark}" />
     <SolidColorBrush x:Key="Brush.FocusRing" Color="{StaticResource Color.FocusRing}" />
     <SolidColorBrush x:Key="Brush.Shadow" Color="{StaticResource Color.Shadow}" />
     <SolidColorBrush x:Key="Brush.Overlay" Color="{StaticResource Color.Overlay}" />

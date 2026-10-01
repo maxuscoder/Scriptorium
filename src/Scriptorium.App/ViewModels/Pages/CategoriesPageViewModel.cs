@@ -361,7 +361,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
 
         if (!category.IsValidColor)
         {
-            StatusMessage = "Enter a valid color such as #CC4B08.";
+            StatusMessage = "Enter a valid color such as #FF9803.";
             return;
         }
 

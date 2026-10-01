@@ -30,7 +30,7 @@
                 <StackPanel>
                     <TextBlock Style="{StaticResource Text.Label}" Text="Choose a color" />
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Background="#CC4B08" BorderBrush="#CC4B08" Tag="#CC4B08" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#CC4B08" />
+                        <Button Background="#FF9803" BorderBrush="#FF9803" Tag="#FF9803" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#FF9803" />
                         <Button Background="#D97706" BorderBrush="#D97706" Tag="#D97706" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#D97706" />
                         <Button Background="#CA8A04" BorderBrush="#CA8A04" Tag="#CA8A04" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#CA8A04" />
                         <Button Background="#65A30D" BorderBrush="#65A30D" Tag="#65A30D" Click="OnPresetColorClick" Style="{StaticResource CategoryColorSwatch}" ToolTip="#65A30D" />
@@ -47,7 +47,7 @@
                     <TextBox
                         Style="{StaticResource Input.TextBox}"
                         Text="{Binding SelectedColor, ElementName=Root, UpdateSourceTrigger=PropertyChanged}"
-                        ToolTip="Hex color, for example #CC4B08" />
+                        ToolTip="Hex color, for example #FF9803" />
                     <TextBlock
                         Margin="0,6,0,0"
                         Foreground="{DynamicResource Brush.Danger}"

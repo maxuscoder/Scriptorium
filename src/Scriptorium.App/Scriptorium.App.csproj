@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Assets\scriptorium.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,7 +28,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Assets\scriptorium-logo.png" />
+    <Resource Include="Assets\logo-16px.png" />
+    <Resource Include="Assets\logo-32px.png" />
+    <Resource Include="Assets\logo-90px.png" />
+    <Resource Include="Assets\scriptorium.ico" />
   </ItemGroup>
 
   <ItemGroup>

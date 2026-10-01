@@ -213,7 +213,7 @@
         TargetType="Button">
         <Setter Property="Background" Value="{DynamicResource Brush.Danger}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnAccent}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDark}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Opacity" Value="0.86" />

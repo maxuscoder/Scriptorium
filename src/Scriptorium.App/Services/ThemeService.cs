@@ -17,8 +17,8 @@ public sealed class ThemeService : IThemeService
         ["SurfaceOverlay"] = Parse("#E8E8E8"),
         ["Border"] = Parse("#DEDEDE"),
         ["BorderStrong"] = Parse("#B9B9B9"),
-        ["Accent"] = Parse("#B84000"),
-        ["AccentStrong"] = Parse("#9E3600"),
+        ["Accent"] = Parse("#C25200"),
+        ["AccentStrong"] = Parse("#B34800"),
         ["SelectionSurface"] = Parse("#E9E9E9"),
         ["NavigationHover"] = Parse("#F0F0F0"),
         ["Success"] = Parse("#137C49"),
@@ -32,7 +32,8 @@ public sealed class ThemeService : IThemeService
         ["TextMuted"] = Parse("#676767"),
         ["TextDisabled"] = Parse("#898989"),
         ["TextOnAccent"] = Colors.White,
-        ["FocusRing"] = Parse("#B84000"),
+        ["TextOnDark"] = Colors.White,
+        ["FocusRing"] = Parse("#C25200"),
         ["Shadow"] = Colors.Black,
         ["Overlay"] = Parse("#66000000")
     };

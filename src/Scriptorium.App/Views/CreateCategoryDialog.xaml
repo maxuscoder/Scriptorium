@@ -40,9 +40,9 @@
                     x:Name="CategoryColorTextBox"
                     Grid.Column="2"
                     Style="{StaticResource Input.TextBox}"
-                    Text="#CC4B08"
+                    Text="#FF9803"
                     TextChanged="OnInputChanged"
-                    ToolTip="Hex color, for example #CC4B08" />
+                    ToolTip="Hex color, for example #FF9803" />
             </Grid>
 
             <TextBlock

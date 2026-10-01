@@ -80,7 +80,7 @@
                     Height="{StaticResource Logo.Size.Sidebar}"
                     HorizontalAlignment="Left"
                     VerticalAlignment="Center"
-                    Source="/Scriptorium.App;component/Assets/scriptorium-logo.png"
+                    Source="/Scriptorium.App;component/Assets/logo-90px.png"
                     Stretch="Uniform" />
                 <StackPanel Margin="56,0,0,0" VerticalAlignment="Center">
                     <StackPanel.Style>
