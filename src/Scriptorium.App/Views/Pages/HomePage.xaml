@@ -70,7 +70,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <controls:MediaCard
-                            CardWidth="280"
+                            CardWidth="256"
                             Margin="0,0,16,16"
                             ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             ActionParameter="{Binding}"
@@ -129,7 +129,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <controls:MediaCard
-                                CardWidth="280"
+                                CardWidth="256"
                                 Margin="0,0,16,16"
                                 ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 ActionParameter="{Binding}"
