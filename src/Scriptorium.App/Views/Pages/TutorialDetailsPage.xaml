@@ -81,7 +81,7 @@
                             Margin="0,4,0,0"
                             Style="{StaticResource Text.CardTitle}"
                             Text="{Binding SelectedLesson.Title}" />
-                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource Brush.Accent}" Text="Edited metadata">
+                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}" Text="Edited metadata">
                             <TextBlock.Style>
                                 <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -135,7 +135,7 @@
             <controls:MediaCategoryEditor />
             <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
             <controls:MediaMetadataResetEditor />
-            <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource Brush.Accent}" Text="{Binding OrderStatus}">
+            <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding OrderStatus}">
                 <TextBlock.Style>
                     <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -173,7 +173,7 @@
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock
                                         Style="{StaticResource Text.Metadata}"
-                                        Foreground="{DynamicResource Brush.Accent}"
+                                        Foreground="{DynamicResource Brush.TextMuted}"
                                         Text="{Binding Position}" />
                                     <TextBlock Margin="0,4,0,0" Text="{Binding Runtime}">
                                         <TextBlock.Style>

@@ -2,11 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Shared type scale. Keep visual hierarchy in named roles rather than local overrides. -->
-    <FontFamily x:Key="FontFamily.Application">Segoe UI</FontFamily>
+    <FontFamily x:Key="FontFamily.Application">Segoe UI Variable Text, Segoe UI</FontFamily>
     <sys:Double x:Key="FontSize.NavigationGroup">12</sys:Double>
     <sys:Double x:Key="FontSize.Badge">12</sys:Double>
     <sys:Double x:Key="FontSize.Label">13</sys:Double>
-    <sys:Double x:Key="FontSize.Metadata">13</sys:Double>
+    <sys:Double x:Key="FontSize.Metadata">12</sys:Double>
     <sys:Double x:Key="FontSize.Body">14</sys:Double>
     <sys:Double x:Key="FontSize.Control">14</sys:Double>
     <sys:Double x:Key="FontSize.Navigation">16</sys:Double>
@@ -14,7 +14,7 @@
     <sys:Double x:Key="FontSize.SubsectionTitle">17</sys:Double>
     <sys:Double x:Key="FontSize.PanelTitle">20</sys:Double>
     <sys:Double x:Key="FontSize.SectionTitle">22</sys:Double>
-    <sys:Double x:Key="FontSize.PageTitle">28</sys:Double>
+    <sys:Double x:Key="FontSize.PageTitle">32</sys:Double>
     <sys:Double x:Key="FontSize.Brand">22</sys:Double>
     <sys:Double x:Key="FontSize.ArtworkGlyph.Small">22</sys:Double>
     <sys:Double x:Key="FontSize.ArtworkGlyph.Medium">24</sys:Double>
@@ -30,13 +30,13 @@
     <Style x:Key="Text.Brand" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Brand}" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
     </Style>
     <Style x:Key="Text.PageTitle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.PageTitle}" />
-        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
     </Style>
     <Style x:Key="Text.SectionTitle" TargetType="TextBlock">
@@ -129,4 +129,6 @@
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
     <Style x:Key="Text.Display" TargetType="TextBlock" BasedOn="{StaticResource Text.EmptyStateTitle}" />
+    <Style x:Key="Text.Secondary" TargetType="TextBlock" BasedOn="{StaticResource Text.Body}" />
+    <Style x:Key="Text.SectionHeader" TargetType="TextBlock" BasedOn="{StaticResource Text.SectionTitle}" />
 </ResourceDictionary>

@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Motion is short, purposeful, and respects the user’s reduced-motion preference in code. -->
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- MotionBehavior checks Windows animation preferences for each interaction. -->
     <Duration x:Key="Motion.Duration.Instant">0:0:0.1</Duration>
     <Duration x:Key="Motion.Duration.Fast">0:0:0.15</Duration>
     <Duration x:Key="Motion.Duration.Standard">0:0:0.2</Duration>
@@ -10,4 +11,5 @@
     <CubicEase x:Key="Motion.Easing.Enter" EasingMode="EaseOut" />
     <CubicEase x:Key="Motion.Easing.Exit" EasingMode="EaseIn" />
     <CubicEase x:Key="Motion.Easing.Standard" EasingMode="EaseInOut" />
+    <sys:Double x:Key="Motion.Distance.HoverLift">-2</sys:Double>
 </ResourceDictionary>

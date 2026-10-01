@@ -10,6 +10,19 @@ public sealed class ThemeService : IThemeService
 {
     internal static readonly IReadOnlyDictionary<string, Color> LightColors = new Dictionary<string, Color>
     {
+        ["SurfacePressed"] = Parse("#DCDCE0"),
+        ["AccentPressed"] = Parse("#983E00"),
+        ["AccentMuted"] = Parse("#18C25200"),
+        ["AccentBorder"] = Parse("#55C25200"),
+        ["DangerHover"] = Parse("#A82626"),
+        ["DangerPressed"] = Parse("#902020"),
+        ["TextOnDanger"] = Parse("#FFFFFF"),
+        ["ArtworkScrim"] = Parse("#44000000"),
+        ["ArtworkBadge"] = Parse("#CC0B0B0D"),
+        ["ArtworkFallback"] = Parse("#55262626"),
+        ["ProgressTrack"] = Parse("#66000000"),
+        ["PlaybackSurface"] = Parse("#000000"),
+        ["PlaybackFeedback"] = Parse("#C0000000"),
         ["Background"] = Parse("#F7F7F7"),
         ["Surface"] = Parse("#FFFFFF"),
         ["SurfaceElevated"] = Parse("#F0F0F0"),

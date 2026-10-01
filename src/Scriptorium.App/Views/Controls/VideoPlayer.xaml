@@ -24,7 +24,7 @@
                       AutomationProperties.Name="Video preview">
                     <Border x:Name="ActionFeedback" Width="72" Height="72"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Background="#C0000000" CornerRadius="36" Visibility="Collapsed"
+                            Background="{DynamicResource Brush.PlaybackFeedback}" CornerRadius="36" Visibility="Collapsed"
                             IsHitTestVisible="False">
                         <Path x:Name="ActionFeedbackIcon" Width="36" Height="36"
                               HorizontalAlignment="Center" VerticalAlignment="Center"

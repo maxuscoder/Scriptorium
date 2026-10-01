@@ -32,7 +32,7 @@
     <CornerRadius x:Key="CornerRadius.S">6</CornerRadius>
     <CornerRadius x:Key="CornerRadius.M">8</CornerRadius>
     <CornerRadius x:Key="CornerRadius.L">12</CornerRadius>
-    <CornerRadius x:Key="CornerRadius.XL">16</CornerRadius>
+    <CornerRadius x:Key="CornerRadius.XL">12</CornerRadius>
     <CornerRadius x:Key="CornerRadius.Pill">999</CornerRadius>
 
     <!-- Icons are drawn at these sizes; their interactive containers remain at least 32 px. -->
@@ -45,4 +45,55 @@
     <sys:Double x:Key="Control.MinHitTarget">32</sys:Double>
     <sys:Double x:Key="Control.Height.Compact">32</sys:Double>
     <sys:Double x:Key="Control.Height.Default">40</sys:Double>
+
+    <!-- Semantic tokens for new shared components; existing scale keys remain compatible. -->
+    <sys:Double x:Key="Space.40">40</sys:Double>
+    <Thickness x:Key="Spacing.40">40</Thickness>
+    <Thickness x:Key="Spacing.None">0</Thickness>
+    <Thickness x:Key="Padding.Page">32,28,32,48</Thickness>
+    <Thickness x:Key="Padding.Page.Compact">24</Thickness>
+    <Thickness x:Key="Padding.Badge">8,3</Thickness>
+    <Thickness x:Key="Padding.Menu">4</Thickness>
+    <Thickness x:Key="Padding.MenuItem">12,8</Thickness>
+    <Thickness x:Key="Padding.ToolTip">12,8</Thickness>
+    <Thickness x:Key="Padding.ComboContent">12,8,32,8</Thickness>
+    <Thickness x:Key="Margin.Flyout">0,4,0,0</Thickness>
+    <Thickness x:Key="Margin.SectionHeader">0,24,0,12</Thickness>
+    <Thickness x:Key="Margin.NavigationItem">0,2</Thickness>
+    <Thickness x:Key="Margin.Focus">2</Thickness>
+    <Thickness x:Key="Margin.IconLabel">8,0,0,0</Thickness>
+    <Thickness x:Key="Margin.Switch.Off">3,0,0,0</Thickness>
+    <Thickness x:Key="Margin.Switch.On">0,0,3,0</Thickness>
+    <Thickness x:Key="BorderThickness.None">0</Thickness>
+    <Thickness x:Key="BorderThickness.Hairline">1</Thickness>
+    <Thickness x:Key="BorderThickness.Focus">2</Thickness>
+    <Thickness x:Key="BorderThickness.Selection">3,0,0,0</Thickness>
+    <CornerRadius x:Key="Radius.Control">6</CornerRadius>
+    <CornerRadius x:Key="Radius.Input">8</CornerRadius>
+    <CornerRadius x:Key="Radius.Surface">10</CornerRadius>
+    <CornerRadius x:Key="Radius.Card">12</CornerRadius>
+    <CornerRadius x:Key="Radius.Artwork.Top">12,12,0,0</CornerRadius>
+    <CornerRadius x:Key="Radius.Switch">11</CornerRadius>
+    <CornerRadius x:Key="Radius.SwitchThumb">8</CornerRadius>
+    <sys:Double x:Key="Control.Height.Navigation">48</sys:Double>
+    <sys:Double x:Key="Control.Height.Input">36</sys:Double>
+    <sys:Double x:Key="Control.Width.Switch">42</sys:Double>
+    <sys:Double x:Key="Control.Height.Switch">22</sys:Double>
+    <sys:Double x:Key="Control.Size.SwitchThumb">16</sys:Double>
+    <sys:Double x:Key="Control.Width.MenuIcon">24</sys:Double>
+    <sys:Double x:Key="Control.Width.SubmenuArrow">16</sys:Double>
+    <sys:Double x:Key="Control.MaxWidth.Flyout">520</sys:Double>
+    <sys:Double x:Key="Control.MaxHeight.Flyout">360</sys:Double>
+    <sys:Double x:Key="Control.MaxWidth.ToolTip">360</sys:Double>
+    <sys:Double x:Key="Opacity.Disabled">0.45</sys:Double>
+    <sys:Double x:Key="Stroke.Hairline">1</sys:Double>
+    <GridLength x:Key="GridLength.MenuIcon">24</GridLength>
+    <GridLength x:Key="GridLength.SubmenuArrow">16</GridLength>
+    <sys:Double x:Key="Icon.Width.Chevron">10</sys:Double>
+    <sys:Double x:Key="Icon.Height.Chevron">6</sys:Double>
+    <sys:Double x:Key="Stroke.Icon">1.5</sys:Double>
+    <Thickness x:Key="Margin.InputChevron">0,0,12,0</Thickness>
+    <sys:Double x:Key="Chrome.CaptionButtonSize">24</sys:Double>
+    <sys:Double x:Key="ScrollBar.TrackSize">14</sys:Double>
+    <Thickness x:Key="ScrollBar.ThumbInset">2</Thickness>
 </ResourceDictionary>

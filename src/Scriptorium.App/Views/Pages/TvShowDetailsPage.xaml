@@ -55,7 +55,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedEpisodePositionText}" />
                         <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.CardTitle}" Text="{Binding SelectedEpisode.Title}" TextWrapping="Wrap" />
-                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource Brush.Accent}" Text="Edited metadata">
+                        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextMuted}" Text="Edited metadata">
                             <TextBlock.Style>
                                 <Style BasedOn="{StaticResource Text.Badge}" TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />
@@ -142,7 +142,7 @@
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
                                                 <StackPanel VerticalAlignment="Center">
-                                                    <TextBlock Style="{StaticResource Text.Metadata}" Foreground="{DynamicResource Brush.Accent}" Text="{Binding Position}" />
+                                                    <TextBlock Style="{StaticResource Text.Metadata}" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding Position}" />
                                                     <TextBlock Margin="0,4,0,0" Text="{Binding Runtime}">
                                                         <TextBlock.Style>
                                                             <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
