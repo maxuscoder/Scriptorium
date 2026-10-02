@@ -208,10 +208,40 @@ internal static class LibraryResourceChecks
             // The entry point reuses both existing management view models in an owned window.
             var management = new LibraryManagementWindow { Owner = window, DataContext = vm };
             management.Show();
-            await vm.TvShowGroupManagement.EnsureLoadedAsync();
             await StaTest.DrainDispatcherAsync();
+            var managementTabs = Descendants<TabControl>(management).Single();
+            Assert.Equal(2, managementTabs.Items.Count);
             Assert.Same(vm, Descendants<WatchedFoldersPanel>(management).Single().DataContext);
+            var folderPanel = Descendants<WatchedFoldersPanel>(management).Single();
+            var folderAddButton = Descendants<Button>(folderPanel).Single(button => button.Content is StackPanel stack &&
+                stack.Children.OfType<TextBlock>().Any(label => label.Text == "Add folder"));
+            Assert.Same(vm.FolderManagement.ImportFolderCommand, folderAddButton.Command);
+
+            managementTabs.SelectedIndex = 1;
+            await StaTest.DrainDispatcherAsync();
             Assert.Same(vm, Descendants<TvShowGroupManager>(management).Single().DataContext);
+            Assert.Same(vm.TvShowGroupManagement.RenameGroupCommand,
+                Descendants<Button>(management).Single(button => button.Content is StackPanel stack &&
+                    stack.Children.OfType<TextBlock>().Any(label => label.Text == "Rename group")).Command);
+            Assert.Same(vm.TvShowGroupManagement.MoveMediaToGroupCommand,
+                Descendants<Button>(management).Single(button => button.Content is StackPanel stack &&
+                    stack.Children.OfType<TextBlock>().Any(label => label.Text == "Move selected media")).Command);
+            Assert.Same(vm.TvShowGroupManagement.MergeGroupsCommand,
+                Descendants<Button>(management).Single(button => button.Content is StackPanel stack &&
+                    stack.Children.OfType<TextBlock>().Any(label => label.Text == "Merge into destination")).Command);
+            Assert.Same(vm.TvShowGroupManagement.SplitGroupCommand,
+                Descendants<Button>(management).Single(button => button.Content is StackPanel stack &&
+                    stack.Children.OfType<TextBlock>().Any(label => label.Text == "Split selected media")).Command);
+            var resetButton = Descendants<Button>(management).Single(button => button.Content is StackPanel stack &&
+                stack.Children.OfType<TextBlock>().Any(label => label.Text == "Reset view"));
+            Assert.Same(vm.ResetLibraryCommand, resetButton.Command);
+            vm.SearchQuery = "reset check";
+            vm.FavoritesFirst = true;
+            vm.SelectedSortOrder = LibrarySortOrder.Descending;
+            await ((AsyncRelayCommand)resetButton.Command).ExecuteAsync();
+            Assert.Equal(string.Empty, vm.SearchQuery);
+            Assert.False(vm.FavoritesFirst);
+            Assert.Equal(LibrarySortOrder.Ascending, vm.SelectedSortOrder);
             management.Close();
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
