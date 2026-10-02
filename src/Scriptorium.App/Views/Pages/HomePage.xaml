@@ -1,178 +1,41 @@
-<UserControl
-    x:Class="Scriptorium.App.Views.Pages.HomePage"
+﻿<UserControl x:Class="Scriptorium.App.Views.Pages.HomePage" x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
-    Loaded="OnLoaded">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,28,32,48">
-            <StackPanel Visibility="{Binding Settings.ShowContinueWatching, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Continue watching" />
-                        <Border
-                            Margin="12,0,0,0"
-                            VerticalAlignment="Center"
-                            Background="{DynamicResource Brush.SurfaceOverlay}"
-                            CornerRadius="{StaticResource CornerRadius.S}"
-                            Padding="9,3">
-                            <TextBlock
-                                Style="{StaticResource Text.Badge}"
-                                Foreground="{DynamicResource Brush.TextPrimary}"
-                                Text="{Binding IncompleteMediaCountText}" />
-                        </Border>
-                    </StackPanel>
-                    <TextBlock
-                        Margin="0,6,0,0"
-                        Style="{StaticResource Text.Body}"
-                        Text="Pick up where you left off. Your most recently watched media appears first." />
-                </StackPanel>
-                <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding RefreshCommand}">
-                    <Button.Style>
-                        <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
-                            <Setter Property="Content" Value="Refresh" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                    <Setter Property="Content" Value="Refreshing…" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
+    xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages" Loaded="OnLoaded" Background="{DynamicResource Brush.Background}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
+        <StackPanel Margin="{StaticResource Home.Page.Padding}">
+            <Grid Margin="{StaticResource Home.Toolbar.Margin}">
+                <TextBlock Text="Home" Style="{StaticResource Text.SectionTitle}" />
+                <Button HorizontalAlignment="Right" Style="{StaticResource Button.Icon}" Command="{Binding RefreshCommand}"
+                    ToolTip="Refresh Home" AutomationProperties.Name="Refresh Home">
+                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE72C;" />
                 </Button>
             </Grid>
-
-            <Border Margin="0,20,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <controls:LoadingIndicator Message="Loading homepage media…" Detail="Updating your continue watching and recent activity lists." />
+            <controls:LoadingIndicator Message="Finding your next watch..." Detail="Loading your local media."
+                Visibility="{Binding ShowLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Border Style="{StaticResource Surface}" Padding="{StaticResource Spacing.M}" Margin="{StaticResource Home.Toolbar.Margin}"
+                Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" />
             </Border>
-
-            <TextBlock
-                Margin="0,16,0,0"
-                Foreground="{DynamicResource Brush.Warning}"
-                Text="{Binding StatusMessage}"
-                TextWrapping="Wrap" />
-
-            <ItemsControl Margin="0,28,0,0" ItemsSource="{Binding IncompleteMedia}" Style="{StaticResource Library.MediaItems}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <controls:MediaCard
-                            CardWidth="{StaticResource MediaCard.Width}"
-                            Margin="{StaticResource MediaCard.Margin}"
-                            ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                            ActionParameter="{Binding}"
-                            ActionText="Open"
-                            CategoryColor="{Binding CategoryColor}"
-                            CategoryName="{Binding CategoryName}"
-                            FallbackGlyph="{Binding TypeGlyph}"
-                            HasManualMetadata="{Binding HasManualMetadata}"
-                            HasPlaybackProgress="{Binding HasPlaybackProgress}"
-                            IsMissing="{Binding IsMissing}"
-                            PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
-                            PlaybackProgressText="{Binding PlaybackProgressText}"
-                            Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
-                            Status="{Binding Availability}"
-                            ThumbnailPath="{Binding ThumbnailPath}"
-                            Title="{Binding Title}"
-                            TypeLabel="{Binding MediaType}" />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
+            <controls:HomeHero x:Name="Hero" Media="{Binding Hero}" OpenCommand="{Binding OpenMediaCommand}"
+                FavoriteCommand="{Binding ToggleFavoriteCommand}" Margin="{StaticResource Home.Hero.Margin}"
+                Visibility="{Binding HasHero, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <ItemsControl x:Name="Shelves" ItemsSource="{Binding Shelves}">
+                <ItemsControl.ItemTemplate><DataTemplate>
+                    <controls:MediaShelf Title="{Binding Title}" ItemsSource="{Binding Items}"
+                        OpenCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType={x:Type pages:HomePage}}}"
+                        FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType={x:Type pages:HomePage}}}" />
+                </DataTemplate></ItemsControl.ItemTemplate>
             </ItemsControl>
-
-            <StackPanel Margin="0,52,0,0" HorizontalAlignment="Center" MaxWidth="440">
-                <StackPanel.Style>
-                    <Style TargetType="StackPanel">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding HasIncompleteMedia}" Value="False" />
-                                    <Condition Binding="{Binding IsRefreshing}" Value="False" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </StackPanel.Style>
-                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Display}" Text="Nothing to resume" />
-                <TextBlock
-                    Margin="0,10,0,0"
-                    HorizontalAlignment="Center"
-                    Style="{StaticResource Text.Body.Center}"
-                    Text="Media you start but do not finish will appear here automatically." />
-            </StackPanel>
-
-            </StackPanel>
-
-            <StackPanel Margin="0,48,0,0">
-                <TextBlock Style="{StaticResource Text.PageTitle}" Text="Recently watched" />
-                <TextBlock
-                    Margin="0,6,0,0"
-                    Style="{StaticResource Text.Body}"
-                    Text="Your latest viewing history, kept to the 10 most recent items." />
-
-                <ItemsControl Margin="0,28,0,0" ItemsSource="{Binding RecentlyWatchedMedia}" Style="{StaticResource Library.MediaItems}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <controls:MediaCard
-                                CardWidth="{StaticResource MediaCard.Width}"
-                                Margin="{StaticResource MediaCard.Margin}"
-                                ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                ActionParameter="{Binding}"
-                                ActionText="Open"
-                                CategoryColor="{Binding CategoryColor}"
-                                CategoryName="{Binding CategoryName}"
-                                FallbackGlyph="{Binding TypeGlyph}"
-                                HasManualMetadata="{Binding HasManualMetadata}"
-                                HasPlaybackProgress="{Binding HasPlaybackProgress}"
-                                IsMissing="{Binding IsMissing}"
-                                PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
-                                PlaybackProgressText="{Binding PlaybackProgressText}"
-                                Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
-                                Status="{Binding Availability}"
-                                ThumbnailPath="{Binding ThumbnailPath}"
-                                Title="{Binding Title}"
-                                TypeLabel="{Binding MediaType}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <StackPanel Margin="0,40,0,0" HorizontalAlignment="Center" MaxWidth="440">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <MultiDataTrigger>
-                                    <MultiDataTrigger.Conditions>
-                                        <Condition Binding="{Binding HasRecentlyWatchedMedia}" Value="False" />
-                                        <Condition Binding="{Binding IsRefreshing}" Value="False" />
-                                    </MultiDataTrigger.Conditions>
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </MultiDataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Display}" Text="No recent activity" />
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource Text.Body.Center}"
-                        Text="Media you watch will appear here for quick access." />
+            <Border x:Name="EmptyState" Style="{StaticResource Surface}" Padding="{StaticResource Spacing.2XL}"
+                Visibility="{Binding ShowEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="Your next watch starts here" Style="{StaticResource Text.PageTitle}" TextWrapping="Wrap" />
+                    <TextBlock Text="Add your local media in Library. Your latest additions, favorites and viewing history will appear here."
+                        Style="{StaticResource Text.Secondary}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
                 </StackPanel>
-            </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

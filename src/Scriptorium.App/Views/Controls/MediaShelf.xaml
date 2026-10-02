@@ -1,0 +1,48 @@
+﻿<UserControl x:Class="Scriptorium.App.Views.Controls.MediaShelf" x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    Loaded="OnLoaded" Unloaded="OnUnloaded" PreviewMouseWheel="OnWheel">
+    <StackPanel Margin="{StaticResource Home.Shelf.Margin}">
+        <Grid>
+            <TextBlock Text="{Binding Title, ElementName=Root}" Style="{StaticResource Text.SectionTitle}" VerticalAlignment="Center" />
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <StackPanel.Style><Style TargetType="StackPanel">
+                    <Setter Property="Opacity" Value="0" /><Setter Property="IsHitTestVisible" Value="False" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsMouseOver, ElementName=Root}" Value="True"><Setter Property="Opacity" Value="1" /><Setter Property="IsHitTestVisible" Value="True" /></DataTrigger>
+                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=Root}" Value="True"><Setter Property="Opacity" Value="1" /><Setter Property="IsHitTestVisible" Value="True" /></DataTrigger>
+                        <DataTrigger Binding="{Binding HasOverflow, ElementName=Root}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                    </Style.Triggers>
+                </Style></StackPanel.Style>
+                <Button Style="{StaticResource Button.Icon}" Click="OnPrevious" IsEnabled="{Binding CanScrollLeft, ElementName=Root}" ToolTip="Previous titles" AutomationProperties.Name="Previous titles">
+                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE76B;" />
+                </Button>
+                <Button Style="{StaticResource Button.Icon}" Click="OnNext" IsEnabled="{Binding CanScrollRight, ElementName=Root}" Margin="{StaticResource Home.Arrow.Margin}" ToolTip="More titles" AutomationProperties.Name="More titles">
+                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE76C;" />
+                </Button>
+            </StackPanel>
+        </Grid>
+        <ListBox x:Name="Items" ItemsSource="{Binding ItemsSource, ElementName=Root}"
+            Height="{StaticResource Home.Shelf.Height}" Padding="{StaticResource Home.Shelf.Padding}"
+            Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Hidden"
+            ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
+            VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
+            ScrollViewer.ScrollChanged="OnScrollChanged">
+            <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+            <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0" /><Setter Property="Focusable" Value="False" />
+                <Setter Property="VerticalContentAlignment" Value="Top" />
+                <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter /></ControlTemplate></Setter.Value></Setter>
+            </Style></ListBox.ItemContainerStyle>
+            <ListBox.ItemTemplate><DataTemplate>
+                <controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" IsListLayout="False"
+                    Title="{Binding Title}" Metadata="{Binding CardMetadata}" ThumbnailPath="{Binding ThumbnailPath}"
+                    IsMissing="{Binding IsMissing}" IsFavorite="{Binding IsFavorite}" HasPlaybackProgress="{Binding HasPlaybackProgress}"
+                    PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" ActionText="Open" ActionParameter="{Binding}"
+                    ActionCommand="{Binding OpenCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:MediaShelf}}}"
+                    FavoriteParameter="{Binding}" FavoriteCommand="{Binding FavoriteCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:MediaShelf}}}" />
+            </DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+    </StackPanel>
+</UserControl>

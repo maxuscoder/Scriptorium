@@ -8,6 +8,7 @@
         <ResourceDictionary Source="Menus.xaml" />
         <ResourceDictionary Source="Chrome.xaml" />
         <ResourceDictionary Source="MediaCards.xaml" />
+        <ResourceDictionary Source="Home.xaml" />
     </ResourceDictionary.MergedDictionaries>
     <!-- No ancestor translation on pages: native video hosts must keep stable coordinates. -->
     <Style x:Key="Page.Enter" TargetType="UserControl" />

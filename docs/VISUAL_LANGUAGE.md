@@ -186,3 +186,48 @@ API references:
 - https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type
 - https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
 - https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmextendframeintoclientarea
+
+## Phase 4: Home
+
+HomePage now hosts a compact HomeHero and MediaShelf sections instead of Library's
+wrapping grid. The hero chooses the latest available unfinished item; if there is
+none, it uses recent available history. The primary action is "Continue in player"
+and passes the existing media view model to OpenMediaCommand. It opens the existing
+player/details page with saved playback preferences; it does not introduce autoplay.
+Shared cards retain their truthful Open actions. The hero's contextual menu reuses
+open and favorite commands. The toolbar keeps Refresh as a small secondary action.
+
+MainWindowViewModel uses existing bounded repository queries: 24 recent unfinished
+candidates, 12 recent additions, 12 favorites, and 10 history entries. Continue
+watching filters unavailable/zero-position candidates and displays up to 12 items;
+the hero is not repeated in that shelf. All shelves are omitted when empty. Home
+refreshes on entry and on playback/favorite notifications, coalesces overlapping
+reads, and honors ShowContinueWatching immediately. Empty, initial-loading and
+failure states are separate; failed refreshes retain previously loaded content.
+No database schema, scanning, playback engine or details navigation was changed.
+
+HomeHero uses ThumbnailCache's existing 480x270 decoded preview. No full-resolution
+artwork is loaded for the hero and there is no live blur. An ImageBrush provides
+the backdrop without allowing the image's natural dimensions to inflate the hero;
+artwork heroes have a 280-DIP minimum and the normal copy fits within that height.
+Long titles can grow naturally for accessibility. Missing or unusable artwork
+produces a compact themed surface. Versioned loading prevents stale artwork after
+selection changes, and unload clears cached image references and subscriptions.
+
+MediaShelf uses horizontal ListBox virtualization/recycling, pixel scrolling and
+the Phase 3 MediaCard, explicitly retaining grid presentation regardless of the
+Library layout setting. Arrows appear on hover/keyboard focus when overflowing.
+Shift+wheel and native WM_MOUSEHWHEEL scroll horizontally; vertical wheel input
+continues scrolling Home. Arrows use a short animation with reduced-motion support.
+The native hook is local to the owning window and removed on unload. Shelf padding
+leaves room for card scale/shadows at viewport edges. This is a curated, bounded
+Home surface, not a replacement for browsing the full Library.
+
+Home.xaml contains page/hero/shelf spacing, heights, scroll fraction and gradients.
+HomeResourceChecks exercises the actual Home XAML against isolated SQLite data:
+empty and error states, populated/empty sections, ordering and size caps, favorites
+persistence, completion-driven hero changes, preference changes, existing command
+parameters and saved position, horizontal virtualization and scrolling, widths
+640/960/1440, and binding traces. Generated home-1120.png and home-640.png use test
+artwork in ignored output. Existing playback and details-navigation tests continue
+to cover the underlying commands and engine; no user media/database is used.

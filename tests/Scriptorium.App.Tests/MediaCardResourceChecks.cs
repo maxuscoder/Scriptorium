@@ -27,7 +27,7 @@ internal static class MediaCardResourceChecks
         var templateCases = new List<(DataTemplate Template, object Item, string Name)>();
         var media = new MediaItem { Title = "Interstellar", Path = @"C:\Movies\Interstellar.1080p.mkv", MediaType = MediaType.Movie, RuntimeSeconds = 10140, PlaybackPositionSeconds = 1200 };
         var item = new LibraryMediaItemViewModel(media);
-        foreach (var page in new UserControl[] { new HomePage(), new FavoritesPage(), new CategoriesPage(), new SearchPage() })
+        foreach (var page in new UserControl[] { new FavoritesPage(), new CategoriesPage(), new SearchPage() })
         foreach (var items in LogicalChildren<ItemsControl>(page))
         {
             var path = BindingOperations.GetBinding(items, ItemsControl.ItemsSourceProperty)?.Path.Path;
@@ -40,7 +40,7 @@ internal static class MediaCardResourceChecks
         var row = (ItemsControl)rowTemplate.LoadContent();
         foreach (var data in new object[] { item, new MovieItemViewModel(media), new TutorialCollectionViewModel(new Course { Title = "Cybersecurity", LibraryFolder = new LibraryFolder { Name = "Courses", Path = "Courses" } }), new TvShowCollectionViewModel(new TVShow { Title = "Married With Children" }) })
             templateCases.Add(((DataTemplate)row.Resources[new DataTemplateKey(data.GetType())], data, "Library " + data.GetType().Name));
-        Assert.Equal(9, templateCases.Count);
+        Assert.Equal(7, templateCases.Count); // Home's virtualized shelf is exercised in HomeResourceChecks.
 
         var trace = new BindingTrace();
         var source = PresentationTraceSources.DataBindingSource;

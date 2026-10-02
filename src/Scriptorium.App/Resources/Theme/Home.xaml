@@ -1,0 +1,28 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <Thickness x:Key="Home.Page.Padding">28,20,28,24</Thickness>
+    <Thickness x:Key="Home.Toolbar.Margin">0,0,0,16</Thickness>
+    <Thickness x:Key="Home.Hero.Padding">24</Thickness>
+    <Thickness x:Key="Home.Hero.Margin">0,0,0,24</Thickness>
+    <Thickness x:Key="Home.Copy.Gap">0,8,0,0</Thickness>
+    <Thickness x:Key="Home.Action.Gap">0,16,0,0</Thickness>
+    <Thickness x:Key="Home.Shelf.Margin">0,0,0,12</Thickness>
+    <Thickness x:Key="Home.Shelf.Padding">8,8,8,12</Thickness>
+    <Thickness x:Key="Home.Arrow.Margin">8,0,0,0</Thickness>
+    <sys:Double x:Key="Home.Hero.Height">280</sys:Double>
+    <sys:Double x:Key="Home.Hero.TextWidth">440</sys:Double>
+    <sys:Double x:Key="Home.Hero.ProgressWidth">200</sys:Double>
+    <sys:Double x:Key="Home.Shelf.Height">244</sys:Double>
+    <sys:Double x:Key="Home.Shelf.ScrollFraction">0.8</sys:Double>
+    <SolidColorBrush x:Key="Home.Hero.TextSecondary" Color="#C0C0C6" />
+    <LinearGradientBrush x:Key="Home.Hero.Shade" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="#F50B0B0D" Offset="0" />
+        <GradientStop Color="#D90B0B0D" Offset="0.4" />
+        <GradientStop Color="#400B0B0D" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Home.Hero.Fade" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#000B0B0D" Offset="0.35" />
+        <GradientStop Color="{DynamicResource Color.Background}" Offset="1" />
+    </LinearGradientBrush>
+</ResourceDictionary>

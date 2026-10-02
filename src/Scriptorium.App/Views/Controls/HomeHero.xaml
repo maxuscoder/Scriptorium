@@ -1,0 +1,69 @@
+﻿<UserControl x:Class="Scriptorium.App.Views.Controls.HomeHero" x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded" Unloaded="OnUnloaded">
+    <UserControl.Resources>
+        <Style x:Key="Hero.Copy" TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
+            <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True">
+                <Setter Property="Foreground" Value="{StaticResource Home.Hero.TextSecondary}" />
+            </DataTrigger></Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.SurfaceHeader}">
+        <Grid.Style><Style TargetType="Grid">
+            <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True">
+                <Setter Property="MinHeight" Value="{StaticResource Home.Hero.Height}" />
+            </DataTrigger></Style.Triggers>
+        </Style></Grid.Style>
+        <Grid>
+            <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" />
+                <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+            </Style></Grid.Style>
+            <!-- An ImageBrush does not let the image's natural aspect ratio enlarge the hero. -->
+            <Border><Border.Background><ImageBrush ImageSource="{Binding Artwork, ElementName=Root}" Stretch="UniformToFill" AlignmentX="Right" /></Border.Background></Border>
+            <Border Background="{StaticResource Home.Hero.Shade}" />
+            <Border Background="{StaticResource Home.Hero.Fade}" />
+        </Grid>
+        <Grid Margin="{StaticResource Home.Hero.Padding}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel MaxWidth="{StaticResource Home.Hero.TextWidth}" HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Eyebrow, ElementName=Root}" Style="{StaticResource Hero.Copy}" FontSize="{StaticResource FontSize.Metadata}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding HeroTitle, ElementName=Root}" TextWrapping="Wrap" Margin="{StaticResource Home.Copy.Gap}">
+                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">
+                        <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDark}" /></DataTrigger></Style.Triggers>
+                    </Style></TextBlock.Style>
+                </TextBlock>
+                <TextBlock Text="{Binding Media.CardMetadata, ElementName=Root}" Style="{StaticResource Hero.Copy}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding PositionText, ElementName=Root}" FontSize="{StaticResource FontSize.Metadata}" Margin="{StaticResource Home.Copy.Gap}">
+                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Hero.Copy}">
+                        <Style.Triggers><DataTrigger Binding="{Binding PositionText, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    </Style></TextBlock.Style>
+                </TextBlock>
+                <ProgressBar x:Name="Progress" Width="{StaticResource Home.Hero.ProgressWidth}" HorizontalAlignment="Left" Margin="{StaticResource Home.Copy.Gap}">
+                    <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource MediaCard.Progress}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                    </Style></ProgressBar.Style>
+                </ProgressBar>
+                <Button x:Name="ContinueButton" Content="{Binding ActionText, ElementName=Root}" Style="{StaticResource Button.Primary}"
+                    Command="{Binding OpenCommand, ElementName=Root}"
+                    HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}" ToolTip="Open the player using your saved playback preferences" />
+            </StackPanel>
+            <Button x:Name="More" Grid.Column="1" Style="{StaticResource Button.Icon}" VerticalAlignment="Top" Click="OnMore" ToolTip="More actions" AutomationProperties.Name="More actions">
+                <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE712;" />
+                <Button.ContextMenu>
+                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                        <MenuItem Header="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Media}" />
+                        <MenuItem Header="{Binding FavoriteText}" Command="{Binding FavoriteCommand}" CommandParameter="{Binding Media}">
+                            <MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource Menu.Item}">
+                                <Style.Triggers><DataTrigger Binding="{Binding FavoriteCommand}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                            </Style></MenuItem.Style>
+                        </MenuItem>
+                    </ContextMenu>
+                </Button.ContextMenu>
+            </Button>
+        </Grid>
+    </Grid>
+</UserControl>
+
+
