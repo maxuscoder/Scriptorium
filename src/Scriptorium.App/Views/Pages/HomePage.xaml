@@ -70,8 +70,8 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <controls:MediaCard
-                            CardWidth="256"
-                            Margin="0,0,16,16"
+                            CardWidth="{StaticResource MediaCard.Width}"
+                            Margin="{StaticResource MediaCard.Margin}"
                             ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             ActionParameter="{Binding}"
                             ActionText="Open"
@@ -83,8 +83,7 @@
                             IsMissing="{Binding IsMissing}"
                             PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
                             PlaybackProgressText="{Binding PlaybackProgressText}"
-                            PrimaryMetadata="{Binding Detail}"
-                            SecondaryMetadata="{Binding Runtime}"
+                            Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
                             Status="{Binding Availability}"
                             ThumbnailPath="{Binding ThumbnailPath}"
                             Title="{Binding Title}"
@@ -129,8 +128,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <controls:MediaCard
-                                CardWidth="256"
-                                Margin="0,0,16,16"
+                                CardWidth="{StaticResource MediaCard.Width}"
+                                Margin="{StaticResource MediaCard.Margin}"
                                 ActionCommand="{Binding DataContext.OpenMediaCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 ActionParameter="{Binding}"
                                 ActionText="Open"
@@ -142,8 +141,7 @@
                                 IsMissing="{Binding IsMissing}"
                                 PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
                                 PlaybackProgressText="{Binding PlaybackProgressText}"
-                                PrimaryMetadata="{Binding Detail}"
-                                SecondaryMetadata="{Binding Runtime}"
+                                Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
                                 Status="{Binding Availability}"
                                 ThumbnailPath="{Binding ThumbnailPath}"
                                 Title="{Binding Title}"
@@ -178,3 +176,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+

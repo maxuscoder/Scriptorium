@@ -20,6 +20,9 @@ public sealed class TvShowCollectionViewModel
         : _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.ThumbnailPath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
     public int SeasonCount => _summary?.SeasonCount ?? _show!.Seasons.Count;
     public int EpisodeCount => _summary?.EpisodeCount ?? _show!.EpisodeCount;
+    public string CardMetadata => MediaCardMetadata.Join("TV show",
+        SeasonCount > 0 ? $"{SeasonCount} season{(SeasonCount == 1 ? "" : "s")}" : null,
+        EpisodeCount > 0 ? $"{EpisodeCount} episode{(EpisodeCount == 1 ? "" : "s")}" : null);
     public DateTimeOffset OldestImportDate => _summary?.OldestImportDate ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min();
     public DateTimeOffset NewestImportDate => _summary?.NewestImportDate ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
     public DateTimeOffset? EarliestPlayback => _summary is { } summary

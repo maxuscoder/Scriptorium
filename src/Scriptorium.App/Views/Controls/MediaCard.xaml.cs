@@ -2,7 +2,9 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Data;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
+using System.Windows.Controls.Primitives;
 
 namespace Scriptorium.App.Views.Controls;
 
@@ -115,17 +117,17 @@ public partial class MediaCard : UserControl
         DependencyProperty.Register(nameof(HasManualMetadata), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
 
     public static readonly DependencyProperty IsFavoriteProperty =
-        DependencyProperty.Register(nameof(IsFavorite), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+        DependencyProperty.Register(nameof(IsFavorite), typeof(bool), typeof(MediaCard), new PropertyMetadata(false, OnPresentationChanged));
 
     public static readonly DependencyProperty HasPlaybackProgressProperty =
-        DependencyProperty.Register(nameof(HasPlaybackProgress), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+        DependencyProperty.Register(nameof(HasPlaybackProgress), typeof(bool), typeof(MediaCard), new PropertyMetadata(false, OnPresentationChanged));
 
     public static readonly DependencyProperty PlaybackProgressPercentageProperty =
         DependencyProperty.Register(
             nameof(PlaybackProgressPercentage),
             typeof(double),
             typeof(MediaCard),
-            new PropertyMetadata(0d, null, CoercePlaybackProgressPercentage));
+            new PropertyMetadata(0d, OnPresentationChanged, CoercePlaybackProgressPercentage));
 
     public static readonly DependencyProperty PlaybackProgressTextProperty =
         DependencyProperty.Register(nameof(PlaybackProgressText), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
@@ -145,16 +147,16 @@ public partial class MediaCard : UserControl
             new PropertyMetadata(double.NaN, OnLayoutPropertyChanged));
 
     public static readonly DependencyProperty ActionCommandProperty =
-        DependencyProperty.Register(nameof(ActionCommand), typeof(ICommand), typeof(MediaCard));
+        DependencyProperty.Register(nameof(ActionCommand), typeof(ICommand), typeof(MediaCard), new PropertyMetadata(null, OnPresentationChanged));
 
     public static readonly DependencyProperty ActionParameterProperty =
         DependencyProperty.Register(nameof(ActionParameter), typeof(object), typeof(MediaCard));
 
     public static readonly DependencyProperty ActionTextProperty =
-        DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
+        DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty, OnPresentationChanged));
 
     public static readonly DependencyProperty FavoriteCommandProperty =
-        DependencyProperty.Register(nameof(FavoriteCommand), typeof(ICommand), typeof(MediaCard));
+        DependencyProperty.Register(nameof(FavoriteCommand), typeof(ICommand), typeof(MediaCard), new PropertyMetadata(null, OnPresentationChanged));
 
     public static readonly DependencyProperty FavoriteParameterProperty =
         DependencyProperty.Register(nameof(FavoriteParameter), typeof(object), typeof(MediaCard));
@@ -176,7 +178,12 @@ public partial class MediaCard : UserControl
     public MediaCard()
     {
         InitializeComponent();
-        SetBinding(HasManualMetadataProperty, new Binding(nameof(HasManualMetadata)));
+        ArtworkShadow.Effect = ((DropShadowEffect)FindResource("MediaCard.Shadow")).CloneCurrentValue();
+        SetResourceReference(CardWidthProperty, "MediaCard.Width");
+        MouseEnter += (_, _) => UpdateEngagement();
+        MouseLeave += (_, _) => UpdateEngagement();
+        IsKeyboardFocusWithinChanged += (_, _) => UpdateEngagement();
+        UpdatePresentation();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
@@ -362,6 +369,118 @@ public partial class MediaCard : UserControl
 
     public bool HasCategory => (bool)GetValue(HasCategoryProperty);
 
+    public static readonly DependencyProperty MetadataProperty = DependencyProperty.Register(
+        nameof(Metadata), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty FileNameProperty = DependencyProperty.Register(
+        nameof(FileName), typeof(string), typeof(MediaCard), new PropertyMetadata(string.Empty));
+    private static readonly DependencyPropertyKey IsEngagedPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(IsEngaged), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+    public static readonly DependencyProperty IsEngagedProperty = IsEngagedPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey HasActionsPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(HasActions), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+    public static readonly DependencyProperty HasActionsProperty = HasActionsPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey ShowPlaybackProgressPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(ShowPlaybackProgress), typeof(bool), typeof(MediaCard), new PropertyMetadata(false));
+    public static readonly DependencyProperty ShowPlaybackProgressProperty = ShowPlaybackProgressPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey DisplayActionTextPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(DisplayActionText), typeof(string), typeof(MediaCard), new PropertyMetadata("Open"));
+    public static readonly DependencyProperty DisplayActionTextProperty = DisplayActionTextPropertyKey.DependencyProperty;
+    private static readonly DependencyPropertyKey FavoriteActionTextPropertyKey = DependencyProperty.RegisterReadOnly(
+        nameof(FavoriteActionText), typeof(string), typeof(MediaCard), new PropertyMetadata("Add to favorites"));
+    public static readonly DependencyProperty FavoriteActionTextProperty = FavoriteActionTextPropertyKey.DependencyProperty;
+
+    public string Metadata { get => (string)GetValue(MetadataProperty); set => SetValue(MetadataProperty, value); }
+    public string FileName { get => (string)GetValue(FileNameProperty); set => SetValue(FileNameProperty, value); }
+    public bool IsEngaged => (bool)GetValue(IsEngagedProperty);
+    public bool HasActions => (bool)GetValue(HasActionsProperty);
+    public bool ShowPlaybackProgress => (bool)GetValue(ShowPlaybackProgressProperty);
+    public string DisplayActionText => (string)GetValue(DisplayActionTextProperty);
+    public string FavoriteActionText => (string)GetValue(FavoriteActionTextProperty);
+
+    private static void OnPresentationChanged(DependencyObject owner, DependencyPropertyChangedEventArgs e) =>
+        ((MediaCard)owner).UpdatePresentation();
+
+    private void UpdatePresentation()
+    {
+        SetValue(HasActionsPropertyKey, ActionCommand is not null || FavoriteCommand is not null);
+        SetValue(DisplayActionTextPropertyKey, string.IsNullOrWhiteSpace(ActionText) ? "Open" : ActionText);
+        SetValue(FavoriteActionTextPropertyKey, IsFavorite ? "Remove from favorites" : "Add to favorites");
+        SetValue(ShowPlaybackProgressPropertyKey, HasPlaybackProgress && PlaybackProgressPercentage is > 0 and < 100);
+    }
+
+    private void OnArtworkSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var width = Artwork.ActualWidth;
+        if (width <= 0) return;
+        var height = width / (double)FindResource("MediaCard.ArtworkRatio");
+        Artwork.Height = height;
+        var radius = ((CornerRadius)FindResource("Radius.Card")).TopLeft;
+        Artwork.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
+    }
+
+    private void UpdateEngagement(bool forceRest = false)
+    {
+        if (CardVisual is null) return;
+        var engaged = !forceRest && (IsMouseOver || IsKeyboardFocusWithin || ContextMenu?.IsOpen == true);
+        SetValue(IsEngagedPropertyKey, engaged);
+        var animate = !forceRest && IsLoaded && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
+        var scale = (ScaleTransform)CardVisual.RenderTransform;
+        // A render transform does not change row height, wrap measurement, or virtualized item size.
+        var zoom = engaged && !IsListLayout && !SystemParameters.HighContrast && SystemParameters.ClientAreaAnimation
+            ? (double)FindResource("MediaCard.HoverScale") : 1;
+        AnimateValue(scale, ScaleTransform.ScaleXProperty, zoom, animate && !IsListLayout);
+        AnimateValue(scale, ScaleTransform.ScaleYProperty, zoom, animate && !IsListLayout);
+        AnimateValue(ArtworkImage, UIElement.OpacityProperty, engaged ? 1 : (double)FindResource("MediaCard.Artwork.RestOpacity"), animate);
+        AnimateValue(HoverScrim, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
+        AnimateValue(Actions, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
+        AnimateValue(ArtworkShadow.Effect, DropShadowEffect.OpacityProperty,
+            engaged && !SystemParameters.HighContrast ? (double)FindResource("MediaCard.Shadow.Opacity") : 0, animate);
+    }
+
+    private void AnimateValue(DependencyObject target, DependencyProperty property, double value, bool animate)
+    {
+        var from = (double)target.GetValue(property);
+        void Apply(AnimationTimeline? animation)
+        {
+            if (target is UIElement element) element.BeginAnimation(property, animation);
+            else ((Animatable)target).BeginAnimation(property, animation);
+        }
+        Apply(null);
+        target.SetValue(property, value);
+        if (animate) Apply(new DoubleAnimation(from, value, (Duration)FindResource("MediaCard.Motion.Duration"))
+        {
+            EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Standard"), FillBehavior = FillBehavior.Stop
+        });
+    }
+
+    private void OnCardKeyDown(object sender, KeyEventArgs e)
+    {
+        if (IsKeyboardFocused && e.Key is Key.Enter or Key.Space && ActionCommand?.CanExecute(ActionParameter) == true)
+        {
+            ActionCommand.Execute(ActionParameter);
+            e.Handled = true;
+        }
+    }
+
+    protected override void OnContextMenuOpening(ContextMenuEventArgs e)
+    {
+        if (!HasActions) e.Handled = true;
+        base.OnContextMenuOpening(e);
+    }
+
+    private void OnMoreClick(object sender, RoutedEventArgs e)
+    {
+        ContextMenu.PlacementTarget = this;
+        ContextMenu.Placement = PlacementMode.Bottom;
+        ContextMenu.IsOpen = true;
+        e.Handled = true;
+    }
+    private void OnMenuOpened(object sender, RoutedEventArgs e) => UpdateEngagement();
+    private void OnMenuClosed(object sender, RoutedEventArgs e)
+    {
+        ContextMenu.Placement = PlacementMode.MousePoint;
+        UpdateEngagement();
+    }
     private static void OnThumbnailPathChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
         var card = (MediaCard)dependencyObject;
@@ -372,10 +491,11 @@ public partial class MediaCard : UserControl
     {
         var card = (MediaCard)dependencyObject;
         card.Width = card.IsListLayout ? double.NaN : card.CardWidth;
+        card.UpdateEngagement();
     }
 
     private static object CoercePlaybackProgressPercentage(DependencyObject dependencyObject, object baseValue) =>
-        Math.Clamp((double)baseValue, 0d, 100d);
+        double.IsFinite((double)baseValue) ? Math.Clamp((double)baseValue, 0d, 100d) : 0d;
 
     private static void OnCategoryColorChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs eventArgs)
     {
@@ -475,6 +595,7 @@ public partial class MediaCard : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        UpdateEngagement(forceRest: true);
         ThumbnailCache.CacheCleared -= OnThumbnailCacheCleared;
         Interlocked.Increment(ref _thumbnailLoadVersion);
         SetValue(ThumbnailSourcePropertyKey, null);
@@ -495,3 +616,4 @@ public partial class MediaCard : UserControl
         SetValue(HasUsableThumbnailPropertyKey, false);
     }
 }
+

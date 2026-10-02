@@ -24,6 +24,8 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
     public string ReleaseYear => movie.EffectiveReleaseYear?.ToString() ?? "Year unknown";
 
     public string Runtime => MediaRuntimeFormatter.Format(movie.RuntimeSeconds);
+    public string CardMetadata => MediaCardMetadata.For(movie);
+    public string FileName => System.IO.Path.GetFileName(movie.Path);
 
     public string CategoryName => MediaCategoryDisplay.Name(movie);
 

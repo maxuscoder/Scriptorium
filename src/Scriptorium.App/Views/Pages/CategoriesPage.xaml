@@ -178,8 +178,8 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <controls:MediaCard
-                                CardWidth="260"
-                                Margin="0,0,16,16"
+                                CardWidth="{StaticResource MediaCard.Width}"
+                                Margin="{StaticResource MediaCard.Margin}"
                                 CategoryColor="{Binding CategoryColor}"
                                 CategoryName="{Binding CategoryName}"
                                 FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -191,8 +191,7 @@
                                 IsMissing="{Binding IsMissing}"
                                 PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
                                 PlaybackProgressText="{Binding PlaybackProgressText}"
-                                PrimaryMetadata="{Binding Detail}"
-                                SecondaryMetadata="{Binding Runtime}"
+                                Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
                                 Status="{Binding Availability}"
                                 ThumbnailPath="{Binding ThumbnailPath}"
                                 Title="{Binding Title}"
@@ -314,3 +313,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+

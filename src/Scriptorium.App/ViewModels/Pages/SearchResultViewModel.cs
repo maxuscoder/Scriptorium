@@ -68,6 +68,8 @@ public sealed class SearchResultViewModel : ViewModelBase, IMediaFavoriteItem
         : Path.GetFileName(MediaItem.Path);
 
     public string Runtime => MediaRuntimeFormatter.Format(MediaItem.RuntimeSeconds);
+    public string CardMetadata => MediaCardMetadata.For(MediaItem);
+    public string FileName => Path.GetFileName(MediaItem.Path);
 
     public string Location => MediaItem.LibraryFolder?.DisplayNameOrName ?? "Imported media";
 

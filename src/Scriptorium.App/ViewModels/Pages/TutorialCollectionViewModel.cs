@@ -22,6 +22,7 @@ public sealed class TutorialCollectionViewModel
             .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
     public int LessonCount => _summary?.LessonCount ?? _course!.Lessons.Count;
     public string LessonCountText => $"{LessonCount} lesson{(LessonCount == 1 ? string.Empty : "s")}";
+    public string CardMetadata => MediaCardMetadata.Join("Tutorial", LessonCount > 0 ? LessonCountText : null);
     public DateTimeOffset OldestImportDate => _summary?.OldestImportDate ?? _course!.Lessons.Select(lesson => lesson.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min();
     public DateTimeOffset NewestImportDate => _summary?.NewestImportDate ?? _course!.Lessons.Select(lesson => lesson.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
     public DateTimeOffset? EarliestPlayback => _summary is { } summary

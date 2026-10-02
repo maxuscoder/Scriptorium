@@ -46,6 +46,7 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
         : FileName;
 
     public string Runtime => MediaRuntimeFormatter.Format(MediaItem.RuntimeSeconds);
+    public string CardMetadata => MediaCardMetadata.For(MediaItem);
 
     public string CategoryName => MediaCategoryDisplay.Name(MediaItem);
 

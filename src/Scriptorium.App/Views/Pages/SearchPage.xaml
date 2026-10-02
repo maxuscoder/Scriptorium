@@ -74,14 +74,14 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <controls:MediaCard
-                            CardWidth="285"
-                            Margin="0,0,16,16"
-                            ActionCommand="{Binding DataContext.OpenResultCommand, ElementName=Root}"
+                            CardWidth="{StaticResource MediaCard.Width}"
+                            Margin="{StaticResource MediaCard.Margin}"
+                            ActionCommand="{Binding DataContext.OpenResultCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             ActionParameter="{Binding}"
                             ActionText="Open"
                             CategoryColor="{Binding CategoryColor}"
                             CategoryName="{Binding CategoryName}"
-                            FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, ElementName=Root}"
+                            FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             FavoriteParameter="{Binding}"
                             FallbackGlyph="{Binding TypeGlyph}"
                             HasManualMetadata="{Binding HasManualMetadata}"
@@ -90,8 +90,7 @@
                             IsMissing="{Binding IsMissing}"
                             PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
                             PlaybackProgressText="{Binding PlaybackProgressText}"
-                            PrimaryMetadata="{Binding Detail}"
-                            SecondaryMetadata="{Binding Runtime}"
+                            Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
                             Status="{Binding Availability}"
                             TertiaryMetadata="{Binding Location}"
                             ThumbnailPath="{Binding ThumbnailPath}"
@@ -176,3 +175,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+
