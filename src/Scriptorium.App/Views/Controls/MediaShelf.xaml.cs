@@ -17,9 +17,9 @@ public partial class MediaShelf : UserControl
     public static readonly DependencyProperty HasOverflowProperty = DependencyProperty.Register(nameof(HasOverflow), typeof(bool), typeof(MediaShelf));
     public static readonly DependencyProperty CanScrollLeftProperty = DependencyProperty.Register(nameof(CanScrollLeft), typeof(bool), typeof(MediaShelf));
     public static readonly DependencyProperty CanScrollRightProperty = DependencyProperty.Register(nameof(CanScrollRight), typeof(bool), typeof(MediaShelf));
-    private static readonly DependencyProperty AnimatedOffsetProperty = DependencyProperty.Register("AnimatedOffset", typeof(double), typeof(MediaShelf),
-        new PropertyMetadata(0d, (owner, e) => ((MediaShelf)owner)._scroll?.ScrollToHorizontalOffset((double)e.NewValue)));
     private ScrollViewer? _scroll;
+    private VirtualizingStackPanel? _itemsPanel;
+    private TranslateTransform? _contentTranslation;
     private HwndSource? _source;
     public MediaShelf() => InitializeComponent();
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
@@ -32,6 +32,12 @@ public partial class MediaShelf : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         _scroll = FindScrollViewer(Items);
+        _itemsPanel = FindItemsPanel(Items);
+        if (_itemsPanel is not null)
+        {
+            _contentTranslation = new TranslateTransform();
+            _itemsPanel.RenderTransform = _contentTranslation;
+        }
         _source = PresentationSource.FromVisual(this) as HwndSource;
         _source?.RemoveHook(WindowProcedure);
         _source?.AddHook(WindowProcedure);
@@ -39,10 +45,17 @@ public partial class MediaShelf : UserControl
     }
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
-        BeginAnimation(AnimatedOffsetProperty, null);
+        if (_contentTranslation is { IsFrozen: false } translation)
+        {
+            translation.BeginAnimation(TranslateTransform.XProperty, null);
+            translation.X = 0;
+        }
+        if (_itemsPanel is not null) _itemsPanel.RenderTransform = Transform.Identity;
         _source?.RemoveHook(WindowProcedure);
         _source = null;
         _scroll = null;
+        _itemsPanel = null;
+        _contentTranslation = null;
     }
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
@@ -60,13 +73,27 @@ public partial class MediaShelf : UserControl
     internal void MoveBy(double delta, bool animate)
     {
         if (_scroll is null) return;
-        var start = _scroll.HorizontalOffset;
-        var end = Math.Clamp(start + delta, 0, _scroll.ScrollableWidth);
-        BeginAnimation(AnimatedOffsetProperty, null);
-        SetValue(AnimatedOffsetProperty, end);
-        if (animate && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
-            BeginAnimation(AnimatedOffsetProperty, new DoubleAnimation(start, end, (Duration)FindResource("Motion.Duration.Fast"))
-            { EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Standard"), FillBehavior = FillBehavior.Stop });
+        var currentTranslation = _contentTranslation?.X ?? 0;
+        _contentTranslation?.BeginAnimation(TranslateTransform.XProperty, null);
+        var visibleOffset = _scroll.HorizontalOffset - currentTranslation;
+        var end = Math.Clamp(_scroll.HorizontalOffset + delta, 0, _scroll.ScrollableWidth);
+        var shouldAnimate = animate && _contentTranslation is not null && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
+
+        // Update virtualization and layout once, then move its already-laid-out content on the render path.
+        _scroll.ScrollToHorizontalOffset(end);
+        if (_contentTranslation is null) return;
+        if (shouldAnimate)
+        {
+            var initialTranslation = end - visibleOffset;
+            _contentTranslation.X = 0;
+            _contentTranslation.BeginAnimation(TranslateTransform.XProperty,
+                new DoubleAnimation(initialTranslation, 0, (Duration)FindResource("Motion.Duration.Deliberate"))
+                { EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Standard"), FillBehavior = FillBehavior.Stop });
+        }
+        else
+        {
+            _contentTranslation.X = 0;
+        }
     }
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
@@ -100,6 +127,14 @@ public partial class MediaShelf : UserControl
         if (owner is ScrollViewer scroll) return scroll;
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(owner); i++)
             if (FindScrollViewer(VisualTreeHelper.GetChild(owner, i)) is { } child) return child;
+        return null;
+    }
+
+    private static VirtualizingStackPanel? FindItemsPanel(DependencyObject owner)
+    {
+        if (owner is VirtualizingStackPanel panel) return panel;
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(owner); i++)
+            if (FindItemsPanel(VisualTreeHelper.GetChild(owner, i)) is { } child) return child;
         return null;
     }
 }
