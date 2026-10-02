@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -37,7 +38,10 @@ internal static class LibraryResourceChecks
         var scanner = new RecordingScanner();
         var importer = new RecordingImporter(location.DirectoryPath);
         using var services = new ServiceCollection().AddScriptoriumApplication(new ConfigurationBuilder().Build(), location, location, database, logger)
-            .AddSingleton<IMediaScannerService>(scanner).AddSingleton<IImportFolderDialog>(importer).BuildServiceProvider();
+            .AddSingleton<IMediaScannerService>(scanner)
+            .AddSingleton<IImportFolderDialog>(importer)
+            .AddSingleton<IConfirmationDialog, AcceptingConfirmationDialog>()
+            .BuildServiceProvider();
         var factory = services.GetRequiredService<IDbContextFactory<ScriptoriumDbContext>>();
         await using (var db = await factory.CreateDbContextAsync()) await db.Database.MigrateAsync();
         var vm = services.GetRequiredService<LibraryPageViewModel>();
@@ -243,6 +247,44 @@ internal static class LibraryResourceChecks
             Assert.False(vm.FavoritesFirst);
             Assert.Equal(LibrarySortOrder.Ascending, vm.SelectedSortOrder);
             management.Close();
+
+            var settingsViewModel = services.GetRequiredService<SettingsPageViewModel>();
+            var settingsPage = new SettingsPage { DataContext = settingsViewModel, Background = (Brush)resources["Brush.Background"] };
+            window.Content = settingsPage;
+            await StaTest.DrainDispatcherAsync();
+            await settingsViewModel.RefreshThumbnailCacheSizeAsync();
+
+            Assert.Same(settingsViewModel.ResetSettingsCommand, ((Button)settingsPage.FindName("ResetSettingsButton")).Command);
+            Assert.Same(settingsViewModel.ClearThumbnailCacheCommand, ((Button)settingsPage.FindName("ClearThumbnailCacheButton")).Command);
+            Assert.Equal("Export", ((Button)settingsPage.FindName("ExportSettingsButton")).Content);
+            Assert.Equal("Import", ((Button)settingsPage.FindName("ImportSettingsButton")).Content);
+            var resumeToggle = Descendants<CheckBox>(settingsPage).Single(checkBox =>
+                AutomationProperties.GetName(checkBox) == "Resume from last position");
+            Assert.True(resumeToggle.IsChecked);
+
+            settingsViewModel.ResumePlaybackEnabled = false;
+            settingsViewModel.PlaybackCompletionThresholdPercent = 90;
+            await services.GetRequiredService<ISettingsService>().FlushAsync();
+            Assert.False(resumeToggle.IsChecked);
+            var persistedSettings = new SettingsService(location, Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsService>.Instance);
+            await persistedSettings.LoadAsync();
+            Assert.False(persistedSettings.Settings.ResumePlaybackEnabled);
+            Assert.Equal(90, persistedSettings.Settings.PlaybackCompletionThresholdPercent);
+
+            var backupPath = Path.Combine(location.DirectoryPath, "preferences-backup.json");
+            await settingsViewModel.ExportSettingsAsync(backupPath);
+            settingsViewModel.ResumePlaybackEnabled = true;
+            settingsViewModel.PlaybackCompletionThresholdPercent = 95;
+            await services.GetRequiredService<ISettingsService>().FlushAsync();
+            await settingsViewModel.ImportSettingsAsync(backupPath);
+            Assert.False(settingsViewModel.ResumePlaybackEnabled);
+            Assert.Equal(90, settingsViewModel.PlaybackCompletionThresholdPercent);
+
+            await ((AsyncRelayCommand)settingsViewModel.ResetSettingsCommand).ExecuteAsync();
+            Assert.True(settingsViewModel.ResumePlaybackEnabled);
+            Assert.Equal(95, settingsViewModel.PlaybackCompletionThresholdPercent);
+            Assert.Equal("Home", settingsViewModel.StartupPage);
+            Assert.True(settingsViewModel.ClearThumbnailCacheCommand.CanExecute(null));
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
         finally
@@ -300,6 +342,10 @@ internal static class LibraryResourceChecks
     {
         public int Calls { get; private set; }
         public ImportFolderSelection SelectFolder(string? initialDirectory = null) { Calls++; return new(path, MediaType.Movie); }
+    }
+    private sealed class AcceptingConfirmationDialog : IConfirmationDialog
+    {
+        public bool Confirm(string message, string title) => true;
     }
     private sealed class RecordingScanner : IMediaScannerService
     {

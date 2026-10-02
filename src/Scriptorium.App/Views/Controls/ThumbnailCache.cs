@@ -99,20 +99,22 @@ internal static class ThumbnailCache
         }
     });
 
-    internal static async Task ClearDiskCacheAsync()
+    internal static Task ClearDiskCacheAsync() => ClearDiskCacheAsync(GetDefaultCacheDirectory());
+
+    internal static async Task ClearDiskCacheAsync(string cacheDirectory)
     {
-        var cacheDirectory = GetDefaultCacheDirectory();
+        var fullCacheDirectory = Path.GetFullPath(cacheDirectory);
         await Task.Run(() =>
         {
-            ClearMemoryCache(cacheDirectory);
-            if (!Directory.Exists(cacheDirectory)) return;
+            ClearMemoryCache(fullCacheDirectory);
+            if (!Directory.Exists(fullCacheDirectory)) return;
 
-            foreach (var path in Directory.EnumerateFiles(cacheDirectory, "*", SearchOption.AllDirectories))
+            foreach (var path in Directory.EnumerateFiles(fullCacheDirectory, "*", SearchOption.AllDirectories))
             {
                 File.Delete(path);
             }
 
-            foreach (var directory in Directory.EnumerateDirectories(cacheDirectory, "*", SearchOption.AllDirectories)
+            foreach (var directory in Directory.EnumerateDirectories(fullCacheDirectory, "*", SearchOption.AllDirectories)
                          .OrderByDescending(path => path.Length))
             {
                 Directory.Delete(directory, recursive: false);

@@ -31,6 +31,10 @@ public sealed class VideoPlayerViewTests
         {
             Source = new Uri("/Scriptorium.App;component/Resources/Library.xaml", UriKind.Relative)
         });
+        application.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/Scriptorium.App;component/Resources/Theme/Settings.xaml", UriKind.Relative)
+        });
         application.Resources.Add(typeof(Window), new Style(typeof(Window))
         {
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }

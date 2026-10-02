@@ -50,6 +50,20 @@ public sealed class ThumbnailCacheTests
     }
 
     [Fact]
+    public async Task Clearing_a_cache_directory_removes_cached_files()
+    {
+        using var fixture = new ThumbnailFixture();
+        Directory.CreateDirectory(fixture.CacheDirectory);
+        var cachedFile = Path.Combine(fixture.CacheDirectory, "cached-preview.png");
+        await File.WriteAllBytesAsync(cachedFile, [1, 2, 3]);
+
+        await ThumbnailCache.ClearDiskCacheAsync(fixture.CacheDirectory);
+
+        Assert.False(File.Exists(cachedFile));
+        Assert.Empty(Directory.GetFiles(fixture.CacheDirectory, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
     public async Task Removes_obsolete_versions_when_the_source_changes()
     {
         using var fixture = new ThumbnailFixture();
