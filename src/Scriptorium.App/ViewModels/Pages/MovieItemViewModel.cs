@@ -1,4 +1,5 @@
 using Scriptorium.Core.Models;
+using System.Windows.Input;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -30,6 +31,12 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
     public string CategoryName => MediaCategoryDisplay.Name(movie);
 
     public string CategoryColor => MediaCategoryDisplay.Color(movie);
+
+    public ICommand? CardActionCommand { get; init; }
+
+    public ICommand? CardFavoriteCommand { get; init; }
+
+    public LibraryCardPresentation CardPresentation { get; init; } = new();
 
     /// <summary>Gets whether this movie is marked as a favorite.</summary>
     public bool IsFavorite => movie.IsFavorite;

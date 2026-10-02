@@ -77,8 +77,13 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly HashSet<Guid> _selectedCategoryFilterIds = [];
     private bool _suppressFilterStateSaving;
     private readonly List<object> _loadedBrowserMediaItems = [];
+    private readonly LibraryCardPresentation _cardPresentation = new();
     private int _browserColumnCount = 4;
     private double _browserWidth;
+    private double _browserCardMinimumWidth = 250;
+    private double _browserCardPreferredWidth = 260;
+    private double _browserCardHorizontalMargin = 20;
+    private double _browserCardWidth = 260;
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
     private int _isCategoryRefreshQueued;
@@ -170,6 +175,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         OpenMovieCommand = _openMovieCommand;
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
         _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
+        _cardPresentation.IsListLayout = _isListLayout;
         _selectedSortOrder = Enum.TryParse<LibrarySortOrder>(
                 _settingsService.Settings.LibrarySortOrder,
                 ignoreCase: true,
@@ -230,14 +236,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         [
             new(LibrarySortOrder.Ascending, "Title: A to Z"),
             new(LibrarySortOrder.Descending, "Title: Z to A"),
-            new(LibrarySortOrder.ImportDateNewest, "Import date: newest first"),
-            new(LibrarySortOrder.ImportDateOldest, "Import date: oldest first"),
-            new(LibrarySortOrder.MostRecentlyWatched, "Playback: most recent first"),
-            new(LibrarySortOrder.LeastRecentlyWatched, "Playback: least recent first"),
-            new(LibrarySortOrder.HighestPlaybackProgress, "Progress: highest first"),
-            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: lowest first"),
-            new(LibrarySortOrder.ReleaseYearNewest, "Release year: newest first"),
-            new(LibrarySortOrder.ReleaseYearOldest, "Release year: oldest first")
+            new(LibrarySortOrder.ImportDateNewest, "Recently added"),
+            new(LibrarySortOrder.ImportDateOldest, "Added: oldest first"),
+            new(LibrarySortOrder.MostRecentlyWatched, "Recent activity"),
+            new(LibrarySortOrder.LeastRecentlyWatched, "Activity: oldest first"),
+            new(LibrarySortOrder.HighestPlaybackProgress, "Progress: furthest along"),
+            new(LibrarySortOrder.LowestPlaybackProgress, "Progress: least watched"),
+            new(LibrarySortOrder.ReleaseYearNewest, "Newest releases"),
+            new(LibrarySortOrder.ReleaseYearOldest, "Oldest releases")
         ];
         _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
@@ -504,6 +510,30 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Clears all selected library filters.</summary>
     public ICommand ClearFiltersCommand { get; }
 
+    /// <summary>Presentation-only shortcuts to clear existing filter selections.</summary>
+    public IReadOnlyList<LibraryActiveFilter> ActiveFilters
+    {
+        get
+        {
+            var filters = new List<LibraryActiveFilter>();
+            if (!string.IsNullOrWhiteSpace(SearchQuery))
+                filters.Add(new($"Search: {SearchQuery.Trim()}", new RelayCommand(() => SearchQuery = string.Empty)));
+            foreach (var option in MediaTypeFilters.Where(option => option.IsSelected))
+                filters.Add(new(option.DisplayName, new RelayCommand(() => option.IsSelected = false)));
+            if (ShowFavoritesOnly)
+                filters.Add(new("Favorites", new RelayCommand(() => ShowFavoritesOnly = false)));
+            if (SelectedPlaybackFilter != PlaybackFilter.All)
+                filters.Add(new(PlaybackFilters.First(option => option.Value == SelectedPlaybackFilter).DisplayName,
+                    new RelayCommand(() => SelectedPlaybackFilter = PlaybackFilter.All)));
+            if (SelectedCompletionFilter != CompletionFilter.All)
+                filters.Add(new(CompletionFilters.First(option => option.Value == SelectedCompletionFilter).DisplayName,
+                    new RelayCommand(() => SelectedCompletionFilter = CompletionFilter.All)));
+            foreach (var option in CategoryFilters.Where(option => option.IsSelected))
+                filters.Add(new(option.DisplayName, new RelayCommand(() => option.IsSelected = false)));
+            return filters;
+        }
+    }
+
     /// <summary>Clears library state and restores the default presentation without changing the view mode.</summary>
     public ICommand ResetLibraryCommand { get; }
 
@@ -528,8 +558,21 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Gets the television-show collections available in the library.</summary>
     public BatchObservableCollection<TvShowCollectionViewModel> TvShows { get; } = [];
 
-    /// <summary>Gets the virtualized sequence of cards, section labels, and management panels.</summary>
+    /// <summary>Gets the virtualized sequence of cards, section labels, and browse states.</summary>
     public BatchObservableCollection<object> BrowserRows { get; } = [];
+
+    /// <summary>Fits the shared card within a Library row without changing its template.</summary>
+    public double BrowserCardWidth
+    {
+        get => _browserCardWidth;
+        private set
+        {
+            if (SetProperty(ref _browserCardWidth, value))
+            {
+                _cardPresentation.CardWidth = value;
+            }
+        }
+    }
 
     /// <summary>Gets whether the browser has no media items to display.</summary>
     public bool IsLibraryEmpty => HasActiveFilters
@@ -601,12 +644,16 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             if (SetProperty(ref _isListLayout, value))
             {
+                _cardPresentation.IsListLayout = value;
                 OnPropertyChanged(nameof(IsGridLayout));
                 _setGridLayoutCommand.NotifyCanExecuteChanged();
                 _setListLayoutCommand.NotifyCanExecuteChanged();
                 _browserColumnCount = value || _browserWidth <= 0
                     ? 1
-                    : Math.Clamp((int)Math.Floor((_browserWidth + 16) / 296), 1, 8);
+                    : Math.Clamp((int)Math.Floor(_browserWidth / (_browserCardMinimumWidth + _browserCardHorizontalMargin)), 1, 8);
+                if (_browserWidth > 0)
+                    BrowserCardWidth = Math.Max(1, Math.Min(_browserCardPreferredWidth,
+                        _browserWidth / _browserColumnCount - _browserCardHorizontalMargin));
                 if (_browserDataInitialized && !IsLoading)
                 {
                     _ = ReloadBrowserItemsAsync();
@@ -943,7 +990,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     }
 
     /// <summary>Updates the number of card columns to fit the browser viewport.</summary>
-    public void UpdateBrowserWidth(double width)
+    public void UpdateBrowserWidth(double width, double? minimumCardWidth = null,
+        double? preferredCardWidth = null, double? horizontalCardMargin = null)
     {
         if (!double.IsFinite(width) || width <= 0)
         {
@@ -951,9 +999,16 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
 
         _browserWidth = width;
+        if (minimumCardWidth is > 0 && double.IsFinite(minimumCardWidth.Value))
+            _browserCardMinimumWidth = minimumCardWidth.Value;
+        if (preferredCardWidth is > 0 && double.IsFinite(preferredCardWidth.Value))
+            _browserCardPreferredWidth = preferredCardWidth.Value;
+        if (horizontalCardMargin is >= 0 && double.IsFinite(horizontalCardMargin.Value))
+            _browserCardHorizontalMargin = horizontalCardMargin.Value;
         var columnCount = IsListLayout
             ? 1
-            : Math.Clamp((int)Math.Floor((width + 16) / 296), 1, 8);
+            : Math.Clamp((int)Math.Floor(width / (_browserCardMinimumWidth + _browserCardHorizontalMargin)), 1, 8);
+        BrowserCardWidth = Math.Max(1, Math.Min(_browserCardPreferredWidth, width / columnCount - _browserCardHorizontalMargin));
         if (columnCount == _browserColumnCount)
         {
             return;
@@ -975,22 +1030,46 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         var rows = new List<object>();
         if (HasActiveFilters)
         {
-            rows.Add(new LibraryBrowserSectionRow("Browse results"));
-            AddBrowserCardRows(rows, _loadedBrowserMediaItems, mediaItem => new LibraryMediaItemViewModel((MediaItem)mediaItem));
+            AddBrowserCardRows(rows, _loadedBrowserMediaItems, mediaItem => CreateLibraryMediaCard((MediaItem)mediaItem));
         }
         else
         {
-            rows.Add(new LibraryBrowserSectionRow("Tutorials"));
+            if (HasTutorials) rows.Add(new LibraryBrowserSectionRow("Tutorials"));
             AddBrowserCardRows(rows, Tutorials);
-            rows.Add(new LibraryBrowserSectionRow("TV shows"));
+            if (HasTvShows) rows.Add(new LibraryBrowserSectionRow("TV shows"));
             AddBrowserCardRows(rows, TvShows);
-            rows.Add(new LibraryBrowserSectionRow("Movies"));
-            AddBrowserCardRows(rows, _loadedBrowserMediaItems, mediaItem => new MovieItemViewModel((MediaItem)mediaItem));
+            if (HasMovies) rows.Add(new LibraryBrowserSectionRow("Movies"));
+            AddBrowserCardRows(rows, _loadedBrowserMediaItems, mediaItem => CreateMovieCard((MediaItem)mediaItem));
         }
 
         AddBrowserFooterRows(rows);
         BrowserRows.ReplaceRange(rows);
     }
+
+    private LibraryMediaItemViewModel CreateLibraryMediaCard(MediaItem mediaItem) => new(mediaItem)
+    {
+        CardFavoriteCommand = ToggleFavoriteCommand,
+        CardPresentation = _cardPresentation
+    };
+
+    private MovieItemViewModel CreateMovieCard(MediaItem mediaItem) => new(mediaItem)
+    {
+        CardActionCommand = OpenMovieCommand,
+        CardFavoriteCommand = ToggleFavoriteCommand,
+        CardPresentation = _cardPresentation
+    };
+
+    private TutorialCollectionViewModel CreateTutorialCard(CourseLibrarySummary course) => new(course)
+    {
+        CardActionCommand = OpenTutorialCommand,
+        CardPresentation = _cardPresentation
+    };
+
+    private TvShowCollectionViewModel CreateTvShowCard(TvShowLibrarySummary show) => new(show)
+    {
+        CardActionCommand = OpenTvShowCommand,
+        CardPresentation = _cardPresentation
+    };
 
     private void AddBrowserFooterRows(ICollection<object> rows)
     {
@@ -1000,11 +1079,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
         else if (_browserDataInitialized && IsLibraryEmpty && !IsLoading && !HasLibraryLoadIssue)
         {
-            rows.Add(new LibraryBrowserEmptyRow());
+            rows.Add(new LibraryBrowserEmptyRow(
+                EmptyLibraryTitle,
+                EmptyLibraryDescription,
+                HasActiveFilters,
+                HasIndexedMedia,
+                ClearFiltersCommand,
+                FolderManagement.ImportFolderCommand));
         }
-
-        rows.Add(new LibraryBrowserFoldersRow());
-        rows.Add(new LibraryBrowserTvShowGroupsRow());
     }
 
     private void RefreshBrowserFooter()
@@ -1031,7 +1113,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         for (var startIndex = 0; startIndex < cards.Count; startIndex += _browserColumnCount)
         {
             var count = Math.Min(_browserColumnCount, cards.Count - startIndex);
-            rows.Add(new LibraryBrowserCardsRow(cards, startIndex, count, createCardViewModel));
+            rows.Add(new LibraryBrowserCardsRow(cards, startIndex, count, createCardViewModel, _cardPresentation.IsListLayout));
         }
     }
 
@@ -1206,8 +1288,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 startIndex,
                 page.Items.Count,
                 HasActiveFilters
-                    ? item => new LibraryMediaItemViewModel((MediaItem)item)
-                    : item => new MovieItemViewModel((MediaItem)item));
+                    ? item => CreateLibraryMediaCard((MediaItem)item)
+                    : item => CreateMovieCard((MediaItem)item));
             RefreshBrowserFooter();
         }
         catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
@@ -1255,7 +1337,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         for (var index = startIndex; index < startIndex + count; index += _browserColumnCount)
         {
             var rowCount = Math.Min(_browserColumnCount, startIndex + count - index);
-            rows.Insert(insertionIndex++, new LibraryBrowserCardsRow(cards, index, rowCount, createCardViewModel));
+            rows.Insert(insertionIndex++, new LibraryBrowserCardsRow(cards, index, rowCount, createCardViewModel, _cardPresentation.IsListLayout));
         }
     }
 
@@ -1299,6 +1381,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _suppressFilterStateSaving = false;
 
         OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(ActiveFilters));
         _clearFiltersCommand.NotifyCanExecuteChanged();
         if (removedCategoryFilterIds != 0)
         {
@@ -1320,6 +1403,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         OnPropertyChanged(nameof(EmptyLibraryDescription));
         OnPropertyChanged(nameof(MediaCountText));
         OnPropertyChanged(nameof(HasActiveFilters));
+        OnPropertyChanged(nameof(ActiveFilters));
         OnPropertyChanged(nameof(CategoryFilterSummary));
         OnPropertyChanged(nameof(ActiveBrowseDescription));
         _clearFiltersCommand?.NotifyCanExecuteChanged();
@@ -1694,7 +1778,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     {
         var courses = await _courseRepository.GetLibrarySummariesAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        Tutorials.ReplaceRange(courses.Select(course => new TutorialCollectionViewModel(course)));
+        Tutorials.ReplaceRange(courses.Select(CreateTutorialCard));
 
         SortDisplayedGroups(Tutorials, OrderTutorials(Tutorials));
 
@@ -1707,7 +1791,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     {
         var shows = await _tvShowRepository.GetLibrarySummariesAsync(cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        TvShows.ReplaceRange(shows.Select(show => new TvShowCollectionViewModel(show)));
+        TvShows.ReplaceRange(shows.Select(CreateTvShowCard));
 
         SortDisplayedGroups(TvShows, OrderTvShows(TvShows));
 

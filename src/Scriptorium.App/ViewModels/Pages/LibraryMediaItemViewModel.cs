@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows.Input;
 using Scriptorium.Core.Models;
 using MediaKind = Scriptorium.Core.Models.MediaType;
 
@@ -51,6 +52,10 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
     public string CategoryName => MediaCategoryDisplay.Name(MediaItem);
 
     public string CategoryColor => MediaCategoryDisplay.Color(MediaItem);
+
+    public ICommand? CardFavoriteCommand { get; init; }
+
+    public LibraryCardPresentation CardPresentation { get; init; } = new();
 
     /// <summary>Gets whether this indexed media item is marked as a favorite.</summary>
     public bool IsFavorite => MediaItem.IsFavorite;

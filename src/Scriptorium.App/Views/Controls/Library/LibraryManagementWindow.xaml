@@ -1,0 +1,16 @@
+<Window x:Class="Scriptorium.App.Views.Controls.Library.LibraryManagementWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library"
+    Title="Manage Library" Width="900" Height="700" MinWidth="640" MinHeight="480"
+    WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+    Background="{DynamicResource Brush.Background}" Foreground="{DynamicResource Brush.TextPrimary}"
+    UseLayoutRounding="True">
+    <Grid Margin="{StaticResource Padding.Page.Compact}">
+        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel><library:WatchedFoldersPanel/><library:TvShowGroupManager/></StackPanel>
+        </ScrollViewer>
+        <Button Grid.Row="1" HorizontalAlignment="Right" Content="Close" IsCancel="True" Style="{StaticResource Button.Secondary}"/>
+    </Grid>
+</Window>

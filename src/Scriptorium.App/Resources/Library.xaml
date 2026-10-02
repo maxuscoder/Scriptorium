@@ -1,6 +1,6 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Compatibility aliases: component appearance belongs to Theme, not the Library page. -->
     <Style x:Key="Library.SearchField" TargetType="Border" BasedOn="{StaticResource Input.SearchField}" />
     <Style x:Key="Library.ComboBox" TargetType="ComboBox" BasedOn="{StaticResource Input.ComboBox}" />
@@ -66,5 +66,44 @@
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="12,0,32,0" />
         <Setter Property="Visibility" Value="Collapsed" />
+    </Style>
+    <!-- Library browsing composition; shared controls keep their global Fluent Cinema styles. -->
+    <Thickness x:Key="Library.PageInset">24,20,24,16</Thickness>
+    <Thickness x:Key="Library.ToolbarMargin">0,16,0,0</Thickness>
+    <Thickness x:Key="Library.CommandGap">0,0,8,8</Thickness>
+    <Thickness x:Key="Library.BrowserInset">12,8,12,12</Thickness>
+    <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
+    <sys:Double x:Key="Library.ToolbarBreakpoint">960</sys:Double>
+    <sys:Double x:Key="Library.SortWidth">196</sys:Double>
+    <sys:Double x:Key="Library.CardMinimumWidth">250</sys:Double>
+    <Style x:Key="Library.CommandIcon" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize" Value="{StaticResource Icon.Size.Compact}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="Library.HeaderAction" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+    </Style>
+    <Style x:Key="Library.ToolbarToggle" TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Filter}">
+        <Setter Property="Height" Value="{StaticResource Control.Height.Input}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+    </Style>
+    <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <Setter Property="Width" Value="{StaticResource Control.Height.Input}"/>
+        <Setter Property="Height" Value="{StaticResource Control.Height.Input}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <!-- Selected mode has a disabled command; keep its selection visible. -->
+        <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="1"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Library.FilterChip" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="MaxWidth" Value="240"/>
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Compact}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Metadata}"/>
+    </Style>
+    <Style x:Key="Library.ClearFilters" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
     </Style>
 </ResourceDictionary>

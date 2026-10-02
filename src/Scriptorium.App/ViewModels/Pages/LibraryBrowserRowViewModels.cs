@@ -1,3 +1,5 @@
+using System.Windows.Input;
+
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>A section label in the unified, virtualized library browser.</summary>
@@ -14,15 +16,19 @@ public sealed class LibraryBrowserCardsRow
         IReadOnlyList<object> sourceItems,
         int startIndex,
         int count,
-        Func<object, object>? createCardViewModel = null)
+        Func<object, object>? createCardViewModel = null,
+        bool isListLayout = false)
     {
         _sourceItems = sourceItems;
         _startIndex = startIndex;
         Count = count;
         _createCardViewModel = createCardViewModel;
+        IsListLayout = isListLayout;
     }
 
     public int Count { get; }
+
+    public bool IsListLayout { get; }
 
     /// <summary>Enumerates only this row's items when WPF realizes the row.</summary>
     public IEnumerable<object> Cards
@@ -44,8 +50,14 @@ public sealed class LibraryBrowserFoldersRow;
 /// <summary>Marker row for manual TV-show group management.</summary>
 public sealed class LibraryBrowserTvShowGroupsRow;
 
-/// <summary>Marker row for the library's empty state.</summary>
-public sealed class LibraryBrowserEmptyRow;
+/// <summary>Library empty-state copy and the existing commands used by its actions.</summary>
+public sealed record LibraryBrowserEmptyRow(
+    string Title,
+    string Description,
+    bool HasActiveFilters,
+    bool HasIndexedMedia,
+    ICommand ClearFiltersCommand,
+    ICommand AddFolderCommand);
 
 /// <summary>Marker row shown while the browser fetches another page.</summary>
 public sealed class LibraryBrowserLoadingRow;

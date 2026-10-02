@@ -1,12 +1,54 @@
-<UserControl
-    x:Class="Scriptorium.App.Views.Controls.Library.LibraryToolbar"
+<UserControl x:Class="Scriptorium.App.Views.Controls.Library.LibraryToolbar"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library">
-    <Grid>
-        <Border x:Name="ToolbarRoot" Margin="0,24,0,0" Background="{DynamicResource Brush.SurfaceHeader}" BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.L}" Padding="12"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Border Height="40" Style="{StaticResource Library.SearchField}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="38" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Text.Icon}" Foreground="{DynamicResource Brush.TextMuted}" Text="&#x2315;" /><TextBox Grid.Column="1" Margin="0,1,10,1" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource Brush.TextPrimary}" TextElement.Foreground="{DynamicResource Brush.TextPrimary}" Style="{StaticResource Input.SearchTextBox}" VerticalContentAlignment="Center" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search your library" /><TextBlock Grid.Column="1" Margin="2,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" IsHitTestVisible="False" Text="Search titles, shows, folders&#x2026;"><TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding SearchQuery}" Value=""><Setter Property="Visibility" Value="Visible" /></DataTrigger><DataTrigger Binding="{Binding SearchQuery}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers><Setter Property="Visibility" Value="Collapsed" /></Style></TextBlock.Style></TextBlock></Grid></Border><ToggleButton x:Name="FiltersButton" Grid.Column="2" Content="Filters" Style="{StaticResource Library.FilterToggle}" Checked="OnOpenFilterPanel" Unchecked="OnFilterPanelClosed" /></Grid><WrapPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center"><TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Style="{StaticResource Text.Label}" Foreground="{DynamicResource Brush.TextMuted}" Text="Sort" /><ComboBox Width="176" DisplayMemberPath="DisplayName" ItemsSource="{Binding SortOrders}" SelectedValue="{Binding SelectedSortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" /><CheckBox Margin="12,0,12,0" VerticalAlignment="Center" Content="Favorites first" Foreground="{DynamicResource Brush.TextSecondary}" IsChecked="{Binding FavoritesFirst, Mode=TwoWay}" ToolTip="Show favorite media before other media" /><Border Width="1" Height="24" Margin="12,8" Background="{DynamicResource Brush.Border}" /><Button Command="{Binding SetGridLayoutCommand}" Content="&#x25A6;" ToolTip="Grid view"><Button.Style><Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button"><Setter Property="MinWidth" Value="38" /><Setter Property="Padding" Value="9,6" /><Style.Triggers><DataTrigger Binding="{Binding IsGridLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers></Style></Button.Style></Button><Button Margin="4,0,0,0" Command="{Binding SetListLayoutCommand}" Content="&#x2261;" ToolTip="List view"><Button.Style><Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button"><Setter Property="MinWidth" Value="38" /><Setter Property="Padding" Value="9,6" /><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers></Style></Button.Style></Button></WrapPanel></Grid></Border>
-        <Popup AllowsTransparency="True" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Placement="Bottom" PlacementTarget="{Binding ElementName=ToolbarRoot}" HorizontalOffset="0" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=FiltersButton, Mode=TwoWay}">
-            <library:LibraryFilterPanel ApplyRequested="OnApplyFilterPanel" CancelRequested="OnCancelFilterPanel" />
+    xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library"
+    SizeChanged="OnToolbarSizeChanged">
+    <StackPanel Margin="{StaticResource Library.ToolbarMargin}">
+        <Grid x:Name="ToolbarRoot">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Border x:Name="SearchArea" Style="{StaticResource Library.SearchField}" Height="{StaticResource Control.Height.Input}" Margin="{StaticResource Library.CommandGap}">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <TextBlock Margin="{StaticResource Spacing.XS}" Style="{StaticResource Library.CommandIcon}" Foreground="{DynamicResource Brush.TextMuted}" Text="&#xE721;"/>
+                    <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource Input.SearchTextBox}" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search library"/>
+                    <TextBlock Grid.Column="1" Text="Search library…" IsHitTestVisible="False" VerticalAlignment="Center">
+                        <TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SearchQuery}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding SearchQuery}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                    </TextBlock>
+                </Grid>
+            </Border>
+            <WrapPanel x:Name="CommandsArea" Grid.Column="1">
+                <ToggleButton x:Name="FiltersButton" Style="{StaticResource Library.ToolbarToggle}" Checked="OnOpenFilterPanel" Unchecked="OnFilterPanelClosed">
+                    <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE71C;"/><TextBlock Margin="{StaticResource Margin.IconLabel}" Text="Filters"/></StackPanel>
+                </ToggleButton>
+                <ComboBox x:Name="SortBox" Width="{StaticResource Library.SortWidth}" Height="{StaticResource Control.Height.Input}" Margin="{StaticResource Library.CommandGap}" DisplayMemberPath="DisplayName" ItemsSource="{Binding SortOrders}" SelectedValue="{Binding SelectedSortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" ToolTip="Sort library" AutomationProperties.Name="Sort library"/>
+                <ToggleButton x:Name="FavoritesFirstToggle" Content="Favorites first" Style="{StaticResource Library.ToolbarToggle}" IsChecked="{Binding FavoritesFirst, Mode=TwoWay}" ToolTip="Show favorites before other media"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="GridButton" Command="{Binding SetGridLayoutCommand}" ToolTip="Grid view" AutomationProperties.Name="Grid view">
+                        <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Triggers><DataTrigger Binding="{Binding IsGridLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE80A;"/>
+                    </Button>
+                    <Button x:Name="ListButton" Command="{Binding SetListLayoutCommand}" ToolTip="List view" AutomationProperties.Name="List view">
+                        <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE8FD;"/>
+                    </Button>
+                </StackPanel>
+            </WrapPanel>
+        </Grid>
+        <DockPanel LastChildFill="True">
+            <DockPanel.Style><Style TargetType="DockPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></DockPanel.Style>
+            <Button DockPanel.Dock="Right" Command="{Binding ClearFiltersCommand}" Content="Clear all" Style="{StaticResource Library.ClearFilters}"/>
+            <ItemsControl ItemsSource="{Binding ActiveFilters}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate><DataTemplate>
+                    <Button Style="{StaticResource Library.FilterChip}" Command="{Binding RemoveCommand}" AutomationProperties.Name="{Binding Title, StringFormat=Remove filter: {0}}" ToolTip="{Binding Title}">
+                        <DockPanel><TextBlock DockPanel.Dock="Right" Margin="{StaticResource Margin.IconLabel}" Text="&#xE711;" Style="{StaticResource Library.CommandIcon}"/><TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis"/></DockPanel>
+                    </Button>
+                </DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </DockPanel>
+        <Popup AllowsTransparency="True" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Placement="Bottom" PlacementTarget="{Binding ElementName=FiltersButton}" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=FiltersButton, Mode=TwoWay}">
+            <library:LibraryFilterPanel ApplyRequested="OnApplyFilterPanel" CancelRequested="OnCancelFilterPanel"/>
         </Popup>
-    </Grid>
+    </StackPanel>
 </UserControl>

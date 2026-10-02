@@ -179,7 +179,8 @@ public partial class MediaCard : UserControl
     {
         InitializeComponent();
         ArtworkShadow.Effect = ((DropShadowEffect)FindResource("MediaCard.Shadow")).CloneCurrentValue();
-        SetResourceReference(CardWidthProperty, "MediaCard.Width");
+        // A local resource expression would outrank width bindings supplied by a DataTemplate.
+        SetCurrentValue(CardWidthProperty, FindResource("MediaCard.Width"));
         MouseEnter += (_, _) => UpdateEngagement();
         MouseLeave += (_, _) => UpdateEngagement();
         IsKeyboardFocusWithinChanged += (_, _) => UpdateEngagement();
@@ -628,4 +629,3 @@ public partial class MediaCard : UserControl
         SetValue(HasUsableThumbnailPropertyKey, false);
     }
 }
-

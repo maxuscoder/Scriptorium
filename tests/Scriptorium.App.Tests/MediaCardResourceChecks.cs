@@ -25,8 +25,9 @@ internal static class MediaCardResourceChecks
     {
         resources["BooleanToVisibilityConverter"] = new Scriptorium.App.Converters.BooleanToVisibilityConverter();
         var templateCases = new List<(DataTemplate Template, object Item, string Name)>();
+        var host = new CommandHost();
         var media = new MediaItem { Title = "Interstellar", Path = @"C:\Movies\Interstellar.1080p.mkv", MediaType = MediaType.Movie, RuntimeSeconds = 10140, PlaybackPositionSeconds = 1200 };
-        var item = new LibraryMediaItemViewModel(media);
+        var item = new LibraryMediaItemViewModel(media) { CardFavoriteCommand = host.ToggleFavoriteCommand };
         foreach (var page in new UserControl[] { new FavoritesPage(), new CategoriesPage(), new SearchPage() })
         foreach (var items in LogicalChildren<ItemsControl>(page))
         {
@@ -38,7 +39,13 @@ internal static class MediaCardResourceChecks
         var browserList = LogicalChildren<ListBox>(browser).Single();
         var rowTemplate = (DataTemplate)browserList.Resources[new DataTemplateKey(typeof(LibraryBrowserCardsRow))];
         var row = (ItemsControl)rowTemplate.LoadContent();
-        foreach (var data in new object[] { item, new MovieItemViewModel(media), new TutorialCollectionViewModel(new Course { Title = "Cybersecurity", LibraryFolder = new LibraryFolder { Name = "Courses", Path = "Courses" } }), new TvShowCollectionViewModel(new TVShow { Title = "Married With Children" }) })
+        foreach (var data in new object[]
+                 {
+                     item,
+                     new MovieItemViewModel(media) { CardActionCommand = host.OpenMovieCommand, CardFavoriteCommand = host.ToggleFavoriteCommand },
+                     new TutorialCollectionViewModel(new Course { Title = "Cybersecurity", LibraryFolder = new LibraryFolder { Name = "Courses", Path = "Courses" } }) { CardActionCommand = host.OpenTutorialCommand },
+                     new TvShowCollectionViewModel(new TVShow { Title = "Married With Children" }) { CardActionCommand = host.OpenTvShowCommand }
+                 })
             templateCases.Add(((DataTemplate)row.Resources[new DataTemplateKey(data.GetType())], data, "Library " + data.GetType().Name));
         Assert.Equal(7, templateCases.Count); // Home's virtualized shelf is exercised in HomeResourceChecks.
 
@@ -47,7 +54,6 @@ internal static class MediaCardResourceChecks
         var originalLevel = source.Switch.Level;
         source.Switch.Level = SourceLevels.Error;
         source.Listeners.Add(trace);
-        var host = new CommandHost();
         var root = new UserControl { Name = "Root", DataContext = host };
         NameScope.SetNameScope(root, new NameScope());
         root.RegisterName("Root", root);
@@ -236,6 +242,7 @@ internal static class MediaCardResourceChecks
     {
         public object? LastParameter { get; private set; }
         public bool IsListLayout => false;
+        public double BrowserCardWidth => 260;
         public ICommand OpenMediaCommand => new RelayCommand(parameter => LastParameter = parameter);
         public ICommand OpenMovieCommand => OpenMediaCommand;
         public ICommand OpenTutorialCommand => OpenMediaCommand;
@@ -245,7 +252,3 @@ internal static class MediaCardResourceChecks
         public ICommand ToggleFavoriteCommand => OpenMediaCommand;
     }
 }
-
-
-
-

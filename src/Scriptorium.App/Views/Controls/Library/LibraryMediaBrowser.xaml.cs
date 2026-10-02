@@ -35,7 +35,12 @@ public partial class LibraryMediaBrowser : UserControl
     {
         if (DataContext is LibraryPageViewModel viewModel)
         {
-            viewModel.UpdateBrowserWidth(width);
+            var margin = (Thickness)FindResource("MediaCard.Margin");
+            var cardWidth = (double)FindResource("MediaCard.Width");
+            // Reserve the scrollbar and edge space for the shared card's render-only hover.
+            var inset = (Thickness)FindResource("Library.BrowserInset");
+            viewModel.UpdateBrowserWidth(Math.Max(1, width - SystemParameters.VerticalScrollBarWidth - inset.Left - inset.Right),
+                (double)FindResource("Library.CardMinimumWidth"), cardWidth, margin.Left + margin.Right);
         }
     }
 }

@@ -39,6 +39,7 @@ public sealed class VideoPlayerViewTests
         await ShellResourceChecks.VerifyAsync(application.Resources);
         await MediaCardResourceChecks.VerifyAsync(application.Resources);
         await HomeResourceChecks.VerifyAsync(application.Resources);
+        await LibraryResourceChecks.VerifyAsync(application.Resources);
         using var runtime = new LibVlcRuntime();
         var factory = new RecordingFactory(runtime);
         var player = new VideoPlayerViewModel(factory);

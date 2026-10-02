@@ -3,19 +3,11 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
-    xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library"
     xmlns:pages="clr-namespace:Scriptorium.App.ViewModels.Pages"
     Loaded="OnLoaded">
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <StackPanel>
-            <Grid Margin="0,12,0,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource Brush.TextMuted}" Text="{Binding ActiveBrowseDescription}" />
-                <Button Grid.Column="1" Command="{Binding ClearFiltersCommand}" Content="Clear filters">
-                    <Button.Style><Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Button.Style>
-                </Button>
-            </Grid>
             <Border Margin="0,12,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsLoading}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
@@ -31,10 +23,12 @@
                 <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></Border.Style>
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><controls:LoadingIndicator Message="{Binding ScanProgressMessage}" Detail="{Binding CurrentScanPath}" /><Button Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center" Command="{Binding CancelScanCommand}" Content="Stop scan" Style="{StaticResource Button.Secondary}" /></Grid>
             </Border>
-            <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap">
+                <TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Setter Property="Margin" Value="{StaticResource Margin.Flyout}"/><Style.Triggers><DataTrigger Binding="{Binding StatusMessage}" Value=""><Setter Property="Visibility" Value="Collapsed"/></DataTrigger><DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+            </TextBlock>
         </StackPanel>
 
-        <ListBox x:Name="BrowserList" Grid.Row="1" Margin="0,12,0,0" Background="Transparent" BorderThickness="0" ItemsSource="{Binding BrowserRows}" ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.ScrollChanged="OnBrowserScrollChanged" VirtualizingPanel.CacheLength="1" VirtualizingPanel.CacheLengthUnit="Page" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.VirtualizationMode="Recycling" SizeChanged="OnBrowserSizeChanged">
+        <ListBox x:Name="BrowserList" Grid.Row="1" Padding="{StaticResource Library.BrowserInset}" Background="Transparent" BorderThickness="0" ItemsSource="{Binding BrowserRows}" ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.ScrollChanged="OnBrowserScrollChanged" VirtualizingPanel.CacheLength="1" VirtualizingPanel.CacheLengthUnit="Page" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.VirtualizationMode="Recycling" SizeChanged="OnBrowserSizeChanged">
             <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
@@ -43,46 +37,46 @@
                 </Style>
             </ListBox.ItemContainerStyle>
             <ListBox.Resources>
-                <DataTemplate DataType="{x:Type pages:LibraryBrowserSectionRow}"><TextBlock Margin="0,24,0,8" Style="{StaticResource Text.SectionTitle}" Text="{Binding Title}" /></DataTemplate>
+                <DataTemplate DataType="{x:Type pages:LibraryBrowserSectionRow}"><TextBlock Margin="{StaticResource Library.SectionMargin}" Style="{StaticResource Text.SectionTitle}" Text="{Binding Title}" /></DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserCardsRow}">
                     <ItemsControl Margin="0,0,0,4" ItemsSource="{Binding Cards}">
                         <ItemsControl.Resources>
-                            <DataTemplate DataType="{x:Type pages:LibraryMediaItemViewModel}"><controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" FavoriteParameter="{Binding}" FallbackGlyph="{Binding TypeGlyph}" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=ListBox}}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" Metadata="{Binding CardMetadata}" FileName="{Binding FileName}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="{Binding MediaType}" /></DataTemplate>
-                            <DataTemplate DataType="{x:Type pages:MovieItemViewModel}"><controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" ActionCommand="{Binding DataContext.OpenMovieCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" ActionParameter="{Binding}" ActionText="Open movie" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" FavoriteParameter="{Binding}" FallbackGlyph="M" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=ListBox}}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" Metadata="{Binding CardMetadata}" FileName="{Binding FileName}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="Movie" /></DataTemplate>
-                            <DataTemplate DataType="{x:Type pages:TutorialCollectionViewModel}"><controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" ActionCommand="{Binding DataContext.OpenTutorialCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" ActionParameter="{Binding}" ActionText="Open course" FallbackGlyph="T" IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=ListBox}}" Metadata="{Binding CardMetadata}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="Tutorial" /></DataTemplate>
-                            <DataTemplate DataType="{x:Type pages:TvShowCollectionViewModel}"><controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" ActionCommand="{Binding DataContext.OpenTvShowCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" ActionParameter="{Binding}" ActionText="Open show" FallbackGlyph="TV" IsListLayout="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=ListBox}}" Metadata="{Binding CardMetadata}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="TV show" /></DataTemplate>
+                            <DataTemplate DataType="{x:Type pages:LibraryMediaItemViewModel}"><controls:MediaCard CardWidth="{Binding CardPresentation.CardWidth}" Margin="{StaticResource MediaCard.Margin}" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FavoriteCommand="{Binding CardFavoriteCommand}" FavoriteParameter="{Binding}" FallbackGlyph="{Binding TypeGlyph}" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsListLayout="{Binding CardPresentation.IsListLayout}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" Metadata="{Binding CardMetadata}" FileName="{Binding FileName}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="{Binding MediaType}" /></DataTemplate>
+                            <DataTemplate DataType="{x:Type pages:MovieItemViewModel}"><controls:MediaCard CardWidth="{Binding CardPresentation.CardWidth}" Margin="{StaticResource MediaCard.Margin}" ActionCommand="{Binding CardActionCommand}" ActionParameter="{Binding}" ActionText="Open movie" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FavoriteCommand="{Binding CardFavoriteCommand}" FavoriteParameter="{Binding}" FallbackGlyph="M" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsListLayout="{Binding CardPresentation.IsListLayout}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" Metadata="{Binding CardMetadata}" FileName="{Binding FileName}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="Movie" /></DataTemplate>
+                            <DataTemplate DataType="{x:Type pages:TutorialCollectionViewModel}"><controls:MediaCard CardWidth="{Binding CardPresentation.CardWidth}" Margin="{StaticResource MediaCard.Margin}" ActionCommand="{Binding CardActionCommand}" ActionParameter="{Binding}" ActionText="Open course" FallbackGlyph="T" IsListLayout="{Binding CardPresentation.IsListLayout}" Metadata="{Binding CardMetadata}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="Tutorial" /></DataTemplate>
+                            <DataTemplate DataType="{x:Type pages:TvShowCollectionViewModel}"><controls:MediaCard CardWidth="{Binding CardPresentation.CardWidth}" Margin="{StaticResource MediaCard.Margin}" ActionCommand="{Binding CardActionCommand}" ActionParameter="{Binding}" ActionText="Open show" FallbackGlyph="TV" IsListLayout="{Binding CardPresentation.IsListLayout}" Metadata="{Binding CardMetadata}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="TV show" /></DataTemplate>
                         </ItemsControl.Resources>
                         <ItemsControl.Style>
                             <Style TargetType="ItemsControl">
-                                <Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></Setter.Value></Setter>
+                                <Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></Setter.Value></Setter>
                                 <Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ContentPresenter"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style></Setter.Value></Setter>
-                                <Style.Triggers><DataTrigger Binding="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True"><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter.Value></Setter></DataTrigger></Style.Triggers>
+                                <Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter.Value></Setter></DataTrigger></Style.Triggers>
                             </Style>
                         </ItemsControl.Style>
                     </ItemsControl>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserEmptyRow}">
                     <StackPanel Margin="0,40,0,40" HorizontalAlignment="Center" MaxWidth="420">
-                        <TextBlock Style="{StaticResource Text.Display}" Text="{Binding DataContext.EmptyLibraryTitle, RelativeSource={RelativeSource AncestorType=ListBox}}" />
-                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding DataContext.EmptyLibraryDescription, RelativeSource={RelativeSource AncestorType=ListBox}}" />
-                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.ClearFiltersCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Clear search and filters">
+                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="{Binding Title}" />
+                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding Description}" />
+                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding ClearFiltersCommand}" Content="Clear search and filters">
                             <Button.Style>
                                 <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
                                     <Setter Property="Visibility" Value="Collapsed" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DataContext.HasActiveFilters, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+                                        <DataTrigger Binding="{Binding HasActiveFilters}" Value="True">
                                             <Setter Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding DataContext.FolderManagement.ImportFolderCommand, RelativeSource={RelativeSource AncestorType=ListBox}}" Content="Add Folder">
+                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" Content="Add folder">
                             <Button.Style>
                                 <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
                                     <Setter Property="Visibility" Value="Visible" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding DataContext.HasIndexedMedia, RelativeSource={RelativeSource AncestorType=ListBox}}" Value="True">
+                                        <DataTrigger Binding="{Binding HasIndexedMedia}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -92,10 +86,7 @@
                     </StackPanel>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserLoadingRow}"><controls:LoadingIndicator Margin="0,18,0,18" HorizontalAlignment="Center" ProgressWidth="110" Message="Loading more items…" /></DataTemplate>
-                <DataTemplate DataType="{x:Type pages:LibraryBrowserFoldersRow}"><library:WatchedFoldersPanel DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" /></DataTemplate>
-                <DataTemplate DataType="{x:Type pages:LibraryBrowserTvShowGroupsRow}"><library:TvShowGroupManager DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=ListBox}}" /></DataTemplate>
             </ListBox.Resources>
         </ListBox>
     </Grid>
 </UserControl>
-

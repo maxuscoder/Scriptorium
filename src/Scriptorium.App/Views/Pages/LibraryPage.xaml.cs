@@ -14,6 +14,16 @@ public partial class LibraryPage : UserControl
         InitializeComponent();
     }
 
+    private void OnManageLibrary(object sender, RoutedEventArgs e)
+    {
+        CloseOpenDropdowns();
+        new Controls.Library.LibraryManagementWindow
+        {
+            Owner = Window.GetWindow(this),
+            DataContext = DataContext
+        }.ShowDialog();
+    }
+
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         if (DataContext is LibraryPageViewModel viewModel)

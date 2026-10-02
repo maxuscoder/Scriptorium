@@ -1,4 +1,5 @@
 using Scriptorium.Core.Models;
+using System.Windows.Input;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -35,4 +36,6 @@ public sealed class TvShowCollectionViewModel
     public double HighestPlaybackProgress => _summary?.HighestPlaybackProgress ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => MediaPlaybackProgress.ProgressPercentage(episode.MediaItem)).DefaultIfEmpty(0).Max();
     public bool HasFavorite => _summary?.HasFavorite ?? _show!.Seasons.SelectMany(season => season.Episodes).Any(episode => episode.MediaItem.IsFavorite);
     public string CollectionInfo => $"{SeasonCount} season{(SeasonCount == 1 ? string.Empty : "s")} · {EpisodeCount} episode{(EpisodeCount == 1 ? string.Empty : "s")}";
+    public ICommand? CardActionCommand { get; init; }
+    public LibraryCardPresentation CardPresentation { get; init; } = new();
 }
