@@ -18,6 +18,8 @@ public partial class MediaShelf : UserControl
     public static readonly DependencyProperty CanScrollLeftProperty = DependencyProperty.Register(nameof(CanScrollLeft), typeof(bool), typeof(MediaShelf));
     public static readonly DependencyProperty CanScrollRightProperty = DependencyProperty.Register(nameof(CanScrollRight), typeof(bool), typeof(MediaShelf));
     private ScrollViewer? _scroll;
+    private Button? _mousePressedArrow;
+    private bool _arrowFocusableBeforeMousePress;
     private VirtualizingStackPanel? _itemsPanel;
     private TranslateTransform? _contentTranslation;
     private HwndSource? _source;
@@ -45,6 +47,7 @@ public partial class MediaShelf : UserControl
     }
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        RestoreArrowFocusability();
         if (_contentTranslation is { IsFrozen: false } translation)
         {
             translation.BeginAnimation(TranslateTransform.XProperty, null);
@@ -68,8 +71,30 @@ public partial class MediaShelf : UserControl
         CanScrollLeft = _scroll?.HorizontalOffset > 1;
         CanScrollRight = _scroll is { } scroll && scroll.HorizontalOffset < scroll.ScrollableWidth - 1;
     }
-    private void OnPrevious(object sender, RoutedEventArgs e) => MoveBy(-(_scroll?.ViewportWidth ?? 0) * (double)FindResource("Home.Shelf.ScrollFraction"), true);
-    private void OnNext(object sender, RoutedEventArgs e) => MoveBy((_scroll?.ViewportWidth ?? 0) * (double)FindResource("Home.Shelf.ScrollFraction"), true);
+    private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var arrow = PreviousButton.IsMouseOver ? PreviousButton : NextButton.IsMouseOver ? NextButton : null;
+        if (arrow is null || !arrow.IsEnabled) return;
+
+        _mousePressedArrow = arrow;
+        _arrowFocusableBeforeMousePress = arrow.Focusable;
+        arrow.Focusable = false;
+    }
+    private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => RestoreArrowFocusability();
+    private void OnPrevious(object sender, RoutedEventArgs e)
+    {
+        MoveBy(-(_scroll?.ViewportWidth ?? 0) * (double)FindResource("Home.Shelf.ScrollFraction"), true);
+    }
+    private void OnNext(object sender, RoutedEventArgs e)
+    {
+        MoveBy((_scroll?.ViewportWidth ?? 0) * (double)FindResource("Home.Shelf.ScrollFraction"), true);
+    }
+    private void RestoreArrowFocusability()
+    {
+        if (_mousePressedArrow is null) return;
+        _mousePressedArrow.Focusable = _arrowFocusableBeforeMousePress;
+        _mousePressedArrow = null;
+    }
     internal void MoveBy(double delta, bool animate)
     {
         if (_scroll is null) return;
@@ -137,4 +162,5 @@ public partial class MediaShelf : UserControl
             if (FindItemsPanel(VisualTreeHelper.GetChild(owner, i)) is { } child) return child;
         return null;
     }
+
 }
