@@ -18,6 +18,7 @@ public sealed record HomeShelfViewModel(string Title, IReadOnlyList<LibraryMedia
 public sealed class MainWindowViewModel : PageViewModel, IDisposable
 {
     internal const int ShelfLimit = 12;
+    private static readonly TimeSpan HomepageDataFreshness = TimeSpan.FromSeconds(30);
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
@@ -29,6 +30,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     private bool _isRefreshing;
     private Task? _refreshTask;
     private bool _refreshAgain;
+    private bool _hasLoadedHomepageData;
+    private DateTimeOffset _lastSuccessfulRefreshUtc;
     private bool _disposed;
     private IReadOnlyList<LibraryMediaItemViewModel> _recentlyAdded = [];
     private IReadOnlyList<LibraryMediaItemViewModel> _favoriteItems = [];
@@ -86,8 +89,14 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     public ICommand? ToggleFavoriteCommand { get; }
     public override string Title => "Home";
 
-    // Re-entering Home refreshes additions made elsewhere; concurrent requests share one read.
-    public Task EnsureHomepageDataLoadedAsync() => RefreshAsync();
+    // Keep the in-memory shelves for quick navigation. Explicit refreshes and known library changes
+    // still reload immediately, while the freshness window picks up changes made outside the app.
+    public Task EnsureHomepageDataLoadedAsync() =>
+        _hasLoadedHomepageData && DateTimeOffset.UtcNow - _lastSuccessfulRefreshUtc < HomepageDataFreshness
+            ? Task.CompletedTask
+            : RefreshAsync();
+
+    public void InvalidateHomepageData() => _lastSuccessfulRefreshUtc = DateTimeOffset.MinValue;
     public Task RefreshAsync()
     {
         if (_disposed) return Task.CompletedTask;
@@ -129,6 +138,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
                 _favoriteItems = (await favoritesTask).Select(Card).ToArray();
                 StatusMessage = null;
                 RebuildShelves();
+                _hasLoadedHomepageData = true;
+                _lastSuccessfulRefreshUtc = DateTimeOffset.UtcNow;
             } while (_refreshAgain && !_disposed);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -199,6 +210,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher is not null && !dispatcher.CheckAccess()) { _ = dispatcher.InvokeAsync(() => OnMediaChanged(mediaItemId)); return; }
         _refreshAgain = true;
+        InvalidateHomepageData();
         _ = RefreshAsync();
     }
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
@@ -213,5 +225,6 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         _settings.PropertyChanged -= OnSettingsChanged;
         IncompleteMedia.Clear(); RecentlyWatchedMedia.Clear(); Shelves.Clear();
         _recentlyAdded = []; _favoriteItems = []; Hero = null;
+        _hasLoadedHomepageData = false;
     }
 }

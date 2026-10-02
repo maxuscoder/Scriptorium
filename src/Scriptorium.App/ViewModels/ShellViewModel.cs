@@ -17,6 +17,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     private readonly ISearchQueryResetService _searchQueryResetService;
     private readonly ISettingsService _settingsService;
     private readonly LibraryPageViewModel _libraryPage;
+    private readonly MainWindowViewModel _homePage;
     private NavigationItem? _selectedNavigationItem;
     private string _searchQuery = string.Empty;
     private bool _disposed;
@@ -35,6 +36,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     {
         _navigationService = navigationService;
         _libraryPage = libraryPage;
+        _homePage = homePage;
         _searchPage = searchPage;
         _searchQueryResetService = searchQueryResetService;
         _settingsService = settingsService;
@@ -157,6 +159,11 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
 
     private void OnLibraryPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(LibraryPageViewModel.IndexedMediaCount))
+        {
+            _homePage.InvalidateHomepageData();
+        }
+
         if (e.PropertyName == nameof(LibraryPageViewModel.IsListLayout))
         {
             OnPropertyChanged(nameof(IsListLayout));
