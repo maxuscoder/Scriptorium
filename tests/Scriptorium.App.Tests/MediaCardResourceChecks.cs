@@ -122,6 +122,29 @@ internal static class MediaCardResourceChecks
                 Assert.False(card.ShowPlaybackProgress);
             }
             list.Items.Clear();
+            var category = new CategoryItemViewModel(
+                new Category { Name = "Learning", Color = "#6B46C1" },
+                [media]);
+            var categoryHost = new CategoryPageHost(category, item, host);
+            var categoriesPage = new CategoriesPage { DataContext = categoryHost };
+            window.Content = categoriesPage;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Single(Descendants<CategoryArtworkPreview>(categoriesPage));
+            var collectionTile = Descendants<Button>(categoriesPage).Single(button =>
+                button.ToolTip as string == "Browse this collection");
+            Click(collectionTile);
+            Assert.Same(category, categoryHost.LastSelectedCategory);
+            var categoryMenuButton = Descendants<Button>(categoriesPage).Single(button =>
+                button.ToolTip as string == "Category actions");
+            Click(categoryMenuButton);
+            await StaTest.DrainDispatcherAsync();
+            var categoryMenu = Assert.IsType<ContextMenu>(categoryMenuButton.ContextMenu);
+            Assert.True(categoryMenu.IsOpen);
+            Assert.Same(category, categoryMenu.DataContext);
+            Assert.Equal(new[] { "Rename / change color...", "Delete category" },
+                categoryMenu.Items.OfType<MenuItem>().Select(menuItem => menuItem.Header));
+            categoryMenu.IsOpen = false;
+            Assert.Single(Descendants<MediaCard>(categoriesPage));
             await VerifyGalleryAsync(window, resources, host);
             await StaTest.DrainDispatcherAsync();
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
@@ -250,5 +273,26 @@ internal static class MediaCardResourceChecks
         public ICommand OpenFavoriteCommand => OpenMediaCommand;
         public ICommand OpenResultCommand => OpenMediaCommand;
         public ICommand ToggleFavoriteCommand => OpenMediaCommand;
+    }
+
+    private sealed class CategoryPageHost(CategoryItemViewModel category, LibraryMediaItemViewModel mediaItem, CommandHost commandHost)
+    {
+        public CategoryItemViewModel[] Categories => [category];
+        public LibraryMediaItemViewModel[] MediaItems => [mediaItem];
+        public bool HasCategories => true;
+        public bool HasSelectedCategory => true;
+        public bool HasMediaItems => true;
+        public bool IsRefreshing => false;
+        public string CategoryCountText => "1 category";
+        public string SelectedCategoryName => category.Name;
+        public string SelectedCategoryMediaCountText => category.MediaCountText;
+        public string SelectedCategoryEmptyTitle => string.Empty;
+        public string SelectedCategoryEmptyDescription => string.Empty;
+        public string StatusMessage => string.Empty;
+        public CategoryItemViewModel? LastSelectedCategory { get; private set; }
+        public ICommand SelectCategoryCommand => new RelayCommand(parameter => LastSelectedCategory = parameter as CategoryItemViewModel);
+        public ICommand RefreshCommand => commandHost.OpenMediaCommand;
+        public ICommand CreateCategoryCommand => commandHost.OpenMediaCommand;
+        public ICommand ToggleFavoriteCommand => commandHost.ToggleFavoriteCommand;
     }
 }

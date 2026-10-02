@@ -24,6 +24,8 @@ public sealed class CategoryItemViewModel : ViewModelBase
         MovieCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.Movie);
         TutorialCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.Tutorial);
         TvEpisodeCount = assignedMedia.Count(mediaItem => mediaItem.MediaType == MediaType.TvShow);
+        PreviewThumbnailPath = assignedMedia.FirstOrDefault(mediaItem =>
+            !string.IsNullOrWhiteSpace(mediaItem.ThumbnailPath))?.ThumbnailPath;
     }
 
     public Guid Id { get; }
@@ -59,6 +61,9 @@ public sealed class CategoryItemViewModel : ViewModelBase
 
     public int TvEpisodeCount { get; }
 
+    /// <summary>Gets the first available cached-artwork source for the category's collection tile.</summary>
+    public string? PreviewThumbnailPath { get; }
+
     public string MediaCountText => $"{MediaCount} media item{(MediaCount == 1 ? string.Empty : "s")}";
 
     /// <summary>Gets the type breakdown shown with the category's total.</summary>
@@ -68,7 +73,7 @@ public sealed class CategoryItemViewModel : ViewModelBase
         {
             if (MediaCount == 0)
             {
-                return "No media assigned yet";
+                return string.Empty;
             }
 
             var summaries = new List<string>(3);

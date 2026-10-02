@@ -61,6 +61,43 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <Style x:Key="Category.CollectionTile" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Card}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" /></Trigger>
+                        <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Category.MoreButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <Setter Property="Width" Value="{StaticResource Control.Height.Compact}" />
+        <Setter Property="Height" Value="{StaticResource Control.Height.Compact}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="{StaticResource Brush.ArtworkBadge}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" /><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></Trigger>
+            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <sys:Double x:Key="Category.Tile.Width">252</sys:Double>
+    <sys:Double x:Key="Category.Tile.Height">184</sys:Double>
+    <GridLength x:Key="Category.Tile.PreviewHeight">104</GridLength>
+    <Thickness x:Key="Category.Tile.Margin">0,0,14,14</Thickness>
+    <Thickness x:Key="Category.Tile.MoreInset">0,8,8,0</Thickness>
     <Style x:Key="Library.FolderList" TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />

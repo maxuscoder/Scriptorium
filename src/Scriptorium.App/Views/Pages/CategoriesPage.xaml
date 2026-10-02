@@ -4,313 +4,119 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     Loaded="OnLoaded">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,28,32,48" MaxWidth="1200">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="{StaticResource Library.PageInset}" MaxWidth="1400">
             <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Categories" />
-                        <Border
-                            Margin="12,0,0,0"
-                            VerticalAlignment="Center"
-                            Background="{DynamicResource Brush.SurfaceOverlay}"
-                            CornerRadius="{StaticResource CornerRadius.S}"
-                            Padding="9,3">
-                            <TextBlock
-                                Style="{StaticResource Text.Badge}"
-                                Foreground="{DynamicResource Brush.TextPrimary}"
-                                Text="{Binding CategoryCountText}" />
-                        </Border>
-                    </StackPanel>
-                    <TextBlock
-                        Margin="0,6,0,0"
-                        Style="{StaticResource Text.Body}"
-                        Text="Create and organize custom labels for your media library." />
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="Categories" />
+                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource Badge}">
+                        <TextBlock Style="{StaticResource Text.Badge}" Text="{Binding CategoryCountText}" />
+                    </Border>
                 </StackPanel>
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal">
-                    <Button Margin="0,0,8,0" Command="{Binding RefreshCommand}">
-                        <Button.Style>
-                            <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
-                                <Setter Property="Content" Value="Refresh" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                        <Setter Property="Content" Value="Refreshing…" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
+                    <Button Margin="0,0,8,0" Command="{Binding RefreshCommand}" Style="{StaticResource Button.Icon}" ToolTip="Refresh categories" AutomationProperties.Name="Refresh categories">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE72C;" />
                     </Button>
-                    <Button
-                        Command="{Binding CreateCategoryCommand}"
-                        Content="Create category"
-                        Style="{StaticResource Button.Primary}" />
+                    <Button Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />
                 </StackPanel>
             </Grid>
 
-            <Border Margin="0,20,0,0" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" Padding="12">
+            <Border Margin="0,12,0,0" Padding="12,8">
                 <Border.Style>
-                    <Style TargetType="Border">
+                    <Style TargetType="Border" BasedOn="{StaticResource Library.InfoBanner}">
                         <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                <Setter Property="Visibility" Value="Visible" />
-                            </DataTrigger>
-                        </Style.Triggers>
+                        <Style.Triggers><DataTrigger Binding="{Binding IsRefreshing}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style>
                 </Border.Style>
-                <controls:LoadingIndicator Message="Loading categories…" Detail="Updating categories and their assigned media." />
+                <controls:LoadingIndicator Message="Loading categories..." Detail="Updating collections and their media." />
             </Border>
 
-            <TextBlock
-                MinHeight="24"
-                Margin="0,32,0,0"
-                Foreground="{DynamicResource Brush.TextSecondary}"
-                Text="{Binding StatusMessage}" />
+            <TextBlock Margin="0,12,0,0" Text="{Binding StatusMessage}" TextWrapping="Wrap">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers><DataTrigger Binding="{Binding StatusMessage}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
 
-            <StackPanel
-                Margin="0,16,0,0"
-                Visibility="{Binding HasCategories, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Margin="0,28,0,0" Visibility="{Binding HasCategories, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Browse by category" />
-                        <TextBlock
-                            Margin="10,2,0,0"
-                            VerticalAlignment="Center"
-                            Foreground="{DynamicResource Brush.TextMuted}"
-                            Text="Select a category to see its media" />
-                    </StackPanel>
-                    <TextBlock
-                        HorizontalAlignment="Right"
-                        Foreground="{DynamicResource Brush.TextMuted}"
-                        Text="{Binding SelectedCategoryMediaCountText}" />
+                    <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Your collections" />
+                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="Select a collection to browse its media" />
                 </Grid>
-
                 <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Categories}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button
-                                Width="220"
-                                Margin="0,0,12,12"
-                                Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                CommandParameter="{Binding}"
-                                HorizontalContentAlignment="Stretch"
-                                ToolTip="Browse this category">
-                                <Button.Style>
-                                    <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
-                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <Border
-                                        Width="12"
-                                        Height="12"
-                                        Margin="0,0,10,0"
-                                        VerticalAlignment="Center"
-                                        Background="{Binding ColorBrush}"
-                                        CornerRadius="6" />
-                                    <StackPanel Grid.Column="1">
-                                        <TextBlock
-                                            Style="{StaticResource Text.Label}"
-                                            Text="{Binding Name}"
-                                            TextTrimming="CharacterEllipsis" />
-                                        <TextBlock
-                                            Margin="0,3,0,0"
-                                            Style="{StaticResource Text.Metadata}"
-                                            Text="{Binding MediaCountText}" />
-                                        <TextBlock
-                                            Margin="0,3,0,0"
-                                            Foreground="{DynamicResource Brush.TextMuted}"
-                                            Text="{Binding MediaTypeSummaryText}"
-                                            TextTrimming="CharacterEllipsis"
-                                            ToolTip="{Binding MediaTypeSummaryText}" />
-                                    </StackPanel>
-                                </Grid>
-                            </Button>
+                            <Grid Width="{StaticResource Category.Tile.Width}" Height="{StaticResource Category.Tile.Height}" Margin="{StaticResource Category.Tile.Margin}">
+                                <Button Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" ToolTip="Browse this collection">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Category.CollectionTile}">
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" /></DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                    <Grid ClipToBounds="True">
+                                        <Grid.RowDefinitions><RowDefinition Height="{StaticResource Category.Tile.PreviewHeight}" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                        <controls:CategoryArtworkPreview Grid.Row="0" ThumbnailPath="{Binding PreviewThumbnailPath}" Margin="1" />
+                                        <Border Grid.Row="0" Background="{StaticResource Brush.ArtworkScrim}" Opacity="0.34" IsHitTestVisible="False" />
+                                        <StackPanel Grid.Row="1" Margin="14,8,14,9" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource Text.CardTitle}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Margin="0,3,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding MediaCountText}" />
+                                            <TextBlock Margin="0,2,0,0" Text="{Binding MediaTypeSummaryText}" TextTrimming="CharacterEllipsis">
+                                                <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}"><Style.Triggers><DataTrigger Binding="{Binding MediaTypeSummaryText}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <Border Width="3" HorizontalAlignment="Left" Background="{Binding ColorBrush}" CornerRadius="0,0,1,1" IsHitTestVisible="False" />
+                                    </Grid>
+                                </Button>
+                                <Button Panel.ZIndex="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="{StaticResource Category.Tile.MoreInset}" Style="{StaticResource Category.MoreButton}" Click="OnMoreCategoryActionsClick" ToolTip="Category actions" AutomationProperties.Name="Category actions">
+                                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE712;" />
+                                    <Button.ContextMenu>
+                                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                            <MenuItem Header="Rename / change color..." Click="OnEditCategoryClick" Style="{StaticResource Menu.Item}" />
+                                            <Separator />
+                                            <MenuItem Header="Delete category" Click="OnDeleteCategoryClick" Style="{StaticResource Menu.Item}" />
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                </Button>
+                            </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
 
-            <StackPanel
-                Margin="0,20,0,0"
-                Visibility="{Binding HasSelectedCategory, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel Margin="0,30,0,0" Visibility="{Binding HasSelectedCategory, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid>
                     <TextBlock Style="{StaticResource Text.SectionTitle}" Text="{Binding SelectedCategoryName}" />
-                    <TextBlock
-                        HorizontalAlignment="Right"
-                        Foreground="{DynamicResource Brush.TextMuted}">
-                        <TextBlock.Style>
-                            <Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Setter Property="Text" Value="Refreshing…" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding SelectedCategoryMediaCountText}" />
                 </Grid>
-
-                <ItemsControl
-                    Margin="0,16,0,0"
-                    ItemsSource="{Binding MediaItems}"
-                    Style="{StaticResource Library.MediaItems}">
+                <ItemsControl Margin="0,12,0,0" ItemsSource="{Binding MediaItems}" Style="{StaticResource Library.MediaItems}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <controls:MediaCard
-                                CardWidth="{StaticResource MediaCard.Width}"
-                                Margin="{StaticResource MediaCard.Margin}"
-                                CategoryColor="{Binding CategoryColor}"
-                                CategoryName="{Binding CategoryName}"
-                                FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                FavoriteParameter="{Binding}"
-                                FallbackGlyph="{Binding TypeGlyph}"
-                                HasManualMetadata="{Binding HasManualMetadata}"
-                                HasPlaybackProgress="{Binding HasPlaybackProgress}"
-                                IsFavorite="{Binding IsFavorite}"
-                                IsMissing="{Binding IsMissing}"
-                                PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}"
-                                PlaybackProgressText="{Binding PlaybackProgressText}"
-                                Metadata="{Binding CardMetadata}" FileName="{Binding FileName}"
-                                Status="{Binding Availability}"
-                                ThumbnailPath="{Binding ThumbnailPath}"
-                                Title="{Binding Title}"
-                                TypeLabel="{Binding MediaType}" />
+                            <controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" CategoryColor="{Binding CategoryColor}" CategoryName="{Binding CategoryName}" FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" FavoriteParameter="{Binding}" FallbackGlyph="{Binding TypeGlyph}" HasManualMetadata="{Binding HasManualMetadata}" HasPlaybackProgress="{Binding HasPlaybackProgress}" IsFavorite="{Binding IsFavorite}" IsMissing="{Binding IsMissing}" PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" PlaybackProgressText="{Binding PlaybackProgressText}" Metadata="{Binding CardMetadata}" FileName="{Binding FileName}" Status="{Binding Availability}" ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="{Binding MediaType}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
-                <StackPanel HorizontalAlignment="Center" MaxWidth="440">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasMediaItems}" Value="False">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <TextBlock
-                        HorizontalAlignment="Center"
-                        Style="{StaticResource Text.EmptyStateTitle}"
-                        Text="{Binding SelectedCategoryEmptyTitle}" />
-                    <TextBlock
-                        Margin="0,10,0,0"
-                        Style="{StaticResource Text.Body.Center}"
-                        Text="{Binding SelectedCategoryEmptyDescription}" />
+                <StackPanel HorizontalAlignment="Center" MaxWidth="440" Margin="0,24,0,0">
+                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasMediaItems}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.EmptyStateTitle}" Text="{Binding SelectedCategoryEmptyTitle}" />
+                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding SelectedCategoryEmptyDescription}" />
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel Margin="0,8,0,0" Visibility="{Binding HasCategories, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TextBlock Style="{StaticResource Text.SectionTitle}" Text="Your categories" />
-                <ItemsControl Margin="0,16,0,0" ItemsSource="{Binding Categories}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border
-                                Margin="0,0,0,12"
-                                Padding="18"
-                                Background="{DynamicResource Brush.Surface}"
-                                BorderBrush="{DynamicResource Brush.Border}"
-                                BorderThickness="1"
-                                CornerRadius="{StaticResource CornerRadius.M}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <controls:CategoryColorPicker
-                                        Margin="0,0,14,0"
-                                        SelectedColor="{Binding Color, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                    <StackPanel Grid.Column="1">
-                                        <TextBox
-                                            Style="{StaticResource Input.TextBox}"
-                                            Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                            ToolTip="Category name" />
-                                        <TextBlock
-                                            Margin="0,6,0,0"
-                                            Style="{StaticResource Text.Metadata}"
-                                            Text="{Binding MediaCountText}" />
-                                        <TextBlock
-                                            Margin="0,3,0,0"
-                                            Foreground="{DynamicResource Brush.TextMuted}"
-                                            Text="{Binding MediaTypeSummaryText}"
-                                            TextTrimming="CharacterEllipsis"
-                                            ToolTip="{Binding MediaTypeSummaryText}" />
-                                    </StackPanel>
-                                    <StackPanel
-                                        Grid.Column="2"
-                                        Margin="20,0,0,0"
-                                        VerticalAlignment="Center"
-                                        Orientation="Horizontal">
-                                        <Button
-                                            Margin="0,0,8,0"
-                                            Command="{Binding DataContext.RenameCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Content="Save"
-                                            Style="{StaticResource Button.Secondary}" />
-                                        <Button
-                                            Command="{Binding DataContext.DeleteCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Content="Delete"
-                                            Style="{StaticResource Button.Destructive}" />
-                                    </StackPanel>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-
-            <StackPanel
-                MaxWidth="520"
-                Margin="0,44,0,0"
-                HorizontalAlignment="Center">
+            <StackPanel MaxWidth="520" Margin="0,64,0,0" HorizontalAlignment="Center">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers>
-                            <MultiDataTrigger>
-                                <MultiDataTrigger.Conditions>
-                                    <Condition Binding="{Binding HasCategories}" Value="False" />
-                                    <Condition Binding="{Binding IsRefreshing}" Value="False" />
-                                </MultiDataTrigger.Conditions>
-                                <Setter Property="Visibility" Value="Visible" />
-                            </MultiDataTrigger>
-                        </Style.Triggers>
+                        <Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding HasCategories}" Value="False" /><Condition Binding="{Binding IsRefreshing}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock
-                    HorizontalAlignment="Center"
-                    Style="{StaticResource Text.EmptyStateTitle}"
-                    Text="No categories yet" />
-                <TextBlock
-                    Margin="0,10,0,0"
-                    Style="{StaticResource Text.Body.Center}"
-                    Text="Add your first category above to start organizing media beyond its type." />
+                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.EmptyStateTitle}" Text="No categories yet" />
+                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body.Center}" Text="Create a collection to bring related movies, shows, and tutorials together." />
+                <Button Margin="0,18,0,0" HorizontalAlignment="Center" Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />
             </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
-
