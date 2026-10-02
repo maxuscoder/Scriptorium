@@ -1,0 +1,108 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Buttons.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+    <!-- Shell-only tokens. Shared controls and page content retain the Phase 1 system. -->
+    <sys:Double x:Key="Shell.Sidebar.Width">232</sys:Double>
+    <sys:Double x:Key="Shell.Sidebar.CompactWidth">72</sys:Double>
+    <sys:Double x:Key="Shell.Sidebar.CompactThreshold">1000</sys:Double>
+    <sys:Double x:Key="Shell.Brand.Height">56</sys:Double>
+    <sys:Double x:Key="Shell.Indicator.Width">3</sys:Double>
+    <sys:Double x:Key="Shell.Indicator.Height">16</sys:Double>
+    <Thickness x:Key="Shell.Padding">12,8,12,12</Thickness>
+    <Thickness x:Key="Shell.Brand.Margin">8,0,0,12</Thickness>
+    <Thickness x:Key="Shell.Item.Padding">14,0</Thickness>
+    <Thickness x:Key="Shell.Item.Margin">0,2</Thickness>
+    <Thickness x:Key="Shell.Label.Margin">12,0,0,0</Thickness>
+    <Thickness x:Key="Shell.Settings.Margin">0,12,0,0</Thickness>
+    <Thickness x:Key="Shell.Settings.Padding">0,12,0,0</Thickness>
+    <Thickness x:Key="Shell.Settings.Divider">0,1,0,0</Thickness>
+    <CornerRadius x:Key="Shell.Item.Radius">8</CornerRadius>
+    <CornerRadius x:Key="Shell.Indicator.Radius">2</CornerRadius>
+    <FontFamily x:Key="Shell.FontFamily.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <Duration x:Key="Shell.Motion.Hover">0:0:0.12</Duration>
+    <Duration x:Key="Shell.Motion.Selection">0:0:0.15</Duration>
+
+    <Style x:Key="Shell.NavigationItem" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="Height" Value="{StaticResource Control.Height.Default}" />
+        <Setter Property="Padding" Value="{StaticResource Shell.Item.Padding}" />
+        <Setter Property="Margin" Value="{StaticResource Shell.Item.Margin}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="FontWeight" Value="Normal" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid Background="Transparent">
+                        <Border x:Name="Hover" CornerRadius="{StaticResource Shell.Item.Radius}"
+                            Background="{DynamicResource Brush.SurfaceOverlay}" Opacity="0"
+                            behaviors:OpacityTransition.Duration="{StaticResource Shell.Motion.Hover}" />
+                        <Border x:Name="Selected" CornerRadius="{StaticResource Shell.Item.Radius}"
+                            Background="{DynamicResource Brush.NavigationSelected}" Opacity="0"
+                            behaviors:OpacityTransition.Duration="{StaticResource Shell.Motion.Selection}" />
+                        <Border x:Name="Pressed" CornerRadius="{StaticResource Shell.Item.Radius}"
+                            Background="{DynamicResource Brush.SurfacePressed}" Opacity="0"
+                            behaviors:OpacityTransition.Duration="{StaticResource Shell.Motion.Hover}" />
+                        <Border x:Name="Indicator" HorizontalAlignment="Left" VerticalAlignment="Center"
+                            Width="{StaticResource Shell.Indicator.Width}" Height="{StaticResource Shell.Indicator.Height}"
+                            CornerRadius="{StaticResource Shell.Indicator.Radius}" Background="{DynamicResource Brush.Accent}"
+                            Opacity="0" behaviors:OpacityTransition.Duration="{StaticResource Shell.Motion.Selection}" />
+                        <ContentPresenter Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Hover" Property="behaviors:OpacityTransition.Target" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Pressed" Property="behaviors:OpacityTransition.Target" Value="1" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter TargetName="Selected" Property="behaviors:OpacityTransition.Target" Value="1" />
+                            <Setter TargetName="Indicator" Property="behaviors:OpacityTransition.Target" Value="1" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsCompact, RelativeSource={RelativeSource AncestorType={x:Type controls:Sidebar}}}" Value="True">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Shell.NavigationIcon" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource Shell.FontFamily.Icons}" />
+        <Setter Property="FontSize" Value="{StaticResource Icon.Size.Default}" />
+        <Setter Property="Width" Value="{StaticResource Icon.Size.Default}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Label}" Value="Home"><Setter Property="Text" Value="&#xE80F;" /></DataTrigger>
+            <DataTrigger Binding="{Binding Label}" Value="Library"><Setter Property="Text" Value="&#xE8F1;" /></DataTrigger>
+            <DataTrigger Binding="{Binding Label}" Value="Favorites"><Setter Property="Text" Value="&#xE734;" /></DataTrigger>
+            <DataTrigger Binding="{Binding Label}" Value="Categories"><Setter Property="Text" Value="&#xE8EC;" /></DataTrigger>
+            <DataTrigger Binding="{Binding Label}" Value="Settings"><Setter Property="Text" Value="&#xE713;" /></DataTrigger>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Shell.ExpandedText" TargetType="TextBlock" BasedOn="{StaticResource Text.Navigation}">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="{StaticResource Shell.Label.Margin}" />
+        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsCompact, RelativeSource={RelativeSource AncestorType={x:Type controls:Sidebar}}}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+</ResourceDictionary>

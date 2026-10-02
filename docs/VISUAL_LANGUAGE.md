@@ -124,3 +124,65 @@ errors, tests live light/dark brush replacement, and verifies command invocation
 It does not start Scriptorium or access the user's database. A generated
 fluent-cinema-resources.png in the test project's ignored build output supports
 visual inspection. Playback/fullscreen continuity is verified afterward.
+
+## Phase 2: native shell
+
+MainWindow uses the real Windows non-client title bar (SingleBorderWindow,
+CanResize, no per-pixel transparency). Windows supplies the small application icon,
+caption, caption buttons, system menu, Snap support, drag/resize hit testing and
+maximized work-area behavior. There is no WindowChrome replacement or manual
+WM_GETMINMAXINFO override. The window's actual outer corners belong to DWM.
+
+WindowBackdropController decorates the HWND using documented DWM attributes:
+DWMWA_USE_IMMERSIVE_DARK_MODE (20), DWMWA_WINDOW_CORNER_PREFERENCE (33, ROUND),
+and DWMWA_SYSTEMBACKDROP_TYPE (38, MAINWINDOW). Mica requires Windows 11 build
+22621 or newer; rounded corners require build 22000. Unsupported attributes are
+best effort: failed HRESULTs never prevent the window from opening. Mica also
+requires transparency effects, a local session and high contrast to be off.
+DwmExtendFrameIntoClientArea extends the backdrop through the transparent sidebar;
+content pages retain their opaque background. Failure to enable either backdrop
+or extended frame resets the backdrop and uses Brush.SurfaceHeader. DWM can
+independently simplify its material for power or inactive-window conditions.
+
+The controller refreshes on preference, theme and composition changes, tracks
+light/dark app brushes through a dynamic-resource dependency property, and removes
+its HWND hook and system-preference subscription when the window closes. It does
+not intercept navigation, input, playback, DPI changes or sizing. The application
+manifest requests PerMonitorV2 with PerMonitor/legacy DPI declarations as fallback;
+WPF owns scaling, and shell dimensions remain device-independent pixels.
+
+Shell.xaml groups the shell geometry, Fluent/MDL2 icon fallback, styles and motion.
+Its explicit Buttons.xaml dependency avoids deferred StaticResource lookup failures
+inside navigation templates. Controls.xaml merges this dictionary first. Sidebar
+width is 232 DIPs, switching to 72 below a 1000-DIP window width. Settings is docked
+at the bottom; primary navigation scrolls independently if space is constrained.
+There are no changes to ShellViewModel, NavigationItem, commands or page templates.
+The existing English navigation labels select the five icon glyphs in the style;
+if localization is introduced, use a stable presentation key for this mapping.
+
+Brush.NavigationSelected is white at 4% opacity in dark mode and black at 4% in
+light mode. Orange marks selected icons and the 3-DIP indicator. OpacityTransition
+animates independent overlays (120 ms hover/press, 150 ms selection), using the
+shared easing and respecting Windows animation/high-contrast preferences. There
+are no navigation scale or layout animations. Existing keyboard focus and disabled
+states are inherited from Button.Base.
+
+ShellResourceChecks runs inside the existing single WPF test Application. It
+resolves the real ShellViewModel, invokes every actual sidebar Button command at
+1200, 800 and 1000 DIPs, checks the content binding and selected item, traces binding
+errors, verifies native window style flags and minimize/maximize/restore, and tests
+live light/dark theme changes. It uses isolated paths and does not start App or scan
+media. Fallback eligibility is tested for Windows 10, early Windows 11, modern
+Windows 11, remote sessions, high contrast and disabled transparency. Client-only
+render previews are written to ignored test output as shell-expanded.png and
+shell-compact.png. These previews do not capture DWM's native title bar or Mica.
+
+Manual release checks still needed: native caption hover/Snap menu, wallpaper-based
+Mica appearance with transparency on/off, dragging between monitors with different
+DPI, and fallback appearance on Windows 10/early Windows 11. The desktop automation
+helper was unavailable during this phase; no native screenshot was captured.
+
+API references:
+- https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwm_systembackdrop_type
+- https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
+- https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmextendframeintoclientarea

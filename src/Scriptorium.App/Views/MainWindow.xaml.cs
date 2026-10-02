@@ -1,168 +1,46 @@
-using System;
-using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
+using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 
 namespace Scriptorium.App.Views;
 
 public partial class MainWindow : Window
 {
-    private const int WmGetMinMaxInfo = 0x0024;
-    private const uint MonitorDefaultToNearest = 0x00000002;
+    // A dynamic-resource DP keeps native chrome in sync with theme changes.
+    public static readonly DependencyProperty ChromeBrushProperty = DependencyProperty.Register(
+        nameof(ChromeBrush), typeof(Brush), typeof(MainWindow),
+        new PropertyMetadata(null, (owner, _) => ((MainWindow)owner)._backdrop?.Refresh()));
+    private WindowBackdropController? _backdrop;
+
+    public Brush? ChromeBrush
+    {
+        get => (Brush?)GetValue(ChromeBrushProperty);
+        set => SetValue(ChromeBrushProperty, value);
+    }
 
     public MainWindow(ShellViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
-        SourceInitialized += OnSourceInitialized;
-    }
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        UpdateAdaptiveChrome(ActualWidth);
-        UpdateWindowFrame();
-        UpdateMaximizeRestoreGlyph();
-    }
-
-    private void OnSourceInitialized(object? sender, EventArgs e)
-    {
-        var source = (HwndSource)PresentationSource.FromVisual(this)!;
-        source.AddHook(WindowProcedure);
-    }
-
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateAdaptiveChrome(e.NewSize.Width);
-    }
-
-    private void OnMinimizeClicked(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
-
-    private void OnMaximizeRestoreClicked(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
-
-    private void OnStateChanged(object? sender, EventArgs e)
-    {
-        UpdateWindowFrame();
-        UpdateMaximizeRestoreGlyph();
-    }
-
-    private void UpdateWindowFrame()
-    {
-        var isMaximized = WindowState == WindowState.Maximized;
-        WindowFrame.BorderThickness = isMaximized ? new Thickness(0) : new Thickness(1);
-        WindowFrame.CornerRadius = isMaximized ? new CornerRadius(0) : new CornerRadius(8);
-        UpdateWindowFrameClip();
-    }
-
-    private void OnWindowFrameSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateWindowFrameClip();
-    }
-
-    private void UpdateWindowFrameClip()
-    {
-        var radius = WindowFrame.CornerRadius.TopLeft;
-        WindowFrame.Clip = radius > 0 && WindowFrame.ActualWidth > 0 && WindowFrame.ActualHeight > 0
-            ? new RectangleGeometry(new Rect(0, 0, WindowFrame.ActualWidth, WindowFrame.ActualHeight), radius, radius)
-            : null;
-    }
-
-    private void OnCloseClicked(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
-    private void UpdateMaximizeRestoreGlyph()
-    {
-        var isMaximized = WindowState == WindowState.Maximized;
-        MaximizeGlyph.Visibility = isMaximized ? Visibility.Collapsed : Visibility.Visible;
-        RestoreGlyph.Visibility = isMaximized ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private void UpdateAdaptiveChrome(double width)
-    {
-        var isCompact = width < 1060;
-        SidebarNavigation.IsCompact = isCompact;
-        NavigationColumn.Width = new GridLength(isCompact ? 76 : 256);
-    }
-
-    private static IntPtr WindowProcedure(
-        IntPtr hwnd,
-        int message,
-        IntPtr wParam,
-        IntPtr lParam,
-        ref bool handled)
-    {
-        if (message == WmGetMinMaxInfo)
+        SetResourceReference(ChromeBrushProperty, "Brush.SurfaceHeader");
+        SourceInitialized += (_, _) =>
         {
-            UpdateMaximizedSize(hwnd, lParam);
-        }
-
-        return IntPtr.Zero;
+            _backdrop = new WindowBackdropController(this);
+            _backdrop.Refresh();
+        };
+        Closed += (_, _) => _backdrop?.Dispose();
     }
 
-    private static void UpdateMaximizedSize(IntPtr hwnd, IntPtr lParam)
+    private void OnLoaded(object sender, RoutedEventArgs e) => UpdateSidebar();
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSidebar();
+
+    private void UpdateSidebar()
     {
-        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
-        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-        GetMonitorInfo(monitor, ref monitorInfo);
-
-        var minMaxInfo = Marshal.PtrToStructure<MinMaxInfo>(lParam);
-        minMaxInfo.MaxPosition.X = monitorInfo.WorkArea.Left - monitorInfo.MonitorArea.Left;
-        minMaxInfo.MaxPosition.Y = monitorInfo.WorkArea.Top - monitorInfo.MonitorArea.Top;
-        minMaxInfo.MaxSize.X = monitorInfo.WorkArea.Right - monitorInfo.WorkArea.Left;
-        minMaxInfo.MaxSize.Y = monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top;
-        Marshal.StructureToPtr(minMaxInfo, lParam, true);
-    }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Point
-    {
-        public int X;
-        public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MinMaxInfo
-    {
-        public Point Reserved;
-        public Point MaxSize;
-        public Point MaxPosition;
-        public Point MinTrackSize;
-        public Point MaxTrackSize;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Rectangle
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct MonitorInfo
-    {
-        public int Size;
-        public Rectangle MonitorArea;
-        public Rectangle WorkArea;
-        public uint Flags;
+        if (SidebarNavigation is null) return;
+        var compact = ActualWidth < (double)FindResource("Shell.Sidebar.CompactThreshold");
+        SidebarNavigation.IsCompact = compact;
+        NavigationColumn.Width = new GridLength((double)FindResource(
+            compact ? "Shell.Sidebar.CompactWidth" : "Shell.Sidebar.Width"));
     }
 }

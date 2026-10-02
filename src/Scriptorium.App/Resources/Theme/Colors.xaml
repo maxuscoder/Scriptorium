@@ -6,6 +6,8 @@
     <Color x:Key="Color.SurfaceHeader">#101012</Color>
     <Color x:Key="Color.SurfaceElevated">#17171A</Color>
     <Color x:Key="Color.SurfaceOverlay">#1E1E22</Color>
+    <Color x:Key="Color.NavigationSelected">#0AFFFFFF</Color>
+    <SolidColorBrush x:Key="Brush.NavigationSelected" Color="{StaticResource Color.NavigationSelected}" />
     <Color x:Key="Color.SurfacePressed">#26262B</Color>
     <Color x:Key="Color.Border">#12FFFFFF</Color>
     <Color x:Key="Color.BorderStrong">#1CFFFFFF</Color>

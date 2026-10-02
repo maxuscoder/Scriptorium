@@ -34,6 +34,7 @@ public sealed class ThemeService : IThemeService
         ["AccentStrong"] = Parse("#B34800"),
         ["SelectionSurface"] = Parse("#E9E9E9"),
         ["NavigationHover"] = Parse("#F0F0F0"),
+        ["NavigationSelected"] = Parse("#0A000000"),
         ["Success"] = Parse("#137C49"),
         ["SuccessSurface"] = Parse("#E8F4EC"),
         ["Warning"] = Parse("#9A6000"),
