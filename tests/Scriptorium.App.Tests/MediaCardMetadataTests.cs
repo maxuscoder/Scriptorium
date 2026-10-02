@@ -10,9 +10,9 @@ public sealed class MediaCardMetadataTests
     public void Cards_use_known_media_metadata_and_never_filenames_or_unknown_placeholders()
     {
         var movie = new MediaItem { Title = "Interstellar", Path = @"C:\Media\interstellar.1080p.mkv", MediaType = MediaType.Movie, RuntimeSeconds = 10140 };
-        Assert.Equal("Movie · 2h 49m", new MovieItemViewModel(movie).CardMetadata);
-        Assert.Equal("Movie · 2h 49m", new LibraryMediaItemViewModel(movie).CardMetadata);
-        Assert.Equal("Movie · 2h 49m", new SearchResultViewModel(movie, "Inter").CardMetadata);
+        Assert.Equal("Movie Â· 2h 49m", new MovieItemViewModel(movie).CardMetadata);
+        Assert.Equal("Movie Â· 2h 49m", new LibraryMediaItemViewModel(movie).CardMetadata);
+        Assert.Equal("Movie Â· 2h 49m", new SearchResultViewModel(movie, "Inter").CardMetadata);
         movie.RuntimeSeconds = null;
         Assert.Equal("Movie", new MovieItemViewModel(movie).CardMetadata);
         Assert.Equal("interstellar.1080p.mkv", new MovieItemViewModel(movie).FileName);
@@ -22,9 +22,9 @@ public sealed class MediaCardMetadataTests
     public void Episodes_show_episode_numbers_and_remaining_time_only_when_known()
     {
         var episode = new MediaItem { Title = "Episode", Path = "episode.mkv", MediaType = MediaType.TvShow, SeasonNumber = 1, EpisodeNumber = 2, RuntimeSeconds = 1800, PlaybackPositionSeconds = 420 };
-        Assert.Equal("S01 E02 · 23m remaining", MediaCardMetadata.For(episode));
+        Assert.Equal("S01 E02 Â· 23m remaining", MediaCardMetadata.For(episode));
         episode.IsCompleted = true;
-        Assert.Equal("S01 E02 · 30m", MediaCardMetadata.For(episode));
+        Assert.Equal("S01 E02 Â· 30m", MediaCardMetadata.For(episode));
         episode.RuntimeSeconds = null;
         episode.EpisodeNumber = null;
         Assert.Equal("TV show", MediaCardMetadata.For(episode));

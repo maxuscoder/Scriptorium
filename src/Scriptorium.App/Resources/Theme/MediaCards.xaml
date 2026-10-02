@@ -9,11 +9,14 @@
     <sys:Double x:Key="MediaCard.Shadow.Opacity">0.24</sys:Double>
     <sys:Double x:Key="MediaCard.Progress.Height">3</sys:Double>
     <Duration x:Key="MediaCard.Motion.Duration">0:0:0.18</Duration>
+    <sys:Int32 x:Key="MediaCard.ToolTip.Delay">800</sys:Int32>
+    <sys:Int32 x:Key="MediaCard.ToolTip.Duration">6000</sys:Int32>
     <Thickness x:Key="MediaCard.Margin">4,4,16,16</Thickness>
     <Thickness x:Key="MediaCard.Copy.Margin">0,12,0,4</Thickness>
     <Thickness x:Key="MediaCard.Copy.ListMargin">16,0,0,0</Thickness>
     <Thickness x:Key="MediaCard.Metadata.Margin">0,4,0,0</Thickness>
     <Thickness x:Key="MediaCard.Actions.Margin">8</Thickness>
+    <Thickness x:Key="MediaCard.Shadow.Inset">12,8,12,8</Thickness>
     <Thickness x:Key="MediaCard.Action.Gap">0,0,8,0</Thickness>
     <SolidColorBrush x:Key="MediaCard.Brush.Progress" Color="#FF9D00" />
     <SolidColorBrush x:Key="MediaCard.Brush.Action" Color="#D917171A" />

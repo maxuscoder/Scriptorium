@@ -462,6 +462,18 @@ public partial class MediaCard : UserControl
         }
     }
 
+    private void OnTitleToolTipOpening(object sender, ToolTipEventArgs e) =>
+        e.Handled = sender is not TextBlock title || !IsTitleTruncated(title);
+
+    internal bool IsTitleTruncated(TextBlock title)
+    {
+        if (title.ActualWidth <= 0 || string.IsNullOrWhiteSpace(Title)) return false;
+        var measured = new FormattedText(Title, System.Globalization.CultureInfo.CurrentUICulture,
+            title.FlowDirection, new Typeface(title.FontFamily, title.FontStyle, title.FontWeight, title.FontStretch),
+            title.FontSize, title.Foreground, VisualTreeHelper.GetDpi(title).PixelsPerDip);
+        return measured.WidthIncludingTrailingWhitespace > title.ActualWidth + 0.5;
+    }
+
     protected override void OnContextMenuOpening(ContextMenuEventArgs e)
     {
         if (!HasActions) e.Handled = true;

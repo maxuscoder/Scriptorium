@@ -144,9 +144,9 @@ internal static class MediaCardResourceChecks
         SaveImage(art, thumbnail, 640, 360);
         var cards = new[]
         {
-            new MediaCard { Title = "Interstellar", Metadata = "Movie · 2h 49m", FileName = "Interstellar.1080p.mkv", ActionCommand = host.OpenMediaCommand, ActionText = "Open movie", FavoriteCommand = host.ToggleFavoriteCommand },
-            new MediaCard { Title = "Married With Children", Metadata = "S01 E02 · 23m remaining", HasPlaybackProgress = true, PlaybackProgressPercentage = 42, ActionCommand = host.OpenMediaCommand, FavoriteCommand = host.ToggleFavoriteCommand, IsFavorite = true },
-            new MediaCard { Title = "Certified Cybersecurity", Metadata = "Tutorial · 133 lessons", ThumbnailPath = "missing-artwork.png", ActionCommand = host.OpenMediaCommand, ActionText = "Open course" }
+            new MediaCard { Title = "Interstellar", Metadata = "Movie Â· 2h 49m", FileName = "Interstellar.1080p.mkv", ActionCommand = host.OpenMediaCommand, ActionText = "Open movie", FavoriteCommand = host.ToggleFavoriteCommand },
+            new MediaCard { Title = "Married With Children", Metadata = "S01 E02 Â· 23m remaining", HasPlaybackProgress = true, PlaybackProgressPercentage = 42, ActionCommand = host.OpenMediaCommand, FavoriteCommand = host.ToggleFavoriteCommand, IsFavorite = true },
+            new MediaCard { Title = "Certified Cybersecurity", Metadata = "Tutorial Â· 133 lessons", ThumbnailPath = "missing-artwork.png", ActionCommand = host.OpenMediaCommand, ActionText = "Open course" }
         };
         foreach (var card in cards) { card.Margin = (Thickness)resources["MediaCard.Margin"]; panel.Children.Add(card); }
         await StaTest.DrainDispatcherAsync();
@@ -164,6 +164,16 @@ internal static class MediaCardResourceChecks
         Assert.False(cards[0].ShowPlaybackProgress);
         Assert.True(cards[1].ShowPlaybackProgress);
         await StaTest.DrainDispatcherAsync();
+        Assert.Null(cards[0].ToolTip); // No artwork/card tooltip or raw filename popup.
+        var titleBlock = Descendants<TextBlock>(cards[0]).Single(block => block.Text == "Interstellar" && block.Visibility == Visibility.Visible);
+        Assert.False(cards[0].IsTitleTruncated(titleBlock));
+        Assert.Equal(800, ToolTipService.GetInitialShowDelay(titleBlock));
+        cards[0].Title = "A long media title that will not fit inside this artwork card";
+        await StaTest.DrainDispatcherAsync();
+        Assert.True(cards[0].IsTitleTruncated(titleBlock));
+        Assert.Equal(cards[0].Title, titleBlock.ToolTip);
+        cards[0].Title = "Interstellar";
+        await StaTest.DrainDispatcherAsync();
         SaveImage(canvas, Path.Combine(AppContext.BaseDirectory, "media-cards-rest.png"), (int)canvas.ActualWidth, (int)canvas.ActualHeight);
         // Keyboard focus reveals exactly the same interactions as pointer hover.
         cards[1].Focus();
@@ -179,6 +189,8 @@ internal static class MediaCardResourceChecks
         transform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
         Assert.Equal(measured, cards[1].DesiredSize);
         Assert.Equal(1, ((Grid)cards[1].FindName("Actions")).Opacity);
+        var favoriteIcon = Descendants<TextBlock>((Button)cards[1].FindName("FavoriteAction")).Single(block => block.Text == "\uE735");
+        Assert.Equal(resources["MediaCard.FontFamily.Icons"], favoriteIcon.FontFamily);
         SaveImage(canvas, Path.Combine(AppContext.BaseDirectory, "media-cards-engaged.png"), (int)canvas.ActualWidth, (int)canvas.ActualHeight);
         panel.Children.Clear();
         await StaTest.DrainDispatcherAsync();

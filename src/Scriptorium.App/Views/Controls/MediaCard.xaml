@@ -8,26 +8,13 @@
         <Style x:Key="Card.Title" TargetType="TextBlock" BasedOn="{StaticResource Text.CardTitle}">
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="{StaticResource MediaCard.ToolTip.Delay}" />
+            <Setter Property="ToolTipService.BetweenShowDelay" Value="{StaticResource MediaCard.ToolTip.Delay}" />
+            <Setter Property="ToolTipService.ShowDuration" Value="{StaticResource MediaCard.ToolTip.Duration}" />
+            <Setter Property="ToolTip" Value="{Binding Title, ElementName=Root}" />
+            <EventSetter Event="ToolTipOpening" Handler="OnTitleToolTipOpening" />
         </Style>
     </UserControl.Resources>
-    <UserControl.ToolTip>
-        <ToolTip DataContext="{Binding PlacementTarget, RelativeSource={RelativeSource Self}}">
-            <StackPanel>
-                <TextBlock Text="{Binding Title}" Style="{StaticResource Text.Label}" />
-                <TextBlock Text="{Binding FileName}" TextWrapping="Wrap" MaxWidth="{StaticResource Control.MaxWidth.ToolTip}">
-                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
-                        <Style.Triggers><DataTrigger Binding="{Binding FileName}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
-                    </Style></TextBlock.Style>
-                </TextBlock>
-                <TextBlock Text="File unavailable" Foreground="{DynamicResource Brush.Warning}">
-                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers><DataTrigger Binding="{Binding IsMissing}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-                    </Style></TextBlock.Style>
-                </TextBlock>
-            </StackPanel>
-        </ToolTip>
-    </UserControl.ToolTip>
     <UserControl.ContextMenu>
         <ContextMenu DataContext="{Binding PlacementTarget, RelativeSource={RelativeSource Self}}" Opened="OnMenuOpened" Closed="OnMenuClosed">
             <MenuItem Header="{Binding DisplayActionText}" Command="{Binding ActionCommand}" CommandParameter="{Binding ActionParameter}">
@@ -54,7 +41,7 @@
                     <Setter Property="Grid.ColumnSpan" Value="1" /><Setter Property="Width" Value="{StaticResource MediaCard.ListArtworkWidth}" />
                 </DataTrigger></Style.Triggers>
             </Style></Grid.Style>
-            <Border x:Name="ArtworkShadow" CornerRadius="{StaticResource Radius.Card}" Background="{StaticResource MediaCard.Brush.Fallback}" />
+            <Border x:Name="ArtworkShadow" Margin="{StaticResource MediaCard.Shadow.Inset}" CornerRadius="{StaticResource Radius.Card}" Background="{StaticResource MediaCard.Brush.Fallback}" />
             <Grid x:Name="Artwork" SizeChanged="OnArtworkSizeChanged">
                 <Border Background="{StaticResource MediaCard.Brush.Fallback}" />
                 <Image x:Name="ArtworkImage" Stretch="UniformToFill" Source="{Binding ThumbnailSource, ElementName=Root}" ImageFailed="OnThumbnailImageFailed"
@@ -136,3 +123,4 @@
         </StackPanel>
     </Grid>
 </UserControl>
+
