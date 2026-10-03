@@ -37,11 +37,22 @@ public partial class LibraryPage : UserControl
 
     private void OnPagePreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
+        // Popup content has a separate visual tree and scrolls independently of the page.
+        if (e.OriginalSource is Visual source && source != this && !IsAncestorOf(source))
+        {
+            return;
+        }
+
         CloseOpenDropdowns();
     }
 
     private void OnPageScrollChanged(object sender, ScrollChangedEventArgs e)
     {
+        if (e.OriginalSource is Visual source && source != this && !IsAncestorOf(source))
+        {
+            return;
+        }
+
         if (e.VerticalChange != 0 || e.HorizontalChange != 0)
         {
             CloseOpenDropdowns();

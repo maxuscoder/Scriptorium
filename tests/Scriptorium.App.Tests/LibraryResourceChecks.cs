@@ -7,6 +7,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.EntityFrameworkCore;
@@ -128,6 +129,8 @@ internal static class LibraryResourceChecks
             Assert.True(vm.ShowFavoritesOnly);
             vm.ClearFiltersCommand.Execute(null);
             await Settle(vm);
+
+            await VerifyFilterSheetAsync(toolbar, vm, window);
 
             var sort = (ComboBox)toolbar.FindName("SortBox");
             foreach (var option in vm.SortOrders)
@@ -388,6 +391,141 @@ internal static class LibraryResourceChecks
     }
 
     private static IEnumerable<object> Cards(LibraryPageViewModel vm) => vm.BrowserRows.OfType<LibraryBrowserCardsRow>().SelectMany(row => row.Cards);
+    private static async Task VerifyFilterSheetAsync(LibraryToolbar toolbar, LibraryPageViewModel vm, Window window)
+    {
+        var toggle = (ToggleButton)toolbar.FindName("FiltersButton");
+        var popup = (Popup)toolbar.FindName("FilterPopup");
+        var panel = (LibraryFilterPanel)popup.Child;
+        toggle.IsChecked = true;
+        await Settle(vm);
+        Assert.Same(vm, panel.DataContext);
+        Assert.Empty(Descendants<Expander>(panel));
+        Assert.InRange(panel.ActualHeight, 1, 450);
+        var mediaChoices = Descendants<CheckBox>(panel)
+            .Where(check => check.DataContext is LibraryFilterOptionViewModel<MediaType>).ToArray();
+        Assert.Equal(3, mediaChoices.Length);
+        var movie = mediaChoices.Single(check => ((LibraryFilterOptionViewModel<MediaType>)check.DataContext).Value == MediaType.Movie);
+        var category = Descendants<CheckBox>(panel).Single(check => check.DataContext is LibraryFilterOptionViewModel<Guid>);
+        var favorite = Descendants<CheckBox>(panel).Single(check => Equals(check.Content, "Favorites only"));
+        var playback = Descendants<ComboBox>(panel).Single(combo => AutomationProperties.GetName(combo) == "Playback");
+        var completion = Descendants<ComboBox>(panel).Single(combo => AutomationProperties.GetName(combo) == "Completion");
+        var cancel = Descendants<Button>(panel).Single(button => Equals(button.Content, "Cancel"));
+        var apply = Descendants<Button>(panel).Single(button => Equals(button.Content, "Apply filters"));
+        var clear = Descendants<Button>(panel).Single(button => Equals(button.Content, "Clear all"));
+        Assert.Same(vm.ClearFiltersCommand, clear.Command);
+        Assert.Equal(apply.ActualHeight, cancel.ActualHeight);
+        Assert.Equal(apply.ActualHeight, clear.ActualHeight);
+
+        movie.IsChecked = category.IsChecked = favorite.IsChecked = true;
+        playback.SelectedValue = PlaybackFilter.Watched;
+        completion.SelectedValue = CompletionFilter.Completed;
+        await Settle(vm);
+        Assert.True(vm.MediaTypeFilters.Single(option => option.Value == MediaType.Movie).IsSelected);
+        Assert.True(vm.CategoryFilters.Single().IsSelected);
+        Assert.True(vm.ShowFavoritesOnly);
+        Assert.Equal(PlaybackFilter.Watched, vm.SelectedPlaybackFilter);
+        Assert.Equal(CompletionFilter.Completed, vm.SelectedCompletionFilter);
+        Render(panel, "library-filters-selected", 1);
+        cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Settle(vm);
+        Assert.False(toggle.IsChecked);
+        Assert.False(vm.HasActiveFilters);
+
+        toggle.IsChecked = true;
+        await Settle(vm);
+        movie.IsChecked = category.IsChecked = true;
+        apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Settle(vm);
+        Assert.False(toggle.IsChecked);
+        Assert.True(vm.MediaTypeFilters.Single(option => option.Value == MediaType.Movie).IsSelected);
+        Assert.True(vm.CategoryFilters.Single().IsSelected);
+        toggle.IsChecked = true;
+        await Settle(vm);
+        clear.Command.Execute(null);
+        await Settle(vm);
+        Assert.False(vm.HasActiveFilters);
+        apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Settle(vm);
+
+        var originalCategories = vm.CategoryFilters.ToArray();
+        var originalWidth = window.Width;
+        var page = (FrameworkElement)window.Content;
+        var originalTransform = page.LayoutTransform;
+        try
+        {
+            vm.CategoryFilters.ReplaceRange(Enumerable.Range(0, 24).Select(index =>
+                new LibraryFilterOptionViewModel<Guid>(Guid.NewGuid(), index == 0
+                    ? "A very long category name that should wrap gracefully inside a narrow filter sheet without horizontal overflow"
+                    : $"Category {index:00}", () => { })));
+            foreach (var width in new[] { 1200d, 660d, 390d })
+            {
+                window.Width = width;
+                await Settle(vm);
+                toggle.IsChecked = true;
+                await Settle(vm);
+                Assert.True(popup.IsOpen);
+                Assert.True(panel.IsVisible);
+                Assert.True(panel.ActualWidth <= toolbar.ActualWidth);
+                Assert.True(panel.ActualWidth <= (double)panel.FindResource("Control.MaxWidth.Flyout"));
+                Assert.True(panel.ActualHeight <= panel.MaxHeight);
+                var status = (StackPanel)panel.FindName("StatusFilters");
+                Assert.Equal(panel.ActualWidth < (double)panel.FindResource("Library.FilterPanelBreakpoint") ? 1 : 0, Grid.GetRow(status));
+                var scroll = Descendants<ScrollViewer>(panel).First();
+                Assert.True(scroll.ExtentWidth <= scroll.ViewportWidth + 1);
+                scroll.ScrollToVerticalOffset(0);
+                panel.UpdateLayout();
+                await StaTest.DrainDispatcherAsync();
+                Assert.Equal(0, scroll.VerticalOffset);
+                foreach (var chip in Descendants<CheckBox>(panel).Where(check => check.DataContext is LibraryFilterOptionViewModel<Guid>))
+                {
+                    var bounds = chip.TransformToAncestor(panel).TransformBounds(new Rect(chip.RenderSize));
+                    Assert.InRange(bounds.Right, 0, panel.ActualWidth);
+                }
+                Render(panel, $"library-filters-{width:0}", 1);
+                scroll.ScrollToEnd();
+                panel.UpdateLayout();
+                await StaTest.DrainDispatcherAsync();
+                Assert.True(popup.IsOpen);
+                Assert.True(toggle.IsChecked);
+                var footerBounds = apply.TransformToAncestor(panel).TransformBounds(new Rect(apply.RenderSize));
+                Assert.InRange(footerBounds.Bottom, 0, panel.ActualHeight);
+                Render(panel, $"library-filters-bottom-{width:0}", 1);
+                ((ItemsControl)panel.FindName("CategoryChoices")).RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120)
+                {
+                    RoutedEvent = UIElement.PreviewMouseWheelEvent
+                });
+                Assert.True(popup.IsOpen);
+                page.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120)
+                {
+                    RoutedEvent = UIElement.PreviewMouseWheelEvent
+                });
+                await StaTest.DrainDispatcherAsync();
+                Assert.False(toggle.IsChecked);
+                toolbar.CloseFilterPanel();
+            }
+            window.Width = 660;
+            page.LayoutTransform = new ScaleTransform(1.5, 1.5);
+            await Settle(vm);
+            toggle.IsChecked = true;
+            await Settle(vm);
+            Assert.True(panel.ActualWidth <= toolbar.ActualWidth);
+            var scaledScroll = Descendants<ScrollViewer>(panel).First();
+            Assert.True(scaledScroll.ExtentWidth <= scaledScroll.ViewportWidth + 1);
+            scaledScroll.ScrollToTop();
+            panel.UpdateLayout();
+            await StaTest.DrainDispatcherAsync();
+            Render(panel, "library-filters-scaled", 1.5);
+        }
+        finally
+        {
+            toolbar.CloseFilterPanel();
+            vm.CategoryFilters.ReplaceRange(originalCategories);
+            page.LayoutTransform = originalTransform;
+            window.Width = originalWidth;
+        }
+        await Settle(vm);
+    }
+
     private static async Task Settle(LibraryPageViewModel vm)
     {
         await StaTest.DrainDispatcherAsync();

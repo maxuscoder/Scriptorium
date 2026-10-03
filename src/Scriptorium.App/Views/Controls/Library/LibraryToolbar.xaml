@@ -12,7 +12,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <TextBlock Margin="{StaticResource Spacing.XS}" Style="{StaticResource Library.CommandIcon}" Foreground="{DynamicResource Brush.TextMuted}" Text="&#xE721;"/>
                     <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource Input.SearchTextBox}" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search library"/>
-                    <TextBlock Grid.Column="1" Text="Search library…" IsHitTestVisible="False" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="1" Text="Search library&#x2026;" IsHitTestVisible="False" VerticalAlignment="Center">
                         <TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SearchQuery}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding SearchQuery}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
                     </TextBlock>
                 </Grid>
@@ -23,7 +23,10 @@
                 </ToggleButton>
                 <ComboBox x:Name="SortBox" Width="{StaticResource Library.SortWidth}" Height="{StaticResource Control.Height.Input}" Margin="{StaticResource Library.CommandGap}" DisplayMemberPath="DisplayName" ItemsSource="{Binding SortOrders}" SelectedValue="{Binding SelectedSortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" ToolTip="Sort library" AutomationProperties.Name="Sort library"/>
                 <ToggleButton x:Name="FavoritesFirstToggle" Content="Favorites first" Style="{StaticResource Library.ToolbarToggle}" IsChecked="{Binding FavoritesFirst, Mode=TwoWay}" ToolTip="Show favorites before other media"/>
-                <StackPanel Orientation="Horizontal">
+                <Border Height="{StaticResource Control.Height.Input}" Margin="{StaticResource Library.CommandGap}" Padding="1"
+                        Background="{DynamicResource Brush.SurfaceElevated}" BorderBrush="{DynamicResource Brush.Border}"
+                        BorderThickness="{StaticResource BorderThickness.Hairline}" CornerRadius="{StaticResource Radius.Input}">
+                  <StackPanel Orientation="Horizontal">
                     <Button x:Name="GridButton" Command="{Binding SetGridLayoutCommand}" ToolTip="Grid view" AutomationProperties.Name="Grid view">
                         <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Triggers><DataTrigger Binding="{Binding IsGridLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
                         <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE80A;"/>
@@ -32,7 +35,8 @@
                         <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
                         <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE8FD;"/>
                     </Button>
-                </StackPanel>
+                  </StackPanel>
+                </Border>
             </WrapPanel>
         </Grid>
         <DockPanel LastChildFill="True">
@@ -47,8 +51,11 @@
                 </DataTemplate></ItemsControl.ItemTemplate>
             </ItemsControl>
         </DockPanel>
-        <Popup AllowsTransparency="True" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Placement="Bottom" PlacementTarget="{Binding ElementName=FiltersButton}" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=FiltersButton, Mode=TwoWay}">
-            <library:LibraryFilterPanel ApplyRequested="OnApplyFilterPanel" CancelRequested="OnCancelFilterPanel"/>
+        <Popup x:Name="FilterPopup" AllowsTransparency="True" DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Placement="Bottom" PlacementTarget="{Binding ElementName=FiltersButton}" StaysOpen="False" IsOpen="{Binding IsChecked, ElementName=FiltersButton, Mode=TwoWay}">
+            <library:LibraryFilterPanel Width="{Binding ActualWidth, ElementName=ToolbarRoot}"
+                                        MaxWidth="{StaticResource Control.MaxWidth.Flyout}"
+                                        MaxHeight="{StaticResource Library.FilterPanelMaxHeight}"
+                                        ApplyRequested="OnApplyFilterPanel" CancelRequested="OnCancelFilterPanel"/>
         </Popup>
     </StackPanel>
 </UserControl>

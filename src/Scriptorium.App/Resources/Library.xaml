@@ -164,6 +164,10 @@
     <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
     <sys:Double x:Key="Library.ToolbarBreakpoint">960</sys:Double>
     <sys:Double x:Key="Library.SortWidth">196</sys:Double>
+    <sys:Double x:Key="Library.FilterPanelBreakpoint">420</sys:Double>
+    <sys:Double x:Key="Library.FilterPanelMaxHeight">480</sys:Double>
+    <GridLength x:Key="Library.FilterColumnGap">24</GridLength>
+    <Thickness x:Key="Library.FilterStackGap">0,16,0,0</Thickness>
     <sys:Double x:Key="Library.CardMinimumWidth">250</sys:Double>
     <Style x:Key="Library.CommandIcon" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
@@ -178,9 +182,12 @@
         <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
     </Style>
     <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
-        <Setter Property="Width" Value="{StaticResource Control.Height.Input}"/>
-        <Setter Property="Height" Value="{StaticResource Control.Height.Input}"/>
-        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="Width" Value="{StaticResource Control.Height.Compact}"/>
+        <Setter Property="Height" Value="{StaticResource Control.Height.Compact}"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
         <!-- Selected mode has a disabled command; keep its selection visible. -->
         <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="1"/></Trigger></Style.Triggers>
     </Style>
@@ -194,5 +201,62 @@
     <Style x:Key="Library.ClearFilters" TargetType="Button" BasedOn="{StaticResource Button.Text}">
         <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
         <Setter Property="VerticalAlignment" Value="Top"/>
+    </Style>
+    <Style x:Key="Library.FilterCheckBox" TargetType="CheckBox" BasedOn="{StaticResource Toggle.CheckBox}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.FilterComboBox" TargetType="ComboBox" BasedOn="{StaticResource Library.ComboBox}">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    </Style>
+    <!-- A CheckBox keeps the existing selection binding and keyboard/automation semantics. -->
+    <Style x:Key="Library.CategoryFilterChip" TargetType="CheckBox" BasedOn="{StaticResource Library.FilterCheckBox}">
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Metadata}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="{StaticResource BorderThickness.Hairline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="ChipSurface" Margin="0,0,6,0" Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Control}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <TextBlock x:Name="SelectionMark" Text="&#xE73E;" Margin="0,0,6,0" Opacity="0"
+                                       Style="{StaticResource Library.CommandIcon}" />
+                            <TextBlock Grid.Column="1" Text="{TemplateBinding Content}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ChipSurface" Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="SelectionMark" Property="Opacity" Value="1" />
+                            <Setter TargetName="ChipSurface" Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
+                            <Setter TargetName="ChipSurface" Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Library.FilterClearAction" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style x:Key="Library.FilterSecondaryAction" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style x:Key="Library.FilterPrimaryAction" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
     </Style>
 </ResourceDictionary>
