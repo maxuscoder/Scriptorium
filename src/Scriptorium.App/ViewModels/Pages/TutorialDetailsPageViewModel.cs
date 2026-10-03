@@ -15,7 +15,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Displays the lessons contained by one tutorial collection.
 /// </summary>
-public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
+public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDisposable
 {
     private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly ICourseRepository _courseRepository;
@@ -116,6 +116,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedLesson is not null);
         RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
+        InitializeEditingCommands();
         _tutorialCourseSynchronizer.CoursesChanged += OnCoursesChanged;
         _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
         _player.PlaybackCompleted += OnPlaybackCompleted;
@@ -210,6 +211,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         get => _selectedLesson;
         private set
         {
+            var previousMediaItemId = _selectedLesson?.MediaItemId;
             if (!SetProperty(ref _selectedLesson, value))
             {
                 return;
@@ -220,6 +222,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
                 lesson.IsSelected = ReferenceEquals(lesson, value);
             }
 
+            OnSelectedLessonChanged(previousMediaItemId != value?.MediaItemId);
             OnPropertyChanged(nameof(SelectedLessonPositionText));
             OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
@@ -764,40 +767,41 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
     private bool CanSelectNextLesson() =>
         SelectedLesson is not null && Lessons.IndexOf(SelectedLesson) < Lessons.Count - 1;
 
-    private async Task SaveCategoryAsync()
+    private async Task<bool> SaveCategoryAsync()
     {
         var lesson = SelectedLesson;
         var category = SelectedCategory;
         if (lesson is null || category is null)
         {
-            return;
+            return false;
         }
 
         if (lesson.CategoryId == category.Id)
         {
             CategoryStatus = "No category changes to save.";
-            return;
+            return true;
         }
 
         if (!await _categoryService.AssignToMediaAsync(lesson.MediaItemId, category.Id))
         {
             CategoryStatus = "The category assignment could not be saved.";
-            return;
+            return false;
         }
 
         lesson.SetCategory(category);
         CategoryStatus = category.Id is null
             ? "Category assignment removed."
             : $"Category '{category.Name}' assigned.";
+        return true;
     }
 
-    private async Task SaveTitleAsync()
+    private async Task<bool> SaveTitleAsync()
     {
         var lesson = SelectedLesson;
         if (lesson is null || _mediaTitleService is null)
         {
             TitleStatus = "The title could not be saved.";
-            return;
+            return false;
         }
 
         string normalizedTitle;
@@ -808,13 +812,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             TitleStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaTitleService.SaveAsync(lesson.MediaItemId, normalizedTitle))
         {
             TitleStatus = "The title could not be saved.";
-            return;
+            return false;
         }
 
         lesson.SetTitleOverride(normalizedTitle);
@@ -822,32 +826,34 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         TitleStatus = "Custom title saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
         OnPropertyChanged(nameof(SelectedLessonPositionText));
+        return true;
     }
 
-    private async Task SaveMediaTypeAsync()
+    private async Task<bool> SaveMediaTypeAsync()
     {
         var lesson = SelectedLesson;
         if (lesson is null || SelectedMediaType is not { } mediaType || _mediaTypeService is null)
         {
             MediaTypeStatus = "The media type could not be saved.";
-            return;
+            return false;
         }
 
         if (lesson.MediaType == mediaType)
         {
             MediaTypeStatus = "No media type changes to save.";
-            return;
+            return true;
         }
 
         if (!await _mediaTypeService.SaveAsync(lesson.MediaItemId, mediaType))
         {
             MediaTypeStatus = "The media type could not be saved.";
-            return;
+            return false;
         }
 
         lesson.SetMediaType(mediaType);
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
     private void ChooseThumbnail()
@@ -867,13 +873,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         ThumbnailStatus = string.Empty;
     }
 
-    private async Task SaveThumbnailAsync()
+    private async Task<bool> SaveThumbnailAsync()
     {
         var lesson = SelectedLesson;
         if (lesson is null || _mediaThumbnailService is null)
         {
             ThumbnailStatus = "The thumbnail could not be saved.";
-            return;
+            return false;
         }
 
         string normalizedPath;
@@ -884,19 +890,20 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             ThumbnailStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaThumbnailService.SaveAsync(lesson.MediaItemId, normalizedPath))
         {
             ThumbnailStatus = "The thumbnail could not be saved.";
-            return;
+            return false;
         }
 
         lesson.SetThumbnailPath(normalizedPath);
         EditableThumbnailPath = normalizedPath;
         ThumbnailStatus = "Custom thumbnail saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
     private async Task ResetMetadataAsync()
@@ -927,13 +934,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         MetadataResetStatus = "Detected metadata restored.";
     }
 
-    private async Task SaveDescriptionAsync()
+    private async Task<bool> SaveDescriptionAsync()
     {
         var lesson = SelectedLesson;
         if (lesson is null || _mediaDescriptionService is null)
         {
             DescriptionStatus = "The description could not be saved.";
-            return;
+            return false;
         }
 
         string? normalizedDescription;
@@ -944,13 +951,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             DescriptionStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaDescriptionService.SaveAsync(lesson.MediaItemId, normalizedDescription))
         {
             DescriptionStatus = "The description could not be saved.";
-            return;
+            return false;
         }
 
         lesson.SetDescriptionOverride(normalizedDescription);
@@ -959,15 +966,16 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             ? "Custom description cleared."
             : "Custom description saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
-    private async Task SaveReleaseYearAsync()
+    private async Task<bool> SaveReleaseYearAsync()
     {
         var lesson = SelectedLesson;
         if (lesson is null || _mediaReleaseYearService is null)
         {
             ReleaseYearStatus = "The release year could not be saved.";
-            return;
+            return false;
         }
 
         int? normalizedReleaseYear;
@@ -978,13 +986,13 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             ReleaseYearStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaReleaseYearService.SaveAsync(lesson.MediaItemId, normalizedReleaseYear))
         {
             ReleaseYearStatus = "The release year could not be saved.";
-            return;
+            return false;
         }
 
         lesson.SetReleaseYearOverride(normalizedReleaseYear);
@@ -993,6 +1001,7 @@ public sealed class TutorialDetailsPageViewModel : PageViewModel, IDisposable
             ? "Custom release year cleared."
             : "Custom release year saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
     private async Task RestoreTitleAsync()

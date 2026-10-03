@@ -14,7 +14,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
-public sealed class TutorialDetailsPageViewModelTests
+public sealed partial class TutorialDetailsPageViewModelTests
 {
     [Fact]
     public Task SelectsTheFirstIncompleteLessonAndRestoresItsPosition() => StaTest.Run(async () =>

@@ -40,6 +40,7 @@ public sealed class VideoPlayerViewTests
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }
         });
         await MediaDetailsResourceChecks.VerifyAsync();
+        await TutorialDetailsResourceChecks.VerifyAsync();
         using var runtime = new LibVlcRuntime();
         var factory = new RecordingFactory(runtime);
         var player = new VideoPlayerViewModel(factory);

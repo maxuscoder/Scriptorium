@@ -78,6 +78,10 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty EditorContentProperty =
         DependencyProperty.Register(nameof(EditorContent), typeof(object), typeof(MediaDetailsPage));
 
+    /// <summary>Allows collection details to reuse the same navigation and responsive editor shell.</summary>
+    public static readonly DependencyProperty MainDetailsContentProperty =
+        DependencyProperty.Register(nameof(MainDetailsContent), typeof(object), typeof(MediaDetailsPage));
+
     public static readonly DependencyProperty FileMetadataItemsProperty =
         DependencyProperty.Register(nameof(FileMetadataItems), typeof(IEnumerable), typeof(MediaDetailsPage));
 
@@ -143,6 +147,7 @@ public partial class MediaDetailsPage : UserControl
 
     public object? ProgressContent { get => GetValue(ProgressContentProperty); set => SetValue(ProgressContentProperty, value); }
     public object? EditorContent { get => GetValue(EditorContentProperty); set => SetValue(EditorContentProperty, value); }
+    public object? MainDetailsContent { get => GetValue(MainDetailsContentProperty); set => SetValue(MainDetailsContentProperty, value); }
     public IEnumerable? FileMetadataItems { get => (IEnumerable?)GetValue(FileMetadataItemsProperty); set => SetValue(FileMetadataItemsProperty, value); }
     public ICommand? EditCommand { get => (ICommand?)GetValue(EditCommandProperty); set => SetValue(EditCommandProperty, value); }
     public bool IsEditing { get => (bool)GetValue(IsEditingProperty); set => SetValue(IsEditingProperty, value); }
