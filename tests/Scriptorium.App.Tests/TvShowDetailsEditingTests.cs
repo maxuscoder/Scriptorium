@@ -242,9 +242,18 @@ public sealed partial class TvShowDetailsPageViewModelTests
     internal static async Task WithEditableShowOnDispatcher(Func<TvShowDetailsPageViewModel, MediaItemRepository, Task> verify,
         IMediaTitleService? titleService = null)
     {
-        await using var database = new SqliteConnection("Data Source=:memory:");
+        // Keep the database alive while each EF context owns a separate connection.
+        // Show refreshes can overlap repository reads after metadata changes.
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = $"scriptorium-show-edit-{Guid.NewGuid():N}",
+            Mode = SqliteOpenMode.Memory,
+            Cache = SqliteCacheMode.Shared,
+            Pooling = false
+        }.ToString();
+        await using var database = new SqliteConnection(connectionString);
         await database.OpenAsync();
-        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(database).Options;
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(connectionString).Options;
         await using (var context = new ScriptoriumDbContext(options))
         {
             await context.Database.MigrateAsync();

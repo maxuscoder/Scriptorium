@@ -183,9 +183,15 @@ internal static class LibraryResourceChecks
                     var rowHeight = firstRow.ActualHeight + firstRow.Margin.Top + firstRow.Margin.Bottom;
                     Assert.InRange(cards[2].TranslatePoint(new Point(), page).Y - cards[0].TranslatePoint(new Point(), page).Y, rowHeight - 1, rowHeight + 1);
                 }
-                if (width >= 1280) Assert.InRange(vm.BrowserRows.OfType<LibraryBrowserCardsRow>().First().Cards.Count(), 4, 5);
+                VerifyBrowserColumnLayout(page, vm);
                 Render(page, $"library-{width:0}", 1);
             }
+            // Reproduce a requested window width exceeding the available desktop width.
+            window.MaxWidth = 1000;
+            window.Width = 1560;
+            await Settle(vm);
+            VerifyBrowserColumnLayout(page, vm);
+            window.MaxWidth = double.PositiveInfinity;
             // Exercise a 150% WPF layout scale as well as DIP-based window sizes.
             window.Width = 1200;
             page.LayoutTransform = new ScaleTransform(1.5, 1.5);
@@ -389,6 +395,23 @@ internal static class LibraryResourceChecks
             source.Listeners.Remove(trace);
             source.Switch.Level = level;
         }
+    }
+
+    private static void VerifyBrowserColumnLayout(LibraryPage page, LibraryPageViewModel vm)
+    {
+        var list = Descendants<ListBox>(page).Single(control => control.Name == "BrowserList");
+        var inset = list.Padding;
+        var availableWidth = list.ActualWidth - SystemParameters.VerticalScrollBarWidth - inset.Left - inset.Right;
+        var margin = (Thickness)page.FindResource("MediaCard.Margin");
+        var minimumSlotWidth = (double)page.FindResource("Library.CardMinimumWidth") + margin.Left + margin.Right;
+        var columns = vm.BrowserRows.OfType<LibraryBrowserCardsRow>().First().Cards.Count();
+        Assert.InRange(columns, 1, 8);
+        // The row must fit the rendered viewport and fill its capacity, even if Windows clamps the window.
+        Assert.True(columns * minimumSlotWidth <= availableWidth + 1,
+            $"{columns} columns overflow the {availableWidth:0.##}-pixel viewport.");
+        if (columns < 8)
+            Assert.True((columns + 1) * minimumSlotWidth > availableWidth,
+                $"{columns} columns leave room for another card in the {availableWidth:0.##}-pixel viewport.");
     }
 
     private static void VerifyKeyboardFocusVisual(Control control)
