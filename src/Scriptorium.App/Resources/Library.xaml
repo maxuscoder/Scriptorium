@@ -227,8 +227,12 @@
                             BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Control}">
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                            <TextBlock x:Name="SelectionMark" Text="&#xE73E;" Margin="0,0,6,0" Opacity="0"
-                                       Style="{StaticResource Library.CommandIcon}" />
+                            <Grid Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Border x:Name="CategoryIndicator" Width="7" Height="7" CornerRadius="4"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Background="{Binding ColorBrush}" />
+                                <TextBlock x:Name="SelectionMark" Text="&#xE73E;" Opacity="0"
+                                           Style="{StaticResource Library.CommandIcon}" />
+                            </Grid>
                             <TextBlock Grid.Column="1" Text="{TemplateBinding Content}" TextWrapping="Wrap" VerticalAlignment="Center" />
                         </Grid>
                     </Border>
@@ -237,6 +241,7 @@
                             <Setter TargetName="ChipSurface" Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" />
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="CategoryIndicator" Property="Opacity" Value="0" />
                             <Setter TargetName="SelectionMark" Property="Opacity" Value="1" />
                             <Setter TargetName="ChipSurface" Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
                             <Setter TargetName="ChipSurface" Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />

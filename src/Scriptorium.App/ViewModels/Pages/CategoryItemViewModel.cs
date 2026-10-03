@@ -103,7 +103,7 @@ public sealed class CategoryItemViewModel : ViewModelBase
         set => SetProperty(ref _isSelected, value);
     }
 
-    private static Brush CreateColorBrush(string color)
+    internal static Brush CreateColorBrush(string color)
     {
         try
         {

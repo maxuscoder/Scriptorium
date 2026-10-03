@@ -1375,6 +1375,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
                 .OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(category => new LibraryFilterOptionViewModel<Guid>(category.Id, category.Name, ApplyFiltersAndSaveFilterState)
             {
+                ColorBrush = CategoryItemViewModel.CreateColorBrush(category.Color),
                 IsSelected = _selectedCategoryFilterIds.Contains(category.Id)
             }));
 
