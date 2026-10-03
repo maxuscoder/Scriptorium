@@ -19,10 +19,10 @@ public sealed class ThemeService : IThemeService
         ["PrimaryButton.NormalHighlight"] = Parse("#FFD96B"),
         ["PrimaryButton.NormalMid"] = Parse("#FFA512"),
         ["PrimaryButton.NormalBase"] = Parse("#F47700"),
-        ["PrimaryButton.HoverDepth"] = Parse("#C94F00"),
-        ["PrimaryButton.HoverHighlight"] = Parse("#FFE17F"),
-        ["PrimaryButton.HoverMid"] = Parse("#FFB21D"),
-        ["PrimaryButton.HoverBase"] = Parse("#FF8700"),
+        ["PrimaryButton.HoverDepth"] = Parse("#AF4E00"),
+        ["PrimaryButton.HoverHighlight"] = Parse("#CCAE56"),
+        ["PrimaryButton.HoverMid"] = Parse("#CC840E"),
+        ["PrimaryButton.HoverBase"] = Parse("#C35F00"),
         ["PrimaryButton.PressedDepth"] = Parse("#A94300"),
         ["PrimaryButton.PressedHighlight"] = Parse("#F9B33F"),
         ["PrimaryButton.PressedMid"] = Parse("#F58A0A"),
@@ -112,7 +112,7 @@ public sealed class ThemeService : IThemeService
             ("PrimaryButton.NormalHighlight", 0), ("PrimaryButton.NormalMid", 0.26),
             ("PrimaryButton.NormalBase", 0.72), ("PrimaryButton.NormalBase", 1));
         _resources["Brush.PrimaryButton.Hover"] = CreatePrimaryButtonGradient(colors,
-            ("PrimaryButton.HoverHighlight", 0), ("PrimaryButton.HoverMid", 0.25),
+            ("PrimaryButton.HoverHighlight", 0), ("PrimaryButton.HoverMid", 0.26),
             ("PrimaryButton.HoverBase", 0.72), ("PrimaryButton.HoverBase", 1));
         _resources["Brush.PrimaryButton.Pressed"] = CreatePrimaryButtonGradient(colors,
             ("PrimaryButton.PressedHighlight", 0), ("PrimaryButton.PressedMid", 0.34),

@@ -22,10 +22,10 @@
     <Color x:Key="Color.PrimaryButton.NormalHighlight">#FFFFB54A</Color>
     <Color x:Key="Color.PrimaryButton.NormalMid">#FFFF8F0A</Color>
     <Color x:Key="Color.PrimaryButton.NormalBase">#FFED6200</Color>
-    <Color x:Key="Color.PrimaryButton.HoverDepth">#FFC94F00</Color>
-    <Color x:Key="Color.PrimaryButton.HoverHighlight">#FFFFE17F</Color>
-    <Color x:Key="Color.PrimaryButton.HoverMid">#FFFFB21D</Color>
-    <Color x:Key="Color.PrimaryButton.HoverBase">#FFFF8700</Color>
+    <Color x:Key="Color.PrimaryButton.HoverDepth">#FFAF4E00</Color>
+    <Color x:Key="Color.PrimaryButton.HoverHighlight">#FFCC913B</Color>
+    <Color x:Key="Color.PrimaryButton.HoverMid">#FFCC7208</Color>
+    <Color x:Key="Color.PrimaryButton.HoverBase">#FFBE4E00</Color>
     <Color x:Key="Color.PrimaryButton.PressedDepth">#FFA94300</Color>
     <Color x:Key="Color.PrimaryButton.PressedHighlight">#FFF9B33F</Color>
     <Color x:Key="Color.PrimaryButton.PressedMid">#FFF58A0A</Color>

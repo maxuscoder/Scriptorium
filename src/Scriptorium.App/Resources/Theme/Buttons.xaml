@@ -10,7 +10,7 @@
     </LinearGradientBrush>
     <LinearGradientBrush x:Key="Brush.PrimaryButton.Hover" StartPoint="0.5,0" EndPoint="0.5,1">
         <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverHighlight}" Offset="0" />
-        <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverMid}" Offset="0.25" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverMid}" Offset="0.26" />
         <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverBase}" Offset="0.72" />
         <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverBase}" Offset="1" />
     </LinearGradientBrush>
