@@ -7,10 +7,10 @@
         <Grid>
             <TextBlock Text="{Binding Title, ElementName=Root}" Style="{StaticResource Text.SectionTitle}" VerticalAlignment="Center" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                <Button x:Name="PreviousButton" Style="{StaticResource Button.ShelfNavigation}" Click="OnPrevious" IsEnabled="{Binding CanScrollLeft, ElementName=Root}" ToolTip="Previous titles" AutomationProperties.Name="Previous titles">
+                <Button x:Name="PreviousButton" Style="{StaticResource Button.RoundIcon}" Click="OnPrevious" IsEnabled="{Binding CanScrollLeft, ElementName=Root}" ToolTip="Previous titles" AutomationProperties.Name="Previous titles">
                     <Path Data="M 8,1 L 2,7 L 8,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                 </Button>
-                <Button x:Name="NextButton" Style="{StaticResource Button.ShelfNavigation}" Click="OnNext" IsEnabled="{Binding CanScrollRight, ElementName=Root}" Margin="{StaticResource Home.Arrow.Margin}" ToolTip="More titles" AutomationProperties.Name="More titles">
+                <Button x:Name="NextButton" Style="{StaticResource Button.RoundIcon}" Click="OnNext" IsEnabled="{Binding CanScrollRight, ElementName=Root}" Margin="{StaticResource Home.Arrow.Margin}" ToolTip="More titles" AutomationProperties.Name="More titles">
                     <Path Data="M 2,1 L 8,7 L 2,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                 </Button>
             </StackPanel>

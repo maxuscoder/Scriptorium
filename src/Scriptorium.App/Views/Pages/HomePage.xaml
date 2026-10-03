@@ -7,7 +7,7 @@
         <StackPanel Margin="{StaticResource Home.Page.Padding}">
             <Grid Margin="{StaticResource Home.Toolbar.Margin}">
                 <TextBlock Text="Home" Style="{StaticResource Text.SectionTitle}" />
-                <Button HorizontalAlignment="Right" Style="{StaticResource Button.Icon}" Command="{Binding RefreshCommand}"
+                <Button HorizontalAlignment="Right" Style="{StaticResource Button.RoundIcon}" Command="{Binding RefreshCommand}"
                     ToolTip="Refresh Home" AutomationProperties.Name="Refresh Home">
                     <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE72C;" />
                 </Button>

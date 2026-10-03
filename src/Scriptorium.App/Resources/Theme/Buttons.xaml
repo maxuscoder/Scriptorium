@@ -174,7 +174,7 @@
         <Setter Property="Height" Value="{StaticResource Control.Height.Default}" />
         <Setter Property="Padding" Value="{StaticResource Spacing.None}" />
     </Style>
-    <Style x:Key="Button.ShelfNavigation" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+    <Style x:Key="Button.RoundIcon" TargetType="Button" BasedOn="{StaticResource Button.Base}">
         <Setter Property="Width" Value="36" />
         <Setter Property="Height" Value="36" />
         <Setter Property="MinWidth" Value="36" />
