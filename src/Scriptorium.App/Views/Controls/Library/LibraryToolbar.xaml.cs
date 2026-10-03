@@ -16,15 +16,6 @@ public partial class LibraryToolbar : UserControl
 
     public void CloseFilterPanel() => FiltersButton.IsChecked = false;
 
-    private void OnToolbarSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        var compact = e.NewSize.Width < (double)FindResource("Library.ToolbarBreakpoint");
-        Grid.SetRow(CommandsArea, compact ? 1 : 0);
-        Grid.SetColumn(CommandsArea, compact ? 0 : 1);
-        Grid.SetColumnSpan(CommandsArea, compact ? 2 : 1);
-        Grid.SetColumnSpan(SearchArea, compact ? 2 : 1);
-    }
-
     private void OnOpenFilterPanel(object sender, RoutedEventArgs e)
     {
         if (DataContext is not LibraryPageViewModel viewModel)

@@ -174,12 +174,14 @@ internal static class LibraryResourceChecks
                     var bounds = card.TransformToAncestor(page).TransformBounds(new Rect(card.RenderSize));
                     Assert.InRange(bounds.Right, 0, page.ActualWidth);
                 });
-                Assert.Equal(width < 1020 ? 1 : 0, Grid.GetRow((WrapPanel)toolbar.FindName("CommandsArea")));
+                VerifyHeaderToolbarLayout(page, toolbar);
                 if (width == 660)
                 {
                     Assert.Equal(2, vm.BrowserRows.OfType<LibraryBrowserCardsRow>().First().Cards.Count());
                     Assert.Equal(cards[0].TranslatePoint(new Point(), page).Y, cards[1].TranslatePoint(new Point(), page).Y);
-                    Assert.InRange(cards[2].TranslatePoint(new Point(), page).Y - cards[0].TranslatePoint(new Point(), page).Y, 200, 260);
+                    var firstRow = Descendants<ItemsControl>(page).First(control => control.DataContext is LibraryBrowserCardsRow);
+                    var rowHeight = firstRow.ActualHeight + firstRow.Margin.Top + firstRow.Margin.Bottom;
+                    Assert.InRange(cards[2].TranslatePoint(new Point(), page).Y - cards[0].TranslatePoint(new Point(), page).Y, rowHeight - 1, rowHeight + 1);
                 }
                 if (width >= 1280) Assert.InRange(vm.BrowserRows.OfType<LibraryBrowserCardsRow>().First().Cards.Count(), 4, 5);
                 Render(page, $"library-{width:0}", 1);
@@ -189,6 +191,7 @@ internal static class LibraryResourceChecks
             page.LayoutTransform = new ScaleTransform(1.5, 1.5);
             await Settle(vm);
             Assert.True(page.ActualWidth < 800);
+            VerifyHeaderToolbarLayout(page, toolbar);
             Render(page, "library-scaled", 1.5);
             page.LayoutTransform = Transform.Identity;
             search.Text = "Nothing matches this title";
@@ -391,6 +394,36 @@ internal static class LibraryResourceChecks
     }
 
     private static IEnumerable<object> Cards(LibraryPageViewModel vm) => vm.BrowserRows.OfType<LibraryBrowserCardsRow>().SelectMany(row => row.Cards);
+
+    private static void VerifyHeaderToolbarLayout(LibraryPage page, LibraryToolbar toolbar)
+    {
+        var searchArea = (FrameworkElement)toolbar.FindName("SearchArea");
+        var commands = (WrapPanel)toolbar.FindName("CommandsArea");
+        Assert.Equal(1, Grid.GetRow(commands));
+        Assert.Equal(toolbar.ActualWidth, searchArea.ActualWidth);
+        Assert.True(commands.TranslatePoint(new Point(), toolbar).Y >= searchArea.ActualHeight);
+
+        var controls = new[] { "FiltersButton", "SortBox", "FavoritesFirstToggle", "LayoutSegment" }
+            .Select(name => (FrameworkElement)toolbar.FindName(name)).ToArray();
+        Assert.All(controls, control =>
+        {
+            Assert.Equal(controls[0].ActualHeight, control.ActualHeight);
+            var bounds = control.TransformToAncestor(toolbar).TransformBounds(new Rect(control.RenderSize));
+            Assert.InRange(bounds.Right, 0, toolbar.ActualWidth);
+        });
+        Assert.True(searchArea.ActualHeight > controls[0].ActualHeight);
+
+        var actions = (WrapPanel)page.FindName("HeaderActions");
+        var header = (Grid)page.FindName("HeaderRoot");
+        Assert.Equal(header.ActualWidth < (double)page.FindResource("Library.HeaderBreakpoint") ? 1 : 0, Grid.GetRow(actions));
+        foreach (var name in new[] { "AddFolderButton", "RescanButton", "ManageLibraryButton" })
+        {
+            var action = (Button)page.FindName(name);
+            var bounds = action.TransformToAncestor(page).TransformBounds(new Rect(action.RenderSize));
+            Assert.InRange(bounds.Right, 0, page.ActualWidth);
+        }
+    }
+
     private static async Task VerifyFilterSheetAsync(LibraryToolbar toolbar, LibraryPageViewModel vm, Window window)
     {
         var toggle = (ToggleButton)toolbar.FindName("FiltersButton");
@@ -461,6 +494,8 @@ internal static class LibraryResourceChecks
             {
                 window.Width = width;
                 await Settle(vm);
+                VerifyHeaderToolbarLayout((LibraryPage)page, toolbar);
+                Render(page, $"library-header-{width:0}", 1);
                 toggle.IsChecked = true;
                 await Settle(vm);
                 Assert.True(popup.IsOpen);

@@ -156,34 +156,102 @@
         <Setter Property="Margin" Value="12,0,32,0" />
         <Setter Property="Visibility" Value="Collapsed" />
     </Style>
-    <!-- Library browsing composition; shared controls keep their global Fluent Cinema styles. -->
+    <!-- Library header composition builds on the shared controls and theme palette. -->
     <Thickness x:Key="Library.PageInset">24,20,24,16</Thickness>
-    <Thickness x:Key="Library.ToolbarMargin">0,16,0,0</Thickness>
-    <Thickness x:Key="Library.CommandGap">0,0,8,8</Thickness>
+    <Thickness x:Key="Library.ToolbarMargin">0,24,0,4</Thickness>
+    <Thickness x:Key="Library.CommandGap">0,0,10,10</Thickness>
     <Thickness x:Key="Library.BrowserInset">12,8,12,12</Thickness>
     <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
-    <sys:Double x:Key="Library.ToolbarBreakpoint">960</sys:Double>
+    <sys:Double x:Key="Library.HeaderBreakpoint">520</sys:Double>
+    <sys:Double x:Key="Library.ToolbarControlHeight">42</sys:Double>
+    <sys:Double x:Key="Library.SearchHeight">52</sys:Double>
     <sys:Double x:Key="Library.SortWidth">196</sys:Double>
     <sys:Double x:Key="Library.FilterPanelBreakpoint">420</sys:Double>
     <sys:Double x:Key="Library.FilterPanelMaxHeight">480</sys:Double>
     <GridLength x:Key="Library.FilterColumnGap">24</GridLength>
     <Thickness x:Key="Library.FilterStackGap">0,16,0,0</Thickness>
     <sys:Double x:Key="Library.CardMinimumWidth">250</sys:Double>
+    <LinearGradientBrush x:Key="Library.Brush.Control" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource Color.SurfaceOverlay}" Offset="0"/>
+        <GradientStop Color="{DynamicResource Color.SurfaceElevated}" Offset="1"/>
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Library.Brush.Search" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="{DynamicResource Color.SurfaceElevated}" Offset="0"/>
+        <GradientStop Color="{DynamicResource Color.Surface}" Offset="1"/>
+    </LinearGradientBrush>
+    <Style x:Key="Library.Title" TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">
+        <Setter Property="FontSize" Value="36"/>
+    </Style>
+    <Style x:Key="Library.ItemCount" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Label}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
+        <Setter Property="Margin" Value="0,4,0,0"/>
+    </Style>
+    <Style x:Key="Library.ToolbarSearchField" TargetType="Border" BasedOn="{StaticResource Library.SearchField}">
+        <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.ComboBox.Focus}"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.SearchTextBox" TargetType="TextBox" BasedOn="{StaticResource Input.SearchTextBox}">
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Navigation}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <!-- The enclosing field owns hover and focus, including the icon and placeholder. -->
+        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="Transparent"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Library.SortComboBox" TargetType="ComboBox" BasedOn="{StaticResource Library.ComboBox}">
+        <Style.Resources><CornerRadius x:Key="Radius.Input">10</CornerRadius></Style.Resources>
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="Background" Value="{StaticResource Library.Brush.Control}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+    </Style>
     <Style x:Key="Library.CommandIcon" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
         <Setter Property="FontSize" Value="{StaticResource Icon.Size.Compact}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
     <Style x:Key="Library.HeaderAction" TargetType="Button" BasedOn="{StaticResource Button.Text}">
-        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
+        <Setter Property="Height" Value="{StaticResource Control.Height.Default}"/>
+        <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+        <Setter Property="Padding" Value="12,0"/>
+        <Setter Property="Margin" Value="6,0,0,0"/>
+        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Library.HeaderOverflow" TargetType="Button" BasedOn="{StaticResource Library.HeaderAction}">
+        <Setter Property="Width" Value="{StaticResource Control.Height.Default}"/>
+        <Setter Property="Padding" Value="0"/>
     </Style>
     <Style x:Key="Library.ToolbarToggle" TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Filter}">
-        <Setter Property="Height" Value="{StaticResource Control.Height.Input}"/>
+        <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
+        <Setter Property="Background" Value="{StaticResource Library.Brush.Control}"/>
+        <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/></Trigger>
+            <Trigger Property="IsChecked" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.LayoutSegment" TargetType="Border" BasedOn="{StaticResource Surface.Elevated}">
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
+        <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,0,10"/>
     </Style>
     <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
-        <Setter Property="Width" Value="{StaticResource Control.Height.Compact}"/>
-        <Setter Property="Height" Value="{StaticResource Control.Height.Compact}"/>
+        <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
+        <Setter Property="Width" Value="48"/>
+        <Setter Property="Height" Value="{StaticResource Control.Height.Default}"/>
         <Setter Property="Margin" Value="0"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Background" Value="Transparent"/>
@@ -228,8 +296,9 @@
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                             <Grid Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
-                                <Border x:Name="CategoryIndicator" Width="7" Height="7" CornerRadius="4"
-                                        HorizontalAlignment="Center" VerticalAlignment="Center" Background="{Binding ColorBrush}" />
+                                <Border x:Name="CategoryIndicator" Width="12" Height="12" CornerRadius="2"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent"
+                                        BorderBrush="{Binding ColorBrush}" BorderThickness="1" />
                                 <TextBlock x:Name="SelectionMark" Text="&#xE73E;" Opacity="0"
                                            Style="{StaticResource Library.CommandIcon}" />
                             </Grid>

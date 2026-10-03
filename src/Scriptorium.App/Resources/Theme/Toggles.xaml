@@ -20,7 +20,7 @@
                             behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Fast}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}"
-                            CornerRadius="{StaticResource Radius.Control}">
+                            CornerRadius="{DynamicResource Radius.Control}">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True" />
                     </Border>
                 </ControlTemplate>

@@ -14,6 +14,16 @@ public partial class LibraryPage : UserControl
         InitializeComponent();
     }
 
+    private void OnHeaderSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        var compact = e.NewSize.Width < (double)FindResource("Library.HeaderBreakpoint");
+        Grid.SetColumnSpan(HeaderTitle, compact ? 2 : 1);
+        Grid.SetRow(HeaderActions, compact ? 1 : 0);
+        Grid.SetColumn(HeaderActions, compact ? 0 : 1);
+        Grid.SetColumnSpan(HeaderActions, compact ? 2 : 1);
+        HeaderActions.Margin = compact ? new Thickness(0, 16, 0, 0) : new Thickness(0);
+    }
+
     private void OnManageLibrary(object sender, RoutedEventArgs e)
     {
         CloseOpenDropdowns();

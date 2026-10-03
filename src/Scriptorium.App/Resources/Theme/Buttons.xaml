@@ -58,7 +58,7 @@
                             behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
                             behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Instant}"
                             BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{StaticResource Radius.Control}" SnapsToDevicePixels="True">
+                            CornerRadius="{DynamicResource Radius.Control}" SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
                     </Border>
