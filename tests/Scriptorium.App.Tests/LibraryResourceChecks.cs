@@ -399,19 +399,26 @@ internal static class LibraryResourceChecks
     {
         var searchArea = (FrameworkElement)toolbar.FindName("SearchArea");
         var commands = (WrapPanel)toolbar.FindName("CommandsArea");
-        Assert.Equal(1, Grid.GetRow(commands));
-        Assert.Equal(toolbar.ActualWidth, searchArea.ActualWidth);
-        Assert.True(commands.TranslatePoint(new Point(), toolbar).Y >= searchArea.ActualHeight);
+        Assert.Same(commands, searchArea.Parent);
+        Assert.InRange(searchArea.ActualWidth, 1, (double)toolbar.FindResource("Library.SearchWidth"));
 
-        var controls = new[] { "FiltersButton", "SortBox", "FavoritesFirstToggle", "LayoutSegment" }
+        var controls = new[] { "SearchArea", "FiltersButton", "SortBox", "FavoritesFirstToggle", "LayoutSegment" }
             .Select(name => (FrameworkElement)toolbar.FindName(name)).ToArray();
         Assert.All(controls, control =>
         {
             Assert.Equal(controls[0].ActualHeight, control.ActualHeight);
-            var bounds = control.TransformToAncestor(toolbar).TransformBounds(new Rect(control.RenderSize));
+            var bounds = control.TransformToAncestor(commands).TransformBounds(new Rect(control.RenderSize));
+            Assert.InRange(bounds.Left, 0, toolbar.ActualWidth);
             Assert.InRange(bounds.Right, 0, toolbar.ActualWidth);
+            Assert.InRange(bounds.Bottom, 0, commands.ActualHeight);
         });
-        Assert.True(searchArea.ActualHeight > controls[0].ActualHeight);
+        // A desktop toolbar uses one baseline; smaller windows wrap complete controls.
+        if (toolbar.ActualWidth >= 900)
+        {
+            var baseline = searchArea.TranslatePoint(new Point(), toolbar).Y;
+            Assert.All(controls, control => Assert.Equal(baseline, control.TranslatePoint(new Point(), toolbar).Y));
+            Assert.Equal(searchArea.ActualHeight + searchArea.Margin.Bottom, commands.ActualHeight);
+        }
 
         var actions = (WrapPanel)page.FindName("HeaderActions");
         var header = (Grid)page.FindName("HeaderRoot");

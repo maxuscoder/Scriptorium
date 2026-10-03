@@ -4,21 +4,22 @@
     xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library">
     <StackPanel Margin="{StaticResource Library.ToolbarMargin}">
         <Grid x:Name="ToolbarRoot">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <Grid x:Name="SearchArea" Height="{StaticResource Library.SearchHeight}" Margin="0,0,0,14">
-                <Border Background="{DynamicResource Brush.SurfaceElevated}" CornerRadius="{StaticResource Radius.Card}" Effect="{StaticResource Elevation.1}" IsHitTestVisible="False"/>
-                <Border Style="{StaticResource Library.ToolbarSearchField}">
-                <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <TextBlock Margin="0,0,12,0" Style="{StaticResource Library.CommandIcon}" FontSize="{StaticResource Icon.Size.Default}" Foreground="{DynamicResource Brush.TextMuted}" Text="&#xE721;"/>
-                    <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource Library.SearchTextBox}" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search library"/>
-                    <TextBlock Grid.Column="1" Text="Search library&#x2026;" IsHitTestVisible="False" VerticalAlignment="Center">
-                        <TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Setter Property="FontSize" Value="{StaticResource FontSize.Navigation}"/><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SearchQuery}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding SearchQuery}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-                    </TextBlock>
+            <WrapPanel x:Name="CommandsArea">
+                <Grid x:Name="SearchArea" Width="{StaticResource Library.SearchWidth}"
+                      MaxWidth="{Binding ActualWidth, ElementName=ToolbarRoot}"
+                      Height="{StaticResource Library.ToolbarControlHeight}" Margin="{StaticResource Library.ToolbarCommandGap}">
+                    <Border Background="{DynamicResource Brush.SurfaceElevated}" CornerRadius="{StaticResource Radius.Card}" Effect="{StaticResource Elevation.1}" IsHitTestVisible="False"/>
+                    <Border Style="{StaticResource Library.ToolbarSearchField}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Margin="0,0,10,0" Style="{StaticResource Library.CommandIcon}" Foreground="{DynamicResource Brush.TextMuted}" Text="&#xE721;"/>
+                            <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource Library.SearchTextBox}" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search library"/>
+                            <TextBlock Grid.Column="1" Text="Search library&#x2026;" IsHitTestVisible="False" VerticalAlignment="Center">
+                                <TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Setter Property="FontSize" Value="{StaticResource FontSize.Control}"/><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SearchQuery}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding SearchQuery}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
                 </Grid>
-                </Border>
-            </Grid>
-            <WrapPanel x:Name="CommandsArea" Grid.Row="1">
                 <ToggleButton x:Name="FiltersButton" Style="{StaticResource Library.ToolbarToggle}" Checked="OnOpenFilterPanel" Unchecked="OnFilterPanelClosed" AutomationProperties.Name="Filters">
                     <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE71C;"/><TextBlock Margin="{StaticResource Margin.IconLabel}" Text="Filters"/></StackPanel>
                 </ToggleButton>

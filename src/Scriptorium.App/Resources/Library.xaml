@@ -158,13 +158,14 @@
     </Style>
     <!-- Library header composition builds on the shared controls and theme palette. -->
     <Thickness x:Key="Library.PageInset">24,20,24,16</Thickness>
-    <Thickness x:Key="Library.ToolbarMargin">0,24,0,4</Thickness>
+    <Thickness x:Key="Library.ToolbarMargin">0,12,0,2</Thickness>
     <Thickness x:Key="Library.CommandGap">0,0,10,10</Thickness>
+    <Thickness x:Key="Library.ToolbarCommandGap">0,0,10,8</Thickness>
     <Thickness x:Key="Library.BrowserInset">12,8,12,12</Thickness>
     <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
     <sys:Double x:Key="Library.HeaderBreakpoint">520</sys:Double>
-    <sys:Double x:Key="Library.ToolbarControlHeight">42</sys:Double>
-    <sys:Double x:Key="Library.SearchHeight">52</sys:Double>
+    <sys:Double x:Key="Library.ToolbarControlHeight">40</sys:Double>
+    <sys:Double x:Key="Library.SearchWidth">300</sys:Double>
     <sys:Double x:Key="Library.SortWidth">196</sys:Double>
     <sys:Double x:Key="Library.FilterPanelBreakpoint">420</sys:Double>
     <sys:Double x:Key="Library.FilterPanelMaxHeight">480</sys:Double>
@@ -185,19 +186,19 @@
     <Style x:Key="Library.ItemCount" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
         <Setter Property="FontSize" Value="{StaticResource FontSize.Label}"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
-        <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
     </Style>
     <Style x:Key="Library.ToolbarSearchField" TargetType="Border" BasedOn="{StaticResource Library.SearchField}">
         <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
-        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="Padding" Value="12,0"/>
         <Style.Triggers>
             <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.ComboBox.Focus}"/></Trigger>
         </Style.Triggers>
     </Style>
     <Style x:Key="Library.SearchTextBox" TargetType="TextBox" BasedOn="{StaticResource Input.SearchTextBox}">
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="FontSize" Value="{StaticResource FontSize.Navigation}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <!-- The enclosing field owns hover and focus, including the icon and placeholder. -->
         <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="Transparent"/></Trigger></Style.Triggers>
@@ -206,7 +207,7 @@
         <Style.Resources><CornerRadius x:Key="Radius.Input">10</CornerRadius></Style.Resources>
         <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
         <Setter Property="Background" Value="{StaticResource Library.Brush.Control}"/>
-        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
     </Style>
     <Style x:Key="Library.CommandIcon" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
@@ -235,7 +236,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
         <Setter Property="Background" Value="{StaticResource Library.Brush.Control}"/>
         <Setter Property="Padding" Value="14,0"/>
-        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/></Trigger>
             <Trigger Property="IsChecked" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></Trigger>
@@ -246,12 +247,12 @@
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
         <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
         <Setter Property="Padding" Value="0"/>
-        <Setter Property="Margin" Value="0,0,0,10"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
     <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
         <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
         <Setter Property="Width" Value="48"/>
-        <Setter Property="Height" Value="{StaticResource Control.Height.Default}"/>
+        <Setter Property="Height" Value="38"/>
         <Setter Property="Margin" Value="0"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Background" Value="Transparent"/>
