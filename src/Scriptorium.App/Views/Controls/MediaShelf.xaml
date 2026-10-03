@@ -7,19 +7,11 @@
         <Grid>
             <TextBlock Text="{Binding Title, ElementName=Root}" Style="{StaticResource Text.SectionTitle}" VerticalAlignment="Center" />
             <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                <StackPanel.Style><Style TargetType="StackPanel">
-                    <Setter Property="Opacity" Value="0" /><Setter Property="IsHitTestVisible" Value="False" />
-                    <Style.Triggers>
-                        <DataTrigger Binding="{Binding IsMouseOver, ElementName=Root}" Value="True"><Setter Property="Opacity" Value="1" /><Setter Property="IsHitTestVisible" Value="True" /></DataTrigger>
-                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=Root}" Value="True"><Setter Property="Opacity" Value="1" /><Setter Property="IsHitTestVisible" Value="True" /></DataTrigger>
-                        <DataTrigger Binding="{Binding HasOverflow, ElementName=Root}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
-                    </Style.Triggers>
-                </Style></StackPanel.Style>
-                <Button x:Name="PreviousButton" Style="{StaticResource Button.Icon}" Click="OnPrevious" IsEnabled="{Binding CanScrollLeft, ElementName=Root}" ToolTip="Previous titles" AutomationProperties.Name="Previous titles">
-                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE76B;" />
+                <Button x:Name="PreviousButton" Style="{StaticResource Button.ShelfNavigation}" Click="OnPrevious" IsEnabled="{Binding CanScrollLeft, ElementName=Root}" ToolTip="Previous titles" AutomationProperties.Name="Previous titles">
+                    <Path Data="M 8,1 L 2,7 L 8,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                 </Button>
-                <Button x:Name="NextButton" Style="{StaticResource Button.Icon}" Click="OnNext" IsEnabled="{Binding CanScrollRight, ElementName=Root}" Margin="{StaticResource Home.Arrow.Margin}" ToolTip="More titles" AutomationProperties.Name="More titles">
-                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE76C;" />
+                <Button x:Name="NextButton" Style="{StaticResource Button.ShelfNavigation}" Click="OnNext" IsEnabled="{Binding CanScrollRight, ElementName=Root}" Margin="{StaticResource Home.Arrow.Margin}" ToolTip="More titles" AutomationProperties.Name="More titles">
+                    <Path Data="M 2,1 L 8,7 L 2,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                 </Button>
             </StackPanel>
         </Grid>

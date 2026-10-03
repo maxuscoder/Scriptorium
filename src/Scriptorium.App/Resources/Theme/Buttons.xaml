@@ -174,6 +174,40 @@
         <Setter Property="Height" Value="{StaticResource Control.Height.Default}" />
         <Setter Property="Padding" Value="{StaticResource Spacing.None}" />
     </Style>
+    <Style x:Key="Button.ShelfNavigation" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="36" />
+        <Setter Property="MinWidth" Value="36" />
+        <Setter Property="MinHeight" Value="36" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="#191B20" />
+        <Setter Property="BorderBrush" Value="#292C32" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="999"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#24272D" />
+                <Setter Property="BorderBrush" Value="#3A3D44" />
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#2C3037" />
+                <Setter Property="BorderBrush" Value="#444851" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
     <Style x:Key="CategoryColorSwatch" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
         <Setter Property="Width" Value="{StaticResource Control.Height.Compact}" />
         <Setter Property="Height" Value="{StaticResource Control.Height.Compact}" />
