@@ -2,6 +2,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Focusable="True" FocusVisualStyle="{StaticResource Focus.Keyboard}" KeyboardNavigation.TabNavigation="Local"
+    Cursor="Hand" MouseLeftButtonUp="OnCardMouseLeftButtonUp"
     AutomationProperties.Name="{Binding Title, ElementName=Root}"
     PreviewKeyDown="OnCardKeyDown">
     <UserControl.Resources>
@@ -58,10 +59,12 @@
                     <Grid.Style><Style TargetType="Grid"><Setter Property="IsHitTestVisible" Value="False" />
                         <Style.Triggers><DataTrigger Binding="{Binding IsEngaged, ElementName=Root}" Value="True"><Setter Property="IsHitTestVisible" Value="True" /></DataTrigger></Style.Triggers>
                     </Style></Grid.Style>
-                    <Button x:Name="PrimaryAction" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                    <Button x:Name="PrimaryAction" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Command="{Binding ActionCommand, ElementName=Root}" CommandParameter="{Binding ActionParameter, ElementName=Root}"
-                        Content="{Binding DisplayActionText, ElementName=Root}" AutomationProperties.Name="{Binding DisplayActionText, ElementName=Root}">
-                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource MediaCard.Action}">
+                        AutomationProperties.Name="Open media" ToolTip="Open media">
+                        <Path Width="26" Height="26" Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                        <Button.Style><Style TargetType="Button" BasedOn="{StaticResource MediaCard.PlayAction}">
                             <Style.Triggers><DataTrigger Binding="{Binding ActionCommand, ElementName=Root}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
                         </Style></Button.Style>
                     </Button>

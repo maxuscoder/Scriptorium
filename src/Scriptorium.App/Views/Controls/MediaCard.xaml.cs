@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Controls.Primitives;
+using System.Windows.Media.Media3D;
 
 namespace Scriptorium.App.Views.Controls;
 
@@ -495,6 +496,36 @@ public partial class MediaCard : UserControl
             ActionCommand.Execute(ActionParameter);
             e.Handled = true;
         }
+    }
+
+    private void OnCardMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.Handled || IsWithinButton(e.OriginalSource as DependencyObject) ||
+            ActionCommand?.CanExecute(ActionParameter) != true)
+        {
+            return;
+        }
+
+        Focus();
+        ActionCommand.Execute(ActionParameter);
+        e.Handled = true;
+    }
+
+    private static bool IsWithinButton(DependencyObject? element)
+    {
+        while (element is not null)
+        {
+            if (element is ButtonBase) return true;
+
+            element = element switch
+            {
+                ContentElement contentElement => ContentOperations.GetParent(contentElement) ?? LogicalTreeHelper.GetParent(contentElement),
+                Visual or Visual3D => VisualTreeHelper.GetParent(element),
+                _ => LogicalTreeHelper.GetParent(element)
+            };
+        }
+
+        return false;
     }
 
     private void OnTitleToolTipOpening(object sender, ToolTipEventArgs e) =>

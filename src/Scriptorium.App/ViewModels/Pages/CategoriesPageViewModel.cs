@@ -22,6 +22,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     private readonly ICreateCategoryDialog _createCategoryDialog;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IFavoriteService _favoriteService;
+    private readonly IMediaDetailsNavigationCoordinator? _detailsCoordinator;
     private readonly ILogger<CategoriesPageViewModel>? _logger;
     private readonly INotificationService? _notifications;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
@@ -41,7 +42,8 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         IMediaItemRepository mediaItemRepository,
         IFavoriteService favoriteService,
         ILogger<CategoriesPageViewModel>? logger = null,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        IMediaDetailsNavigationCoordinator? detailsCoordinator = null)
     {
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
@@ -51,6 +53,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         _favoriteService = favoriteService;
         _logger = logger;
         _notifications = notifications;
+        _detailsCoordinator = detailsCoordinator;
 
         CreateCategoryCommand = new AsyncRelayCommand(CreateCategoryAsync);
         RenameCategoryCommand = new AsyncRelayCommand(SaveCategoryAsync);
@@ -58,6 +61,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         SelectCategoryCommand = new RelayCommand(SelectCategory, parameter => parameter is CategoryItemViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
+        OpenMediaCommand = new AsyncRelayCommand(OpenMediaAsync, parameter => _detailsCoordinator is not null && parameter is LibraryMediaItemViewModel);
         _favoriteService.FavoriteChanged += OnFavoriteChanged;
         _categoryService.CategoriesChanged += OnCategoriesChanged;
     }
@@ -98,6 +102,8 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     public ICommand SelectCategoryCommand { get; }
 
     public ICommand ToggleFavoriteCommand { get; }
+
+    public ICommand OpenMediaCommand { get; }
 
     /// <summary>Gets the media assigned to the selected category.</summary>
     public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
@@ -243,6 +249,19 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         if (parameter is CategoryItemViewModel category && Categories.Contains(category))
         {
             SelectedCategory = category;
+        }
+    }
+
+    private async Task OpenMediaAsync(object? parameter)
+    {
+        if (_detailsCoordinator is null || parameter is not LibraryMediaItemViewModel item)
+        {
+            return;
+        }
+
+        if (!await _detailsCoordinator.OpenMediaAsync(item.MediaItem, this))
+        {
+            StatusMessage = "This media is no longer available in the library.";
         }
     }
 
