@@ -63,19 +63,45 @@
             </Setter>
         </Style>
         <Style x:Key="Hero.More" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
-            <Setter Property="Width" Value="40" />
-            <Setter Property="Height" Value="40" />
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
             <Setter Property="Background" Value="{DynamicResource Brush.ArtworkScrim}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+            <Setter Property="BorderBrush" Value="#66FFFFFF" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="20">
+                        <Grid ClipToBounds="True">
+                            <Grid.Clip>
+                                <EllipseGeometry Center="18,18" RadiusX="18" RadiusY="18" />
+                            </Grid.Clip>
+                            <Ellipse x:Name="Backdrop" Opacity="0.8">
+                                <Ellipse.Fill>
+                                    <VisualBrush Visual="{Binding ElementName=ArtworkLayer}"
+                                                 ViewboxUnits="Absolute" Viewbox="0,0,36,36" Stretch="Fill" />
+                                </Ellipse.Fill>
+                                <Ellipse.Effect><BlurEffect Radius="8" RenderingBias="Performance" /></Ellipse.Effect>
+                            </Ellipse>
+                            <Ellipse x:Name="Surface" Fill="{TemplateBinding Background}" Stroke="{TemplateBinding BorderBrush}"
+                                     StrokeThickness="1" />
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Fill" Value="{DynamicResource Brush.SurfaceElevated}" />
+                                <Setter TargetName="Surface" Property="Stroke" Value="{DynamicResource Brush.BorderStrong}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Fill" Value="{DynamicResource Brush.SurfacePressed}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="Stroke" Value="{DynamicResource Brush.FocusRing}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="False">
+                                <Setter TargetName="Backdrop" Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -87,7 +113,7 @@
                 <Setter Property="MinHeight" Value="{StaticResource Home.Hero.Height}" />
             </DataTrigger></Style.Triggers>
         </Style></Grid.Style>
-        <Grid>
+        <Grid x:Name="ArtworkLayer">
             <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" />
                 <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
             </Style></Grid.Style>
@@ -144,7 +170,7 @@
                     </Button>
                 </StackPanel>
             </StackPanel>
-            <Button x:Name="More" Grid.Column="1" Style="{StaticResource Hero.More}" VerticalAlignment="Top" Click="OnMore" ToolTip="More actions" AutomationProperties.Name="More actions">
+            <Button x:Name="More" Grid.Column="1" Style="{StaticResource Hero.More}" VerticalAlignment="Top" Click="OnMore" SizeChanged="OnMoreSizeChanged" ToolTip="More actions" AutomationProperties.Name="More actions">
                 <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE712;" />
                 <Button.ContextMenu>
                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">

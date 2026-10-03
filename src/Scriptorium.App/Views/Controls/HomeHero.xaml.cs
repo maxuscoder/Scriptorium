@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.Core.Models;
 
@@ -79,7 +80,7 @@ public partial class HomeHero : UserControl
         if (!IsLoaded) return;
         var image = await ThumbnailCache.GetAsync(Media?.ThumbnailPath);
         if (version != _loadVersion || !IsLoaded) return;
-        // Existing 480x270 cached previews only; no full-resolution hero decode or live blur.
+        // Reuse the existing cached preview; do not decode the full-resolution source for the hero.
         SetValue(ArtworkPropertyKey, image); SetValue(HasArtworkPropertyKey, image is not null);
     }
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -87,6 +88,7 @@ public partial class HomeHero : UserControl
         ObserveItem();
         ThumbnailCache.CacheCleared -= OnCacheCleared;
         ThumbnailCache.CacheCleared += OnCacheCleared;
+        UpdateMoreBackdrop();
         _ = LoadArtworkAsync();
     }
     private void OnUnloaded(object sender, RoutedEventArgs e)
@@ -109,6 +111,29 @@ public partial class HomeHero : UserControl
     {
         var radius = ((CornerRadius)FindResource("Radius.Card")).TopLeft;
         Frame.Clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
+        UpdateMoreBackdrop();
+    }
+
+    private void OnMoreSizeChanged(object sender, SizeChangedEventArgs e) => UpdateMoreBackdrop();
+
+    private void UpdateMoreBackdrop()
+    {
+        if (!IsLoaded)
+            return;
+
+        More.ApplyTemplate();
+        if (More.Template?.FindName("Backdrop", More) is not Ellipse backdrop || backdrop.Fill is not VisualBrush brush)
+            return;
+
+        try
+        {
+            brush.Viewbox = More.TransformToVisual(ArtworkLayer).TransformBounds(
+                new Rect(0, 0, More.ActualWidth, More.ActualHeight));
+        }
+        catch (InvalidOperationException)
+        {
+            // Layout may not have connected the hero layers yet.
+        }
     }
 }
 

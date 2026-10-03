@@ -19,8 +19,8 @@
     <Thickness x:Key="MediaCard.Shadow.Inset">12,8,12,8</Thickness>
     <Thickness x:Key="MediaCard.Action.Gap">0,0,8,0</Thickness>
     <SolidColorBrush x:Key="MediaCard.Brush.Progress" Color="#FF9D00" />
-    <SolidColorBrush x:Key="MediaCard.Brush.Action" Color="#D917171A" />
-    <SolidColorBrush x:Key="MediaCard.Brush.ActionHover" Color="#F026262B" />
+    <SolidColorBrush x:Key="MediaCard.Brush.Action" Color="#E616171A" />
+    <SolidColorBrush x:Key="MediaCard.Brush.ActionHover" Color="#F025272C" />
     <SolidColorBrush x:Key="MediaCard.Brush.Icon" Color="#F5F5F7" />
     <SolidColorBrush x:Key="MediaCard.Brush.FallbackIcon" Color="#73737A" />
     <LinearGradientBrush x:Key="MediaCard.Brush.Fallback" StartPoint="0,0" EndPoint="1,1">
@@ -61,8 +61,27 @@
         <Setter Property="Width" Value="{StaticResource Control.MinHitTarget}" />
         <Setter Property="Height" Value="{StaticResource Control.MinHitTarget}" />
         <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderBrush" Value="#66565A62" />
+        <Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontFamily" Value="{StaticResource MediaCard.FontFamily.Icons}" />
         <Setter Property="FontSize" Value="{StaticResource Icon.Size.Compact}" />
+        <Setter Property="Template"><Setter.Value>
+            <ControlTemplate TargetType="Button">
+                <Border x:Name="Frame" Background="{TemplateBinding Background}"
+                        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                        CornerRadius="16">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsKeyboardFocused" Value="True">
+                        <Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                    </Trigger>
+                    <Trigger Property="IsEnabled" Value="False">
+                        <Setter TargetName="Frame" Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Setter.Value></Setter>
         <!-- Explicit glyph text avoids the application's implicit TextBlock font overriding icons. -->
         <Setter Property="ContentTemplate"><Setter.Value>
             <DataTemplate>
