@@ -215,7 +215,7 @@
                             Focusable="False"
                             IsOpen="{TemplateBinding IsDropDownOpen}"
                             MaxHeight="{TemplateBinding MaxDropDownHeight}"
-                            VerticalOffset="-4"
+                            VerticalOffset="5"
                             Placement="Bottom"
                             PlacementTarget="{Binding RelativeSource={RelativeSource TemplatedParent}}"
                             PopupAnimation="None"
@@ -284,9 +284,9 @@
                     <Border
                         x:Name="ItemSurface"
                         Background="{TemplateBinding Background}"
-                        CornerRadius="{StaticResource CornerRadius.XS}">
+                        CornerRadius="{StaticResource Radius.Control}">
                         <Border x:Name="SelectionTint" Background="Transparent"
-                                CornerRadius="{StaticResource CornerRadius.XS}" Padding="{TemplateBinding Padding}">
+                                CornerRadius="{StaticResource Radius.Control}" Padding="{TemplateBinding Padding}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
