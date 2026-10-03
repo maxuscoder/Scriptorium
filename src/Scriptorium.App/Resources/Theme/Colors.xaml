@@ -17,19 +17,20 @@
     <Color x:Key="Color.AccentMuted">#18FF9D00</Color>
     <Color x:Key="Color.AccentBorder">#55FF9D00</Color>
     <!-- Primary button surface tokens. Kept separate from Accent so other orange UI cues remain flat. -->
-    <Color x:Key="Color.PrimaryButton.Depth">#FFD47A00</Color>
-    <Color x:Key="Color.PrimaryButton.NormalHighlight">#FFFFF8E7</Color>
-    <Color x:Key="Color.PrimaryButton.NormalMid">#FFFFCD62</Color>
-    <Color x:Key="Color.PrimaryButton.NormalBase">#FFFF9D00</Color>
-    <Color x:Key="Color.PrimaryButton.HoverDepth">#FFE18400</Color>
-    <Color x:Key="Color.PrimaryButton.HoverHighlight">#FFFFFDF6</Color>
-    <Color x:Key="Color.PrimaryButton.HoverMid">#FFFFDA7D</Color>
-    <Color x:Key="Color.PrimaryButton.HoverBase">#FFFFAC18</Color>
-    <Color x:Key="Color.PrimaryButton.PressedDepth">#FFC86F00</Color>
-    <Color x:Key="Color.PrimaryButton.PressedHighlight">#FFFFCE6B</Color>
-    <Color x:Key="Color.PrimaryButton.PressedMid">#FFFFAD20</Color>
-    <Color x:Key="Color.PrimaryButton.PressedBase">#FFF08A00</Color>
-    <Color x:Key="Color.PrimaryButton.DisabledDepth">#FFB28B55</Color>
+    <Color x:Key="Color.PrimaryButton.Text">#FFFFFFFF</Color>
+    <Color x:Key="Color.PrimaryButton.Depth">#FF803300</Color>
+    <Color x:Key="Color.PrimaryButton.NormalHighlight">#FFFFD36B</Color>
+    <Color x:Key="Color.PrimaryButton.NormalMid">#FFD87508</Color>
+    <Color x:Key="Color.PrimaryButton.NormalBase">#FFB94B00</Color>
+    <Color x:Key="Color.PrimaryButton.HoverDepth">#FF8F3800</Color>
+    <Color x:Key="Color.PrimaryButton.HoverHighlight">#FFFFE0A0</Color>
+    <Color x:Key="Color.PrimaryButton.HoverMid">#FFE18422</Color>
+    <Color x:Key="Color.PrimaryButton.HoverBase">#FFC45605</Color>
+    <Color x:Key="Color.PrimaryButton.PressedDepth">#FF692900</Color>
+    <Color x:Key="Color.PrimaryButton.PressedHighlight">#FFD88A3A</Color>
+    <Color x:Key="Color.PrimaryButton.PressedMid">#FFB95805</Color>
+    <Color x:Key="Color.PrimaryButton.PressedBase">#FF963900</Color>
+    <Color x:Key="Color.PrimaryButton.DisabledDepth">#FFB89A75</Color>
     <Color x:Key="Color.PrimaryButton.DisabledHighlight">#FFE0D8C5</Color>
     <Color x:Key="Color.PrimaryButton.DisabledMid">#FFD1B27A</Color>
     <Color x:Key="Color.PrimaryButton.DisabledBase">#FFC29A5F</Color>
@@ -74,6 +75,7 @@
     <SolidColorBrush x:Key="Brush.AccentPressed" Color="{StaticResource Color.AccentPressed}" />
     <SolidColorBrush x:Key="Brush.AccentMuted" Color="{StaticResource Color.AccentMuted}" />
     <SolidColorBrush x:Key="Brush.AccentBorder" Color="{StaticResource Color.AccentBorder}" />
+    <SolidColorBrush x:Key="Brush.PrimaryButton.Text" Color="{StaticResource Color.PrimaryButton.Text}" />
     <SolidColorBrush x:Key="Brush.PrimaryButton.Depth" Color="{StaticResource Color.PrimaryButton.Depth}" />
     <SolidColorBrush x:Key="Brush.PrimaryButton.NormalHighlight" Color="{StaticResource Color.PrimaryButton.NormalHighlight}" />
     <SolidColorBrush x:Key="Brush.PrimaryButton.NormalMid" Color="{StaticResource Color.PrimaryButton.NormalMid}" />

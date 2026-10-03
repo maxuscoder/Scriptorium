@@ -75,13 +75,14 @@
     <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
         <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.Depth}" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnAccent}" />
+        <Setter Property="Padding" Value="16,6" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryButton.Text}" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Grid SnapsToDevicePixels="True">
-                        <!-- The base is a small, borderless lower lip; the surface supplies the highlight. -->
+                        <!-- The base stays behind the surface to provide elevation without a visible lower lip. -->
                         <Border x:Name="Depth"
                                 Background="{TemplateBinding Background}"
                                 behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
@@ -89,10 +90,9 @@
                                 CornerRadius="9"
                                 Effect="{StaticResource Effect.PrimaryButton.Elevation}" />
                         <Border x:Name="Surface"
-                                Margin="0,0,0,2"
                                 Background="{DynamicResource Brush.PrimaryButton.Normal}"
                                 CornerRadius="9" />
-                        <Border x:Name="ContentHost" Margin="0,0,0,2" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="ContentHost" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               RecognizesAccessKey="True" />
@@ -117,8 +117,6 @@
                         <Trigger Property="IsPressed" Value="True">
                             <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.PressedDepth}" />
                             <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Pressed}" />
-                            <Setter TargetName="Surface" Property="Margin" Value="0,1,0,1" />
-                            <Setter TargetName="ContentHost" Property="Margin" Value="0,1,0,1" />
                             <Setter TargetName="Depth" Property="Effect" Value="{x:Null}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -127,8 +125,6 @@
                             <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.DisabledDepth}" />
                             <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryButton.DisabledText}" />
                             <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Disabled}" />
-                            <Setter TargetName="Surface" Property="Margin" Value="0,0,0,1" />
-                            <Setter TargetName="ContentHost" Property="Margin" Value="0,0,0,1" />
                             <Setter TargetName="Depth" Property="Effect" Value="{x:Null}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
