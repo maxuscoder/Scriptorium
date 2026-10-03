@@ -2,61 +2,54 @@
     x:Class="Scriptorium.App.Views.Pages.MovieDetailsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
+    xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    xmlns:converters="clr-namespace:Scriptorium.App.Converters">
+    <UserControl.Resources>
+        <converters:MediaPlayActionConverter x:Key="MediaPlayActionConverter" />
+        <ControlTemplate x:Key="Details.ProgressTemplate" TargetType="ProgressBar">
+            <Grid>
+                <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="2" />
+                <Grid x:Name="PART_Indicator" HorizontalAlignment="Left">
+                    <Border Background="{TemplateBinding Foreground}" CornerRadius="2" />
+                    <Ellipse Width="8" Height="8" Margin="0,-2,-4,-2" HorizontalAlignment="Right" Fill="{TemplateBinding Foreground}" />
+                </Grid>
+            </Grid>
+        </ControlTemplate>
+    </UserControl.Resources>
     <controls:MediaDetailsPage
-        BackCommand="{Binding BackCommand}"
-        Description="{Binding Description}"
-        FallbackGlyph="▶"
-        HeaderMetadata="{Binding HeaderMetadata}"
-        MetadataItems="{Binding MetadataItems}"
-        SecondaryActionCommand="{Binding ToggleCompletionCommand}"
-        SecondaryActionText="{Binding CompletionActionText}"
-        Status="{Binding Availability}"
-        TertiaryActionCommand="{Binding ToggleFavoriteCommand}"
-        TertiaryActionText="{Binding FavoriteActionText}"
-        ThumbnailPath="{Binding ThumbnailPath}"
-        Title="{Binding Title}"
-        TypeLabel="{Binding MediaTypeLabel}"
-        HasManualMetadata="{Binding HasManualMetadata}">
+        BackCommand="{Binding BackCommand}" Description="{Binding Description}" FallbackGlyph="&#x25B6;"
+        HeaderMetadata="{Binding HeaderMetadata}" MetadataItems="{Binding MetadataItems}" FileMetadataItems="{Binding FileMetadataItems}"
+        PrimaryActionCommand="{Binding Player.TogglePlaybackCommand}"
+        SecondaryActionCommand="{Binding ToggleCompletionCommand}" SecondaryActionText="{Binding CompletionActionText}"
+        Status="{Binding Availability}" TertiaryActionCommand="{Binding ToggleFavoriteCommand}" TertiaryActionText="{Binding FavoriteActionText}"
+        ThumbnailPath="{Binding ThumbnailPath}" Title="{Binding Title}" TypeLabel="{Binding MediaTypeLabel}"
+        HasManualMetadata="{Binding HasManualMetadata}" EditCommand="{Binding EditCommand}" IsEditing="{Binding IsEditing}">
+        <controls:MediaDetailsPage.PrimaryActionText>
+            <MultiBinding Converter="{StaticResource MediaPlayActionConverter}">
+                <Binding Path="Player.PlayActionText" />
+                <Binding Path="PlayActionText" />
+            </MultiBinding>
+        </controls:MediaDetailsPage.PrimaryActionText>
         <controls:MediaDetailsPage.PreviewContent>
-            <controls:VideoPlayer Height="380" Player="{Binding Player}" />
+            <controls:VideoPlayer Player="{Binding Player}" />
         </controls:MediaDetailsPage.PreviewContent>
-        <controls:MediaDetailsPage.ExtensionContent>
-            <StackPanel>
-                <controls:MediaThumbnailEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <controls:MediaTypeEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <controls:MediaTitleEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <controls:MediaDescriptionEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <controls:MediaReleaseYearEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <controls:MediaCategoryEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <controls:MediaMetadataResetEditor />
-                <Border Height="1" Margin="0,20,0,20" Background="{DynamicResource Brush.Border}" />
-                <TextBlock Style="{StaticResource Text.SubsectionTitle}" Text="Playback progress" />
-                <ProgressBar
-                    Height="6"
-                    Margin="0,12,0,0"
-                    Background="{DynamicResource Brush.Border}"
-                    Foreground="{DynamicResource Brush.Accent}"
-                    Maximum="100"
-                    Minimum="0"
-                    Value="{Binding PlaybackProgressPercentage, Mode=OneWay}" />
-                <TextBlock
-                    Margin="0,8,0,0"
-                    Foreground="{DynamicResource Brush.TextMuted}"
-                    Text="{Binding PlaybackProgressText}" />
-                <Button
-                    Margin="0,12,0,0"
-                    Command="{Binding ResetProgressCommand}"
-                    Content="Reset progress"
-                    HorizontalAlignment="Left"
-                    Style="{StaticResource Button.Secondary}" />
-            </StackPanel>
-        </controls:MediaDetailsPage.ExtensionContent>
+        <controls:MediaDetailsPage.ProgressContent>
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextPrimary}" Text="{Binding PlaybackProgressText}" />
+                </StackPanel>
+                <Button Grid.Column="1" VerticalAlignment="Top" Command="{Binding ResetProgressCommand}" Content="Reset progress"
+                        Style="{StaticResource Button.Text}" FontSize="12" Padding="8,4" MinHeight="28" BorderThickness="0" />
+                <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Height="4" Margin="0,12,0,0"
+                             Background="{DynamicResource Brush.Border}" Foreground="{DynamicResource Brush.Accent}"
+                             Maximum="100" Minimum="0" Value="{Binding PlaybackProgressPercentage, Mode=OneWay}"
+                             AutomationProperties.Name="Playback progress" Template="{StaticResource Details.ProgressTemplate}" />
+            </Grid>
+        </controls:MediaDetailsPage.ProgressContent>
+        <controls:MediaDetailsPage.EditorContent>
+            <controls:MediaDetailsEditor />
+        </controls:MediaDetailsPage.EditorContent>
     </controls:MediaDetailsPage>
 </UserControl>

@@ -39,11 +39,7 @@ public sealed class VideoPlayerViewTests
         {
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }
         });
-        await DesignSystemResourceChecks.VerifyAsync(application.Resources);
-        await ShellResourceChecks.VerifyAsync(application.Resources);
-        await MediaCardResourceChecks.VerifyAsync(application.Resources);
-        await HomeResourceChecks.VerifyAsync(application.Resources);
-        await LibraryResourceChecks.VerifyAsync(application.Resources);
+        await MediaDetailsResourceChecks.VerifyAsync();
         using var runtime = new LibVlcRuntime();
         var factory = new RecordingFactory(runtime);
         var player = new VideoPlayerViewModel(factory);
@@ -84,6 +80,18 @@ public sealed class VideoPlayerViewTests
             await Task.Delay(500);
             var engine = Assert.Single(factory.Instances);
             var position = engine.Position;
+            var details = Descendants<MediaDetailsPage>(page).Single();
+            details.SetCurrentValue(MediaDetailsPage.IsEditingProperty, true);
+            window.Width = 620;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Same(inlineSurface, Descendants<VideoView>(inlineView).Single());
+            Assert.Same(mediaPlayer, inlineSurface.MediaPlayer);
+            Assert.True(player.IsPlaying);
+            Assert.Single(factory.Instances);
+            details.SetCurrentValue(MediaDetailsPage.IsEditingProperty, false);
+            window.Width = 1000;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(inlineHandle, inlineSurface.MediaPlayer!.Hwnd);
             var fullscreenButton = Descendants<Button>(inlineView).Single(button =>
                 AutomationProperties.GetName(button) == "Toggle fullscreen");
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -117,6 +125,12 @@ public sealed class VideoPlayerViewTests
             Assert.Empty(FullscreenWindows(window));
             Assert.False(player.IsReady);
             Assert.Null(player.VideoOutput);
+            // Keep native playback assertions independent of the shared theme checks.
+            await DesignSystemResourceChecks.VerifyAsync(application.Resources);
+            await ShellResourceChecks.VerifyAsync(application.Resources);
+            await MediaCardResourceChecks.VerifyAsync(application.Resources);
+            await HomeResourceChecks.VerifyAsync(application.Resources);
+            await LibraryResourceChecks.VerifyAsync(application.Resources);
         }
         finally
         {

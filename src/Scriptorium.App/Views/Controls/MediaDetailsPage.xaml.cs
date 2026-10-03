@@ -72,6 +72,25 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty ExtensionContentProperty =
         DependencyProperty.Register(nameof(ExtensionContent), typeof(object), typeof(MediaDetailsPage));
 
+    public static readonly DependencyProperty ProgressContentProperty =
+        DependencyProperty.Register(nameof(ProgressContent), typeof(object), typeof(MediaDetailsPage));
+
+    public static readonly DependencyProperty EditorContentProperty =
+        DependencyProperty.Register(nameof(EditorContent), typeof(object), typeof(MediaDetailsPage));
+
+    public static readonly DependencyProperty FileMetadataItemsProperty =
+        DependencyProperty.Register(nameof(FileMetadataItems), typeof(IEnumerable), typeof(MediaDetailsPage));
+
+    public static readonly DependencyProperty EditCommandProperty =
+        DependencyProperty.Register(nameof(EditCommand), typeof(ICommand), typeof(MediaDetailsPage));
+
+    public static readonly DependencyProperty IsEditingProperty =
+        DependencyProperty.Register(nameof(IsEditing), typeof(bool), typeof(MediaDetailsPage),
+            new PropertyMetadata(false, (owner, _) => ((MediaDetailsPage)owner).UpdateLayoutWidths()));
+
+    public static readonly DependencyProperty MetadataColumnWidthProperty =
+        DependencyProperty.Register(nameof(MetadataColumnWidth), typeof(double), typeof(MediaDetailsPage), new PropertyMetadata(180d));
+
     public static readonly DependencyProperty HasUsableThumbnailProperty = HasUsableThumbnailPropertyKey.DependencyProperty;
 
     public static readonly DependencyProperty ThumbnailSourceProperty = ThumbnailSourcePropertyKey.DependencyProperty;
@@ -83,6 +102,7 @@ public partial class MediaDetailsPage : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        SizeChanged += (_, _) => UpdateLayoutWidths();
     }
 
     public ICommand? BackCommand { get => (ICommand?)GetValue(BackCommandProperty); set => SetValue(BackCommandProperty, value); }
@@ -120,6 +140,36 @@ public partial class MediaDetailsPage : UserControl
     public string TertiaryActionText { get => (string)GetValue(TertiaryActionTextProperty); set => SetValue(TertiaryActionTextProperty, value); }
 
     public object? ExtensionContent { get => GetValue(ExtensionContentProperty); set => SetValue(ExtensionContentProperty, value); }
+
+    public object? ProgressContent { get => GetValue(ProgressContentProperty); set => SetValue(ProgressContentProperty, value); }
+    public object? EditorContent { get => GetValue(EditorContentProperty); set => SetValue(EditorContentProperty, value); }
+    public IEnumerable? FileMetadataItems { get => (IEnumerable?)GetValue(FileMetadataItemsProperty); set => SetValue(FileMetadataItemsProperty, value); }
+    public ICommand? EditCommand { get => (ICommand?)GetValue(EditCommandProperty); set => SetValue(EditCommandProperty, value); }
+    public bool IsEditing { get => (bool)GetValue(IsEditingProperty); set => SetValue(IsEditingProperty, value); }
+    public double MetadataColumnWidth { get => (double)GetValue(MetadataColumnWidthProperty); private set => SetValue(MetadataColumnWidthProperty, value); }
+
+    private void UpdateLayoutWidths()
+    {
+        if (EditorPanel is null || MainColumn is null) return;
+        var narrow = IsEditing && ActualWidth < 760;
+        EditorPanel.Width = IsEditing ? (narrow ? ActualWidth : Math.Min(420, ActualWidth * 0.42)) : 0;
+        EditorPanel.Visibility = IsEditing ? Visibility.Visible : Visibility.Collapsed;
+        MainColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        // Keep the VideoPlayer mounted while editing, including on narrow windows.
+        MainContent.Visibility = narrow ? Visibility.Hidden : Visibility.Visible;
+    }
+
+    private void OnPreviewSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        if (args.WidthChanged && args.NewSize.Width > 0)
+            PreviewHost.Height = Math.Clamp(args.NewSize.Width * 9 / 16, 220, 520);
+    }
+
+    private void OnMetadataSizeChanged(object sender, SizeChangedEventArgs args)
+    {
+        var columns = Math.Clamp((int)(args.NewSize.Width / 180), 1, 3);
+        MetadataColumnWidth = Math.Max(0, args.NewSize.Width / columns);
+    }
 
     public bool HasUsableThumbnail => (bool)GetValue(HasUsableThumbnailProperty);
 

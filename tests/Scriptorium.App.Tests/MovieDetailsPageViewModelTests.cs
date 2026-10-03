@@ -17,6 +17,149 @@ namespace Scriptorium.App.Tests;
 public sealed class MovieDetailsPageViewModelTests
 {
     [Fact]
+    public Task Save_changes_persists_the_draft_and_preserves_playback_and_favorites() => WithEditableMovie(async (viewModel, repository) =>
+    {
+        var imagePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"scriptorium-edit-{Guid.NewGuid()}.png");
+        await System.IO.File.WriteAllBytesAsync(imagePath, Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aS2kAAAAASUVORK5CYII="));
+        try
+        {
+            viewModel.EditCommand.Execute(null);
+            viewModel.EditableTitle = "New title";
+            viewModel.EditableDescription = "A personal description.";
+            viewModel.EditableReleaseYear = "2026";
+            viewModel.EditableThumbnailPath = imagePath;
+            viewModel.SelectedCategory = viewModel.CategoryOptions.Single(option => option.Name == "Cinema");
+            viewModel.SelectedMediaType = MediaType.Tutorial;
+            await ((AsyncRelayCommand)viewModel.SaveChangesCommand).ExecuteAsync();
+
+            Assert.False(viewModel.IsEditing);
+            var movie = (await repository.GetAllAsync()).Single();
+            Assert.Equal("New title", movie.DisplayTitle);
+            Assert.Equal("A personal description.", movie.DisplayDescription);
+            Assert.Equal(2026, movie.EffectiveReleaseYear);
+            Assert.Equal(imagePath, movie.ThumbnailOverride);
+            Assert.NotNull(movie.CategoryId);
+            Assert.Equal(MediaType.Tutorial, movie.MediaType);
+            Assert.Equal(65, movie.PlaybackPositionSeconds);
+            Assert.True(movie.IsFavorite);
+            Assert.False(movie.IsCompleted);
+            Assert.Equal(@"C:\Movies\movie.mp4", movie.Path);
+            Assert.Contains(viewModel.FileMetadataItems, item => item.Label == "Filename" && item.Value == "movie.mp4");
+        }
+        finally { System.IO.File.Delete(imagePath); }
+    });
+
+    [Theory]
+    [InlineData("title")]
+    [InlineData("year")]
+    [InlineData("thumbnail")]
+    public Task Invalid_draft_keeps_the_editor_open_without_saving_any_fields(string field) => WithEditableMovie(async (viewModel, repository) =>
+    {
+        viewModel.EditCommand.Execute(null);
+        viewModel.EditableTitle = field == "title" ? " " : "Should not save";
+        if (field == "year") viewModel.EditableReleaseYear = "oops";
+        if (field == "thumbnail") viewModel.EditableThumbnailPath = @"C:\missing-thumbnail.png";
+        await ((AsyncRelayCommand)viewModel.SaveChangesCommand).ExecuteAsync();
+        Assert.True(viewModel.IsEditing);
+        Assert.False(string.IsNullOrWhiteSpace(viewModel.EditStatus));
+        Assert.False(viewModel.IsSavingChanges);
+        Assert.Null((await repository.GetAllAsync()).Single().TitleOverride);
+    });
+
+    [Fact]
+    public Task Cancel_discards_drafts_and_an_unchanged_save_creates_no_overrides() => WithEditableMovie(async (viewModel, repository) =>
+    {
+        viewModel.EditCommand.Execute(null);
+        viewModel.EditableTitle = "Discard me";
+        viewModel.EditableDescription = "Discard this too";
+        viewModel.SelectedMediaType = MediaType.Tutorial;
+        viewModel.CancelEditCommand.Execute(null);
+        Assert.False(viewModel.IsEditing);
+        Assert.Equal("Movie", viewModel.EditableTitle);
+        Assert.Equal(MediaType.Movie, viewModel.SelectedMediaType);
+        viewModel.EditCommand.Execute(null);
+        await ((AsyncRelayCommand)viewModel.SaveChangesCommand).ExecuteAsync();
+        Assert.False(viewModel.IsEditing);
+        Assert.False((await repository.GetAllAsync()).Single().HasManualMetadata);
+    });
+
+    [Fact]
+    public Task Restore_detected_actions_still_work_inside_the_editor() => WithEditableMovie(async (viewModel, repository) =>
+    {
+        viewModel.EditCommand.Execute(null);
+        viewModel.EditableTitle = "Custom title";
+        await ((AsyncRelayCommand)viewModel.SaveChangesCommand).ExecuteAsync();
+        viewModel.EditCommand.Execute(null);
+        await ((AsyncRelayCommand)viewModel.RestoreTitleCommand).ExecuteAsync();
+        Assert.Equal("Movie", viewModel.EditableTitle);
+        Assert.Null((await repository.GetAllAsync()).Single().TitleOverride);
+        Assert.True(viewModel.IsEditing);
+        viewModel.CancelEditCommand.Execute(null);
+        Assert.Equal("Movie", viewModel.Title);
+    });
+
+    [Fact]
+    public Task Save_failure_keeps_the_draft_and_prevents_overlapping_edits()
+    {
+        var titleService = new DeferredTitleService();
+        return WithEditableMovie(async (viewModel, repository) =>
+        {
+            viewModel.EditCommand.Execute(null);
+            viewModel.EditableTitle = "Keep this draft";
+            var save = ((AsyncRelayCommand)viewModel.SaveChangesCommand).ExecuteAsync();
+            Assert.True(viewModel.IsSavingChanges);
+            Assert.False(viewModel.CanEditFields);
+            Assert.False(viewModel.CancelEditCommand.CanExecute(null));
+            Assert.False(viewModel.EditCommand.CanExecute(null));
+            Assert.False(viewModel.SaveChangesCommand.CanExecute(null));
+            titleService.Completion.SetResult(false);
+            await save;
+            Assert.True(viewModel.IsEditing);
+            Assert.Equal("Keep this draft", viewModel.EditableTitle);
+            Assert.Equal("The title could not be saved.", viewModel.EditStatus);
+            Assert.True(viewModel.CanEditFields);
+            Assert.Null((await repository.GetAllAsync()).Single().TitleOverride);
+        }, titleService);
+    }
+
+    private sealed class DeferredTitleService : IMediaTitleService
+    {
+        public event Action<Guid>? TitleChanged { add { } remove { } }
+        public TaskCompletionSource<bool> Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public Task<bool> SaveAsync(Guid mediaItemId, string? title, CancellationToken cancellationToken = default) => Completion.Task;
+    }
+
+    private static Task WithEditableMovie(Func<MovieDetailsPageViewModel, MediaItemRepository, Task> verify, IMediaTitleService? titleService = null) =>
+        StaTest.Run(() => WithEditableMovieOnDispatcher(verify, titleService));
+
+    internal static async Task WithEditableMovieOnDispatcher(Func<MovieDetailsPageViewModel, MediaItemRepository, Task> verify, IMediaTitleService? titleService = null)
+    {
+        await using var database = new SqliteConnection("Data Source=:memory:");
+        await database.OpenAsync();
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(database).Options;
+        await using (var context = new ScriptoriumDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            context.Categories.Add(new Category { Name = "Cinema", Color = "#FF9D00" });
+            context.MediaItems.Add(new MediaItem
+            {
+                Title = "Movie", Path = @"C:\Movies\movie.mp4", MediaType = MediaType.Movie,
+                RuntimeSeconds = 100, PlaybackPositionSeconds = 65, IsFavorite = true
+            });
+            await context.SaveChangesAsync();
+        }
+        var factory = new MovieDetailsTestDbContextFactory(options);
+        var repository = new MediaItemRepository(factory);
+        var categories = new CategoryRepository(factory);
+        using var viewModel = new MovieDetailsPageViewModel(repository, categories,
+            new CategoryService(categories, repository), new NavigationService(NullLogger<NavigationService>.Instance),
+            new BlockingPlaybackProgressService(), new FavoriteService(repository), new VideoPlayerViewModel(new MovieFakePlaybackFactory()),
+            titleService ?? new MediaTitleService(repository), mediaMetadataResetService: new MediaMetadataResetService(repository, new LibraryFolderRepository(factory), new TvShowHierarchySynchronizer(factory), new TutorialCourseSynchronizer(factory, new LessonFileNameParser())));
+        Assert.True(await viewModel.LoadAsync((await repository.GetAllAsync()).Single().Id, viewModel));
+        await verify(viewModel, repository);
+    }
+
+    [Fact]
     public Task Marking_a_movie_watched_flushes_queued_progress_before_completion() => StaTest.Run(async () =>
     {
         await using var database = new SqliteConnection("Data Source=:memory:");
