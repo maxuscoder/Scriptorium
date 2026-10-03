@@ -113,9 +113,13 @@
                         Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding Media, ElementName=Root}"
                         ToolTip="Open details">
                         <StackPanel Orientation="Horizontal">
-                            <Path Width="16" Height="16"
-                                  Margin="0,0,5.33,0" Data="M11,17H13V11H11M12,2A10,10 0 1,0 12,22A10,10 0 0,0 12,2M11,7V9H13V7H11Z"
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <Path Width="16" Height="16" Margin="0,0,5.33,0"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform">
+                                <Path.Data>
+                                    <PathGeometry FillRule="EvenOdd"
+                                        Figures="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 Z M12,4 A8,8 0 1 1 12,20 A8,8 0 1 1 12,4 Z M11,10 H13 V17 H11 Z M11,7 H13 V9 H11 Z" />
+                                </Path.Data>
+                            </Path>
                             <TextBlock Text="Details" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
