@@ -43,9 +43,8 @@
         <Setter Property="HorizontalAlignment" Value="Stretch" />
         <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style x:Key="Settings.VolumeSlider" TargetType="Slider">
+    <Style x:Key="Settings.VolumeSlider" TargetType="Slider" BasedOn="{StaticResource Input.Slider}">
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
     </Style>
     <Style x:Key="Settings.ActionButton" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
         <Setter Property="MinWidth" Value="84" />

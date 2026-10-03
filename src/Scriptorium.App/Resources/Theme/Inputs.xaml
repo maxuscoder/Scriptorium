@@ -322,6 +322,101 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Shared by playback controls and settings; the full-height track remains clickable. -->
+    <Style x:Key="Input.Slider.TrackButton" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RepeatButton">
+                    <Grid Background="Transparent">
+                        <!-- Extend the fill beneath the circular handle to avoid a gap. -->
+                        <Border Height="6" Margin="12,0,-12,0" VerticalAlignment="Center"
+                                Background="{TemplateBinding Background}" CornerRadius="3"
+                                IsHitTestVisible="False" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Input.Slider.Thumb" TargetType="Thumb">
+        <Setter Property="Width" Value="24" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Background="Transparent">
+                        <Ellipse x:Name="HandleRing" Width="24" Height="24"
+                                 Fill="{DynamicResource Brush.AccentMuted}"
+                                 Stroke="{DynamicResource Brush.FocusRing}" StrokeThickness="1"
+                                 Opacity="0" />
+                        <Ellipse x:Name="Handle" Width="16" Height="16"
+                                 Fill="{TemplateBinding Background}"
+                                 Stroke="{DynamicResource Brush.Surface}" StrokeThickness="2" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="HandleRing" Property="Opacity" Value="1" />
+                            <Setter TargetName="Handle" Property="Fill" Value="{DynamicResource Brush.AccentStrong}" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, RelativeSource={RelativeSource AncestorType=Slider}}" Value="True">
+                            <Setter TargetName="HandleRing" Property="Opacity" Value="1" />
+                        </DataTrigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="HandleRing" Property="Opacity" Value="1" />
+                            <Setter TargetName="Handle" Property="Fill" Value="{DynamicResource Brush.AccentPressed}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Input.Slider" TargetType="Slider">
+        <Setter Property="MinHeight" Value="{StaticResource Control.MinHitTarget}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.ProgressTrack}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Background="Transparent">
+                        <Border Height="6" Margin="12,0" VerticalAlignment="Center"
+                                Background="{TemplateBinding Background}" CornerRadius="3"
+                                IsHitTestVisible="False" />
+                        <Track x:Name="PART_Track"
+                               Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                               Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                               IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.DecreaseLarge}"
+                                              Background="{TemplateBinding Foreground}"
+                                              Style="{StaticResource Input.Slider.TrackButton}" />
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Background="{TemplateBinding Foreground}"
+                                       Style="{StaticResource Input.Slider.Thumb}" />
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="{x:Static Slider.IncreaseLarge}"
+                                              Background="Transparent"
+                                              Style="{StaticResource Input.Slider.TrackButton}" />
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentStrong}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style TargetType="Slider" BasedOn="{StaticResource Input.Slider}" />
     <Style TargetType="TextBox" BasedOn="{StaticResource Input.TextBox}" />
     <Style TargetType="ComboBox" BasedOn="{StaticResource Input.ComboBox}" />
     <Style TargetType="ComboBoxItem" BasedOn="{StaticResource Input.ComboBoxItem}" />
