@@ -87,11 +87,13 @@
                                 Background="{TemplateBinding Background}"
                                 behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
                                 behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Instant}"
-                                CornerRadius="9"
+                                CornerRadius="8"
                                 Effect="{StaticResource Effect.PrimaryButton.Elevation}" />
                         <Border x:Name="Surface"
                                 Background="{DynamicResource Brush.PrimaryButton.Normal}"
-                                CornerRadius="9" />
+                                CornerRadius="8"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" />
                         <Border x:Name="ContentHost" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"

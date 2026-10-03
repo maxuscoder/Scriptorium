@@ -8,6 +8,59 @@
                 <Setter Property="Foreground" Value="{StaticResource Home.Hero.TextSecondary}" />
             </DataTrigger></Style.Triggers>
         </Style>
+        <Style x:Key="Hero.Eyebrow" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+        </Style>
+        <Style x:Key="Hero.ActionPrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <Setter Property="Width" Value="171" />
+            <Setter Property="Height" Value="39" />
+            <Setter Property="MinHeight" Value="39" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="BorderBrush" Value="#FFFFA22B" />
+            <Setter Property="BorderThickness" Value="0.7" />
+        </Style>
+        <Style x:Key="Hero.ActionSecondary" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+            <Setter Property="Width" Value="101" />
+            <Setter Property="Height" Value="39" />
+            <Setter Property="MinHeight" Value="39" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Background" Value="#FF1B1C20" />
+            <Setter Property="BorderBrush" Value="#FF383A40" />
+            <Setter Property="Foreground" Value="#FFC3C5CD" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Hero.More" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+            <Setter Property="Width" Value="40" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="Background" Value="{DynamicResource Brush.ArtworkScrim}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="20">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.SurfaceHeader}">
         <Grid.Style><Style TargetType="Grid">
@@ -27,13 +80,13 @@
         <Grid Margin="{StaticResource Home.Hero.Padding}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel MaxWidth="{StaticResource Home.Hero.TextWidth}" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Eyebrow, ElementName=Root}" Style="{StaticResource Hero.Copy}" FontSize="{StaticResource FontSize.Metadata}" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding Eyebrow, ElementName=Root}" Style="{StaticResource Hero.Eyebrow}" />
                 <TextBlock Text="{Binding HeroTitle, ElementName=Root}" TextWrapping="Wrap" Margin="{StaticResource Home.Copy.Gap}">
                     <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">
                         <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDark}" /></DataTrigger></Style.Triggers>
                     </Style></TextBlock.Style>
                 </TextBlock>
-                <TextBlock Text="{Binding Media.CardMetadata, ElementName=Root}" Style="{StaticResource Hero.Copy}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding HeroMetadata, ElementName=Root}" Style="{StaticResource Hero.Copy}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding PositionText, ElementName=Root}" FontSize="{StaticResource FontSize.Metadata}" Margin="{StaticResource Home.Copy.Gap}">
                     <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Hero.Copy}">
                         <Style.Triggers><DataTrigger Binding="{Binding PositionText, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
@@ -45,11 +98,30 @@
                         <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style></ProgressBar.Style>
                 </ProgressBar>
-                <Button x:Name="ContinueButton" Content="{Binding ActionText, ElementName=Root}" Style="{StaticResource Button.Primary}"
-                    Command="{Binding OpenCommand, ElementName=Root}"
-                    HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}" ToolTip="Open the player using your saved playback preferences" />
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}">
+                    <Button x:Name="ContinueButton" Style="{StaticResource Hero.ActionPrimary}"
+                        Command="{Binding OpenCommand, ElementName=Root}"
+                        ToolTip="Open the player using your saved playback preferences">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="13.33" Height="13.33"
+                                  Margin="0,0,5.33,0" Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Text="{Binding ActionText, ElementName=Root}" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button x:Name="DetailsButton" Margin="16,0,0,0" Style="{StaticResource Hero.ActionSecondary}"
+                        Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding Media, ElementName=Root}"
+                        ToolTip="Open details">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Width="16" Height="16"
+                                  Margin="0,0,5.33,0" Data="M11,17H13V11H11M12,2A10,10 0 1,0 12,22A10,10 0 0,0 12,2M11,7V9H13V7H11Z"
+                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                            <TextBlock Text="Details" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
             </StackPanel>
-            <Button x:Name="More" Grid.Column="1" Style="{StaticResource Button.Icon}" VerticalAlignment="Top" Click="OnMore" ToolTip="More actions" AutomationProperties.Name="More actions">
+            <Button x:Name="More" Grid.Column="1" Style="{StaticResource Hero.More}" VerticalAlignment="Top" Click="OnMore" ToolTip="More actions" AutomationProperties.Name="More actions">
                 <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE712;" />
                 <Button.ContextMenu>
                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
@@ -63,6 +135,8 @@
                 </Button.ContextMenu>
             </Button>
         </Grid>
+        <Border BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" CornerRadius="{StaticResource Radius.Card}"
+                IsHitTestVisible="False" />
     </Grid>
 </UserControl>
 

@@ -21,6 +21,7 @@ public partial class HomeHero : UserControl
     public static readonly DependencyProperty HeroTitleProperty = DependencyProperty.Register(nameof(HeroTitle), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty EyebrowProperty = DependencyProperty.Register(nameof(Eyebrow), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty PositionTextProperty = DependencyProperty.Register(nameof(PositionText), typeof(string), typeof(HomeHero));
+    public static readonly DependencyProperty HeroMetadataProperty = DependencyProperty.Register(nameof(HeroMetadata), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty ActionTextProperty = DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty FavoriteTextProperty = DependencyProperty.Register(nameof(FavoriteText), typeof(string), typeof(HomeHero));
     private long _loadVersion;
@@ -34,6 +35,7 @@ public partial class HomeHero : UserControl
     public string HeroTitle { get => (string)GetValue(HeroTitleProperty); private set => SetValue(HeroTitleProperty, value); }
     public string Eyebrow { get => (string)GetValue(EyebrowProperty); private set => SetValue(EyebrowProperty, value); }
     public string PositionText { get => (string)GetValue(PositionTextProperty); private set => SetValue(PositionTextProperty, value); }
+    public string HeroMetadata { get => (string)GetValue(HeroMetadataProperty); private set => SetValue(HeroMetadataProperty, value); }
     public string ActionText { get => (string)GetValue(ActionTextProperty); private set => SetValue(ActionTextProperty, value); }
     public string FavoriteText { get => (string)GetValue(FavoriteTextProperty); private set => SetValue(FavoriteTextProperty, value); }
     private static void OnItemChanged(DependencyObject owner, DependencyPropertyChangedEventArgs e)
@@ -62,6 +64,12 @@ public partial class HomeHero : UserControl
         ActionText = resumable ? "Continue in player" : "Open player";
         var position = TimeSpan.FromSeconds(item?.PlaybackPositionSeconds ?? 0);
         PositionText = resumable ? "Stopped at " + position.ToString(position.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss") : "";
+        HeroMetadata = resumable
+            ? MediaCardMetadata.Join(
+                Media?.MediaType,
+                MediaRuntimeFormatter.Format(item?.RuntimeSeconds) is { Length: > 0 } runtime ? $"{runtime} total" : null,
+                MediaRuntimeFormatter.Format(item?.RuntimeSeconds - item?.PlaybackPositionSeconds) is { Length: > 0 } remaining ? $"{remaining} remaining" : null)
+            : Media?.CardMetadata ?? "";
         FavoriteText = Media?.IsFavorite == true ? "Remove from favorites" : "Add to favorites";
     }
     private async Task LoadArtworkAsync()
