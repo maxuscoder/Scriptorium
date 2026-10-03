@@ -1,6 +1,34 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors">
+    <!-- Shared, restrained 3D treatment for primary actions. -->
+    <LinearGradientBrush x:Key="Brush.PrimaryButton.Normal" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.NormalHighlight}" Offset="0" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.NormalMid}" Offset="0.26" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.NormalBase}" Offset="0.72" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.NormalBase}" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Brush.PrimaryButton.Hover" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverHighlight}" Offset="0" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverMid}" Offset="0.25" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverBase}" Offset="0.72" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.HoverBase}" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Brush.PrimaryButton.Pressed" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.PressedHighlight}" Offset="0" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.PressedMid}" Offset="0.34" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.PressedBase}" Offset="0.78" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.PressedBase}" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Brush.PrimaryButton.Disabled" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.DisabledHighlight}" Offset="0" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.DisabledMid}" Offset="0.38" />
+        <GradientStop Color="{DynamicResource Color.PrimaryButton.DisabledBase}" Offset="1" />
+    </LinearGradientBrush>
+    <DropShadowEffect x:Key="Effect.PrimaryButton.Elevation" Color="#000000" ShadowDepth="2" BlurRadius="6" Opacity="0.32" />
+    <DropShadowEffect x:Key="Effect.PrimaryButton.HoverElevation" Color="#000000" ShadowDepth="3" BlurRadius="7" Opacity="0.40" />
+    <DropShadowEffect x:Key="Effect.PrimaryButton.FocusElevation" Color="{DynamicResource Color.FocusRing}" ShadowDepth="0" BlurRadius="7" Opacity="0.48" />
+    <DropShadowEffect x:Key="Effect.PrimaryButton.FocusHoverElevation" Color="{DynamicResource Color.FocusRing}" ShadowDepth="1" BlurRadius="8" Opacity="0.55" />
     <!-- Adorner focus is keyboard-only and does not move the control's content. -->
     <Style x:Key="Focus.Keyboard" TargetType="Control">
         <Setter Property="Template">
@@ -45,12 +73,70 @@
         </Style.Triggers>
     </Style>
     <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
-        <Setter Property="Background" Value="{DynamicResource Brush.Accent}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.Depth}" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnAccent}" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Grid SnapsToDevicePixels="True">
+                        <!-- The base is a small, borderless lower lip; the surface supplies the highlight. -->
+                        <Border x:Name="Depth"
+                                Background="{TemplateBinding Background}"
+                                behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
+                                behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Instant}"
+                                CornerRadius="9"
+                                Effect="{StaticResource Effect.PrimaryButton.Elevation}" />
+                        <Border x:Name="Surface"
+                                Margin="0,0,0,2"
+                                Background="{DynamicResource Brush.PrimaryButton.Normal}"
+                                CornerRadius="9" />
+                        <Border x:Name="ContentHost" Margin="0,0,0,2" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Depth" Property="Effect" Value="{StaticResource Effect.PrimaryButton.FocusElevation}" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.HoverDepth}" />
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Hover}" />
+                            <Setter TargetName="Depth" Property="Effect" Value="{StaticResource Effect.PrimaryButton.HoverElevation}" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsKeyboardFocused" Value="True" />
+                                <Condition Property="IsMouseOver" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Depth" Property="Effect" Value="{StaticResource Effect.PrimaryButton.FocusHoverElevation}" />
+                        </MultiTrigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.PressedDepth}" />
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Pressed}" />
+                            <Setter TargetName="Surface" Property="Margin" Value="0,1,0,1" />
+                            <Setter TargetName="ContentHost" Property="Margin" Value="0,1,0,1" />
+                            <Setter TargetName="Depth" Property="Effect" Value="{x:Null}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="1" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                            <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.DisabledDepth}" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryButton.DisabledText}" />
+                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Disabled}" />
+                            <Setter TargetName="Surface" Property="Margin" Value="0,0,0,1" />
+                            <Setter TargetName="ContentHost" Property="Margin" Value="0,0,0,1" />
+                            <Setter TargetName="Depth" Property="Effect" Value="{x:Null}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.AccentStrong}" /></Trigger>
-            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.AccentPressed}" /></Trigger>
+            <!-- State visuals live in the template so the raised surface and content move together. -->
         </Style.Triggers>
     </Style>
     <Style x:Key="Button.Secondary" TargetType="Button" BasedOn="{StaticResource Button.Base}">

@@ -14,6 +14,23 @@ public sealed class ThemeService : IThemeService
         ["AccentPressed"] = Parse("#983E00"),
         ["AccentMuted"] = Parse("#18C25200"),
         ["AccentBorder"] = Parse("#55C25200"),
+        ["PrimaryButton.Depth"] = Parse("#8F3900"),
+        ["PrimaryButton.NormalHighlight"] = Parse("#FFF8E8"),
+        ["PrimaryButton.NormalMid"] = Parse("#E69A4A"),
+        ["PrimaryButton.NormalBase"] = Parse("#C25200"),
+        ["PrimaryButton.HoverDepth"] = Parse("#A94600"),
+        ["PrimaryButton.HoverHighlight"] = Parse("#FFFDF7"),
+        ["PrimaryButton.HoverMid"] = Parse("#F0B271"),
+        ["PrimaryButton.HoverBase"] = Parse("#D1620C"),
+        ["PrimaryButton.PressedDepth"] = Parse("#7C3000"),
+        ["PrimaryButton.PressedHighlight"] = Parse("#E4A164"),
+        ["PrimaryButton.PressedMid"] = Parse("#CB630D"),
+        ["PrimaryButton.PressedBase"] = Parse("#AA4700"),
+        ["PrimaryButton.DisabledDepth"] = Parse("#B89A75"),
+        ["PrimaryButton.DisabledHighlight"] = Parse("#E5DDD0"),
+        ["PrimaryButton.DisabledMid"] = Parse("#D4B990"),
+        ["PrimaryButton.DisabledBase"] = Parse("#C39C67"),
+        ["PrimaryButton.DisabledText"] = Parse("#765A38"),
         ["DangerHover"] = Parse("#A82626"),
         ["DangerPressed"] = Parse("#902020"),
         ["TextOnDanger"] = Parse("#FFFFFF"),
@@ -84,6 +101,33 @@ public sealed class ThemeService : IThemeService
             _resources[$"Brush.{key}"] = brush;
             _resources[$"Color.{key}"] = color;
         }
+
+        UpdatePrimaryButtonGradients(colors);
+    }
+
+    private void UpdatePrimaryButtonGradients(IReadOnlyDictionary<string, Color> colors)
+    {
+        _resources["Brush.PrimaryButton.Normal"] = CreatePrimaryButtonGradient(colors,
+            ("PrimaryButton.NormalHighlight", 0), ("PrimaryButton.NormalMid", 0.26),
+            ("PrimaryButton.NormalBase", 0.72), ("PrimaryButton.NormalBase", 1));
+        _resources["Brush.PrimaryButton.Hover"] = CreatePrimaryButtonGradient(colors,
+            ("PrimaryButton.HoverHighlight", 0), ("PrimaryButton.HoverMid", 0.25),
+            ("PrimaryButton.HoverBase", 0.72), ("PrimaryButton.HoverBase", 1));
+        _resources["Brush.PrimaryButton.Pressed"] = CreatePrimaryButtonGradient(colors,
+            ("PrimaryButton.PressedHighlight", 0), ("PrimaryButton.PressedMid", 0.34),
+            ("PrimaryButton.PressedBase", 0.78), ("PrimaryButton.PressedBase", 1));
+        _resources["Brush.PrimaryButton.Disabled"] = CreatePrimaryButtonGradient(colors,
+            ("PrimaryButton.DisabledHighlight", 0), ("PrimaryButton.DisabledMid", 0.38),
+            ("PrimaryButton.DisabledBase", 1));
+    }
+
+    private static LinearGradientBrush CreatePrimaryButtonGradient(
+        IReadOnlyDictionary<string, Color> colors, params (string Key, double Offset)[] stops)
+    {
+        var brush = new LinearGradientBrush { StartPoint = new Point(0.5, 0), EndPoint = new Point(0.5, 1) };
+        foreach (var (key, offset) in stops) brush.GradientStops.Add(new GradientStop(colors[key], offset));
+        brush.Freeze();
+        return brush;
     }
 
     private static bool IsSystemLightTheme()

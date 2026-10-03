@@ -8,6 +8,36 @@
                 <Setter Property="Foreground" Value="{StaticResource Home.Hero.TextSecondary}" />
             </DataTrigger></Style.Triggers>
         </Style>
+        <Style x:Key="Hero.Action" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+            <!-- Keep the hero action flush at the bottom instead of using the shared raised-button lip. -->
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid SnapsToDevicePixels="True">
+                            <Border x:Name="Surface" Background="{DynamicResource Brush.PrimaryButton.Normal}" CornerRadius="9" />
+                            <Border x:Name="ContentHost" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  RecognizesAccessKey="True" />
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Hover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Pressed}" />
+                                <Setter TargetName="Surface" Property="Margin" Value="0,1,0,0" />
+                                <Setter TargetName="ContentHost" Property="Margin" Value="0,1,0,0" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Disabled}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.SurfaceHeader}">
         <Grid.Style><Style TargetType="Grid">
@@ -45,7 +75,7 @@
                         <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style></ProgressBar.Style>
                 </ProgressBar>
-                <Button x:Name="ContinueButton" Content="{Binding ActionText, ElementName=Root}" Style="{StaticResource Button.Primary}"
+                <Button x:Name="ContinueButton" Content="{Binding ActionText, ElementName=Root}" Style="{StaticResource Hero.Action}"
                     Command="{Binding OpenCommand, ElementName=Root}"
                     HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}" ToolTip="Open the player using your saved playback preferences" />
             </StackPanel>

@@ -48,6 +48,8 @@ internal static class DesignSystemResourceChecks
                 buttonRow.Children.Add(button);
             }
             buttonRow.Children.Add(new Button { Content = "Disabled", IsEnabled = false, Style = (Style)resources["Button.Secondary"] });
+            var disabledPrimary = new Button { Content = "Disabled primary", IsEnabled = false, Style = (Style)resources["Button.Primary"] };
+            buttonRow.Children.Add(disabledPrimary);
             panel.Children.Add(buttonRow);
             var textBox = new TextBox { Text = "Library title", Margin = new Thickness(0, 8, 0, 8) };
             panel.Children.Add(textBox);
@@ -83,6 +85,12 @@ internal static class DesignSystemResourceChecks
             var primarySurface = Descendants<Border>(primary).First();
             Assert.Equal(((SolidColorBrush)primary.Background).Color,
                 ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
+            Assert.Equal(new Thickness(0), primary.BorderThickness);
+            var primaryGradient = Assert.IsType<LinearGradientBrush>(Descendants<Border>(primary).Skip(1).First().Background);
+            Assert.Equal(((Color)resources["Color.PrimaryButton.NormalHighlight"]), primaryGradient.GradientStops[0].Color);
+            Assert.Equal(((Color)resources["Color.PrimaryButton.NormalBase"]), primaryGradient.GradientStops[^1].Color);
+            var disabledPrimaryGradient = Assert.IsType<LinearGradientBrush>(Descendants<Border>(disabledPrimary).Skip(1).First().Background);
+            Assert.Equal(((Color)resources["Color.PrimaryButton.DisabledBase"]), disabledPrimaryGradient.GradientStops[^1].Color);
             Assert.NotNull(textBox.Template.FindName("PART_ContentHost", textBox));
             Assert.Contains(Descendants<TextBlock>(combo), block => block.Text == "Movies");
             Assert.Contains(Descendants<TextBlock>(speed), block => block.Text == "1x");
@@ -112,6 +120,8 @@ internal static class DesignSystemResourceChecks
             theme.Apply("Light");
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(ThemeService.LightColors["TextPrimary"], ((SolidColorBrush)textBox.Foreground).Color);
+            var lightPrimaryGradient = Assert.IsType<LinearGradientBrush>(Descendants<Border>(primary).Skip(1).First().Background);
+            Assert.Equal(ThemeService.LightColors["PrimaryButton.NormalBase"], lightPrimaryGradient.GradientStops[^1].Color);
             Assert.Equal(((SolidColorBrush)primary.Background).Color,
                 ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
             theme.Apply("Dark");
