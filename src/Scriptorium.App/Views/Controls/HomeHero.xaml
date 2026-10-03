@@ -65,6 +65,7 @@
         <Style x:Key="Hero.More" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
             <Setter Property="Width" Value="36" />
             <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="0" />
             <Setter Property="Background" Value="{DynamicResource Brush.ArtworkScrim}" />
             <Setter Property="BorderBrush" Value="#66FFFFFF" />
             <Setter Property="BorderThickness" Value="1" />
@@ -171,7 +172,7 @@
                 </StackPanel>
             </StackPanel>
             <Button x:Name="More" Grid.Column="1" Style="{StaticResource Hero.More}" VerticalAlignment="Top" Click="OnMore" SizeChanged="OnMoreSizeChanged" ToolTip="More actions" AutomationProperties.Name="More actions">
-                <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE712;" />
+                <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" FontSize="24" Text="&#xE712;" />
                 <Button.ContextMenu>
                     <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
                         <MenuItem Header="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Media}" />
