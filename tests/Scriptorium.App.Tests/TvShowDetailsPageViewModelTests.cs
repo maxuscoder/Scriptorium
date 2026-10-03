@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
-public sealed class TvShowDetailsPageViewModelTests
+public sealed partial class TvShowDetailsPageViewModelTests
 {
     [Fact]
     public Task LoadsProgressAndNavigatesEpisodes() => StaTest.Run(async () =>

@@ -41,6 +41,7 @@ public sealed class VideoPlayerViewTests
         });
         await MediaDetailsResourceChecks.VerifyAsync();
         await TutorialDetailsResourceChecks.VerifyAsync();
+        await TvShowDetailsResourceChecks.VerifyAsync();
         using var runtime = new LibVlcRuntime();
         var factory = new RecordingFactory(runtime);
         var player = new VideoPlayerViewModel(factory);

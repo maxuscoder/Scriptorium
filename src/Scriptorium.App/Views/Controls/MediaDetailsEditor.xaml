@@ -1,4 +1,4 @@
-<UserControl x:Class="Scriptorium.App.Views.Controls.MediaDetailsEditor"
+<UserControl x:Class="Scriptorium.App.Views.Controls.MediaDetailsEditor" x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls">
@@ -20,6 +20,22 @@
                 <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger>
             </Style.Triggers>
         </Style>
+        <DataTemplate x:Key="Editor.EpisodeFields">
+                <StackPanel Margin="0,14,0,0">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Command="{Binding RestoreSeasonNumberCommand}" Content="Restore detected" Style="{StaticResource Editor.Quiet}" AutomationProperties.Name="Restore detected season number" />
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Label}" Text="Season number" />
+                    </DockPanel>
+                    <TextBox Margin="0,6,0,0" MaxLength="10" Text="{Binding EditableSeasonNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Season number" />
+                    <TextBlock Style="{StaticResource Editor.Status}" Text="{Binding SeasonNumberStatus}" />
+                    <DockPanel Margin="0,14,0,0">
+                        <Button DockPanel.Dock="Right" Command="{Binding RestoreEpisodeNumberCommand}" Content="Restore detected" Style="{StaticResource Editor.Quiet}" AutomationProperties.Name="Restore detected episode number" />
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource Text.Label}" Text="Episode number" />
+                    </DockPanel>
+                    <TextBox Margin="0,6,0,0" MaxLength="10" Text="{Binding EditableEpisodeNumber, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Episode number" />
+                    <TextBlock Style="{StaticResource Editor.Status}" Text="{Binding EpisodeNumberStatus}" />
+                </StackPanel>
+        </DataTemplate>
     </UserControl.Resources>
     <Grid Margin="22,22,22,18" KeyboardNavigation.TabNavigation="Cycle">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -39,6 +55,7 @@
                     <Button Margin="0,8,0,0" HorizontalAlignment="Left" Command="{Binding ChooseThumbnailCommand}" Content="Choose image" Style="{StaticResource Button.Secondary}" BorderThickness="0" />
                     <TextBlock Style="{StaticResource Editor.Status}" Text="{Binding ThumbnailStatus}" />
                 </StackPanel>
+
 <StackPanel Margin="0,14,0,0">
                         <DockPanel LastChildFill="True">
                             <Button DockPanel.Dock="Right" Command="{Binding RestoreMediaTypeCommand}" Content="Restore detected" Style="{StaticResource Editor.Quiet}" AutomationProperties.Name="Restore detected media type" />
@@ -47,6 +64,18 @@
                         <ComboBox ItemsSource="{Binding MediaTypes}" DisplayMemberPath="DisplayName" SelectedValuePath="Value" SelectedValue="{Binding SelectedMediaType, Mode=TwoWay}" AutomationProperties.Name="Media type" Margin="0,6,0,0" />
                         <TextBlock Style="{StaticResource Editor.Status}" Text="{Binding MediaTypeStatus}" />
                     </StackPanel>
+                <ContentControl>
+                    <ContentControl.Style>
+                        <Style TargetType="ContentControl">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowEpisodeFields, ElementName=Root}" Value="True">
+                                    <Setter Property="Content" Value="{Binding}" />
+                                    <Setter Property="ContentTemplate" Value="{StaticResource Editor.EpisodeFields}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ContentControl.Style>
+                </ContentControl>
 <StackPanel Margin="0,14,0,0">
                         <DockPanel LastChildFill="True">
                             <Button DockPanel.Dock="Right" Command="{Binding RestoreTitleCommand}" Content="Restore detected" Style="{StaticResource Editor.Quiet}" AutomationProperties.Name="Restore detected title" />
