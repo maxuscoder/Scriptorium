@@ -43,8 +43,8 @@ internal static class MediaCardResourceChecks
                  {
                      item,
                      new MovieItemViewModel(media) { CardActionCommand = host.OpenMovieCommand, CardFavoriteCommand = host.ToggleFavoriteCommand },
-                     new TutorialCollectionViewModel(new Course { Title = "Cybersecurity", LibraryFolder = new LibraryFolder { Name = "Courses", Path = "Courses" } }) { CardActionCommand = host.OpenTutorialCommand },
-                     new TvShowCollectionViewModel(new TVShow { Title = "Married With Children" }) { CardActionCommand = host.OpenTvShowCommand }
+                     new TutorialCollectionViewModel(new Course { Title = "Cybersecurity", LibraryFolder = new LibraryFolder { Name = "Courses", Path = "Courses" } }) { CardActionCommand = host.OpenTutorialCommand, CardFavoriteCommand = host.ToggleFavoriteCommand },
+                     new TvShowCollectionViewModel(new TVShow { Title = "Married With Children" }) { CardActionCommand = host.OpenTvShowCommand, CardFavoriteCommand = host.ToggleFavoriteCommand }
                  })
             templateCases.Add(((DataTemplate)row.Resources[new DataTemplateKey(data.GetType())], data, "Library " + data.GetType().Name));
         Assert.Equal(7, templateCases.Count); // Home's virtualized shelf is exercised in HomeResourceChecks.
@@ -79,6 +79,8 @@ internal static class MediaCardResourceChecks
                 Assert.False(card.HasUsableThumbnail);
                 var primary = (Button)card.FindName("PrimaryAction");
                 var favorite = (Button)card.FindName("FavoriteAction");
+                Assert.NotNull(card.FavoriteCommand);
+                Assert.Equal(Visibility.Visible, favorite.Visibility);
                 if (card.ActionCommand is not null)
                 {
                     Click(primary);
@@ -183,7 +185,7 @@ internal static class MediaCardResourceChecks
         {
             new MediaCard { Title = "Interstellar", Metadata = "Movie · 2h 49m", FileName = "Interstellar.1080p.mkv", ActionCommand = host.OpenMediaCommand, ActionText = "Open movie", FavoriteCommand = host.ToggleFavoriteCommand },
             new MediaCard { Title = "Married With Children", Metadata = "S01 E02 · 23m remaining", HasPlaybackProgress = true, PlaybackProgressPercentage = 42, ActionCommand = host.OpenMediaCommand, FavoriteCommand = host.ToggleFavoriteCommand, IsFavorite = true },
-            new MediaCard { Title = "Certified Cybersecurity", Metadata = "Tutorial · 133 lessons", ThumbnailPath = "missing-artwork.png", ActionCommand = host.OpenMediaCommand, ActionText = "Open course" }
+            new MediaCard { Title = "Certified Cybersecurity", Metadata = "Tutorial · 133 lessons", ThumbnailPath = "missing-artwork.png", ActionCommand = host.OpenMediaCommand, ActionText = "Open course", FavoriteCommand = host.ToggleFavoriteCommand }
         };
         foreach (var card in cards) { card.Margin = (Thickness)resources["MediaCard.Margin"]; panel.Children.Add(card); }
         await StaTest.DrainDispatcherAsync();

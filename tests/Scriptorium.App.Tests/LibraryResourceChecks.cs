@@ -255,6 +255,8 @@ internal static class LibraryResourceChecks
             Assert.Equal(LibrarySortOrder.Ascending, vm.SelectedSortOrder);
             management.Close();
 
+            await VerifyCollectionFavoritesAsync(services, vm, page, location.DirectoryPath);
+
             var settingsViewModel = services.GetRequiredService<SettingsPageViewModel>();
             var settingsPage = new SettingsPage { DataContext = settingsViewModel, Background = (Brush)resources["Brush.Background"] };
             window.Content = settingsPage;
@@ -565,6 +567,78 @@ internal static class LibraryResourceChecks
             page.LayoutTransform = originalTransform;
             window.Width = originalWidth;
         }
+        await Settle(vm);
+    }
+
+    private static async Task VerifyCollectionFavoritesAsync(
+        ServiceProvider services, LibraryPageViewModel vm, LibraryPage page, string directory)
+    {
+        var folder = new LibraryFolder { Name = "Tutorials", Path = Path.Combine(directory, "tutorials"), MediaType = MediaType.Tutorial };
+        var course = new Course { Title = "Tutorial favorites", LibraryFolder = folder, LibraryFolderId = folder.Id };
+        var show = new TVShow { Title = "TV favorites", EpisodeCount = 2 };
+        var season = new Season { TVShow = show, TVShowId = show.Id, SeasonNumber = 1 };
+        show.Seasons.Add(season);
+        for (var index = 0; index < 2; index++)
+        {
+            var lessonMedia = new MediaItem { Title = $"Lesson {index}", Path = Path.Combine(folder.Path, $"lesson-{index}.mp4"), MediaType = MediaType.Tutorial };
+            course.Lessons.Add(new Lesson { Course = course, CourseId = course.Id, MediaItem = lessonMedia, MediaItemId = lessonMedia.Id,
+                Title = lessonMedia.Title, FilePath = lessonMedia.Path, SortOrder = index });
+            var episodeMedia = new MediaItem { Title = $"Episode {index}", Path = Path.Combine(directory, $"episode-{index}.mp4"), MediaType = MediaType.TvShow };
+            season.Episodes.Add(new Episode { Season = season, SeasonId = season.Id, MediaItem = episodeMedia, MediaItemId = episodeMedia.Id,
+                Title = episodeMedia.Title, FilePath = episodeMedia.Path, EpisodeNumber = index + 1, SortOrder = index });
+        }
+        await services.GetRequiredService<ICourseRepository>().AddAsync(course);
+        await services.GetRequiredService<ITvShowRepository>().AddAsync(show);
+        // Direct collection inserts bypass the scanner's media-cache invalidation.
+        await services.GetRequiredService<IMediaItemRepository>().UpdateFavoriteAsync(course.Lessons[0].MediaItemId, false);
+        await vm.RefreshLibraryDataAsync();
+        await Settle(vm);
+        Assert.Single(vm.Tutorials);
+        Assert.Single(vm.TvShows);
+        var browserList = Descendants<ListBox>(page).Single(list => list.Name == "BrowserList");
+        browserList.ScrollIntoView(vm.BrowserRows[0]);
+        await Settle(vm);
+
+        var favoriteService = services.GetRequiredService<IFavoriteService>();
+        foreach (var title in new[] { course.Title, show.Title })
+        {
+            var ids = title == course.Title
+                ? course.Lessons.Select(lesson => lesson.MediaItemId).ToArray()
+                : season.Episodes.Select(episode => episode.MediaItemId).ToArray();
+            foreach (var isFavorite in new[] { true, false })
+            {
+                var card = Descendants<MediaCard>(page).Single(card => card.Title == title);
+                Assert.Equal(!isFavorite, card.IsFavorite);
+                card.Focus();
+                await StaTest.DrainDispatcherAsync();
+                Assert.True(card.IsEngaged);
+                Assert.True(((Grid)card.FindName("Actions")).IsHitTestVisible);
+                var button = (Button)card.FindName("FavoriteAction");
+                Assert.Equal(Visibility.Visible, button.Visibility);
+                Assert.True(button.Command.CanExecute(button.CommandParameter));
+                await ((AsyncRelayCommand)button.Command).ExecuteAsync(button.CommandParameter);
+                await Settle(vm);
+                var favorites = await favoriteService.GetAllAsync();
+                Assert.All(ids, id => Assert.Equal(isFavorite, favorites.Any(item => item.Id == id)));
+                var refreshed = Descendants<MediaCard>(page).Single(card => card.Title == title);
+                Assert.Equal(isFavorite, refreshed.IsFavorite);
+                Assert.Equal(isFavorite ? "Remove from favorites" : "Add to favorites", refreshed.FavoriteActionText);
+            }
+        }
+
+        // A partially favorited collection shows a filled star and removes its remaining favorites.
+        await favoriteService.AddAsync(course.Lessons[0].MediaItemId);
+        await Settle(vm);
+        var favoriteCourse = Assert.Single(Cards(vm).OfType<TutorialCollectionViewModel>());
+        Assert.True(favoriteCourse.HasFavorite);
+        await ((AsyncRelayCommand)favoriteCourse.CardFavoriteCommand!).ExecuteAsync(favoriteCourse);
+        await Settle(vm);
+        Assert.False(Assert.Single(Cards(vm).OfType<TutorialCollectionViewModel>()).HasFavorite);
+        Assert.DoesNotContain(await favoriteService.GetAllAsync(), item => course.Lessons.Any(lesson => lesson.MediaItemId == item.Id));
+        vm.ShowFavoritesOnly = true;
+        await Settle(vm);
+        Assert.DoesNotContain(Cards(vm).OfType<LibraryMediaItemViewModel>(), item => item.MediaType != "Movie");
+        vm.ClearFiltersCommand.Execute(null);
         await Settle(vm);
     }
 

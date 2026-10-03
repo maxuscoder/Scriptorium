@@ -36,5 +36,6 @@ public sealed class TutorialCollectionViewModel
     public double HighestPlaybackProgress => _summary?.HighestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Max();
     public bool HasFavorite => _summary?.HasFavorite ?? _course!.Lessons.Any(lesson => lesson.MediaItem.IsFavorite);
     public ICommand? CardActionCommand { get; init; }
+    public ICommand? CardFavoriteCommand { get; init; }
     public LibraryCardPresentation CardPresentation { get; init; } = new();
 }

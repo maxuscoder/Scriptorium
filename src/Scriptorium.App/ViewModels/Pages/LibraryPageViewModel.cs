@@ -86,6 +86,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private double _browserCardWidth = 260;
     private int _isPlaybackRefreshQueued;
     private int _isFavoriteRefreshQueued;
+    private bool _isUpdatingCollectionFavorites;
     private int _isCategoryRefreshQueued;
     private int _isTitleRefreshQueued;
     private int _isDescriptionRefreshQueued;
@@ -173,7 +174,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         OpenTvShowCommand = _openTvShowCommand;
         _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
         OpenMovieCommand = _openMovieCommand;
-        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
+        ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem or
+            TutorialCollectionViewModel { LessonCount: > 0 } or TvShowCollectionViewModel { EpisodeCount: > 0 });
         _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
         _cardPresentation.IsListLayout = _isListLayout;
         _selectedSortOrder = Enum.TryParse<LibrarySortOrder>(
@@ -1062,12 +1064,14 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private TutorialCollectionViewModel CreateTutorialCard(CourseLibrarySummary course) => new(course)
     {
         CardActionCommand = OpenTutorialCommand,
+        CardFavoriteCommand = ToggleFavoriteCommand,
         CardPresentation = _cardPresentation
     };
 
     private TvShowCollectionViewModel CreateTvShowCard(TvShowLibrarySummary show) => new(show)
     {
         CardActionCommand = OpenTvShowCommand,
+        CardFavoriteCommand = ToggleFavoriteCommand,
         CardPresentation = _cardPresentation
     };
 
@@ -1488,6 +1492,11 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private void OnFavoriteChanged(Guid mediaItemId)
     {
+        if (_isUpdatingCollectionFavorites)
+        {
+            return;
+        }
+
         if (Interlocked.Exchange(ref _isFavoriteRefreshQueued, 1) != 0)
         {
             return;
@@ -1941,6 +1950,28 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private async Task ToggleFavoriteAsync(object? parameter)
     {
+        if (parameter is TutorialCollectionViewModel tutorial)
+        {
+            var course = await _courseRepository.GetByIdAsync(tutorial.Id);
+            if (course is not null)
+            {
+                await SetCollectionFavoriteAsync(course.Lessons.Select(lesson => lesson.MediaItem), !tutorial.HasFavorite);
+            }
+            return;
+        }
+
+        if (parameter is TvShowCollectionViewModel tvShow)
+        {
+            var show = await _tvShowRepository.GetByIdAsync(tvShow.Id);
+            if (show is not null)
+            {
+                await SetCollectionFavoriteAsync(
+                    show.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem),
+                    !tvShow.HasFavorite);
+            }
+            return;
+        }
+
         if (parameter is not IMediaFavoriteItem item)
         {
             return;
@@ -1953,6 +1984,32 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         if (updated)
         {
             item.SetFavorite(isFavorite);
+        }
+    }
+
+    private async Task SetCollectionFavoriteAsync(IEnumerable<MediaItem> mediaItems, bool isFavorite)
+    {
+        // Refresh once after all episodes/lessons have been updated, so cards and filters
+        // never reload a partially updated collection after each favorite event.
+        _isUpdatingCollectionFavorites = true;
+        try
+        {
+            foreach (var item in mediaItems.Where(item => item.IsFavorite != isFavorite).DistinctBy(item => item.Id))
+            {
+                if (isFavorite)
+                {
+                    await _favoriteService.AddAsync(item.Id);
+                }
+                else
+                {
+                    await _favoriteService.RemoveAsync(item.Id);
+                }
+            }
+        }
+        finally
+        {
+            _isUpdatingCollectionFavorites = false;
+            await RefreshLibraryDataAsync();
         }
     }
 

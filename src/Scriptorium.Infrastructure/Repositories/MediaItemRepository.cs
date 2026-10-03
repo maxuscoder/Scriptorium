@@ -640,14 +640,22 @@ public sealed class MediaItemRepository(
     }
 
     /// <inheritdoc />
-    public Task<bool> UpdateFavoriteAsync(
+    public async Task<bool> UpdateFavoriteAsync(
         Guid mediaItemId,
         bool isFavorite,
-        CancellationToken cancellationToken = default) =>
-        UpdateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var updated = await UpdateAsync(
             mediaItemId,
             setters => setters.SetProperty(item => item.IsFavorite, isFavorite),
             cancellationToken);
+        if (updated)
+        {
+            InvalidateMediaItem(mediaItemId);
+        }
+
+        return updated;
+    }
 
     /// <inheritdoc />
     public Task<bool> UpdateCategoryAsync(

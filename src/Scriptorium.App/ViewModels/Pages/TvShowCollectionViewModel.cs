@@ -37,5 +37,6 @@ public sealed class TvShowCollectionViewModel
     public bool HasFavorite => _summary?.HasFavorite ?? _show!.Seasons.SelectMany(season => season.Episodes).Any(episode => episode.MediaItem.IsFavorite);
     public string CollectionInfo => $"{SeasonCount} season{(SeasonCount == 1 ? string.Empty : "s")} · {EpisodeCount} episode{(EpisodeCount == 1 ? string.Empty : "s")}";
     public ICommand? CardActionCommand { get; init; }
+    public ICommand? CardFavoriteCommand { get; init; }
     public LibraryCardPresentation CardPresentation { get; init; } = new();
 }
