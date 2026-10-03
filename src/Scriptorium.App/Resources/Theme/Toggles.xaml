@@ -11,7 +11,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
         <Setter Property="BorderThickness" Value="{StaticResource BorderThickness.Hairline}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
             <Setter.Value>
@@ -44,7 +44,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="MinHeight" Value="{StaticResource Control.MinHitTarget}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Template">
@@ -114,7 +114,7 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
         <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="MinHeight" Value="{StaticResource Control.MinHitTarget}" />
         <Style.Triggers>
             <Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></Trigger>

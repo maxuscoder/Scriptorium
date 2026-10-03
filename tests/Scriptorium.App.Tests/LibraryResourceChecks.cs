@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.EntityFrameworkCore;
@@ -253,36 +254,125 @@ internal static class LibraryResourceChecks
             window.Content = settingsPage;
             await StaTest.DrainDispatcherAsync();
             await settingsViewModel.RefreshThumbnailCacheSizeAsync();
+            Render(settingsPage, "settings-1200", 1);
+            window.Width = 728;
+            await StaTest.DrainDispatcherAsync();
+            var settingsScroll = Descendants<ScrollViewer>(settingsPage).First();
+            Assert.True(settingsScroll.ExtentWidth <= settingsScroll.ViewportWidth + 1);
+            Render(settingsPage, "settings-728", 1);
+            settingsScroll.ScrollToVerticalOffset(settingsScroll.ScrollableHeight / 2);
+            await StaTest.DrainDispatcherAsync();
+            Render(settingsPage, "settings-middle-728", 1);
+            settingsScroll.ScrollToEnd();
+            await StaTest.DrainDispatcherAsync();
+            Render(settingsPage, "settings-bottom-728", 1);
+            settingsScroll.ScrollToTop();
+            window.Width = 1200;
+            await StaTest.DrainDispatcherAsync();
 
             Assert.Same(settingsViewModel.ResetSettingsCommand, ((Button)settingsPage.FindName("ResetSettingsButton")).Command);
             Assert.Same(settingsViewModel.ClearThumbnailCacheCommand, ((Button)settingsPage.FindName("ClearThumbnailCacheButton")).Command);
             Assert.Equal("Export", ((Button)settingsPage.FindName("ExportSettingsButton")).Content);
             Assert.Equal("Import", ((Button)settingsPage.FindName("ImportSettingsButton")).Content);
+            var addFolderInSettings = Descendants<Button>(settingsPage).Single(button =>
+                AutomationProperties.GetName(button) == "Add library folder");
+            Assert.Same(settingsViewModel.FolderManagement.ImportFolderCommand, addFolderInSettings.Command);
+            var includeFolder = Descendants<CheckBox>(settingsPage).Single(checkBox =>
+                AutomationProperties.GetName(checkBox) == "Include folder in scans");
+            Assert.Same(settingsViewModel.FolderManagement.SaveFolderStateCommand, includeFolder.Command);
+            var removeFolder = Descendants<Button>(settingsPage).Single(button =>
+                AutomationProperties.GetName(button) == "Remove library folder");
+            Assert.Same(settingsViewModel.FolderManagement.RemoveFolderCommand, removeFolder.Command);
             var resumeToggle = Descendants<CheckBox>(settingsPage).Single(checkBox =>
                 AutomationProperties.GetName(checkBox) == "Resume from last position");
             Assert.True(resumeToggle.IsChecked);
+            Assert.Equal("ResumePlaybackEnabled",
+                BindingOperations.GetBinding(resumeToggle, ToggleButton.IsCheckedProperty)?.Path.Path);
+            var completion = Descendants<ComboBox>(settingsPage).Single(combo =>
+                AutomationProperties.GetName(combo) == "Playback completion threshold");
+            Assert.Equal("PlaybackCompletionThresholdPercent",
+                BindingOperations.GetBinding(completion, Selector.SelectedValueProperty)?.Path.Path);
+            Assert.Equal(95, completion.SelectedValue);
+            var volume = Descendants<Slider>(settingsPage).Single(slider =>
+                AutomationProperties.GetName(slider) == "Default playback volume");
+            Assert.Equal("PlaybackVolume", BindingOperations.GetBinding(volume, RangeBase.ValueProperty)?.Path.Path);
+            var speed = Descendants<ComboBox>(settingsPage).Single(combo =>
+                AutomationProperties.GetName(combo) == "Default playback speed");
+            Assert.Equal("PlaybackSpeed", BindingOperations.GetBinding(speed, Selector.SelectedItemProperty)?.Path.Path);
+            var remainingSettingsBindings = new (string Name, DependencyProperty Property, string Path)[]
+            {
+                ("Start videos fullscreen", ToggleButton.IsCheckedProperty, "StartFullscreenOnPlayback"),
+                ("Show Continue Watching on Home", ToggleButton.IsCheckedProperty, "ShowContinueWatching"),
+                ("Grid layout", ToggleButton.IsCheckedProperty, "IsGridView"),
+                ("List layout", ToggleButton.IsCheckedProperty, "IsListView"),
+                ("Show favorites first", ToggleButton.IsCheckedProperty, "FavoritesFirst"),
+                ("Automatic library scanning", ToggleButton.IsCheckedProperty, "AutomaticLibraryScanningEnabled"),
+                ("Scan library on startup", ToggleButton.IsCheckedProperty, "DataContext.ScanLibraryOnStartup"),
+                ("Open on startup", Selector.SelectedItemProperty, "StartupPage"),
+                ("Theme", Selector.SelectedItemProperty, "Theme"),
+                ("Library sort order", Selector.SelectedValueProperty, "LibrarySortOrder"),
+                ("Library scan frequency", Selector.SelectedValueProperty, "DataContext.LibraryScanFrequencyMinutes")
+            };
+            foreach (var (name, property, path) in remainingSettingsBindings)
+            {
+                var control = Descendants<Control>(settingsPage).Single(candidate =>
+                    AutomationProperties.GetName(candidate) == name);
+                Assert.Equal(path, BindingOperations.GetBinding(control, property)?.Path.Path);
+                Assert.True(control.IsTabStop);
+                Assert.NotNull(control.FocusVisualStyle);
+            }
+            foreach (var control in new Control[] { resumeToggle, completion, volume, speed,
+                         (Button)settingsPage.FindName("ExportSettingsButton"),
+                         (Button)settingsPage.FindName("ImportSettingsButton"),
+                         (Button)settingsPage.FindName("ResetSettingsButton") })
+            {
+                Assert.True(control.IsTabStop);
+                try { Assert.NotNull(control.FocusVisualStyle); }
+                catch (InvalidOperationException exception)
+                {
+                    throw new InvalidOperationException($"Focus style failed for {AutomationProperties.GetName(control)}", exception);
+                }
+            }
 
             settingsViewModel.ResumePlaybackEnabled = false;
             settingsViewModel.PlaybackCompletionThresholdPercent = 90;
+            settingsViewModel.PlaybackVolume = 0.4;
+            settingsViewModel.PlaybackSpeed = 1.25;
+            settingsViewModel.StartFullscreenOnPlayback = true;
             await services.GetRequiredService<ISettingsService>().FlushAsync();
             Assert.False(resumeToggle.IsChecked);
+            Assert.Equal(90, completion.SelectedValue);
+            Assert.Equal(0.4, volume.Value);
+            Assert.Equal(1.25, speed.SelectedItem);
             var persistedSettings = new SettingsService(location, Microsoft.Extensions.Logging.Abstractions.NullLogger<SettingsService>.Instance);
             await persistedSettings.LoadAsync();
             Assert.False(persistedSettings.Settings.ResumePlaybackEnabled);
             Assert.Equal(90, persistedSettings.Settings.PlaybackCompletionThresholdPercent);
+            Assert.Equal(0.4, persistedSettings.Settings.PlaybackVolume);
+            Assert.Equal(1.25, persistedSettings.Settings.PlaybackSpeed);
+            Assert.True(persistedSettings.Settings.StartFullscreenOnPlayback);
 
             var backupPath = Path.Combine(location.DirectoryPath, "preferences-backup.json");
             await settingsViewModel.ExportSettingsAsync(backupPath);
             settingsViewModel.ResumePlaybackEnabled = true;
             settingsViewModel.PlaybackCompletionThresholdPercent = 95;
+            settingsViewModel.PlaybackVolume = 1;
+            settingsViewModel.PlaybackSpeed = 1;
+            settingsViewModel.StartFullscreenOnPlayback = false;
             await services.GetRequiredService<ISettingsService>().FlushAsync();
             await settingsViewModel.ImportSettingsAsync(backupPath);
             Assert.False(settingsViewModel.ResumePlaybackEnabled);
             Assert.Equal(90, settingsViewModel.PlaybackCompletionThresholdPercent);
+            Assert.Equal(0.4, settingsViewModel.PlaybackVolume);
+            Assert.Equal(1.25, settingsViewModel.PlaybackSpeed);
+            Assert.True(settingsViewModel.StartFullscreenOnPlayback);
 
             await ((AsyncRelayCommand)settingsViewModel.ResetSettingsCommand).ExecuteAsync();
             Assert.True(settingsViewModel.ResumePlaybackEnabled);
             Assert.Equal(95, settingsViewModel.PlaybackCompletionThresholdPercent);
+            Assert.Equal(1, settingsViewModel.PlaybackVolume);
+            Assert.Equal(1, settingsViewModel.PlaybackSpeed);
+            Assert.False(settingsViewModel.StartFullscreenOnPlayback);
             Assert.Equal("Home", settingsViewModel.StartupPage);
             Assert.True(settingsViewModel.ClearThumbnailCacheCommand.CanExecute(null));
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());

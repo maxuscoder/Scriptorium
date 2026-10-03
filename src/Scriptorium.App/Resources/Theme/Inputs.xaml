@@ -2,7 +2,7 @@
                     xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="Input.TextBox" TargetType="TextBox">
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
@@ -50,7 +50,7 @@
         <Setter Property="FontWeight" Value="Normal" />
     </Style>
     <Style x:Key="Input.ComboBox" TargetType="ComboBox">
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
         <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />

@@ -37,7 +37,7 @@
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
         <Setter Property="Padding" Value="14,9" />
         <Setter Property="Margin" Value="0,0,8,0" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">

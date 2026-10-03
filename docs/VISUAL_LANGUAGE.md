@@ -28,8 +28,8 @@ their consumers. Existing keys remain available to existing views.
 | Resources/Library.xaml | Library-specific compositions and compatibility aliases |
 
 Use DynamicResource for brushes so live theme switching works. Use StaticResource
-for dimensions and styles, except cross-dictionary styles inside detached popup
-templates, which use dynamic lookup. Library.SearchField, Library.ComboBox,
+for dimensions and local styles. Cross-dictionary keyboard-focus styles and styles
+inside detached popup templates use dynamic lookup. Library.SearchField, Library.ComboBox,
 and Library.RowIconToggle compose global resources rather
 than copying templates.
 
@@ -236,3 +236,20 @@ parameters and saved position, horizontal virtualization and scrolling, widths
 640/960/1440, and binding traces. Generated home-1120.png and home-640.png use test
 artwork in ignored output. Existing playback and details-navigation tests continue
 to cover the underlying commands and engine; no user media/database is used.
+
+## Phase 8: Settings
+
+Settings uses open sections with aligned rows and quiet one-pixel separators.
+Section headings and whitespace establish groups without additional card borders.
+Backup and cache have separate sections; all controls retain their original
+bindings, commands, confirmation prompts, and automatic-save behavior. Row labels
+use the 14-DIP body scale, while descriptions use a secondary 13-DIP treatment.
+ComboBoxes center vertically in their rows. The volume slider retains its native
+template and gains the shared keyboard focus visual.
+
+LibraryResourceChecks renders Settings at wide and narrow content widths, checks
+for horizontal overflow and binding errors, verifies every preference input's
+binding path, and exercises export/import, reset, and playback preference
+persistence against isolated settings files. ThumbnailCacheTests clears an
+isolated disk cache; the Settings cache action retains that existing operation
+and its confirmation prompt.

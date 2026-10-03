@@ -32,7 +32,7 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Padding" Value="{StaticResource Padding.MenuItem}" />
         <Setter Property="MinHeight" Value="{StaticResource Control.MinHitTarget}" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
