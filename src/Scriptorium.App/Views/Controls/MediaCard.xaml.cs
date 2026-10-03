@@ -178,7 +178,6 @@ public partial class MediaCard : UserControl
     public MediaCard()
     {
         InitializeComponent();
-        ArtworkShadow.Effect = ((DropShadowEffect)FindResource("MediaCard.Shadow")).CloneCurrentValue();
         // A local resource expression would outrank width bindings supplied by a DataTemplate.
         SetCurrentValue(CardWidthProperty, FindResource("MediaCard.Width"));
         MouseEnter += (_, _) => UpdateEngagement();
@@ -434,8 +433,43 @@ public partial class MediaCard : UserControl
         AnimateValue(ArtworkImage, UIElement.OpacityProperty, engaged ? 1 : (double)FindResource("MediaCard.Artwork.RestOpacity"), animate);
         AnimateValue(HoverScrim, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
         AnimateValue(Actions, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
-        AnimateValue(ArtworkShadow.Effect, DropShadowEffect.OpacityProperty,
-            engaged && !SystemParameters.HighContrast ? (double)FindResource("MediaCard.Shadow.Opacity") : 0, animate);
+        UpdateShadow(engaged && !SystemParameters.HighContrast, animate);
+    }
+
+    private void UpdateShadow(bool visible, bool animate)
+    {
+        if (visible && ArtworkShadow.Effect is null)
+            ArtworkShadow.Effect = ((DropShadowEffect)FindResource("MediaCard.Shadow")).CloneCurrentValue();
+
+        if (ArtworkShadow.Effect is not DropShadowEffect shadow) return;
+        if (visible)
+        {
+            AnimateValue(shadow, DropShadowEffect.OpacityProperty,
+                (double)FindResource("MediaCard.Shadow.Opacity"), animate);
+            return;
+        }
+
+        if (!animate)
+        {
+            shadow.BeginAnimation(DropShadowEffect.OpacityProperty, null);
+            ArtworkShadow.Effect = null;
+            return;
+        }
+
+        var from = shadow.Opacity;
+        shadow.BeginAnimation(DropShadowEffect.OpacityProperty, null);
+        shadow.Opacity = 0;
+        var fade = new DoubleAnimation(from, 0, (Duration)FindResource("MediaCard.Motion.Duration"))
+        {
+            EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Exit"),
+            FillBehavior = FillBehavior.Stop
+        };
+        fade.Completed += (_, _) =>
+        {
+            if (!IsEngaged && ReferenceEquals(ArtworkShadow.Effect, shadow))
+                ArtworkShadow.Effect = null;
+        };
+        shadow.BeginAnimation(DropShadowEffect.OpacityProperty, fade);
     }
 
     private void AnimateValue(DependencyObject target, DependencyProperty property, double value, bool animate)

@@ -12,4 +12,5 @@
     <CubicEase x:Key="Motion.Easing.Exit" EasingMode="EaseIn" />
     <CubicEase x:Key="Motion.Easing.Standard" EasingMode="EaseInOut" />
     <sys:Double x:Key="Motion.Distance.HoverLift">-2</sys:Double>
+    <sys:Double x:Key="Motion.Distance.Enter">8</sys:Double>
 </ResourceDictionary>

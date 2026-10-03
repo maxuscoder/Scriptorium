@@ -122,8 +122,9 @@ internal static class MediaCardResourceChecks
                 Assert.False(card.ShowPlaybackProgress);
             }
             list.Items.Clear();
+            var longCategoryName = "A collection with a very long name that must stay inside its tile";
             var category = new CategoryItemViewModel(
-                new Category { Name = "Learning", Color = "#6B46C1" },
+                new Category { Name = longCategoryName, Color = "#6B46C1" },
                 [media]);
             var categoryHost = new CategoryPageHost(category, item, host);
             var categoriesPage = new CategoriesPage { DataContext = categoryHost };
@@ -132,8 +133,15 @@ internal static class MediaCardResourceChecks
             Assert.Single(Descendants<CategoryArtworkPreview>(categoriesPage));
             var collectionTile = Descendants<Button>(categoriesPage).Single(button =>
                 button.ToolTip as string == "Browse this collection");
+            var tileTitle = Descendants<TextBlock>(collectionTile).Single(block => block.Text == longCategoryName);
+            Assert.True(tileTitle.ActualWidth < collectionTile.ActualWidth - 25);
+            Assert.Equal(TextTrimming.CharacterEllipsis, tileTitle.TextTrimming);
             Click(collectionTile);
             Assert.Same(category, categoryHost.LastSelectedCategory);
+            window.Width = 800;
+            await StaTest.DrainDispatcherAsync();
+            SaveImage(categoriesPage, Path.Combine(AppContext.BaseDirectory, "categories-800.png"),
+                (int)categoriesPage.ActualWidth, (int)categoriesPage.ActualHeight);
             var categoryMenuButton = Descendants<Button>(categoriesPage).Single(button =>
                 button.ToolTip as string == "Category actions");
             Click(categoryMenuButton);
@@ -192,6 +200,7 @@ internal static class MediaCardResourceChecks
         Assert.False(cards[2].HasUsableThumbnail);
         Assert.False(cards[0].ShowPlaybackProgress);
         Assert.True(cards[1].ShowPlaybackProgress);
+        Assert.Null(((Border)cards[0].FindName("ArtworkShadow")).Effect);
         await StaTest.DrainDispatcherAsync();
         Assert.Null(cards[0].ToolTip); // No artwork/card tooltip or raw filename popup.
         var titleBlock = Descendants<TextBlock>(cards[0]).Single(block => block.Text == "Interstellar" && block.Visibility == Visibility.Visible);
@@ -208,6 +217,7 @@ internal static class MediaCardResourceChecks
         cards[1].Focus();
         await StaTest.DrainDispatcherAsync();
         Assert.True(cards[1].IsEngaged);
+        Assert.NotNull(((Border)cards[1].FindName("ArtworkShadow")).Effect);
         Assert.True(((Grid)cards[1].FindName("Actions")).IsHitTestVisible);
         var measured = cards[1].DesiredSize;
         // Invisible test windows do not advance compositor clocks. Verify settled base values.
@@ -223,6 +233,7 @@ internal static class MediaCardResourceChecks
         SaveImage(canvas, Path.Combine(AppContext.BaseDirectory, "media-cards-engaged.png"), (int)canvas.ActualWidth, (int)canvas.ActualHeight);
         panel.Children.Clear();
         await StaTest.DrainDispatcherAsync();
+        Assert.Null(((Border)cards[1].FindName("ArtworkShadow")).Effect);
         Assert.Equal(1, transform.ScaleX);
         Assert.False(cards[1].IsEngaged);
         Assert.Null(cards[0].ThumbnailSource);

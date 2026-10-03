@@ -4,10 +4,10 @@
     <!-- Settings uses groups of related rows, not a card for every action. -->
     <Thickness x:Key="Settings.PageMargin">40,32,40,48</Thickness>
     <Thickness x:Key="Settings.SectionHeadingMargin">0,28,0,10</Thickness>
-    <Thickness x:Key="Settings.RowPadding">20,16</Thickness>
+    <Thickness x:Key="Settings.RowContentMargin">20,16</Thickness>
+    <Thickness x:Key="Settings.ValueMargin">0,0,20,0</Thickness>
     <Thickness x:Key="Settings.RowDescriptionMargin">0,4,20,0</Thickness>
     <Thickness x:Key="Settings.ActionGap">0,0,8,0</Thickness>
-    <Thickness x:Key="Settings.FolderInset">20,0,20,12</Thickness>
     <GridLength x:Key="Settings.ValueColumnWidth">224</GridLength>
     <GridLength x:Key="Settings.VolumeLabelWidth">48</GridLength>
 

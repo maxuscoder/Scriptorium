@@ -18,48 +18,48 @@
                 <StackPanel>
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Resume from last position" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Continue a video from where you stopped." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" IsChecked="{Binding ResumePlaybackEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Resume from last position" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding ResumePlaybackEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Resume from last position" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Completion threshold" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Mark media complete after this portion has played." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" Margin="0,0,20,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding PlaybackCompletionThresholdOptions}" SelectedValue="{Binding PlaybackCompletionThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Percent" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Playback completion threshold" />
+                        <ComboBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" DisplayMemberPath="DisplayName" ItemsSource="{Binding PlaybackCompletionThresholdOptions}" SelectedValue="{Binding PlaybackCompletionThresholdPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Percent" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Playback completion threshold" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /><ColumnDefinition Width="{StaticResource Settings.VolumeLabelWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Default volume" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Volume for newly opened media." />
                         </StackPanel>
                         <Slider Grid.Column="1" VerticalAlignment="Center" Maximum="1" Minimum="0" TickFrequency="0.05" Value="{Binding PlaybackVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Default playback volume" />
-                        <TextBlock Grid.Column="2" Margin="0,0,20,0" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
+                        <TextBlock Grid.Column="2" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Default playback speed" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Playback rate for newly opened media." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" Margin="0,0,20,0" ItemsSource="{Binding PlaybackSpeedOptions}" SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Default playback speed" />
+                        <ComboBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" ItemsSource="{Binding PlaybackSpeedOptions}" SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Default playback speed" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Start videos fullscreen" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Open a video in fullscreen when playback begins." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" IsChecked="{Binding StartFullscreenOnPlayback, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Start videos fullscreen" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding StartFullscreenOnPlayback, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Start videos fullscreen" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -68,11 +68,11 @@
             <Border Style="{StaticResource Settings.Group}">
                 <Grid Style="{StaticResource Settings.Row}">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <StackPanel Margin="20,16" VerticalAlignment="Center">
+                    <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Show Continue Watching" />
                         <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Show recent playback progress on Home." />
                     </StackPanel>
-                    <CheckBox Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" IsChecked="{Binding ShowContinueWatching, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Show Continue Watching on Home" />
+                    <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding ShowContinueWatching, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Show Continue Watching on Home" />
                 </Grid>
             </Border>
 
@@ -81,20 +81,20 @@
                 <StackPanel>
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Open on startup" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Choose the page shown when Scriptorium opens." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" Margin="0,0,20,0" ItemsSource="{Binding StartupPageOptions}" SelectedItem="{Binding StartupPage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Open on startup" />
+                        <ComboBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" ItemsSource="{Binding StartupPageOptions}" SelectedItem="{Binding StartupPage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Open on startup" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Theme" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="System follows your Windows app preference." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" Margin="0,0,20,0" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding Theme, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Theme" />
+                        <ComboBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" ItemsSource="{Binding ThemeOptions}" SelectedItem="{Binding Theme, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Theme" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -104,11 +104,11 @@
                 <StackPanel>
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Default layout" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Choose how media appears when you browse the library." />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Orientation="Horizontal">
+                        <StackPanel Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Orientation="Horizontal">
                             <ToggleButton Margin="0,0,8,0" Content="Grid" IsChecked="{Binding IsGridView, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Filter}" AutomationProperties.Name="Grid layout" />
                             <ToggleButton Content="List" IsChecked="{Binding IsListView, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Filter}" AutomationProperties.Name="List layout" />
                         </StackPanel>
@@ -116,20 +116,20 @@
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Sort library by" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Set the default order for library items." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" Margin="0,0,20,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding SortOrderOptions}" SelectedValue="{Binding LibrarySortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Value" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Library sort order" />
+                        <ComboBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" DisplayMemberPath="DisplayName" ItemsSource="{Binding SortOrderOptions}" SelectedValue="{Binding LibrarySortOrder, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Value" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Library sort order" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Show favorites first" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Keep favorite items at the top of the library." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" IsChecked="{Binding FavoritesFirst, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Show favorites first" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding FavoritesFirst, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Show favorites first" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -139,14 +139,14 @@
                 <StackPanel>
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Watched folders" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Folders included when Scriptorium scans for media." />
                         </StackPanel>
-                        <Button Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Command="{Binding ImportFolderCommand}" Content="Add folder" Style="{StaticResource Settings.ActionButton}" AutomationProperties.Name="Add library folder" />
+                        <Button Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Command="{Binding ImportFolderCommand}" Content="Add folder" Style="{StaticResource Settings.ActionButton}" AutomationProperties.Name="Add library folder" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
-                    <TextBlock Margin="20,16" Text="No folders configured yet.">
+                    <TextBlock Margin="{StaticResource Settings.RowContentMargin}" Text="No folders configured yet.">
                         <TextBlock.Style>
                             <Style BasedOn="{StaticResource Text.Helper}" TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Collapsed" />
@@ -161,8 +161,8 @@
                                     <Grid>
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                         <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Style="{StaticResource Settings.RowTitle}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Margin="0,3,16,0" Style="{StaticResource Text.Metadata}" Text="{Binding Path}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource Settings.RowTitle}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" ToolTip="{Binding DisplayName}" />
+                                            <TextBlock Margin="0,3,16,0" Style="{StaticResource Text.Metadata}" Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" />
                                             <TextBlock Margin="0,3,16,0" Style="{StaticResource Text.Metadata}" Text="{Binding MediaType}" />
                                             <TextBlock Margin="0,3,16,0" Text="{Binding ValidationWarning}" TextWrapping="Wrap">
                                                 <TextBlock.Style>
@@ -189,29 +189,29 @@
                 <StackPanel>
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Automatic scanning" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Check watched folders for new or changed media while Scriptorium is open." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" IsChecked="{Binding AutomaticLibraryScanningEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Automatic library scanning" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding AutomaticLibraryScanningEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Automatic library scanning" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Scan frequency" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="How often automatic scans run." />
                         </StackPanel>
-                        <ComboBox Grid.Column="1" Margin="0,0,20,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding DataContext.LibraryScanFrequencyOptions, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedValue="{Binding DataContext.LibraryScanFrequencyMinutes, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Minutes" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Library scan frequency" />
+                        <ComboBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" DisplayMemberPath="DisplayName" ItemsSource="{Binding DataContext.LibraryScanFrequencyOptions, RelativeSource={RelativeSource AncestorType=UserControl}}" SelectedValue="{Binding DataContext.LibraryScanFrequencyMinutes, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Minutes" Style="{StaticResource Settings.ComboBox}" AutomationProperties.Name="Library scan frequency" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Scan on startup" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Check watched folders when Scriptorium opens." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" IsChecked="{Binding DataContext.ScanLibraryOnStartup, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Scan library on startup" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding DataContext.ScanLibraryOnStartup, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Scan library on startup" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -221,11 +221,11 @@
                 <StackPanel>
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Back up settings" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Export preferences to a file or restore them from a backup." />
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Orientation="Horizontal">
+                        <StackPanel Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Orientation="Horizontal">
                             <Button x:Name="ExportSettingsButton" Margin="{StaticResource Settings.ActionGap}" Click="OnExportSettingsClick" Content="Export" Style="{StaticResource Settings.ActionButton}" AutomationProperties.Name="Export settings" />
                             <Button x:Name="ImportSettingsButton" Click="OnImportSettingsClick" Content="Import" Style="{StaticResource Settings.ActionButton}" AutomationProperties.Name="Import settings" />
                         </StackPanel>
@@ -233,20 +233,20 @@
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Thumbnail cache" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="{Binding ThumbnailCacheSizeText, StringFormat=Current size: {0}}" />
                         </StackPanel>
-                        <Button x:Name="ClearThumbnailCacheButton" Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Command="{Binding ClearThumbnailCacheCommand}" Content="Clear cache" Style="{StaticResource Settings.ActionButton}" AutomationProperties.Name="Clear thumbnail cache" />
+                        <Button x:Name="ClearThumbnailCacheButton" Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Command="{Binding ClearThumbnailCacheCommand}" Content="Clear cache" Style="{StaticResource Settings.ActionButton}" AutomationProperties.Name="Clear thumbnail cache" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <StackPanel Margin="20,16" VerticalAlignment="Center">
+                        <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Reset settings" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Restore application preferences. Your media and playback history stay intact." />
                         </StackPanel>
-                        <Button x:Name="ResetSettingsButton" Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Command="{Binding ResetSettingsCommand}" Content="Reset" Style="{StaticResource Settings.DestructiveAction}" AutomationProperties.Name="Reset settings" />
+                        <Button x:Name="ResetSettingsButton" Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Command="{Binding ResetSettingsCommand}" Content="Reset" Style="{StaticResource Settings.DestructiveAction}" AutomationProperties.Name="Reset settings" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -254,17 +254,17 @@
             <TextBlock Style="{StaticResource Settings.SectionHeading}" Text="About" />
             <Border Style="{StaticResource Settings.Group}">
                 <StackPanel>
-                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Application" /><TextBlock Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding ApplicationName}" TextWrapping="Wrap" /></Grid>
+                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Application" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding ApplicationName}" TextWrapping="Wrap" /></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
-                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Version" /><TextBlock Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding ApplicationVersion}" TextWrapping="Wrap" /></Grid>
+                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Version" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding ApplicationVersion}" TextWrapping="Wrap" /></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
-                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Library" /><TextBlock Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding LibraryPage.LibrarySummary}" TextWrapping="Wrap" /></Grid>
+                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Library" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding LibraryPage.LibrarySummary}" TextWrapping="Wrap" /></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
-                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Media types" /><TextBlock Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" TextWrapping="Wrap"><TextBlock.Text><MultiBinding StringFormat="{}{0}, {1}, {2}"><Binding Path="LibraryPage.MovieCountText" /><Binding Path="LibraryPage.TutorialCountText" /><Binding Path="LibraryPage.TvShowCountText" /></MultiBinding></TextBlock.Text></TextBlock></Grid>
+                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Media types" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" TextWrapping="Wrap"><TextBlock.Text><MultiBinding StringFormat="{}{0}, {1}, {2}"><Binding Path="LibraryPage.MovieCountText" /><Binding Path="LibraryPage.TutorialCountText" /><Binding Path="LibraryPage.TvShowCountText" /></MultiBinding></TextBlock.Text></TextBlock></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
-                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Database" /><TextBlock Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding DatabaseLocation}" TextWrapping="Wrap" /></Grid>
+                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Database" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding DatabaseLocation}" TextWrapping="Wrap" /></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
-                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Thumbnail cache location" /><TextBlock Grid.Column="1" Margin="0,0,20,0" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding ThumbnailCacheLocation}" TextWrapping="Wrap" /></Grid>
+                    <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="20,0" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Thumbnail cache location" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding ThumbnailCacheLocation}" TextWrapping="Wrap" /></Grid>
                 </StackPanel>
             </Border>
         </StackPanel>

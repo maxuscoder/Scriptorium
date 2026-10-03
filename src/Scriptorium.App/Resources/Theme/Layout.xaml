@@ -38,10 +38,7 @@
     <!-- Icons are drawn at these sizes; their interactive containers remain at least 32 px. -->
     <sys:Double x:Key="Icon.Size.Compact">16</sys:Double>
     <sys:Double x:Key="Icon.Size.Default">20</sys:Double>
-    <sys:Double x:Key="Icon.Size.Navigation">24</sys:Double>
     <sys:Double x:Key="Icon.Size.Feature">32</sys:Double>
-    <sys:Double x:Key="Logo.Size.TitleBar">16</sys:Double>
-    <sys:Double x:Key="Logo.Size.Sidebar">44</sys:Double>
     <sys:Double x:Key="Control.MinHitTarget">32</sys:Double>
     <sys:Double x:Key="Control.Height.Compact">32</sys:Double>
     <sys:Double x:Key="Control.Height.Default">40</sys:Double>
@@ -59,7 +56,6 @@
     <Thickness x:Key="Padding.ComboContent">12,8,32,8</Thickness>
     <Thickness x:Key="Margin.Flyout">0,4,0,0</Thickness>
     <Thickness x:Key="Margin.SectionHeader">0,24,0,12</Thickness>
-    <Thickness x:Key="Margin.NavigationItem">0,2</Thickness>
     <Thickness x:Key="Margin.Focus">2</Thickness>
     <Thickness x:Key="Margin.IconLabel">8,0,0,0</Thickness>
     <Thickness x:Key="Margin.Switch.Off">3,0,0,0</Thickness>
@@ -75,7 +71,6 @@
     <CornerRadius x:Key="Radius.Artwork.Top">12,12,0,0</CornerRadius>
     <CornerRadius x:Key="Radius.Switch">11</CornerRadius>
     <CornerRadius x:Key="Radius.SwitchThumb">8</CornerRadius>
-    <sys:Double x:Key="Control.Height.Navigation">48</sys:Double>
     <sys:Double x:Key="Control.Height.Input">36</sys:Double>
     <sys:Double x:Key="Control.Width.Switch">42</sys:Double>
     <sys:Double x:Key="Control.Height.Switch">22</sys:Double>
@@ -93,7 +88,6 @@
     <sys:Double x:Key="Icon.Height.Chevron">6</sys:Double>
     <sys:Double x:Key="Stroke.Icon">1.5</sys:Double>
     <Thickness x:Key="Margin.InputChevron">0,0,12,0</Thickness>
-    <sys:Double x:Key="Chrome.CaptionButtonSize">24</sys:Double>
     <sys:Double x:Key="ScrollBar.TrackSize">14</sys:Double>
     <Thickness x:Key="ScrollBar.ThumbInset">2</Thickness>
 </ResourceDictionary>

@@ -1,7 +1,7 @@
 <UserControl x:Class="Scriptorium.App.Views.Controls.MediaCard" x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Focusable="True" KeyboardNavigation.TabNavigation="Local"
+    Focusable="True" FocusVisualStyle="{StaticResource Focus.Keyboard}" KeyboardNavigation.TabNavigation="Local"
     AutomationProperties.Name="{Binding Title, ElementName=Root}"
     PreviewKeyDown="OnCardKeyDown">
     <UserControl.Resources>

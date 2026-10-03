@@ -24,13 +24,13 @@ their consumers. Existing keys remain available to existing views.
 | Theme/Inputs.xaml | Text/search fields, ComboBoxes and item presentation |
 | Theme/Toggles.xaml | Checkboxes, switches, filter toggles, chips, radio styling |
 | Theme/Menus.xaml | Tooltips, contextual actions, checked items, submenus, separators |
-| Theme/Chrome.xaml | Existing caption controls and scrollbars; shell dimensions preserved |
+| Theme/Chrome.xaml | Scrollbars; the native Windows caption owns window controls |
 | Resources/Library.xaml | Library-specific compositions and compatibility aliases |
 
 Use DynamicResource for brushes so live theme switching works. Use StaticResource
 for dimensions and styles, except cross-dictionary styles inside detached popup
 templates, which use dynamic lookup. Library.SearchField, Library.ComboBox,
-Library.FilterToggle, and Library.RowIconToggle compose global resources rather
+and Library.RowIconToggle compose global resources rather
 than copying templates.
 
 ThemeService retains the existing Light/System behavior and the light palette.
@@ -110,9 +110,14 @@ layout dimensions or hardcode animation offsets in views.
 MotionBehavior.HoverLift uses the shared distance (-2 DIPs), Fast timing, and
 easing. It checks Windows client-area animation and high-contrast settings for
 each interaction and clears its animation when the control unloads/recycles.
+Category tiles use this behavior. BrushTransition blends solid button and filter
+surfaces in 100/150 ms without extra visual layers. Dialog content enters with
+200 ms opacity and 8-DIP movement; reduced-motion and high-contrast settings
+make the transition immediate.
 The Page.Enter compatibility style intentionally has no ancestor transform:
 LibVLC native video hosts must keep stable coordinates. Popup transitions are
-instant. Button/toggle states update immediately.
+instant. Pressed, selected, disabled and focus states remain visible independently
+of decorative motion.
 
 ## Verification
 

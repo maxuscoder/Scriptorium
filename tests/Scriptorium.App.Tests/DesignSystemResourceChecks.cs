@@ -8,6 +8,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Behaviors;
 using Scriptorium.App.Services;
 using Xunit;
 
@@ -78,6 +79,10 @@ internal static class DesignSystemResourceChecks
             window.Show();
             window.UpdateLayout();
             await StaTest.DrainDispatcherAsync();
+            var primary = (Button)buttonRow.Children[0];
+            var primarySurface = Descendants<Border>(primary).First();
+            Assert.Equal(((SolidColorBrush)primary.Background).Color,
+                ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
             Assert.NotNull(textBox.Template.FindName("PART_ContentHost", textBox));
             Assert.Contains(Descendants<TextBlock>(combo), block => block.Text == "Movies");
             Assert.Contains(Descendants<TextBlock>(speed), block => block.Text == "1x");
@@ -107,10 +112,14 @@ internal static class DesignSystemResourceChecks
             theme.Apply("Light");
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(ThemeService.LightColors["TextPrimary"], ((SolidColorBrush)textBox.Foreground).Color);
+            Assert.Equal(((SolidColorBrush)primary.Background).Color,
+                ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
             theme.Apply("Dark");
             foreach (var (key, color) in originalColors)
                 Assert.Equal(color, ((SolidColorBrush)resources[$"Brush.{key}"]).Color);
             await StaTest.DrainDispatcherAsync();
+            Assert.Equal(((SolidColorBrush)primary.Background).Color,
+                ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
 
             // A standalone visual artifact for manual QA; generated only in ignored build output.
