@@ -121,7 +121,9 @@ internal static class DesignSystemResourceChecks
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(ThemeService.LightColors["TextPrimary"], ((SolidColorBrush)textBox.Foreground).Color);
             var lightPrimaryGradient = Assert.IsType<LinearGradientBrush>(Descendants<Border>(primary).Skip(1).First().Background);
-            Assert.Equal(ThemeService.LightColors["PrimaryButton.NormalBase"], lightPrimaryGradient.GradientStops[^1].Color);
+            // Invisible windows may not advance animation clocks; verify the settled theme color.
+            Assert.Equal(ThemeService.LightColors["PrimaryButton.NormalBase"],
+                (Color)lightPrimaryGradient.GradientStops[^1].GetAnimationBaseValue(GradientStop.ColorProperty));
             Assert.Equal(((SolidColorBrush)primary.Background).Color,
                 ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
             theme.Apply("Dark");

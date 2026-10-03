@@ -327,7 +327,7 @@ internal static class LibraryResourceChecks
                     AutomationProperties.GetName(candidate) == name);
                 Assert.Equal(path, BindingOperations.GetBinding(control, property)?.Path.Path);
                 Assert.True(control.IsTabStop);
-                Assert.NotNull(control.FocusVisualStyle);
+                VerifyKeyboardFocusVisual(control);
             }
             foreach (var control in new Control[] { resumeToggle, completion, volume, speed,
                          (Button)settingsPage.FindName("ExportSettingsButton"),
@@ -335,11 +335,7 @@ internal static class LibraryResourceChecks
                          (Button)settingsPage.FindName("ResetSettingsButton") })
             {
                 Assert.True(control.IsTabStop);
-                try { Assert.NotNull(control.FocusVisualStyle); }
-                catch (InvalidOperationException exception)
-                {
-                    throw new InvalidOperationException($"Focus style failed for {AutomationProperties.GetName(control)}", exception);
-                }
+                VerifyKeyboardFocusVisual(control);
             }
 
             settingsViewModel.ResumePlaybackEnabled = false;
@@ -393,6 +389,33 @@ internal static class LibraryResourceChecks
             source.Listeners.Remove(trace);
             source.Switch.Level = level;
         }
+    }
+
+    private static void VerifyKeyboardFocusVisual(Control control)
+    {
+        if (control.FocusVisualStyle is not null) return;
+
+        // Combo boxes and sliders render focus within their styles/templates instead of an adorner.
+        if (control is ComboBox)
+        {
+            var triggers = new List<Trigger>();
+            for (var style = control.Style; style is not null; style = style.BasedOn)
+                triggers.AddRange(style.Triggers.OfType<Trigger>());
+            Assert.Contains(triggers, trigger =>
+                trigger.Property == UIElement.IsKeyboardFocusWithinProperty && Equals(trigger.Value, true) &&
+                trigger.Setters.OfType<Setter>().Any(setter => setter.Property == Control.BorderBrushProperty));
+        }
+        else if (control is Slider slider)
+        {
+            var track = Assert.IsType<Track>(slider.Template.FindName("PART_Track", slider));
+            Assert.NotNull(track.Thumb);
+            Assert.Contains(track.Thumb.Template.Triggers.OfType<DataTrigger>(), trigger =>
+                trigger.Binding is Binding { Path.Path: "IsKeyboardFocusWithin", RelativeSource.AncestorType: var ancestor } &&
+                ancestor == typeof(Slider) && trigger.Value is true or "True" &&
+                trigger.Setters.OfType<Setter>().Any(setter =>
+                    setter.TargetName == "HandleRing" && setter.Property == UIElement.OpacityProperty && Equals(setter.Value, 1d)));
+        }
+        else Assert.Fail($"Missing keyboard focus visual for {AutomationProperties.GetName(control)}");
     }
 
     private static IEnumerable<object> Cards(LibraryPageViewModel vm) => vm.BrowserRows.OfType<LibraryBrowserCardsRow>().SelectMany(row => row.Cards);

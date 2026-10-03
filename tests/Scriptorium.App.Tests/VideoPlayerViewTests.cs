@@ -141,7 +141,7 @@ public sealed class VideoPlayerViewTests
             player.Deactivate();
             application.Shutdown();
         }
-    });
+    }, timeout: TimeSpan.FromMinutes(2)); // Includes native playback and all shared presentation resource checks.
 
     private static async Task WaitUntil(Func<bool> predicate)
     {

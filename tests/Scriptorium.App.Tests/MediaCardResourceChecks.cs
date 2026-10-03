@@ -24,6 +24,8 @@ internal static class MediaCardResourceChecks
     internal static async Task VerifyAsync(ResourceDictionary resources)
     {
         resources["BooleanToVisibilityConverter"] = new Scriptorium.App.Converters.BooleanToVisibilityConverter();
+        var artworkRatio = Assert.IsType<double>(resources["MediaCard.ArtworkRatio"]);
+        var listArtworkWidth = Assert.IsType<double>(resources["MediaCard.ListArtworkWidth"]);
         var templateCases = new List<(DataTemplate Template, object Item, string Name)>();
         var host = new CommandHost();
         var media = new MediaItem { Title = "Interstellar", Path = @"C:\Movies\Interstellar.1080p.mkv", MediaType = MediaType.Movie, RuntimeSeconds = 10140, PlaybackPositionSeconds = 1200 };
@@ -75,7 +77,7 @@ internal static class MediaCardResourceChecks
                 Assert.DoesNotContain(".mkv", card.Metadata);
                 Assert.True(card.ActualHeight < 240, name);
                 var artwork = (Grid)card.FindName("Artwork");
-                Assert.Equal(16d / 9, artwork.ActualWidth / artwork.ActualHeight, 5);
+                Assert.Equal(artworkRatio, artwork.ActualWidth / artwork.ActualHeight, 5);
                 Assert.False(card.HasUsableThumbnail);
                 var primary = (Button)card.FindName("PrimaryAction");
                 var favorite = (Button)card.FindName("FavoriteAction");
@@ -116,8 +118,8 @@ internal static class MediaCardResourceChecks
                 card.IsListLayout = true;
                 await StaTest.DrainDispatcherAsync();
                 Assert.True(double.IsNaN(card.Width));
-                Assert.Equal(160, artwork.ActualWidth);
-                Assert.Equal(90, artwork.ActualHeight);
+                Assert.Equal(listArtworkWidth, artwork.ActualWidth);
+                Assert.Equal(listArtworkWidth / artworkRatio, artwork.ActualHeight, 5);
                 Assert.Equal(1, ((ScaleTransform)((Grid)card.FindName("CardVisual")).RenderTransform).ScaleX);
                 card.PlaybackProgressPercentage = double.NaN;
                 Assert.Equal(0, card.PlaybackProgressPercentage);
