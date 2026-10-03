@@ -74,6 +74,7 @@
     </Style>
     <Style x:Key="Button.Primary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
         <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.Depth}" />
+        <Setter Property="Tag" Value="{DynamicResource Brush.PrimaryButton.Normal}" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Padding" Value="16,6" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryButton.Text}" />
@@ -91,6 +92,8 @@
                                 Effect="{StaticResource Effect.PrimaryButton.Elevation}" />
                         <Border x:Name="Surface"
                                 Background="{DynamicResource Brush.PrimaryButton.Normal}"
+                                behaviors:BrushTransition.Target="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Standard}"
                                 CornerRadius="8"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}" />
@@ -106,7 +109,7 @@
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.HoverDepth}" />
-                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Hover}" />
+                            <Setter Property="Tag" Value="{DynamicResource Brush.PrimaryButton.Hover}" />
                             <Setter TargetName="Depth" Property="Effect" Value="{StaticResource Effect.PrimaryButton.HoverElevation}" />
                         </Trigger>
                         <MultiTrigger>
@@ -118,7 +121,7 @@
                         </MultiTrigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.PressedDepth}" />
-                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Pressed}" />
+                            <Setter Property="Tag" Value="{DynamicResource Brush.PrimaryButton.Pressed}" />
                             <Setter TargetName="Depth" Property="Effect" Value="{x:Null}" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -126,7 +129,7 @@
                             <Setter Property="Cursor" Value="Arrow" />
                             <Setter Property="Background" Value="{DynamicResource Brush.PrimaryButton.DisabledDepth}" />
                             <Setter Property="Foreground" Value="{DynamicResource Brush.PrimaryButton.DisabledText}" />
-                            <Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.PrimaryButton.Disabled}" />
+                            <Setter Property="Tag" Value="{DynamicResource Brush.PrimaryButton.Disabled}" />
                             <Setter TargetName="Depth" Property="Effect" Value="{x:Null}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
