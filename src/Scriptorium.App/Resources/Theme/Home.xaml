@@ -12,7 +12,7 @@
     <Thickness x:Key="Home.Arrow.Margin">8,0,0,0</Thickness>
     <sys:Double x:Key="Home.Hero.Height">280</sys:Double>
     <sys:Double x:Key="Home.Hero.TextWidth">440</sys:Double>
-    <sys:Double x:Key="Home.Hero.ProgressWidth">400</sys:Double>
+    <sys:Double x:Key="Home.Hero.ProgressWidth">267</sys:Double>
     <sys:Double x:Key="Home.Shelf.Height">244</sys:Double>
     <sys:Double x:Key="Home.Shelf.ScrollFraction">0.8</sys:Double>
     <SolidColorBrush x:Key="Home.Hero.TextSecondary" Color="#C0C0C6" />

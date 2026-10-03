@@ -12,6 +12,22 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
         </Style>
+        <Style x:Key="Hero.Progress" TargetType="ProgressBar" BasedOn="{StaticResource MediaCard.Progress}">
+            <Setter Property="Height" Value="6" />
+            <Setter Property="Foreground" Value="#FFFF9100" />
+            <Setter Property="Background" Value="#FF2C2F35" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ProgressBar">
+                        <Grid x:Name="PART_Track" ClipToBounds="True">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="3" />
+                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
+                                    Background="{TemplateBinding Foreground}" CornerRadius="3" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="Hero.ActionPrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
             <Setter Property="Width" Value="171" />
             <Setter Property="Height" Value="39" />
@@ -93,7 +109,7 @@
                     </Style></TextBlock.Style>
                 </TextBlock>
                 <ProgressBar x:Name="Progress" Width="{StaticResource Home.Hero.ProgressWidth}" HorizontalAlignment="Left" Margin="{StaticResource Home.Copy.Gap}">
-                    <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource MediaCard.Progress}">
+                    <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource Hero.Progress}">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                     </Style></ProgressBar.Style>
