@@ -84,7 +84,7 @@
                         </Button>
                     </StackPanel>
                 </Grid>
-                <ProgressBar x:Name="PlaybackProgress" VerticalAlignment="Bottom" Value="{Binding PlaybackProgressPercentage, ElementName=Root}"
+                <ProgressBar x:Name="PlaybackProgress" Margin="8,0,8,8" VerticalAlignment="Bottom" Value="{Binding PlaybackProgressPercentage, ElementName=Root}"
                     AutomationProperties.Name="Playback progress">
                     <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource MediaCard.Progress}">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -92,6 +92,8 @@
                     </Style></ProgressBar.Style>
                 </ProgressBar>
             </Grid>
+            <Border BorderBrush="#FF383A40" BorderThickness="0.7"
+                    CornerRadius="{StaticResource Radius.Card}" IsHitTestVisible="False" />
         </Grid>
         <StackPanel x:Name="Copy">
             <StackPanel.Style><Style TargetType="StackPanel">

@@ -3,16 +3,16 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <sys:Double x:Key="MediaCard.Width">260</sys:Double>
     <sys:Double x:Key="MediaCard.ListArtworkWidth">160</sys:Double>
-    <sys:Double x:Key="MediaCard.ArtworkRatio">1.777777777777778</sys:Double>
+    <sys:Double x:Key="MediaCard.ArtworkRatio">2.14</sys:Double>
     <sys:Double x:Key="MediaCard.HoverScale">1.022</sys:Double>
     <sys:Double x:Key="MediaCard.Artwork.RestOpacity">0.94</sys:Double>
     <sys:Double x:Key="MediaCard.Shadow.Opacity">0.24</sys:Double>
-    <sys:Double x:Key="MediaCard.Progress.Height">3</sys:Double>
+    <sys:Double x:Key="MediaCard.Progress.Height">4</sys:Double>
     <Duration x:Key="MediaCard.Motion.Duration">0:0:0.18</Duration>
     <sys:Int32 x:Key="MediaCard.ToolTip.Delay">800</sys:Int32>
     <sys:Int32 x:Key="MediaCard.ToolTip.Duration">6000</sys:Int32>
     <Thickness x:Key="MediaCard.Margin">4,4,16,16</Thickness>
-    <Thickness x:Key="MediaCard.Copy.Margin">0,12,0,4</Thickness>
+    <Thickness x:Key="MediaCard.Copy.Margin">3,8,0,4</Thickness>
     <Thickness x:Key="MediaCard.Copy.ListMargin">16,0,0,0</Thickness>
     <Thickness x:Key="MediaCard.Metadata.Margin">0,4,0,0</Thickness>
     <Thickness x:Key="MediaCard.Actions.Margin">8</Thickness>
@@ -79,8 +79,9 @@
         <Setter Property="Background" Value="{DynamicResource Brush.ProgressTrack}" />
         <Setter Property="Template"><Setter.Value>
             <ControlTemplate TargetType="ProgressBar">
-                <Grid x:Name="PART_Track" Background="{TemplateBinding Background}">
-                    <Border x:Name="PART_Indicator" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" />
+                <Grid x:Name="PART_Track" ClipToBounds="True">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="2" />
+                    <Border x:Name="PART_Indicator" HorizontalAlignment="Left" Background="{TemplateBinding Foreground}" CornerRadius="2" />
                 </Grid>
             </ControlTemplate>
         </Setter.Value></Setter>

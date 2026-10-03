@@ -58,7 +58,7 @@
     <Color x:Key="Color.ArtworkScrim">#44000000</Color>
     <Color x:Key="Color.ArtworkBadge">#CC0B0B0D</Color>
     <Color x:Key="Color.ArtworkFallback">#55262626</Color>
-    <Color x:Key="Color.ProgressTrack">#66000000</Color>
+    <Color x:Key="Color.ProgressTrack">#B32A2C31</Color>
     <Color x:Key="Color.PlaybackSurface">#000000</Color>
     <Color x:Key="Color.PlaybackFeedback">#C0000000</Color>
 
