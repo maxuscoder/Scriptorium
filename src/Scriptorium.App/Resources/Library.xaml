@@ -78,6 +78,10 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" /></Trigger>
                         <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
+                        </DataTrigger>
                         <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" /></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
