@@ -64,9 +64,9 @@ public partial class AmbientBokehBackground : UserControl
             _bubbleSizes.Add(new Size(bubble.Width, bubble.Height));
             var center = ((RadialGradientBrush)bubble.Fill).GradientStops[0].Color;
             var peak = Math.Max(center.R, Math.Max(center.G, center.B)) * center.ScA * bubble.Opacity;
-            if (center.R == center.G && center.G == center.B && bubble.Opacity <= 0.13)
+            if (center.R == center.G && center.G == center.B && bubble.Opacity <= 0.17)
             {
-                // Bake very faint charcoal at its final brightness: applying tiny
+                // Bake low-opacity charcoal at its final brightness: applying tiny
                 // opacity after gradient rendering loses levels and brings back rings.
                 bubble.Fill = CreateDiffuseCharcoalBrush(_bubbleSizes[^1], center, bubble.Opacity);
                 bubble.Opacity = 1; // The original opacity is already in the texture.
