@@ -6,6 +6,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -36,6 +37,17 @@ internal static class ShellResourceChecks
             new ConfigurationBuilder().Build(), location, location, database, logger).BuildServiceProvider();
         var shell = services.GetRequiredService<ShellViewModel>();
         var window = new MainWindow(shell) { ShowInTaskbar = false, ShowActivated = false };
+        var sidebarWidthProperty = (DependencyProperty)typeof(MainWindow).GetField("SidebarWidthProperty",
+            BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
+        async Task DrainSidebarAsync()
+        {
+            await StaTest.DrainDispatcherAsync();
+            // Invisible windows do not advance composition clocks. Settle width for layout checks.
+            typeof(MainWindow).GetMethod("StopSidebarAnimation", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(window, null);
+            window.UpdateLayout();
+            await StaTest.DrainDispatcherAsync();
+        }
         var trace = new BindingTrace();
         var source = PresentationTraceSources.DataBindingSource;
         var originalLevel = source.Switch.Level;
@@ -44,7 +56,7 @@ internal static class ShellResourceChecks
         try
         {
             window.Show();
-            await StaTest.DrainDispatcherAsync();
+            await DrainSidebarAsync();
             var sidebar = Assert.IsType<Sidebar>(window.FindName("SidebarNavigation"));
             var host = Descendants<PageHost>(window).Single(control => BindingOperations.GetBinding(control, PageHost.ContentProperty)?.Path.Path == "CurrentPage");
             var ambient = Assert.IsType<AmbientBokehBackground>(window.FindName("AmbientBackground"));
@@ -63,7 +75,7 @@ internal static class ShellResourceChecks
             foreach (var width in new[] { 1200.0, 800.0, 1000.0 })
             {
                 window.Width = width;
-                await StaTest.DrainDispatcherAsync();
+                await DrainSidebarAsync();
                 Assert.Equal(width < 1000, sidebar.IsCompact);
                 Assert.Equal(width < 1000 ? 72 : 232, sidebar.ActualWidth);
                 foreach (var button in buttons)
@@ -71,7 +83,7 @@ internal static class ShellResourceChecks
                     var item = Assert.IsType<NavigationItem>(button.CommandParameter);
                     Assert.Same(shell.NavigateCommand, button.Command);
                     typeof(Button).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(button, null);
-                    await StaTest.DrainDispatcherAsync();
+                    await DrainSidebarAsync();
                     Assert.Same(item.Destination, shell.CurrentPage);
                     Assert.Same(item.Destination, host.Content);
                     Assert.True(item.IsSelected);
@@ -116,21 +128,140 @@ internal static class ShellResourceChecks
             const int expected = 0x00C00000 | 0x00080000 | 0x00040000 | 0x00020000 | 0x00010000;
             Assert.Equal(expected, nativeStyle & expected); // Caption, system menu, sizing, minimize and maximize.
             window.WindowState = WindowState.Maximized;
-            await StaTest.DrainDispatcherAsync();
+            await DrainSidebarAsync();
             Assert.Equal(WindowState.Maximized, window.WindowState);
             Assert.Equal(window.ActualWidth < 1000, sidebar.IsCompact);
             window.WindowState = WindowState.Minimized;
-            await StaTest.DrainDispatcherAsync();
+            await DrainSidebarAsync();
             Assert.Equal(WindowState.Minimized, window.WindowState);
             window.WindowState = WindowState.Normal;
-            await StaTest.DrainDispatcherAsync();
+            await DrainSidebarAsync();
             Assert.Equal(1000, window.Width);
+            var resizeHandle = Assert.IsType<Thumb>(window.FindName("SidebarResizeHandle"));
+            var leftEdge = Assert.IsType<Thumb>(window.FindName("SidebarLeftEdgeHandle"));
+            var logo = Assert.IsType<Button>(sidebar.FindName("LogoButton"));
+            var layout = Assert.IsType<Grid>(window.Content);
+            double startWidth = 0, startX = 0;
+            void StartDrag(Thumb handle)
+            {
+                startWidth = sidebar.ActualWidth;
+                startX = handle.TranslatePoint(new Point(), layout).X;
+                handle.RaiseEvent(new DragStartedEventArgs(0, 0) { RoutedEvent = Thumb.DragStartedEvent });
+            }
+            async Task DragTo(Thumb handle, double width)
+            {
+                var displacement = width - startWidth - (handle.TranslatePoint(new Point(), layout).X - startX);
+                handle.RaiseEvent(new DragDeltaEventArgs(displacement, 0) { RoutedEvent = Thumb.DragDeltaEvent });
+                await DrainSidebarAsync();
+            }
+            void FinishDrag(Thumb handle, bool canceled = false) => handle.RaiseEvent(
+                new DragCompletedEventArgs(0, 0, canceled) { RoutedEvent = Thumb.DragCompletedEvent });
+
+            // The same drag can cross the collapse threshold and then reopen without jumping.
+            StartDrag(resizeHandle);
+            await DragTo(resizeHandle, 300);
+            Assert.Equal(300, sidebar.ActualWidth);
+            await DragTo(resizeHandle, 600);
+            Assert.Equal(360, sidebar.ActualWidth);
+            await DragTo(resizeHandle, 180);
+            Assert.False(sidebar.IsCompact);
+            Assert.Equal(180, sidebar.ActualWidth);
+            await DragTo(resizeHandle, 179);
+            Assert.True(sidebar.IsCompact);
+            Assert.Equal(72, sidebar.ActualWidth);
+            await DragTo(resizeHandle, 280);
+            Assert.False(sidebar.IsCompact);
+            Assert.Equal(280, sidebar.ActualWidth);
+            FinishDrag(resizeHandle);
+
+            var layoutProbe = new PageLayoutProbe();
+            host.Children.Add(layoutProbe);
+            window.UpdateLayout();
+            // Logo transitions animate from the rendered width and retain the destination as base value.
+            logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
+            {
+                Assert.True(window.HasAnimatedProperties);
+                Assert.Equal(280.0, sidebar.ActualWidth);
+                Assert.Equal(72.0, window.GetAnimationBaseValue(sidebarWidthProperty));
+                Assert.Equal(host.ActualWidth, host.Width);
+                Assert.Equal(HorizontalAlignment.Left, host.HorizontalAlignment);
+                // Simulate animation frames without relying on invisible-window composition clocks.
+                // Page descendants must not be measured again for each intermediate column width.
+                window.BeginAnimation(sidebarWidthProperty, null);
+                window.UpdateLayout();
+                var measureCount = layoutProbe.MeasureCount;
+                foreach (var frameWidth in new[] { 250.0, 210.0, 170.0, 120.0, 72.0 })
+                {
+                    window.SetValue(sidebarWidthProperty, frameWidth);
+                    window.UpdateLayout();
+                }
+                Assert.Equal(measureCount, layoutProbe.MeasureCount);
+            }
+            await DrainSidebarAsync();
+            Assert.Equal(72, sidebar.ActualWidth);
+            logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
+            {
+                Assert.True(window.HasAnimatedProperties);
+                Assert.Equal(72.0, sidebar.ActualWidth);
+                Assert.Equal(280.0, window.GetAnimationBaseValue(sidebarWidthProperty));
+                // Starting a drag interrupts the transition at its current rendered width.
+                StartDrag(resizeHandle);
+                Assert.False(window.HasAnimatedProperties);
+                Assert.True(double.IsNaN(host.Width));
+                Assert.Equal(HorizontalAlignment.Stretch, host.HorizontalAlignment);
+                Assert.Equal(72.0, window.GetValue(sidebarWidthProperty));
+                FinishDrag(resizeHandle, canceled: true);
+                StartDrag(resizeHandle);
+                FinishDrag(resizeHandle); // Releasing without movement resumes the interrupted expansion.
+            }
+            await DrainSidebarAsync();
+
+            host.Children.Remove(layoutProbe);
+            Assert.True(double.IsNaN(host.Width));
+            Assert.Equal(HorizontalAlignment.Stretch, host.HorizontalAlignment);
+            // A manually chosen width survives window resizing; the logo restores that width.
+            window.Width = 800;
+            await DrainSidebarAsync();
+            Assert.Equal(280, sidebar.ActualWidth);
+            logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await DrainSidebarAsync();
+            Assert.True(sidebar.IsCompact);
+            Assert.Equal("Expand sidebar", AutomationProperties.GetName(logo));
+            Assert.Equal(Visibility.Visible, leftEdge.Visibility);
+            logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await DrainSidebarAsync();
+            Assert.Equal(280, sidebar.ActualWidth);
+            Assert.Equal("Collapse sidebar", AutomationProperties.GetName(logo));
+            Assert.Equal(Visibility.Collapsed, leftEdge.Visibility);
+
+            logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await DrainSidebarAsync();
+            StartDrag(leftEdge);
+            await DragTo(leftEdge, 180);
+            Assert.Equal(180, sidebar.ActualWidth);
+            await DragTo(leftEdge, 260);
+            Assert.Equal(260, sidebar.ActualWidth);
+            FinishDrag(leftEdge, canceled: true);
+            await DrainSidebarAsync();
+            Assert.True(sidebar.IsCompact);
+            Assert.Equal(72, sidebar.ActualWidth);
+            StartDrag(leftEdge);
+            await DragTo(leftEdge, 320);
+            FinishDrag(leftEdge);
+            Assert.False(sidebar.IsCompact);
+            Assert.Equal(320, sidebar.ActualWidth);
+            window.Width = 1200;
+            await DrainSidebarAsync();
+            Assert.Equal(320, sidebar.ActualWidth);
+
             var theme = services.GetRequiredService<IThemeService>();
             theme.Apply("Light");
-            await StaTest.DrainDispatcherAsync();
+            await DrainSidebarAsync();
             Assert.Equal(Colors.White, Assert.IsType<SolidColorBrush>(window.ChromeBrush).Color);
             theme.Apply("Dark");
-            await StaTest.DrainDispatcherAsync();
+            await DrainSidebarAsync();
             Assert.Equal(Color.FromRgb(16, 16, 18), Assert.IsType<SolidColorBrush>(window.ChromeBrush).Color);
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
@@ -151,6 +282,16 @@ internal static class ShellResourceChecks
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
+    private sealed class PageLayoutProbe : FrameworkElement
+    {
+        internal int MeasureCount { get; private set; }
+        protected override Size MeasureOverride(Size availableSize)
+        {
+            MeasureCount++;
+            return new Size(0, 0);
+        }
+    }
+
     private sealed class BindingTrace : TraceListener
     {
         public StringBuilder Messages { get; } = new();

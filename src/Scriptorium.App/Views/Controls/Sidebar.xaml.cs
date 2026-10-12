@@ -11,6 +11,10 @@ public partial class Sidebar : UserControl
         typeof(Sidebar),
         new PropertyMetadata(false));
 
+    public event RoutedEventHandler? ToggleRequested;
+
+    private void OnLogoClick(object sender, RoutedEventArgs e) => ToggleRequested?.Invoke(this, e);
+
     public Sidebar()
     {
         InitializeComponent();

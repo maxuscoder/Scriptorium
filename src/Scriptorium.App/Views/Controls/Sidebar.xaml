@@ -18,8 +18,23 @@
     <DockPanel Margin="{StaticResource Shell.Padding}" LastChildFill="True">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="{StaticResource Shell.Brand.Height}"
             Margin="{StaticResource Shell.Brand.Margin}">
-            <Image Width="{StaticResource Space.6}" Height="{StaticResource Space.6}"
-                Source="/Scriptorium.App;component/Assets/logo-32px.png" Stretch="Uniform" />
+            <Button x:Name="LogoButton" Click="OnLogoClick" Padding="0" BorderThickness="0"
+                Background="Transparent">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                        <Setter Property="ToolTip" Value="Collapse sidebar" />
+                        <Setter Property="AutomationProperties.Name" Value="Collapse sidebar" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                <Setter Property="ToolTip" Value="Expand sidebar" />
+                                <Setter Property="AutomationProperties.Name" Value="Expand sidebar" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+                <Image Width="{StaticResource Space.6}" Height="{StaticResource Space.6}"
+                    Source="/Scriptorium.App;component/Assets/logo-32px.png" Stretch="Uniform" />
+            </Button>
             <TextBlock Text="Scriptorium" FontWeight="SemiBold">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource Shell.ExpandedText}">

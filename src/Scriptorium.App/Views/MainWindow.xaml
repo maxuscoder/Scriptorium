@@ -9,16 +9,41 @@
     UseLayoutRounding="True" SnapsToDevicePixels="True"
     Loaded="OnLoaded" SizeChanged="OnSizeChanged">
     <!-- Windows owns the non-client title bar, caption controls and resize frame. -->
-    <Grid>
+    <Grid x:Name="ShellLayout">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition x:Name="NavigationColumn" Width="Auto" />
+            <ColumnDefinition x:Name="NavigationColumn" Width="Auto"
+                MaxWidth="{StaticResource Shell.Sidebar.MaxWidth}" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <controls:Sidebar x:Name="SidebarNavigation" />
+        <controls:Sidebar x:Name="SidebarNavigation" ToggleRequested="OnSidebarToggleRequested" ClipToBounds="True" />
         <Grid Grid.Column="1" ClipToBounds="True">
             <controls:AmbientBokehBackground x:Name="AmbientBackground" />
-            <controls:PageHost MinWidth="0" MinHeight="0" Content="{Binding CurrentPage}" />
+            <controls:PageHost x:Name="PageContent" MinWidth="0" MinHeight="0"
+                Content="{Binding CurrentPage}" />
         </Grid>
+        <Thumb x:Name="SidebarResizeHandle" HorizontalAlignment="Right" Panel.ZIndex="2"
+            Style="{StaticResource Shell.Sidebar.ResizeHandle}" ToolTip="Drag to resize sidebar"
+            AutomationProperties.Name="Resize sidebar" KeyDown="OnSidebarResizeKeyDown"
+            DragStarted="OnSidebarDragStarted" DragDelta="OnSidebarDragDelta" DragCompleted="OnSidebarDragCompleted" />
+        <Thumb x:Name="SidebarLeftEdgeHandle" HorizontalAlignment="Left" Panel.ZIndex="2"
+            ToolTip="Drag right to expand sidebar" AutomationProperties.Name="Expand sidebar from left edge"
+            KeyDown="OnSidebarResizeKeyDown" DragStarted="OnSidebarDragStarted"
+            DragDelta="OnSidebarDragDelta" DragCompleted="OnSidebarDragCompleted">
+            <Thumb.Style>
+                <Style TargetType="Thumb" BasedOn="{StaticResource Shell.Sidebar.ResizeHandle}">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsCompact, ElementName=SidebarNavigation}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <!-- Keep mouse capture alive while a left-edge drag expands the rail. -->
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Thumb.Style>
+        </Thumb>
         <controls:NotificationCenter Grid.ColumnSpan="2" HorizontalAlignment="Right"
             VerticalAlignment="Top" Margin="{StaticResource Spacing.M}"
             DataContext="{Binding Notifications}" Panel.ZIndex="10" IsHitTestVisible="True" />

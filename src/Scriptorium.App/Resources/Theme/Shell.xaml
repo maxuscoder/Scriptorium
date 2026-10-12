@@ -8,6 +8,9 @@
     </ResourceDictionary.MergedDictionaries>
     <!-- Shell-only tokens. Shared controls and page content retain the Phase 1 system. -->
     <sys:Double x:Key="Shell.Sidebar.Width">232</sys:Double>
+    <sys:Double x:Key="Shell.Sidebar.MinWidth">180</sys:Double>
+    <sys:Double x:Key="Shell.Sidebar.MaxWidth">360</sys:Double>
+    <sys:Double x:Key="Shell.Sidebar.ResizeHitWidth">8</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.CompactWidth">72</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.CompactThreshold">1000</sys:Double>
     <sys:Double x:Key="Shell.Brand.Height">56</sys:Double>
@@ -24,8 +27,38 @@
     <CornerRadius x:Key="Shell.Item.Radius">8</CornerRadius>
     <CornerRadius x:Key="Shell.Indicator.Radius">2</CornerRadius>
     <FontFamily x:Key="Shell.FontFamily.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <Duration x:Key="Shell.Motion.Sidebar">0:0:0.12</Duration>
     <Duration x:Key="Shell.Motion.Hover">0:0:0.12</Duration>
     <Duration x:Key="Shell.Motion.Selection">0:0:0.15</Duration>
+
+    <Style x:Key="Shell.Sidebar.ResizeHandle" TargetType="Thumb">
+        <Setter Property="Width" Value="{StaticResource Shell.Sidebar.ResizeHitWidth}" />
+        <Setter Property="Cursor" Value="SizeWE" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus.Keyboard}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Grid Background="Transparent">
+                        <Border x:Name="Line" Width="1" HorizontalAlignment="Center"
+                            Background="{DynamicResource Brush.Border}" Opacity="0" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Line" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Line" Property="Opacity" Value="1" />
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Line" Property="Opacity" Value="1" />
+                            <Setter TargetName="Line" Property="Background" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <Style x:Key="Shell.NavigationItem" TargetType="Button" BasedOn="{StaticResource Button.Base}">
         <Setter Property="Height" Value="{StaticResource Control.Height.Default}" />
