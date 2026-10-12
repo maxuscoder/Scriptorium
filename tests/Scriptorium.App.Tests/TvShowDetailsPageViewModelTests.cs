@@ -100,7 +100,10 @@ public sealed partial class TvShowDetailsPageViewModelTests
         firstPlayback.RaiseEnded();
         await WaitUntilAsync(() => Path.GetFileName(viewModel.SelectedEpisode?.FilePath) == "S02E01.mkv");
         Assert.Equal("S02E01.mkv", Path.GetFileName(viewModel.SelectedEpisode!.FilePath));
+        // Switching episodes must not let a final snapshot undo the completed episode.
+        await viewModel.Player.FlushPendingProgressSaveAsync();
         Assert.Equal(2, viewModel.CompletedEpisodeCount);
+        Assert.True((await mediaRepository.GetByIdAsync(inProgress.Id))!.IsCompleted);
 
         var nextPlayback = playbackFactory.Instances[^1];
         nextPlayback.RaiseOpened();

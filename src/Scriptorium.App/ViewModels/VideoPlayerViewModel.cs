@@ -607,6 +607,12 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        // Decide before queuing: switching media clears the override before a queued save runs.
+        if (_completionOverrideMediaItemId == snapshot.MediaItemId && _completionOverride)
+        {
+            return;
+        }
+
         var now = DateTimeOffset.UtcNow;
         if (!force && now - _lastProgressSaveRequested < ProgressSaveInterval)
         {

@@ -91,6 +91,43 @@ public sealed class VideoPlayerTests
     });
 
     [Fact]
+    public Task SwitchingMediaPreservesExplicitCompletionAfterPendingSavesFinish() => StaTest.Run(async () =>
+    {
+        var factory = new FakeFactory();
+        var progressService = new RecordingPlaybackProgressService();
+        var completedMediaItemId = Guid.NewGuid();
+        var nextMediaItemId = Guid.NewGuid();
+        using var player = new VideoPlayerViewModel(factory, playbackProgressService: progressService);
+        var switched = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        player.PlaybackProgressPersisted += (_, args) =>
+        {
+            if (args.MediaItemId != completedMediaItemId || switched.Task.IsCompleted) return;
+            // Hold the save continuation on the UI dispatcher until the media switch clears the override.
+            player.SynchronizeCompletion(completedMediaItemId, true);
+            player.SetMedia(new MediaPlaybackRequest("next.mp4", 0, nextMediaItemId, 60));
+            switched.SetResult();
+        };
+        player.SetMedia(new MediaPlaybackRequest("completed.mp4", 0, completedMediaItemId, 60));
+        player.Activate();
+        var firstPlayback = Assert.Single(factory.Instances);
+        firstPlayback.RaiseOpened();
+        player.TogglePlaybackCommand.Execute(null);
+        firstPlayback.Position = TimeSpan.FromSeconds(15);
+
+        await switched.Task;
+        await player.FlushPendingProgressSaveAsync();
+        Assert.Equal(completedMediaItemId, Assert.Single(progressService.Updates).MediaItemId);
+
+        var nextPlayback = factory.Instances[^1];
+        nextPlayback.RaiseOpened();
+        nextPlayback.Position = TimeSpan.FromSeconds(22);
+        await player.DeactivateAsync();
+        Assert.Equal(2, progressService.Updates.Count);
+        Assert.Equal(nextMediaItemId, progressService.Updates[^1].MediaItemId);
+        Assert.Equal(22, progressService.Updates[^1].Update.PositionSeconds);
+    });
+
+    [Fact]
     public Task OpensPausedResumesReplaysAndReleasesEverySession() => StaTest.Run(() =>
     {
         var factory = new FakeFactory();
