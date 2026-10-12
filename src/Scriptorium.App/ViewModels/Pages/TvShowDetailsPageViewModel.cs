@@ -681,31 +681,16 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
 
     private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)
     {
-        var update = () =>
-        {
-            var episode = EpisodesInOrder().FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
-            if (episode is null)
-            {
-                return;
-            }
-
-            episode.SetPlaybackProgress(
-                args.PositionSeconds,
-                args.DurationSeconds,
-                isCompleted: false,
-                lastWatched: args.LastWatched,
-                completionThreshold: args.CompletionThreshold);
-            NotifyShowStateChanged();
-        };
-
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            _ = dispatcher.InvokeAsync(update);
-            return;
-        }
-
-        update();
+        // VideoPlayerViewModel publishes saved snapshots on its owning UI dispatcher.
+        var episode = EpisodesInOrder().FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
+        if (episode is null) return;
+        episode.SetPlaybackProgress(
+            args.PositionSeconds,
+            args.DurationSeconds,
+            isCompleted: false,
+            lastWatched: args.LastWatched,
+            completionThreshold: args.CompletionThreshold);
+        NotifyShowStateChanged();
     }
 
     private async void OnPlaybackCompleted(object? sender, PlaybackCompletedEventArgs args)

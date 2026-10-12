@@ -138,6 +138,18 @@ public partial class App : Application
 
         try
         {
+            if (_serviceProvider is not null)
+            {
+                // Finish detached sessions and their final snapshots before disposing database/native services.
+                var players = new[]
+                {
+                    _serviceProvider.GetRequiredService<MovieDetailsPageViewModel>().Player,
+                    _serviceProvider.GetRequiredService<TutorialDetailsPageViewModel>().Player,
+                    _serviceProvider.GetRequiredService<TvShowDetailsPageViewModel>().Player
+                };
+                await Task.WhenAll(players.OfType<Scriptorium.App.ViewModels.VideoPlayerViewModel>()
+                    .Select(player => player.DeactivateAsync()));
+            }
             if (_automaticThumbnails is not null) await _automaticThumbnails.StopAsync();
             if (_settingsService is not null)
             {

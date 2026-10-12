@@ -11,6 +11,8 @@ public sealed class LibVlcRuntime : IDisposable
 {
     private static readonly object InitializationGate = new();
     private static string? _initializedNativeDirectory;
+    private readonly object _releaseGate = new();
+    private readonly List<Task> _pendingReleases = [];
     private bool _disposed;
 
     public LibVlcRuntime()
@@ -65,10 +67,35 @@ public sealed class LibVlcRuntime : IDisposable
         return directory;
     }
 
+    // Register teardown before it starts so application shutdown cannot dispose LibVLC underneath it.
+    internal Task ReleaseAsync(Action release)
+    {
+        lock (_releaseGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _pendingReleases.RemoveAll(task => task.IsCompletedSuccessfully);
+            var task = Task.Run(release);
+            _pendingReleases.Add(task);
+            return task;
+        }
+    }
+
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        Instance.Dispose();
+        Task[] pendingReleases;
+        lock (_releaseGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            pendingReleases = _pendingReleases.ToArray();
+        }
+        try
+        {
+            Task.WhenAll(pendingReleases).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            Instance.Dispose();
+        }
     }
 }

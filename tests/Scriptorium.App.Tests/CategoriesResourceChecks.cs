@@ -25,9 +25,9 @@ internal static class CategoriesResourceChecks
 {
     internal static async Task VerifyAsync()
     {
-        await using var database = new SqliteConnection("Data Source=:memory:");
+        await using var database = new SqliteConnection($"Data Source=Scriptorium-categories-{Guid.NewGuid():N};Mode=Memory;Cache=Shared;Pooling=False");
         await database.OpenAsync();
-        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(database).Options;
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>().UseSqlite(database.ConnectionString).Options;
         await using (var context = new ScriptoriumDbContext(options))
         {
             await context.Database.MigrateAsync();

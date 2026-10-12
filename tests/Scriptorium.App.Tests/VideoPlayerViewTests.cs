@@ -42,6 +42,7 @@ public sealed class VideoPlayerViewTests
         await MediaDetailsResourceChecks.VerifyAsync();
         await TutorialDetailsResourceChecks.VerifyAsync();
         await TvShowDetailsResourceChecks.VerifyAsync();
+        await TvShowNavigationResourceChecks.VerifyAsync();
         await CategoriesResourceChecks.VerifyAsync();
         using var runtime = new LibVlcRuntime();
         var factory = new RecordingFactory(runtime);
@@ -140,7 +141,7 @@ public sealed class VideoPlayerViewTests
         finally
         {
             window.Close();
-            player.Deactivate();
+            await player.DeactivateAsync();
             application.Shutdown();
         }
     }, timeout: TimeSpan.FromMinutes(2)); // Includes native playback and all shared presentation resource checks.

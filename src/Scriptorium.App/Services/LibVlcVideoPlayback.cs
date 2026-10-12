@@ -12,20 +12,24 @@ public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPl
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback
+public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
+    private readonly LibVlcRuntime _runtime;
+    private readonly object _disposeGate = new();
+    private Task? _disposeTask;
     private readonly LibVLC _libVlc;
     private readonly MediaPlayer _player;
     private Media? _media;
     private string? _filePath;
     private bool _opening;
-    private bool _disposed;
+    private volatile bool _disposed;
     private double _playbackSpeed = 1;
 
     public LibVlcVideoPlayback(LibVlcRuntime runtime)
     {
         ArgumentNullException.ThrowIfNull(runtime);
+        _runtime = runtime;
         _dispatcher = Dispatcher.CurrentDispatcher;
         _libVlc = runtime.Instance;
         _player = new MediaPlayer(_libVlc);
@@ -179,11 +183,22 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
-    public void Dispose()
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
-        _opening = false;
+        lock (_disposeGate)
+        {
+            if (_disposeTask is not null) return new ValueTask(_disposeTask);
+            _disposed = true;
+            _opening = false;
+            _disposeTask = _runtime.ReleaseAsync(DisposeNativeResources);
+            return new ValueTask(_disposeTask);
+        }
+    }
+
+    private void DisposeNativeResources()
+    {
         _player.Playing -= OnPlaying;
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnEncounteredError;

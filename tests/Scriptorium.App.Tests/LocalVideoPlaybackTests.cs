@@ -34,7 +34,36 @@ public sealed class LocalVideoPlaybackTests
                 Assert.InRange(Math.Abs((player.Position - paused).TotalSeconds), 0, 0.1);
                 player.Play();
                 await WaitUntil(() => player.Position > paused + TimeSpan.FromSeconds(0.2));
+                var release = player.DisposeAsync().AsTask();
+                Assert.Same(release, player.DisposeAsync().AsTask());
+                await release.WaitAsync(TimeSpan.FromSeconds(10));
             }
+            using var exclusive = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    });
+
+    [Fact]
+    public Task RuntimeShutdownWaitsForDetachedPlayersToReleaseTheirFiles() => StaTest.Run(async () =>
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"Scriptorium detached {Guid.NewGuid():N}.mp4");
+        File.Copy(Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"), path);
+        try
+        {
+            using var runtime = new LibVlcRuntime();
+            using var player = new LibVlcVideoPlayback(runtime);
+            var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            player.Opened += (_, _) => opened.TrySetResult();
+            player.Failed += (_, error) => opened.TrySetException(error);
+            player.Open(path);
+            await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            var release = player.DisposeAsync().AsTask();
+            // This must wait for the queued native teardown, without needing the UI dispatcher.
+            runtime.Dispose();
+            Assert.True(release.IsCompletedSuccessfully);
             using var exclusive = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
         }
         finally

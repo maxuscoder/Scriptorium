@@ -2,6 +2,7 @@ namespace Scriptorium.App.Services;
 
 /// <summary>
 /// A UI-thread-owned playback session. Implementations keep media-engine types behind this boundary.
+/// Engines with blocking teardown also implement IAsyncDisposable; the view detaches their output before release.
 /// </summary>
 public interface IVideoPlayback : IDisposable
 {

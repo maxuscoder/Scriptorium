@@ -365,13 +365,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
             return;
         }
 
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            _ = dispatcher.InvokeAsync(() => SynchronizePlayback(movie, args));
-            return;
-        }
-
+        // Saved snapshots arrive on the player's UI dispatcher before completion/reset actions resume.
         SynchronizePlayback(movie, args);
     }
 

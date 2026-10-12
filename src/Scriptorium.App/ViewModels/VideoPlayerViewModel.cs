@@ -22,6 +22,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly object _progressSaveGate = new();
     private readonly object _preferenceSaveGate = new();
     private Task _progressSaveTask = Task.CompletedTask;
+    private Task _playbackReleaseTask = Task.CompletedTask;
     private IVideoPlayback? _playback;
     private MediaPlaybackRequest? _request;
     private bool _active;
@@ -82,7 +83,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     /// <summary>Raised once when this media session first starts, never for preview loading.</summary>
     public event EventHandler? PlaybackStarted;
 
-    /// <summary>Raised after a playback snapshot, including its viewing timestamp, has been persisted.</summary>
+    /// <summary>Raised on the player dispatcher after a playback snapshot has been persisted.</summary>
     public event EventHandler<PlaybackProgressSavedEventArgs>? PlaybackProgressPersisted;
 
     /// <summary>Raised when the current media reaches its natural end.</summary>
@@ -258,7 +259,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
         Task progressSaveTask;
         lock (_progressSaveGate) progressSaveTask = _progressSaveTask;
-        await progressSaveTask.ConfigureAwait(true);
+        await Task.WhenAll(progressSaveTask, _playbackReleaseTask).ConfigureAwait(true);
     }
 
     private void OpenPlayback()
@@ -572,7 +573,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             playback.Opened -= OnOpened;
             playback.Ended -= OnEnded;
             playback.Failed -= OnFailed;
-            playback.Dispose();
+            _playbackReleaseTask = Task.WhenAll(_playbackReleaseTask, DisposePlaybackAsync(playback));
         }
         IsReady = false;
         SetPlaybackState(VideoPlaybackState.Stopped);
@@ -581,6 +582,21 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         _isSeeking = false;
         NotifyPlaybackChanged();
         NotifyPositionChanged();
+    }
+
+    private async Task DisposePlaybackAsync(IVideoPlayback playback)
+    {
+        try
+        {
+            if (playback is IAsyncDisposable asynchronousPlayback)
+                await asynchronousPlayback.DisposeAsync().ConfigureAwait(false);
+            else
+                playback.Dispose();
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Video playback resources could not be released.");
+        }
     }
 
     private void QueuePlaybackProgressSave(bool force)
@@ -613,7 +629,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 .ContinueWith(
                     _ => SaveProgressSnapshotAsync(snapshot),
                     CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskContinuationOptions.None,
                     TaskScheduler.Default)
                 .Unwrap();
         }
@@ -647,14 +663,22 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 _lastSavedMediaItemId = snapshot.MediaItemId;
                 _lastSavedPositionSeconds = snapshot.PositionSeconds;
                 _lastSavedDurationSeconds = snapshot.DurationSeconds;
-                PlaybackProgressPersisted?.Invoke(
-                    this,
-                    new PlaybackProgressSavedEventArgs(
-                        snapshot.MediaItemId,
-                        snapshot.PositionSeconds,
-                        snapshot.DurationSeconds,
-                        snapshot.LastWatched,
-                        snapshot.CompletionThreshold));
+                if (!_timer.Dispatcher.HasShutdownStarted)
+                {
+                    // Complete the UI update before FlushPendingProgressSaveAsync resumes completion/reset actions.
+                    await _timer.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (!_disposed)
+                            PlaybackProgressPersisted?.Invoke(
+                                this,
+                                new PlaybackProgressSavedEventArgs(
+                                    snapshot.MediaItemId,
+                                    snapshot.PositionSeconds,
+                                    snapshot.DurationSeconds,
+                                    snapshot.LastWatched,
+                                    snapshot.CompletionThreshold));
+                    }).Task.ConfigureAwait(false);
+                }
             }
         }
         catch (Exception exception)

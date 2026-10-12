@@ -20,10 +20,10 @@ public sealed partial class TvShowDetailsPageViewModelTests
     [Fact]
     public Task LoadsProgressAndNavigatesEpisodes() => StaTest.Run(async () =>
     {
-        await using var database = new SqliteConnection("Data Source=:memory:");
+        await using var database = new SqliteConnection($"Data Source=Scriptorium-tv-progress-{Guid.NewGuid():N};Mode=Memory;Cache=Shared;Pooling=False");
         await database.OpenAsync();
         var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
-            .UseSqlite(database)
+            .UseSqlite(database.ConnectionString)
             .Options;
 
         var showId = Guid.NewGuid();
@@ -113,6 +113,8 @@ public sealed partial class TvShowDetailsPageViewModelTests
         Assert.Equal(100d, viewModel.Seasons[1].ProgressPercentage);
         Assert.Equal("100%", viewModel.Seasons[1].ProgressPercentageText);
         Assert.Equal("0m", viewModel.RemainingDurationText);
+        await viewModel.Player.DeactivateAsync();
+        viewModel.Dispose();
     });
 
     private static async Task WaitUntilAsync(Func<bool> predicate)
