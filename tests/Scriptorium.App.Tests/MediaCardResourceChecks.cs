@@ -23,7 +23,6 @@ internal static class MediaCardResourceChecks
 {
     internal static async Task VerifyAsync(ResourceDictionary resources)
     {
-        resources["BooleanToVisibilityConverter"] = new Scriptorium.App.Converters.BooleanToVisibilityConverter();
         var artworkRatio = Assert.IsType<double>(resources["MediaCard.ArtworkRatio"]);
         var listArtworkWidth = Assert.IsType<double>(resources["MediaCard.ListArtworkWidth"]);
         var templateCases = new List<(DataTemplate Template, object Item, string Name)>();

@@ -20,6 +20,8 @@ public sealed class VideoPlayerViewTests
     {
         // Load only presentation resources, without starting the app or touching the user's database.
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        // Shared controls resolve this converter from application resources during initialization.
+        application.Resources["BooleanToVisibilityConverter"] = new Scriptorium.App.Converters.BooleanToVisibilityConverter();
         foreach (var name in new[] { "Colors", "Typography", "Layout", "Elevation", "Motion", "Controls" })
         {
             application.Resources.MergedDictionaries.Add(new ResourceDictionary
