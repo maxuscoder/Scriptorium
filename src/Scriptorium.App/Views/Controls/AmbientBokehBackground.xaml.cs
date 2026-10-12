@@ -18,32 +18,32 @@ public partial class AmbientBokehBackground : UserControl
     private static readonly BubblePlacement[] Placements =
     [
         // Background: broad, soft silhouettes, with only a trace near the center.
-        new(0.01, 0.12),
-        new(0.88, 0.84),
-        new(0.48, 0.58),
-        new(0.96, 0.12),
-        new(0.19, 0.95),
+        new(-0.045, 0.080),
+        new(0.920, 0.880),
+        new(0.480, 0.580),
+        new(1.000, 0.130),
+        new(0.160, 0.970),
         // Midground: local offsets preserve overlapping groups at any window width.
-        new(0.12, 0.20),
-        new(0.12, 0.20, 105, 58),
-        new(0.12, 0.20, 40, 132),
-        new(0.88, 0.79),
-        new(0.88, 0.79, -106, -30),
-        new(0.88, 0.79, -24, 105),
-        new(0.97, 0.22, -10, 2),
-        new(0.22, 0.80),
-        new(0.59, 0.40),
+        new(0.130, 0.210, -32, -12),
+        new(0.130, 0.210, 92, 50),
+        new(0.130, 0.210, -48, 119),
+        new(0.860, 0.800, 17, -6),
+        new(0.860, 0.800, -88, -35),
+        new(0.860, 0.800, -15, 87),
+        new(0.970, 0.230, -6, -9),
+        new(0.220, 0.810, -10, -2),
+        new(0.560, 0.410),
         // Foreground: asymmetric accents, with a few isolated bubbles.
-        new(0.12, 0.20, 20, -32),
-        new(0.12, 0.20, 97, 29),
-        new(0.12, 0.20, -72, 73),
-        new(0.88, 0.79, -63, 24),
-        new(0.88, 0.79, 62, -48),
-        new(0.97, 0.22, -67, 38),
-        new(0.97, 0.22, -2, 91),
-        new(0.12, 0.20, 154, -24),
-        new(0.88, 0.79, -139, 82),
-        new(0.34, 0.86),
+        new(0.130, 0.210, 7, -41),
+        new(0.130, 0.210, 100, -25),
+        new(0.130, 0.210, -62, 72),
+        new(0.860, 0.800, -42, 19),
+        new(0.860, 0.800, 62, -41),
+        new(0.970, 0.230, -61, 33),
+        new(0.970, 0.230, -29, 78),
+        new(0.130, 0.210, 135, 43),
+        new(0.860, 0.800, -101, 67),
+        new(0.280, 0.860),
     ];
 
     private readonly List<Size> _bubbleSizes = [];
@@ -64,10 +64,10 @@ public partial class AmbientBokehBackground : UserControl
             _bubbleSizes.Add(new Size(bubble.Width, bubble.Height));
             var center = ((RadialGradientBrush)bubble.Fill).GradientStops[0].Color;
             var peak = Math.Max(center.R, Math.Max(center.G, center.B)) * center.ScA * bubble.Opacity;
-            if (center.R == center.G && center.G == center.B && bubble.Opacity <= 0.17)
+            if (center.R == center.G && center.G == center.B)
             {
-                // Bake low-opacity charcoal at its final brightness: applying tiny
-                // opacity after gradient rendering loses levels and brings back rings.
+                // Use the same smooth profile for every charcoal bubble so foreground
+                // accents cannot fall back to a banded gradient as opacity changes.
                 bubble.Fill = CreateDiffuseCharcoalBrush(_bubbleSizes[^1], center, bubble.Opacity);
                 bubble.Opacity = 1; // The original opacity is already in the texture.
                 RenderOptions.SetBitmapScalingMode(bubble, BitmapScalingMode.NearestNeighbor);

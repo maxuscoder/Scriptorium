@@ -235,23 +235,23 @@
         <Grid x:Name="BubbleField" SizeChanged="OnBubbleFieldSizeChanged">
             <Canvas x:Name="Bubbles">
                 <!-- Large, diffuse background disks; some extend beyond the viewport. -->
-                <Ellipse Width="760" Height="710"
-                    Fill="{StaticResource Bokeh.Distant.Orange}" Opacity="0.090" />
+                <Ellipse Width="650" Height="620"
+                    Fill="{StaticResource Bokeh.Distant.Orange}" Opacity="0.055" />
                 <Ellipse Width="620" Height="620"
                     Fill="{StaticResource Bokeh.Distant.Charcoal}" Opacity="0.115" />
                 <Ellipse Width="540" Height="590"
                     Fill="{StaticResource Bokeh.Distant.Charcoal}" Opacity="0.047" />
                 <Ellipse Width="490" Height="460"
-                    Fill="{StaticResource Bokeh.Distant.Amber}" Opacity="0.065" />
+                    Fill="{StaticResource Bokeh.Distant.Amber}" Opacity="0.055" />
                 <Ellipse Width="430" Height="430"
                     Fill="{StaticResource Bokeh.Distant.Charcoal}" Opacity="0.080" />
                 <!-- Loose overlapping groups, plus a few quiet interior bubbles. -->
-                <Ellipse Width="310" Height="300"
-                    Fill="{StaticResource Bokeh.Midground.Amber}" Opacity="0.220" />
-                <Ellipse Width="210" Height="210"
-                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.140" />
-                <Ellipse Width="360" Height="340"
-                    Fill="{StaticResource Bokeh.Midground.Charcoal}" Opacity="0.130" />
+                <Ellipse Width="270" Height="264"
+                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.170" />
+                <Ellipse Width="196" Height="196"
+                    Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.140" />
+                <Ellipse Width="320" Height="300"
+                    Fill="{StaticResource Bokeh.Midground.Charcoal}" Opacity="0.120" />
                 <Ellipse Width="270" Height="260"
                     Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.250" />
                 <Ellipse Width="230" Height="230"
@@ -264,27 +264,27 @@
                     Fill="{StaticResource Bokeh.Midground.Charcoal}" Opacity="0.110" />
                 <Ellipse Width="150" Height="150"
                     Fill="{StaticResource Bokeh.Midground.Amber}" Opacity="0.060" />
-                <!-- Smaller near bubbles and tiny accents sit over the softer layers. -->
-                <Ellipse Width="118" Height="118"
-                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.380" />
-                <Ellipse Width="76" Height="76"
-                    Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.230" />
+                <!-- Restrained foreground disks; faint accents blend into nearby clusters. -->
+                <Ellipse Width="128" Height="124"
+                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.340" />
+                <Ellipse Width="86" Height="86"
+                    Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.160" />
                 <Ellipse Width="96" Height="96"
                     Fill="{StaticResource Bokeh.Near.Charcoal}" Opacity="0.260" />
-                <Ellipse Width="88" Height="88"
-                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.420" />
-                <Ellipse Width="58" Height="58"
-                    Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.310" />
+                <Ellipse Width="104" Height="100"
+                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.330" />
+                <Ellipse Width="78" Height="78"
+                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.160" />
                 <Ellipse Width="125" Height="125"
                     Fill="{StaticResource Bokeh.Near.Charcoal}" Opacity="0.210" />
-                <Ellipse Width="42" Height="42"
-                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.320" />
-                <Ellipse Width="29" Height="29"
-                    Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.240" />
-                <Ellipse Width="34" Height="34"
-                    Fill="{StaticResource Bokeh.Near.Charcoal}" Opacity="0.300" />
                 <Ellipse Width="64" Height="64"
-                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.170" />
+                    Fill="{StaticResource Bokeh.Midground.Amber}" Opacity="0.110" />
+                <Ellipse Width="46" Height="46"
+                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.070" />
+                <Ellipse Width="48" Height="48"
+                    Fill="{StaticResource Bokeh.Near.Charcoal}" Opacity="0.140" />
+                <Ellipse Width="78" Height="78"
+                    Fill="{StaticResource Bokeh.Midground.Amber}" Opacity="0.130" />
             </Canvas>
         </Grid>
     </Grid>
