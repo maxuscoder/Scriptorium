@@ -1,4 +1,7 @@
 using System.Collections.Specialized;
+using System.Diagnostics;
+using System.Windows.Input;
+using System.Windows.Threading;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -75,7 +78,7 @@ internal static class ThumbnailSmoothnessResourceChecks
         var host = new PageHost { Content = vm };
         host.Resources.Add(new DataTemplateKey(typeof(LibraryPageViewModel)), new DataTemplate
         {
-            DataType = typeof(LibraryPageViewModel), VisualTree = new FrameworkElementFactory(typeof(LibraryMediaBrowser))
+            DataType = typeof(LibraryPageViewModel), VisualTree = new FrameworkElementFactory(typeof(LibraryPage))
         });
         host.Resources.Add(new DataTemplateKey(typeof(DetailPage)), new DataTemplate
         {
@@ -89,6 +92,9 @@ internal static class ThumbnailSmoothnessResourceChecks
             await vm.EnsureLibraryDataLoadedAsync();
             await StaTest.DrainDispatcherAsync();
             var browser = Descendants<LibraryMediaBrowser>(host).Single();
+            var libraryPage = Descendants<LibraryPage>(host).Single();
+            var toolbar = Descendants<LibraryToolbar>(libraryPage).Single();
+            var sortBox = Descendants<ComboBox>(toolbar).Single(combo => combo.Name == "SortBox");
             var firstPageCount = vm.BrowserRows.OfType<LibraryBrowserCardsRow>().Sum(row => row.Count);
             await vm.RequestNextBrowserPageAsync();
             await vm.RequestNextBrowserPageAsync();
@@ -162,11 +168,14 @@ internal static class ThumbnailSmoothnessResourceChecks
             Assert.InRange(Math.Abs(scroll.VerticalOffset - offset), 0, 0.1);
             // Returning from details must reuse the visual, cards, decoded images and the paged viewport.
             var currentImage = visible.ThumbnailSource;
+            var firstWheelPoint = scroll.TranslatePoint(new Point(scroll.ActualWidth / 2, scroll.ActualHeight / 2), host);
             var rowsBeforeReturn = vm.BrowserRows.ToArray();
             var pagingCount = rowsBeforeReturn.OfType<LibraryBrowserCardsRow>().Sum(row => row.Count);
             var resetsBeforeReturn = resets;
+            sortBox.IsDropDownOpen = true;
             host.Content = new DetailPage();
             await StaTest.DrainDispatcherAsync();
+            Assert.False(sortBox.IsDropDownOpen);
             Assert.False(browser.IsVisible);
             Assert.True(browser.IsLoaded);
             Assert.Same(currentImage, visible.ThumbnailSource);
@@ -189,7 +198,31 @@ internal static class ThumbnailSmoothnessResourceChecks
             Assert.Equal(resetsBeforeReturn, resets);
             Assert.Equal(0, loadingTransitions);
 
+            var inputWatch = Stopwatch.StartNew();
             host.Content = vm;
+            // Deliver input before waiting for a render/idle pass, as a real wheel can arrive just after Back.
+            var returnedPresenter = host.Children.OfType<ContentPresenter>().Single(presenter => ReferenceEquals(presenter.Content, vm));
+            Assert.True(returnedPresenter.IsMeasureValid, "Returning invalidated the cached library page measurement.");
+            Assert.True(scroll.IsMeasureValid && scroll.IsArrangeValid,
+                "The cached library scroll viewport needs another layout pass before accepting input.");
+            {
+                var hit = host.InputHitTest(firstWheelPoint) as DependencyObject;
+                Assert.NotNull(hit);
+                Assert.True(browser.IsAncestorOf(hit), "The returned library viewport cannot receive the first wheel.");
+                var input = hit;
+                while (input is not UIElement && input is not null) input = VisualTreeHelper.GetParent(input);
+                Assert.NotNull(input);
+                var wheel = new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, -120)
+                    { RoutedEvent = UIElement.MouseWheelEvent };
+                ((UIElement)input).RaiseEvent(wheel);
+                Assert.True(wheel.Handled, "The returned library did not handle the first wheel.");
+            }
+            await Dispatcher.CurrentDispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
+            Assert.True(scroll.VerticalOffset > offset, "The first wheel was lost while the library restored its layout.");
+            Assert.True(inputWatch.Elapsed < TimeSpan.FromMilliseconds(250),
+                $"First scroll stalled for {inputWatch.Elapsed.TotalMilliseconds:0} ms.");
+            // Restore the viewport so the existing cache and identity checks remain independent of the wheel movement.
+            scroll.ScrollToVerticalOffset(offset);
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(1, detailUnloads);
             Assert.Same(browser, Descendants<LibraryMediaBrowser>(host).Single());
@@ -222,6 +255,31 @@ internal static class ThumbnailSmoothnessResourceChecks
             vm.SelectedSortOrder = LibrarySortOrder.Ascending;
             await WaitUntil(() => vm.BrowserRows.OfType<LibraryBrowserCardsRow>().SelectMany(row => row.Cards)
                 .OfType<MovieItemViewModel>().FirstOrDefault()?.Id == movies[0].Id);
+
+            // A resize while away should reflow on return, rather than using the previous column count.
+            var widthBeforeResize = window.Width;
+            var loadedBeforeResize = vm.BrowserRows.OfType<LibraryBrowserCardsRow>().Sum(row => row.Count);
+            var moviesBeforeResize = vm.BrowserRows.OfType<LibraryBrowserCardsRow>().SelectMany(row => row.Cards)
+                .OfType<MovieItemViewModel>().Select(card => card.MediaItem).ToArray();
+            var widthBeforeReturn = vm.BrowserCardWidth;
+            host.Content = new DetailPage();
+            window.Width = 620;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(widthBeforeReturn, vm.BrowserCardWidth);
+            host.Content = vm;
+            await WaitUntil(() => vm.BrowserRows.OfType<LibraryBrowserCardsRow>().Any() &&
+                vm.BrowserRows.OfType<LibraryBrowserCardsRow>().All(row => row.Count <= 2));
+            await StaTest.DrainDispatcherAsync();
+            Assert.All(vm.BrowserRows.OfType<LibraryBrowserCardsRow>(), row => Assert.InRange(row.Count, 1, 2));
+            Assert.True(vm.BrowserRows.OfType<LibraryBrowserCardsRow>().Sum(row => row.Count) >= loadedBeforeResize);
+            Assert.All(moviesBeforeResize, item => Assert.Contains(vm.BrowserRows.OfType<LibraryBrowserCardsRow>()
+                .SelectMany(row => row.Cards).OfType<MovieItemViewModel>(), card => ReferenceEquals(item, card.MediaItem)));
+            window.Width = widthBeforeResize;
+            await WaitUntil(() => vm.BrowserRows.OfType<LibraryBrowserCardsRow>().Any(row => row.Count > 2));
+            await StaTest.DrainDispatcherAsync();
+            Assert.True(vm.BrowserRows.OfType<LibraryBrowserCardsRow>().Sum(row => row.Count) >= loadedBeforeResize);
+            Assert.All(moviesBeforeResize, item => Assert.Contains(vm.BrowserRows.OfType<LibraryBrowserCardsRow>()
+                .SelectMany(row => row.Cards).OfType<MovieItemViewModel>(), card => ReferenceEquals(item, card.MediaItem)));
 
             // Playback-dependent membership still updates when completion changes.
             vm.SelectedCompletionFilter = CompletionFilter.Completed;

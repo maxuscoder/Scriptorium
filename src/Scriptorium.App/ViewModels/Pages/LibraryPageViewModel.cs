@@ -1023,14 +1023,8 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
         }
 
         _browserColumnCount = columnCount;
-        if (_browserDataInitialized && !IsLoading)
-        {
-            _ = ReloadBrowserItemsAsync();
-        }
-        else
-        {
-            RefreshBrowserRows();
-        }
+        // Width changes alter row grouping, not the browse query. Preserve every loaded page.
+        RefreshBrowserRows();
     }
 
     private void RefreshBrowserRows()

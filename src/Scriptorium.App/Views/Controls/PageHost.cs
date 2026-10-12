@@ -39,7 +39,9 @@ public sealed class PageHost : Grid
     {
         if (_active is not null)
         {
-            if (ReferenceEquals(_active, _library)) _active.Visibility = Visibility.Collapsed;
+            if (ReferenceEquals(_active, _library))
+                // Preserve viewport geometry as well as controls, so return does not remeasure the browser.
+                _active.Visibility = Visibility.Hidden;
             else Children.Remove(_active); // Details views must unload and release playback.
             _active = null;
         }

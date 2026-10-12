@@ -12,6 +12,10 @@ public partial class LibraryPage : UserControl
     public LibraryPage()
     {
         InitializeComponent();
+        IsVisibleChanged += (_, args) =>
+        {
+            if (args.NewValue is false) CloseOpenDropdowns();
+        };
     }
 
     private void OnHeaderSizeChanged(object sender, SizeChangedEventArgs e)
@@ -69,35 +73,5 @@ public partial class LibraryPage : UserControl
         }
     }
 
-    private void CloseOpenDropdowns()
-    {
-        Toolbar.CloseFilterPanel();
-
-        foreach (var comboBox in FindVisualChildren<ComboBox>(this))
-        {
-            if (comboBox.IsDropDownOpen)
-            {
-                comboBox.IsDropDownOpen = false;
-            }
-        }
-    }
-
-    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root)
-        where T : DependencyObject
-    {
-        var childCount = VisualTreeHelper.GetChildrenCount(root);
-        for (var index = 0; index < childCount; index++)
-        {
-            var child = VisualTreeHelper.GetChild(root, index);
-            if (child is T match)
-            {
-                yield return match;
-            }
-
-            foreach (var descendant in FindVisualChildren<T>(child))
-            {
-                yield return descendant;
-            }
-        }
-    }
+    private void CloseOpenDropdowns() => Toolbar.CloseDropdowns();
 }

@@ -9,6 +9,10 @@ public partial class LibraryMediaBrowser : UserControl
     public LibraryMediaBrowser()
     {
         InitializeComponent();
+        IsVisibleChanged += (_, args) =>
+        {
+            if (args.NewValue is true) UpdateBrowserWidth(BrowserList.ActualWidth);
+        };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e) =>
