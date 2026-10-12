@@ -15,9 +15,10 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <controls:Sidebar x:Name="SidebarNavigation" />
-        <Border Grid.Column="1" Background="{DynamicResource Brush.Background}">
+        <Grid Grid.Column="1" ClipToBounds="True">
+            <controls:AmbientBokehBackground x:Name="AmbientBackground" />
             <ContentControl MinWidth="0" MinHeight="0" Content="{Binding CurrentPage}" />
-        </Border>
+        </Grid>
         <controls:NotificationCenter Grid.ColumnSpan="2" HorizontalAlignment="Right"
             VerticalAlignment="Top" Margin="{StaticResource Spacing.M}"
             DataContext="{Binding Notifications}" Panel.ZIndex="10" IsHitTestVisible="True" />

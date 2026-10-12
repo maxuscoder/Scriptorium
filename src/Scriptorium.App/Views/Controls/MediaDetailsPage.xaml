@@ -27,7 +27,7 @@
             </StackPanel>
         </DataTemplate>
     </UserControl.Resources>
-    <Grid Background="{DynamicResource Brush.Background}">
+    <Grid Background="Transparent">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="MainColumn" Width="*" />
             <ColumnDefinition Width="Auto" />

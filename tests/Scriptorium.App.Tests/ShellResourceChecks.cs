@@ -47,6 +47,10 @@ internal static class ShellResourceChecks
             await StaTest.DrainDispatcherAsync();
             var sidebar = Assert.IsType<Sidebar>(window.FindName("SidebarNavigation"));
             var host = Descendants<ContentControl>(window).Single(control => BindingOperations.GetBinding(control, ContentControl.ContentProperty)?.Path.Path == "CurrentPage");
+            var ambient = Assert.IsType<AmbientBokehBackground>(window.FindName("AmbientBackground"));
+            var pageLayer = Assert.IsType<Grid>(host.Parent);
+            Assert.Same(ambient, pageLayer.Children[0]);
+            Assert.Same(host, pageLayer.Children[1]);
             // Represent the selected destination without loading content pages or their data operations.
             var title = new FrameworkElementFactory(typeof(TextBlock));
             title.SetBinding(TextBlock.TextProperty, new Binding("Title"));

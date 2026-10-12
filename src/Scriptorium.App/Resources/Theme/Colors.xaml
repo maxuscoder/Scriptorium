@@ -2,6 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <!-- Fluent Cinema. Eight-digit WPF colors are #AARRGGBB, not CSS #RRGGBBAA. -->
     <Color x:Key="Color.Background">#0B0B0D</Color>
+    <Color x:Key="Color.AmbientBase">#000000</Color>
+    <SolidColorBrush x:Key="Brush.AmbientBase" Color="{StaticResource Color.AmbientBase}" />
     <Color x:Key="Color.Surface">#101012</Color>
     <Color x:Key="Color.SurfaceHeader">#101012</Color>
     <Color x:Key="Color.SurfaceElevated">#17171A</Color>

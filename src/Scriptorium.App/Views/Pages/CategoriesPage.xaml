@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages"
-    Loaded="OnLoaded" Background="{DynamicResource Brush.Background}">
+    Loaded="OnLoaded" Background="Transparent">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <Style x:Key="Collections.Tile" TargetType="Button" BasedOn="{StaticResource Category.CollectionTile}">

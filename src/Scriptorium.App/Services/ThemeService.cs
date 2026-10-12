@@ -42,6 +42,7 @@ public sealed class ThemeService : IThemeService
         ["PlaybackSurface"] = Parse("#000000"),
         ["PlaybackFeedback"] = Parse("#C0000000"),
         ["Background"] = Parse("#F7F7F7"),
+        ["AmbientBase"] = Parse("#F7F7F7"),
         ["Surface"] = Parse("#FFFFFF"),
         ["SurfaceElevated"] = Parse("#F0F0F0"),
         ["SurfaceHeader"] = Parse("#FFFFFF"),
