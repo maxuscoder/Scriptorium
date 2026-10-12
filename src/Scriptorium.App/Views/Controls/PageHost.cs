@@ -5,7 +5,7 @@ using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Views.Controls;
 
-/// <summary>Retains the virtualized library view across navigation, including its viewport and decoded artwork.</summary>
+/// <summary>Retains Home and Library across navigation, including their viewports and decoded artwork.</summary>
 public sealed class PageHost : Grid
 {
     public static readonly DependencyProperty ContentProperty = DependencyProperty.Register(
@@ -13,6 +13,7 @@ public sealed class PageHost : Grid
     public static readonly DependencyProperty ContentTemplateProperty = DependencyProperty.Register(
         nameof(ContentTemplate), typeof(DataTemplate), typeof(PageHost), new PropertyMetadata(null, OnTemplateChanged));
     private ContentPresenter? _library;
+    private ContentPresenter? _home;
     private ContentPresenter? _active;
 
     public PageViewModel? Content
@@ -39,7 +40,7 @@ public sealed class PageHost : Grid
     {
         if (_active is not null)
         {
-            if (ReferenceEquals(_active, _library))
+            if (ReferenceEquals(_active, _library) || ReferenceEquals(_active, _home))
                 // Preserve viewport geometry as well as controls, so return does not remeasure the browser.
                 _active.Visibility = Visibility.Hidden;
             else Children.Remove(_active); // Details views must unload and release playback.
@@ -49,6 +50,7 @@ public sealed class PageHost : Grid
         {
             Children.Clear();
             _library = null;
+            _home = null;
             return;
         }
         if (page is LibraryPageViewModel && _library is not null && !ReferenceEquals(_library.Content, page))
@@ -56,9 +58,19 @@ public sealed class PageHost : Grid
             Children.Remove(_library);
             _library = null;
         }
-        _active = page is LibraryPageViewModel && _library is not null
-            ? _library : new ContentPresenter { Content = page, ContentTemplate = ContentTemplate };
+        if (page is MainWindowViewModel && _home is not null && !ReferenceEquals(_home.Content, page))
+        {
+            Children.Remove(_home);
+            _home = null;
+        }
+        _active = page switch
+        {
+            LibraryPageViewModel when _library is not null => _library,
+            MainWindowViewModel when _home is not null => _home,
+            _ => new ContentPresenter { Content = page, ContentTemplate = ContentTemplate }
+        };
         if (page is LibraryPageViewModel) _library = _active;
+        if (page is MainWindowViewModel) _home = _active;
         if (!Children.Contains(_active)) Children.Add(_active);
         _active.Visibility = Visibility.Visible;
         SetZIndex(_active, 1);

@@ -39,8 +39,18 @@ internal static class HomeResourceChecks
         var originalLevel = source.Switch.Level;
         source.Switch.Level = SourceLevels.Error;
         source.Listeners.Add(trace);
-        var page = new HomePage { DataContext = home };
-        var window = new Window { Content = page, Width = 1120, Height = 800, ShowActivated = false, ShowInTaskbar = false,
+        var host = new PageHost { Content = home };
+        var homeView = new FrameworkElementFactory(typeof(HomePage));
+        homeView.SetValue(FrameworkElement.StyleProperty, resources["Page.Enter"]);
+        host.Resources.Add(new DataTemplateKey(typeof(MainWindowViewModel)), new DataTemplate
+        {
+            DataType = typeof(MainWindowViewModel), VisualTree = homeView
+        });
+        host.Resources.Add(new DataTemplateKey(typeof(DetailPage)), new DataTemplate
+        {
+            DataType = typeof(DetailPage), VisualTree = new FrameworkElementFactory(typeof(TextBlock))
+        });
+        var window = new Window { Content = host, Width = 1120, Height = 800, ShowActivated = false, ShowInTaskbar = false,
             Background = (Brush)resources["Brush.Background"] };
         try
         {
@@ -52,7 +62,8 @@ internal static class HomeResourceChecks
             window.Show();
             await home.EnsureHomepageDataLoadedAsync();
             await StaTest.DrainDispatcherAsync();
-            Assert.Equal(Visibility.Visible, ((Border)page.FindName("EmptyState")).Visibility);
+            var page = Descendants<HomePage>(host).Single();
+            Assert.Equal(Visibility.Visible, Descendants<Border>(page).Single(border => border.Name == "EmptyState").Visibility);
 
             var now = DateTimeOffset.UtcNow;
             var media = Enumerable.Range(0, 40).Select(i => new MediaItem
@@ -76,7 +87,7 @@ internal static class HomeResourceChecks
             Assert.DoesNotContain(home.Shelves[0].Items, card => card.MediaItemId == home.Hero.MediaItemId);
             Assert.DoesNotContain(home.IncompleteMedia, card => card.IsMissing);
             await StaTest.DrainDispatcherAsync();
-            var hero = (HomeHero)page.FindName("Hero");
+            var hero = Descendants<HomeHero>(page).Single();
             Assert.False(hero.HasArtwork);
             Assert.Equal("Continue in player", hero.ActionText);
             Assert.Equal("Stopped at 20:00", hero.PositionText);
@@ -138,6 +149,63 @@ internal static class HomeResourceChecks
             Assert.NotNull(preview);
             hero.SetValue((DependencyPropertyKey)typeof(HomeHero).GetField("ArtworkPropertyKey", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!, preview);
             hero.SetValue((DependencyPropertyKey)typeof(HomeHero).GetField("HasArtworkPropertyKey", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!, true);
+
+            // Returning to Home keeps the hero, decoded artwork, shelves, and scroll positions.
+            var outerScroll = (ScrollViewer)page.Content;
+            outerScroll.ScrollToVerticalOffset(100);
+            var addedShelf = Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added");
+            addedShelf.MoveBy(300, false);
+            await StaTest.DrainDispatcherAsync();
+            var verticalOffset = outerScroll.VerticalOffset;
+            Assert.True(verticalOffset > 0);
+            Assert.True(addedShelf.CanScrollLeft);
+            var shelfScroll = Descendants<ScrollViewer>(addedShelf).Single();
+            var horizontalOffset = shelfScroll.HorizontalOffset;
+            var shelfCard = Descendants<MediaCard>(addedShelf).First();
+            var currentHero = home.Hero;
+            var currentShelves = home.Shelves.ToArray();
+            var unloads = 0;
+            page.Unloaded += (_, _) => unloads++;
+            for (var visit = 0; visit < 2; visit++)
+            {
+                if (visit == 0)
+                {
+                    more.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.True(more.ContextMenu.IsOpen);
+                }
+                else
+                {
+                    shelfCard.ContextMenu.PlacementTarget = shelfCard;
+                    shelfCard.ContextMenu.IsOpen = true;
+                    Assert.True(shelfCard.ContextMenu.IsOpen);
+                }
+                host.Content = new DetailPage();
+                await StaTest.DrainDispatcherAsync();
+                Assert.False(more.ContextMenu.IsOpen);
+                Assert.False(shelfCard.ContextMenu.IsOpen);
+                Assert.False(page.IsVisible);
+                Assert.True(page.IsLoaded);
+                Assert.Same(preview, hero.Artwork);
+                var detail = host.Children.OfType<ContentPresenter>().Single(presenter => presenter.IsVisible);
+                var detailUnloads = 0;
+                detail.Unloaded += (_, _) => detailUnloads++;
+                host.Content = home;
+                Assert.True(hero.HasArtwork);
+                Assert.Same(preview, hero.Artwork);
+                await StaTest.DrainDispatcherAsync();
+                Assert.Equal(1, detailUnloads);
+                Assert.Equal(0, unloads);
+                Assert.Same(page, Descendants<HomePage>(host).Single());
+                Assert.Same(hero, Descendants<HomeHero>(host).Single());
+                Assert.Same(currentHero, home.Hero);
+                Assert.Equal(currentShelves.Length, home.Shelves.Count);
+                for (var i = 0; i < currentShelves.Length; i++) Assert.Same(currentShelves[i], home.Shelves[i]);
+                Assert.Same(addedShelf, Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added"));
+                Assert.Equal(verticalOffset, outerScroll.VerticalOffset);
+                Assert.Equal(horizontalOffset, shelfScroll.HorizontalOffset);
+                Assert.Single(host.Children);
+            }
+
             foreach (var width in new[] { 1120d, 640d })
             {
                 window.Width = width;
@@ -148,13 +216,29 @@ internal static class HomeResourceChecks
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using var output = File.Create(Path.Combine(AppContext.BaseDirectory, $"home-{width:0}.png")); encoder.Save(output);
             }
+            // A retained page still checks for invalidated data when it becomes visible again.
+            host.Content = new DetailPage();
+            await StaTest.DrainDispatcherAsync();
+            var updated = (await repository.GetByIdAsync(media[1].Id))!;
+            updated.TVShowTitle = "Updated show title";
+            await repository.UpdateAsync(updated);
+            home.InvalidateHomepageData();
+            host.Content = home;
+            Assert.True(home.IsRefreshing);
+            await home.EnsureHomepageDataLoadedAsync();
+            await StaTest.DrainDispatcherAsync();
+            Assert.Same(hero, Descendants<HomeHero>(host).Single());
+            Assert.Equal("Updated show title", hero.HeroTitle);
+            Assert.Equal(0, unloads);
+            outerScroll.ScrollToTop();
+            await StaTest.DrainDispatcherAsync();
             foreach (var entry in media.Append(missing)) await repository.DeleteAsync(entry.Id);
             await home.RefreshAsync();
             await StaTest.DrainDispatcherAsync();
             Assert.True(home.ShowEmpty);
             Assert.Empty(home.Shelves);
             Assert.Null(home.Hero);
-            Assert.Equal(Visibility.Visible, ((Border)page.FindName("EmptyState")).Visibility);
+            Assert.Equal(Visibility.Visible, Descendants<Border>(page).Single(border => border.Name == "EmptyState").Visibility);
             await using (var db = factory.CreateDbContext()) await db.Database.ExecuteSqlRawAsync("DROP TABLE MediaItems");
             await home.RefreshAsync();
             Assert.True(home.HasError);
@@ -163,6 +247,11 @@ internal static class HomeResourceChecks
             Assert.True(home.RefreshCommand.CanExecute(null));
             await StaTest.DrainDispatcherAsync();
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
+            host.Content = null;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Empty(host.Children);
+            Assert.Equal(1, unloads);
+            Assert.Null(hero.Artwork);
         }
         finally
         {
@@ -171,6 +260,7 @@ internal static class HomeResourceChecks
             File.Delete(path);
         }
     }
+    private sealed class DetailPage : PageViewModel { public override string Title => "Media details"; }
     private sealed class Factory(DbContextOptions<ScriptoriumDbContext> options) : IDbContextFactory<ScriptoriumDbContext>
     {
         public ScriptoriumDbContext CreateDbContext() => new(options);

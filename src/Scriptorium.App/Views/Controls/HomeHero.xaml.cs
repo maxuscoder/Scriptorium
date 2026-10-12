@@ -28,7 +28,16 @@ public partial class HomeHero : UserControl
     private long _loadVersion;
     private string? _displayedThumbnailPath;
     private LibraryMediaItemViewModel? _observed;
-    public HomeHero() { InitializeComponent(); More.Tag = this; UpdateCopy(); }
+    public HomeHero()
+    {
+        InitializeComponent();
+        More.Tag = this;
+        UpdateCopy();
+        IsVisibleChanged += (_, args) =>
+        {
+            if (args.NewValue is false) More.ContextMenu.IsOpen = false;
+        };
+    }
     public LibraryMediaItemViewModel? Media { get => (LibraryMediaItemViewModel?)GetValue(MediaProperty); set => SetValue(MediaProperty, value); }
     public ICommand? OpenCommand { get => (ICommand?)GetValue(OpenCommandProperty); set => SetValue(OpenCommandProperty, value); }
     public ICommand? FavoriteCommand { get => (ICommand?)GetValue(FavoriteCommandProperty); set => SetValue(FavoriteCommandProperty, value); }

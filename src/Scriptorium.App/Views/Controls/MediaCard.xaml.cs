@@ -187,6 +187,14 @@ public partial class MediaCard : UserControl
         UpdatePresentation();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        IsVisibleChanged += (_, args) =>
+        {
+            if (args.NewValue is false)
+            {
+                if (ContextMenu is not null) ContextMenu.IsOpen = false;
+                UpdateEngagement(forceRest: true);
+            }
+        };
     }
 
     public string? ThumbnailPath
