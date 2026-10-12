@@ -25,6 +25,8 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaGroupingService? _mediaGroupingService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private readonly IMediaItemRepository? _thumbnailRepository;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
@@ -77,7 +79,9 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IMediaDescriptionService? mediaDescriptionService = null,
-        IMediaReleaseYearService? mediaReleaseYearService = null)
+        IMediaReleaseYearService? mediaReleaseYearService = null,
+        IAutomaticThumbnailService? automaticThumbnails = null,
+        IMediaItemRepository? thumbnailRepository = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -88,6 +92,9 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
         _mediaTypeService = mediaTypeService;
         _mediaGroupingService = mediaGroupingService;
         _mediaThumbnailService = mediaThumbnailService;
+        _automaticThumbnails = automaticThumbnails;
+        _thumbnailRepository = thumbnailRepository;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaDescriptionService = mediaDescriptionService;
         _mediaReleaseYearService = mediaReleaseYearService;
@@ -116,6 +123,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
         RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => SelectedEpisode is not null);
         RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => SelectedEpisode is not null);
         RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => SelectedEpisode is not null);
+        RegenerateThumbnailCommand = new AsyncRelayCommand(RegenerateThumbnailAsync, () => _automaticThumbnails is not null);
         RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedEpisode is not null);
         RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedEpisode is not null);
         RestoreSeasonNumberCommand = new AsyncRelayCommand(RestoreSeasonNumberAsync, () => SelectedEpisode is not null);
@@ -155,6 +163,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
         }
 
         _disposed = true;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
         if (_player is not null)
         {
             _player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
@@ -242,6 +251,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
             OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
+            if (value is not null) _automaticThumbnails?.Enqueue([value.MediaItemId], prioritize: true);
             OpenSelectedEpisode();
             if (!IsSavingChanges || _saveSelectionChanged || value?.MediaItemId != _savingEpisodeId)
             {
@@ -430,6 +440,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
     public ICommand RestoreTitleCommand { get; }
     public ICommand RestoreDescriptionCommand { get; }
     public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RegenerateThumbnailCommand { get; }
     public ICommand RestoreThumbnailCommand { get; }
     public ICommand RestoreMediaTypeCommand { get; }
     public ICommand RestoreSeasonNumberCommand { get; }
@@ -1482,6 +1493,13 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.MediaType = mediaType;
         episode.MediaItem.MediaTypeOverride = mediaType;
         OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SynchronizeThumbnail(MediaItem updated)
+    {
+        episode.MediaItem.DetectedThumbnailPath = updated.DetectedThumbnailPath;
+        episode.MediaItem.ThumbnailOverride = updated.ThumbnailOverride;
+        SetThumbnailPath(updated.ThumbnailPath);
     }
 
     internal void SetThumbnailPath(string? thumbnailPath)

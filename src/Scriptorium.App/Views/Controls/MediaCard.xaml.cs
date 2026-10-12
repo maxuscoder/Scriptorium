@@ -645,11 +645,16 @@ public partial class MediaCard : UserControl
         return brush;
     }
 
+    private string? _displayedThumbnailPath;
+
     private async Task LoadThumbnailAsync(string? thumbnailPath)
     {
         var loadVersion = Interlocked.Increment(ref _thumbnailLoadVersion);
-        SetValue(ThumbnailSourcePropertyKey, null);
-        SetValue(HasUsableThumbnailPropertyKey, false);
+        if (!string.Equals(_displayedThumbnailPath, thumbnailPath, StringComparison.OrdinalIgnoreCase))
+        {
+            SetValue(ThumbnailSourcePropertyKey, null);
+            SetValue(HasUsableThumbnailPropertyKey, false);
+        }
 
         var thumbnail = await ThumbnailCache.GetAsync(thumbnailPath);
         if (loadVersion != _thumbnailLoadVersion)
@@ -657,14 +662,17 @@ public partial class MediaCard : UserControl
             return;
         }
 
+        _displayedThumbnailPath = thumbnailPath;
         SetValue(ThumbnailSourcePropertyKey, thumbnail);
         SetValue(HasUsableThumbnailPropertyKey, thumbnail is not null);
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ThumbnailCache.SourceChanged -= OnThumbnailSourceChanged;
         ThumbnailCache.CacheCleared -= OnThumbnailCacheCleared;
         ThumbnailCache.CacheCleared += OnThumbnailCacheCleared;
+        ThumbnailCache.SourceChanged += OnThumbnailSourceChanged;
         if (ThumbnailSource is null && !string.IsNullOrWhiteSpace(ThumbnailPath))
         {
             _ = LoadThumbnailAsync(ThumbnailPath);
@@ -674,10 +682,17 @@ public partial class MediaCard : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         UpdateEngagement(forceRest: true);
+        ThumbnailCache.SourceChanged -= OnThumbnailSourceChanged;
         ThumbnailCache.CacheCleared -= OnThumbnailCacheCleared;
         Interlocked.Increment(ref _thumbnailLoadVersion);
         SetValue(ThumbnailSourcePropertyKey, null);
         SetValue(HasUsableThumbnailPropertyKey, false);
+    }
+
+    private void OnThumbnailSourceChanged(string path)
+    {
+        if (IsLoaded && string.Equals(path, ThumbnailPath, StringComparison.OrdinalIgnoreCase))
+            _ = LoadThumbnailAsync(ThumbnailPath);
     }
 
     private void OnThumbnailCacheCleared(object? sender, EventArgs args)

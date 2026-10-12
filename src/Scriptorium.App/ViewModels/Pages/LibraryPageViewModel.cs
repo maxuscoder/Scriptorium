@@ -13,7 +13,7 @@ using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
-public sealed class LibraryPageViewModel : PageViewModel, IDisposable
+public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
 {
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaScannerService _mediaScannerService;
@@ -30,6 +30,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
     private readonly IMediaGroupingService _mediaGroupingService;
     private readonly IOperationMetrics? _operationMetrics;
@@ -121,7 +122,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         IMediaDescriptionService? mediaDescriptionService = null,
         IOperationMetrics? operationMetrics = null,
         ILogger<LibraryPageViewModel>? logger = null,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _mediaScannerService = mediaScannerService;
@@ -138,6 +140,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         _mediaDescriptionService = mediaDescriptionService;
         _mediaTypeService = mediaTypeService;
         _mediaThumbnailService = mediaThumbnailService;
+        _automaticThumbnails = automaticThumbnails;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaGroupingService = mediaGroupingService;
         _operationMetrics = operationMetrics;
@@ -845,6 +848,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
     public async Task RefreshLibraryDataAsync(CancellationToken cancellationToken = default)
     {
+        using var foreground = _automaticThumbnails?.PauseBackgroundWork();
         using var timing = _operationMetrics?.Start("Library.Load");
         timing?.SetTag("HasActiveFilters", HasActiveFilters);
         var activeBrowserQuery = Interlocked.Exchange(ref _browserQueryCancellationSource, null);
@@ -880,7 +884,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         {
             await FolderManagement.RefreshAsync(cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            var summary = await _mediaItemRepository.GetLibrarySummaryAsync(cancellationToken);
+            var summary = await Task.Run(() => _mediaItemRepository.GetLibrarySummaryAsync(cancellationToken), cancellationToken);
             _supportedMediaCount = summary.SupportedMediaCount;
             _movieCount = summary.MovieCount;
             await RefreshCategoryFiltersAsync(cancellationToken);
@@ -1150,10 +1154,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
             var query = CreateBrowserQuery(skip: 0);
             var isFilteredBrowse = HasActiveFilters;
-            var page = await _mediaItemRepository.GetBrowsePageAsync(
-                query,
-                includeTotalCount: isFilteredBrowse,
-                cancellationSource.Token);
+            var page = await Task.Run(() => _mediaItemRepository.GetBrowsePageAsync(
+                query, includeTotalCount: isFilteredBrowse, cancellationSource.Token), cancellationSource.Token);
             cancellationSource.Token.ThrowIfCancellationRequested();
             if (generation != Volatile.Read(ref _browserQueryGeneration))
             {
@@ -1265,10 +1267,8 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         try
         {
             var query = CreateBrowserQuery(_loadedBrowserMediaItems.Count);
-            var page = await _mediaItemRepository.GetBrowsePageAsync(
-                query,
-                includeTotalCount: false,
-                cancellationSource.Token);
+            var page = await Task.Run(() => _mediaItemRepository.GetBrowsePageAsync(
+                query, includeTotalCount: false, cancellationSource.Token), cancellationSource.Token);
             cancellationSource.Token.ThrowIfCancellationRequested();
             if (generation != Volatile.Read(ref _browserQueryGeneration))
             {
@@ -1368,7 +1368,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
 
     private async Task RefreshCategoryFiltersAsync(CancellationToken cancellationToken = default)
     {
-        var categories = await _categoryRepository.GetAllAsync(cancellationToken);
+        var categories = await Task.Run(() => _categoryRepository.GetAllAsync(cancellationToken), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         var availableCategoryIds = categories.Select(category => category.Id).ToHashSet();
         var removedCategoryFilterIds = _selectedCategoryFilterIds.RemoveWhere(categoryId => !availableCategoryIds.Contains(categoryId));
@@ -1687,38 +1687,6 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
         }
     }
 
-    private void OnThumbnailChanged(Guid mediaItemId)
-    {
-        if (Interlocked.Exchange(ref _isThumbnailRefreshQueued, 1) != 0)
-        {
-            return;
-        }
-
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            _ = dispatcher.InvokeAsync(RefreshAfterThumbnailChangeAsync);
-            return;
-        }
-
-        _ = RefreshAfterThumbnailChangeAsync();
-    }
-
-    private async Task RefreshAfterThumbnailChangeAsync()
-    {
-        try
-        {
-            if (!IsScanning)
-            {
-                await RefreshLibraryDataAsync();
-            }
-        }
-        finally
-        {
-            Volatile.Write(ref _isThumbnailRefreshQueued, 0);
-        }
-    }
-
     private void OnMetadataReset(Guid mediaItemId)
     {
         if (Interlocked.Exchange(ref _isMetadataResetRefreshQueued, 1) != 0)
@@ -1786,7 +1754,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Reloads tutorial collections in alphabetical order.</summary>
     public async Task RefreshTutorialsAsync(CancellationToken cancellationToken = default)
     {
-        var courses = await _courseRepository.GetLibrarySummariesAsync(cancellationToken);
+        var courses = await Task.Run(() => _courseRepository.GetLibrarySummariesAsync(cancellationToken), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         Tutorials.ReplaceRange(courses.Select(CreateTutorialCard));
 
@@ -1799,7 +1767,7 @@ public sealed class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Reloads television-show collections in alphabetical order.</summary>
     public async Task RefreshTvShowsAsync(CancellationToken cancellationToken = default)
     {
-        var shows = await _tvShowRepository.GetLibrarySummariesAsync(cancellationToken);
+        var shows = await Task.Run(() => _tvShowRepository.GetLibrarySummariesAsync(cancellationToken), cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         TvShows.ReplaceRange(shows.Select(CreateTvShowCard));
 

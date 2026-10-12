@@ -34,6 +34,12 @@
             Command="{Binding RestoreThumbnailCommand}"
             Content="Restore detected thumbnail"
             Style="{StaticResource Button.Secondary}" />
+        <Button Margin="0,8,0,0" HorizontalAlignment="Left"
+            Command="{Binding RegenerateThumbnailCommand}" Content="Regenerate thumbnail"
+            Style="{StaticResource Button.Secondary}" />
+        <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource Brush.TextSecondary}"
+            Text="Artwork beside the video: matching filename first, then poster or folder. Otherwise a video preview is generated."
+            TextWrapping="Wrap" />
         <TextBlock
             Margin="0,8,0,0"
             Foreground="{DynamicResource Brush.TextSecondary}"

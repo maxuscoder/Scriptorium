@@ -29,6 +29,8 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private readonly IMediaItemRepository? _thumbnailRepository;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
@@ -75,7 +77,9 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IMediaDescriptionService? mediaDescriptionService = null,
-        IMediaReleaseYearService? mediaReleaseYearService = null)
+        IMediaReleaseYearService? mediaReleaseYearService = null,
+        IAutomaticThumbnailService? automaticThumbnails = null,
+        IMediaItemRepository? thumbnailRepository = null)
     {
         _courseRepository = courseRepository;
         _categoryRepository = categoryRepository;
@@ -88,6 +92,9 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
         _mediaThumbnailService = mediaThumbnailService;
+        _automaticThumbnails = automaticThumbnails;
+        _thumbnailRepository = thumbnailRepository;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaDescriptionService = mediaDescriptionService;
         _mediaReleaseYearService = mediaReleaseYearService;
@@ -113,6 +120,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => SelectedLesson is not null);
         RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => SelectedLesson is not null);
         RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => SelectedLesson is not null);
+        RegenerateThumbnailCommand = new AsyncRelayCommand(RegenerateThumbnailAsync, () => _automaticThumbnails is not null);
         RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedLesson is not null);
         RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedLesson is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedLesson is not null);
@@ -132,6 +140,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         }
 
         _disposed = true;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
         _tutorialCourseSynchronizer.CoursesChanged -= OnCoursesChanged;
         _player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
         _player.PlaybackCompleted -= OnPlaybackCompleted;
@@ -227,6 +236,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
             OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
+            if (value is not null) _automaticThumbnails?.Enqueue([value.MediaItemId], prioritize: true);
             OpenSelectedLesson();
             SelectCategory(value?.CategoryId);
             EditableTitle = value?.Title ?? string.Empty;
@@ -402,6 +412,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
     public ICommand RestoreTitleCommand { get; }
     public ICommand RestoreDescriptionCommand { get; }
     public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RegenerateThumbnailCommand { get; }
     public ICommand RestoreThumbnailCommand { get; }
     public ICommand RestoreMediaTypeCommand { get; }
 
@@ -1224,6 +1235,13 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.MediaType = mediaType;
         lesson.MediaItem.MediaTypeOverride = mediaType;
         OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SynchronizeThumbnail(MediaItem updated)
+    {
+        lesson.MediaItem.DetectedThumbnailPath = updated.DetectedThumbnailPath;
+        lesson.MediaItem.ThumbnailOverride = updated.ThumbnailOverride;
+        SetThumbnailPath(updated.ThumbnailPath);
     }
 
     internal void SetThumbnailPath(string? thumbnailPath)

@@ -7,6 +7,18 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface IMediaItemRepository : IRepository<MediaItem>
 {
+    /// <summary>Reads only artwork fields for a bounded batch of changed media.</summary>
+    Task<IReadOnlyList<MediaThumbnailState>> GetThumbnailStatesAsync(IEnumerable<Guid> mediaItemIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Updates only automatic artwork, preserving concurrent manual edits and playback state.</summary>
+    Task<bool> UpdateDetectedThumbnailAsync(MediaItem expected, string? thumbnailPath,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Saves a custom image without overwriting automatic artwork or other metadata.</summary>
+    Task<bool> UpdateThumbnailOverrideAsync(Guid mediaItemId, string thumbnailPath,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Gets a filtered, database-sorted page for the library browser.</summary>
     Task<MediaItemBrowsePage> GetBrowsePageAsync(
         MediaItemBrowseQuery query,
@@ -18,6 +30,9 @@ public interface IMediaItemRepository : IRepository<MediaItem>
 
     /// <summary>Adds media items in one database save operation.</summary>
     Task AddRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default);
+
+    /// <summary>Saves scan metadata while preserving artwork completed after the scan began.</summary>
+    Task UpdateScanRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default);
 
     /// <summary>Updates media items in one database save operation.</summary>
     Task UpdateRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default);

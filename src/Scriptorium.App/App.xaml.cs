@@ -12,6 +12,7 @@ using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
+using Scriptorium.Core.Services;
 using System.Windows.Threading;
 
 namespace Scriptorium.App;
@@ -23,6 +24,7 @@ public partial class App : Application
     private ISettingsService? _settingsService;
     private IThemeService? _themeService;
     private IMemoryUsageMonitor? _memoryUsageMonitor;
+    private IAutomaticThumbnailService? _automaticThumbnails;
     private bool _settingsFlushInProgress;
     private bool _allowWindowClose;
 
@@ -93,7 +95,14 @@ public partial class App : Application
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             var libraryPage = _serviceProvider.GetRequiredService<LibraryPageViewModel>();
-            mainWindow.Loaded += (_, _) => libraryPage.StartAutomaticScanning();
+            _automaticThumbnails = _serviceProvider.GetRequiredService<IAutomaticThumbnailService>();
+            _automaticThumbnails.ArtworkChanged += OnArtworkChanged;
+            _automaticThumbnails.Enabled = _settingsService.Settings.AutomaticThumbnailsEnabled;
+            mainWindow.Loaded += (_, _) =>
+            {
+                libraryPage.StartAutomaticScanning();
+                _automaticThumbnails.Start();
+            };
             mainWindow.Closing += OnMainWindowClosing;
             mainWindow.Show();
         }
@@ -129,6 +138,7 @@ public partial class App : Application
 
         try
         {
+            if (_automaticThumbnails is not null) await _automaticThumbnails.StopAsync();
             if (_settingsService is not null)
             {
                 await _settingsService.FlushAsync();
@@ -186,6 +196,8 @@ public partial class App : Application
         {
             _memoryUsageMonitor.HighMemoryUsageDetected -= OnHighMemoryUsageDetected;
         }
+        if (_automaticThumbnails is not null) _automaticThumbnails.ArtworkChanged -= OnArtworkChanged;
+        _automaticThumbnails?.StopAsync().GetAwaiter().GetResult();
         ThumbnailCache.ReleaseCompletedMemoryEntries();
         _serviceProvider?.Dispose();
         Log.CloseAndFlush();
@@ -197,6 +209,12 @@ public partial class App : Application
         if (_settingsService?.Settings.Theme != Models.ThemeNames.System) return;
 
         Dispatcher.BeginInvoke(() => _themeService?.Apply(Models.ThemeNames.System));
+    }
+
+    private void OnArtworkChanged(string path)
+    {
+        if (!Dispatcher.HasShutdownStarted)
+            Dispatcher.BeginInvoke(() => ThumbnailCache.NotifySourceChanged(path));
     }
 
     private void OnHighMemoryUsageDetected(Models.MemoryUsageSnapshot snapshot)

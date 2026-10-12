@@ -4,23 +4,39 @@ using System.Windows.Input;
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>Presents a lightweight tutorial collection in the library browser.</summary>
-public sealed class TutorialCollectionViewModel
+public sealed class TutorialCollectionViewModel : ViewModelBase, IMediaThumbnailCard
 {
     private readonly Course? _course;
     private readonly CourseLibrarySummary? _summary;
 
-    public TutorialCollectionViewModel(Course course) => _course = course;
-    public TutorialCollectionViewModel(CourseLibrarySummary summary) => _summary = summary;
+    private string? _thumbnailPath;
+    public Guid? ThumbnailMediaItemId { get; }
+
+    public TutorialCollectionViewModel(Course course)
+    {
+        _course = course;
+        var cover = course.Lessons.OrderBy(lesson => lesson.SortOrder).ThenBy(lesson => lesson.FilePath, StringComparer.OrdinalIgnoreCase).Select(lesson => lesson.MediaItem).FirstOrDefault();
+        ThumbnailMediaItemId = cover?.Id;
+        _thumbnailPath = cover?.ThumbnailPath;
+    }
+    public TutorialCollectionViewModel(CourseLibrarySummary summary)
+    {
+        _summary = summary;
+        ThumbnailMediaItemId = summary.ThumbnailMediaItemId;
+        _thumbnailPath = summary.ThumbnailPath;
+    }
+
+    public void UpdateThumbnail(MediaThumbnailState state)
+    {
+        if (state.MediaItemId == ThumbnailMediaItemId)
+            SetProperty(ref _thumbnailPath, state.ThumbnailPath, nameof(ThumbnailPath));
+    }
 
     public Guid Id => _summary?.Id ?? _course!.Id;
     public string Title => MediaDisplayText.TitleOrFallback(_summary?.Title ?? _course!.Title, "Untitled tutorial");
     public bool HasManualMetadata => _summary?.HasManualMetadata ?? _course!.Lessons.Any(lesson => lesson.MediaItem.HasManualMetadata);
     public string SourceFolder => _summary?.SourceFolder ?? _course!.LibraryFolder.DisplayNameOrName;
-    public string? ThumbnailPath => _summary is { } summary
-        ? summary.ThumbnailPath
-        : _course!.Lessons
-            .Select(lesson => lesson.MediaItem.ThumbnailPath)
-            .FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+    public string? ThumbnailPath => _thumbnailPath;
     public int LessonCount => _summary?.LessonCount ?? _course!.Lessons.Count;
     public string LessonCountText => $"{LessonCount} lesson{(LessonCount == 1 ? string.Empty : "s")}";
     public string CardMetadata => MediaCardMetadata.Join("Tutorial", LessonCount > 0 ? LessonCountText : null);

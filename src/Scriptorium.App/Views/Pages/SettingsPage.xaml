@@ -134,6 +134,18 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Style="{StaticResource Settings.SectionHeading}" Text="Thumbnails" />
+            <Border Style="{StaticResource Settings.Group}">
+                <Grid Style="{StaticResource Settings.Row}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Automatic thumbnails" />
+                        <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Use artwork beside each video or create a preview in the background. Custom images take priority." />
+                    </StackPanel>
+                    <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding AutomaticThumbnailsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Automatic thumbnails" />
+                </Grid>
+            </Border>
+
             <TextBlock Style="{StaticResource Settings.SectionHeading}" Text="Folders" />
             <Border Style="{StaticResource Settings.Group}" DataContext="{Binding FolderManagement}">
                 <StackPanel>

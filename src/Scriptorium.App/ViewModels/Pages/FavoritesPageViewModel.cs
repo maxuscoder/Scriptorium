@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Collections;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
@@ -20,14 +21,28 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
     private string? _statusMessage;
     private bool _isRefreshing;
     private bool _disposed;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private Task? _pageLoadTask;
+    private DateTimeOffset _lastSuccessfulLoadUtc;
+
+    public void InvalidatePageData() => _lastSuccessfulLoadUtc = DateTimeOffset.MinValue;
+
+    public Task EnsurePageDataLoadedAsync()
+    {
+        if (_pageLoadTask is { IsCompleted: false }) return _pageLoadTask;
+        if (DateTimeOffset.UtcNow - _lastSuccessfulLoadUtc < TimeSpan.FromSeconds(30)) return Task.CompletedTask;
+        return _pageLoadTask = RefreshAsync();
+    }
 
     public FavoritesPageViewModel(
         IFavoriteService favoriteService,
         IMediaDetailsNavigationCoordinator detailsCoordinator,
         ILogger<FavoritesPageViewModel>? logger = null,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
         _favoriteService = favoriteService;
+        _automaticThumbnails = automaticThumbnails;
         _detailsCoordinator = detailsCoordinator;
         _logger = logger;
         _notifications = notifications;
@@ -51,7 +66,7 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
         MediaItems.Clear();
     }
 
-    public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
+    public BatchObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
 
     public ICommand RefreshCommand { get; }
 
@@ -83,20 +98,18 @@ public sealed class FavoritesPageViewModel : PageViewModel, IDisposable
         }
 
         await _refreshGate.WaitAsync();
+        using var foreground = _automaticThumbnails?.PauseBackgroundWork();
         IsRefreshing = true;
         try
         {
-            var favorites = await _favoriteService.GetAllAsync();
+            var favorites = await Task.Run(() => _favoriteService.GetAllAsync());
             if (_disposed)
             {
                 return;
             }
 
-            MediaItems.Clear();
-            foreach (var mediaItem in favorites)
-            {
-                MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
-            }
+            MediaItems.ReplaceRange(favorites.Select(mediaItem => new LibraryMediaItemViewModel(mediaItem)));
+            _lastSuccessfulLoadUtc = DateTimeOffset.UtcNow;
 
             StatusMessage = null;
             OnPropertyChanged(nameof(HasFavorites));

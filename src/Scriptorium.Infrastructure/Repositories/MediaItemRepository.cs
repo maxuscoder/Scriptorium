@@ -66,7 +66,15 @@ public sealed class MediaItemRepository(
     }
 
     /// <inheritdoc />
-    public async Task UpdateRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default)
+    public Task UpdateRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default) =>
+        UpdateRangeCoreAsync(mediaItems, preserveArtwork: false, cancellationToken);
+
+    /// <inheritdoc />
+    public Task UpdateScanRangeAsync(IEnumerable<MediaItem> mediaItems, CancellationToken cancellationToken = default) =>
+        UpdateRangeCoreAsync(mediaItems, preserveArtwork: true, cancellationToken);
+
+    private async Task UpdateRangeCoreAsync(IEnumerable<MediaItem> mediaItems, bool preserveArtwork,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(mediaItems);
 
@@ -91,7 +99,16 @@ public sealed class MediaItemRepository(
         {
             if (trackedItems.TryGetValue(item.Id, out var trackedItem))
             {
+                var detectedThumbnail = trackedItem.DetectedThumbnailPath;
+                var thumbnailOverride = trackedItem.ThumbnailOverride;
+                var thumbnail = trackedItem.ThumbnailPath;
                 context.Entry(trackedItem).CurrentValues.SetValues(item);
+                if (preserveArtwork)
+                {
+                    trackedItem.DetectedThumbnailPath = item.DetectedThumbnailPath = detectedThumbnail;
+                    trackedItem.ThumbnailOverride = item.ThumbnailOverride = thumbnailOverride;
+                    trackedItem.ThumbnailPath = item.ThumbnailPath = thumbnail;
+                }
             }
         }
 
@@ -698,6 +715,47 @@ public sealed class MediaItemRepository(
         }
 
         return affectedRows == 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> UpdateDetectedThumbnailAsync(MediaItem expected, string? thumbnailPath,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        var affected = await context.MediaItems
+            .Where(item => item.Id == expected.Id && item.Path == expected.Path && !item.IsMissing &&
+                item.ModifiedDate == expected.ModifiedDate && item.FileSize == expected.FileSize)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.DetectedThumbnailPath, thumbnailPath)
+                .SetProperty(item => item.ThumbnailPath, item => item.ThumbnailOverride ?? thumbnailPath),
+                cancellationToken);
+        if (affected == 1) InvalidateMediaItem(expected.Id);
+        return affected == 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> UpdateThumbnailOverrideAsync(Guid mediaItemId, string thumbnailPath,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        var affected = await context.MediaItems.Where(item => item.Id == mediaItemId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.ThumbnailOverride, thumbnailPath)
+                .SetProperty(item => item.ThumbnailPath, thumbnailPath), cancellationToken);
+        if (affected == 1) InvalidateMediaItem(mediaItemId);
+        return affected == 1;
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaThumbnailState>> GetThumbnailStatesAsync(IEnumerable<Guid> mediaItemIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = mediaItemIds.Distinct().ToArray();
+        if (ids.Length == 0) return [];
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems.AsNoTracking().Where(item => ids.Contains(item.Id))
+            .Select(item => new MediaThumbnailState(item.Id, item.ThumbnailPath,
+                item.DetectedThumbnailPath, item.ThumbnailOverride)).ToListAsync(cancellationToken);
     }
 
     private async Task AddAndInvalidateAsync(MediaItem entity, CancellationToken cancellationToken)

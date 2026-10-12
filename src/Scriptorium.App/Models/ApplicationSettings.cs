@@ -15,6 +15,9 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
 
     public string Theme { get; set; } = ThemeNames.System;
 
+    /// <summary>Automatically discover local artwork and generate missing video previews.</summary>
+    public bool AutomaticThumbnailsEnabled { get; set; } = true;
+
     public bool OpenLastLibraryOnStartup { get; set; } = true;
 
     /// <summary>Gets or sets whether library folders are scanned on a recurring schedule.</summary>

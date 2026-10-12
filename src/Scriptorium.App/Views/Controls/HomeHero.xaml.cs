@@ -26,6 +26,7 @@ public partial class HomeHero : UserControl
     public static readonly DependencyProperty ActionTextProperty = DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty FavoriteTextProperty = DependencyProperty.Register(nameof(FavoriteText), typeof(string), typeof(HomeHero));
     private long _loadVersion;
+    private string? _displayedThumbnailPath;
     private LibraryMediaItemViewModel? _observed;
     public HomeHero() { InitializeComponent(); More.Tag = this; UpdateCopy(); }
     public LibraryMediaItemViewModel? Media { get => (LibraryMediaItemViewModel?)GetValue(MediaProperty); set => SetValue(MediaProperty, value); }
@@ -76,30 +77,41 @@ public partial class HomeHero : UserControl
     private async Task LoadArtworkAsync()
     {
         var version = ++_loadVersion;
-        SetValue(ArtworkPropertyKey, null); SetValue(HasArtworkPropertyKey, false);
+        if (!string.Equals(_displayedThumbnailPath, Media?.ThumbnailPath, StringComparison.OrdinalIgnoreCase))
+        { SetValue(ArtworkPropertyKey, null); SetValue(HasArtworkPropertyKey, false); }
         if (!IsLoaded) return;
         var image = await ThumbnailCache.GetAsync(Media?.ThumbnailPath);
         if (version != _loadVersion || !IsLoaded) return;
         // Reuse the existing cached preview; do not decode the full-resolution source for the hero.
+        _displayedThumbnailPath = Media?.ThumbnailPath;
         SetValue(ArtworkPropertyKey, image); SetValue(HasArtworkPropertyKey, image is not null);
     }
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         ObserveItem();
+        ThumbnailCache.SourceChanged -= OnThumbnailSourceChanged;
         ThumbnailCache.CacheCleared -= OnCacheCleared;
         ThumbnailCache.CacheCleared += OnCacheCleared;
+        ThumbnailCache.SourceChanged += OnThumbnailSourceChanged;
         UpdateMoreBackdrop();
         _ = LoadArtworkAsync();
     }
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         ++_loadVersion;
+        ThumbnailCache.SourceChanged -= OnThumbnailSourceChanged;
         ThumbnailCache.CacheCleared -= OnCacheCleared;
         if (_observed is not null) _observed.PropertyChanged -= OnItemPropertyChanged;
         _observed = null;
         SetValue(ArtworkPropertyKey, null); SetValue(HasArtworkPropertyKey, false);
         More.ContextMenu.IsOpen = false;
     }
+    private void OnThumbnailSourceChanged(string path)
+    {
+        if (IsLoaded && string.Equals(path, Media?.ThumbnailPath, StringComparison.OrdinalIgnoreCase))
+            _ = LoadArtworkAsync();
+    }
+
     private void OnCacheCleared(object? sender, EventArgs e) { if (IsLoaded) _ = LoadArtworkAsync(); }
     private void OnMore(object sender, RoutedEventArgs e)
     {

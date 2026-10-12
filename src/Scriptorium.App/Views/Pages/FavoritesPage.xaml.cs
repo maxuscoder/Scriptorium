@@ -15,7 +15,7 @@ public partial class FavoritesPage : UserControl
     {
         if (DataContext is FavoritesPageViewModel viewModel)
         {
-            await viewModel.RefreshAsync();
+            await viewModel.EnsurePageDataLoadedAsync();
         }
     }
 }

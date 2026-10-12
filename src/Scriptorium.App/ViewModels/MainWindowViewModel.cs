@@ -26,6 +26,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     private readonly IFavoriteService? _favorites;
     private readonly INotificationService? _notifications;
     private readonly ApplicationSettings _settings;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
     private string? _statusMessage;
     private bool _isRefreshing;
     private Task? _refreshTask;
@@ -39,7 +40,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     public MainWindowViewModel(IMediaItemRepository mediaItemRepository,
         IMediaDetailsNavigationCoordinator detailsCoordinator, IPlaybackProgressService playbackProgressService,
         ILogger<MainWindowViewModel> logger, INotificationService? notifications = null,
-        ISettingsService? settingsService = null, IFavoriteService? favorites = null)
+        ISettingsService? settingsService = null, IFavoriteService? favorites = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
         ArgumentNullException.ThrowIfNull(detailsCoordinator);
@@ -52,6 +54,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         _notifications = notifications;
         _settings = settingsService?.Settings ?? new ApplicationSettings();
         _favorites = favorites;
+        _automaticThumbnails = automaticThumbnails;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         OpenMediaCommand = new AsyncRelayCommand(OpenMediaAsync, parameter => parameter is LibraryMediaItemViewModel);
         ToggleFavoriteCommand = favorites is null ? null : new AsyncRelayCommand(ToggleFavoriteAsync,
@@ -106,6 +109,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
 
     private async Task RefreshCoreAsync()
     {
+        using var foreground = _automaticThumbnails?.PauseBackgroundWork();
         IsRefreshing = true;
         try
         {
@@ -119,7 +123,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
                 });
                 var addedTask = BrowseAsync(new MediaItemBrowseQuery { SortOrder = MediaItemBrowseSortOrder.ImportDateNewest, PageSize = ShelfLimit });
                 var favoritesTask = BrowseAsync(new MediaItemBrowseQuery { FavoritesOnly = true, SortOrder = MediaItemBrowseSortOrder.ImportDateNewest, PageSize = ShelfLimit });
-                var historyTask = _mediaItemRepository.GetRecentlyWatchedAsync(10);
+                var historyTask = Task.Run(() => _mediaItemRepository.GetRecentlyWatchedAsync(10));
                 await Task.WhenAll(resumeTask, addedTask, favoritesTask, historyTask);
                 if (_disposed) return;
                 // Reuse presentation objects across shelves to keep favorites consistent.
@@ -152,7 +156,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     }
 
     private async Task<IReadOnlyList<MediaItem>> BrowseAsync(MediaItemBrowseQuery query) =>
-        (await _mediaItemRepository.GetBrowsePageAsync(query, includeTotalCount: false)).Items;
+        (await Task.Run(() => _mediaItemRepository.GetBrowsePageAsync(query, includeTotalCount: false))).Items;
 
     private void RebuildShelves()
     {

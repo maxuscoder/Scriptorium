@@ -47,6 +47,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFolderManagementViewModelFactory, FolderManagementViewModelFactory>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
         services.AddSingleton<LibVlcRuntime>();
+        services.AddSingleton<IThumbnailGenerator>(provider => new LibVlcThumbnailGenerator(
+            () => provider.GetRequiredService<LibVlcRuntime>()));
         services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();
         services.AddTransient<VideoPlayerViewModel>();
 

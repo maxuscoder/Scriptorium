@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
+using Scriptorium.App.Collections;
 using Scriptorium.App.Services;
 using Scriptorium.Core.Models;
 using Scriptorium.Core.Repositories;
@@ -29,6 +30,18 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     private string _statusMessage = string.Empty;
     private CategoryItemViewModel? _selectedCategory;
     private bool _disposed;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private Task? _pageLoadTask;
+    private DateTimeOffset _lastSuccessfulLoadUtc;
+
+    public void InvalidatePageData() => _lastSuccessfulLoadUtc = DateTimeOffset.MinValue;
+
+    public Task EnsurePageDataLoadedAsync()
+    {
+        if (_pageLoadTask is { IsCompleted: false }) return _pageLoadTask;
+        if (DateTimeOffset.UtcNow - _lastSuccessfulLoadUtc < TimeSpan.FromSeconds(30)) return Task.CompletedTask;
+        return _pageLoadTask = RefreshAsync();
+    }
     private IReadOnlyList<MediaItem> _availableMediaItems = [];
     private bool _isRefreshing;
     private int _isCategoryRefreshQueued;
@@ -43,7 +56,8 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         IFavoriteService favoriteService,
         ILogger<CategoriesPageViewModel>? logger = null,
         INotificationService? notifications = null,
-        IMediaDetailsNavigationCoordinator? detailsCoordinator = null)
+        IMediaDetailsNavigationCoordinator? detailsCoordinator = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
         _categoryRepository = categoryRepository;
         _categoryService = categoryService;
@@ -51,6 +65,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         _createCategoryDialog = createCategoryDialog;
         _mediaItemRepository = mediaItemRepository;
         _favoriteService = favoriteService;
+        _automaticThumbnails = automaticThumbnails;
         _logger = logger;
         _notifications = notifications;
         _detailsCoordinator = detailsCoordinator;
@@ -88,7 +103,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         Categories.Clear();
     }
 
-    public ObservableCollection<CategoryItemViewModel> Categories { get; } = [];
+    public BatchObservableCollection<CategoryItemViewModel> Categories { get; } = [];
 
     public ICommand CreateCategoryCommand { get; }
 
@@ -106,7 +121,7 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
     public ICommand OpenMediaCommand { get; }
 
     /// <summary>Gets the media assigned to the selected category.</summary>
-    public ObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
+    public BatchObservableCollection<LibraryMediaItemViewModel> MediaItems { get; } = [];
 
     /// <summary>Gets the category whose media is currently displayed.</summary>
     public CategoryItemViewModel? SelectedCategory
@@ -189,11 +204,12 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
         }
 
         await _refreshGate.WaitAsync();
+        using var foreground = _automaticThumbnails?.PauseBackgroundWork();
         IsRefreshing = true;
         try
         {
-            var categoriesTask = _categoryRepository.GetAllAsync();
-            var mediaItemsTask = _mediaItemRepository.GetAllAsync();
+            var categoriesTask = Task.Run(() => _categoryRepository.GetAllAsync());
+            var mediaItemsTask = Task.Run(() => _mediaItemRepository.GetAllAsync());
             await Task.WhenAll(categoriesTask, mediaItemsTask);
             if (_disposed)
             {
@@ -207,14 +223,9 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
                 .GroupBy(mediaItem => mediaItem.CategoryId!.Value)
                 .ToDictionary(group => group.Key, group => (IReadOnlyList<MediaItem>)group.ToArray());
 
-            Categories.Clear();
-            foreach (var category in categoriesTask.Result.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase))
-            {
-                var assignedMedia = mediaByCategory.GetValueOrDefault(category.Id) ?? [];
-                Categories.Add(new CategoryItemViewModel(
-                    category,
-                    assignedMedia));
-            }
+            Categories.ReplaceRange(categoriesTask.Result.OrderBy(category => category.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(category => new CategoryItemViewModel(category, mediaByCategory.GetValueOrDefault(category.Id) ?? [])));
+            _lastSuccessfulLoadUtc = DateTimeOffset.UtcNow;
 
             SelectedCategory = selectedCategoryId is { } categoryId
                 ? Categories.FirstOrDefault(category => category.Id == categoryId) ?? Categories.FirstOrDefault()
@@ -311,17 +322,14 @@ public sealed class CategoriesPageViewModel : PageViewModel, IDisposable
 
     private void RefreshSelectedCategoryMedia()
     {
-        MediaItems.Clear();
-
         if (SelectedCategory is not null)
         {
-            foreach (var mediaItem in _availableMediaItems
-                         .Where(mediaItem => mediaItem.CategoryId == SelectedCategory.Id)
-                         .OrderBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase))
-            {
-                MediaItems.Add(new LibraryMediaItemViewModel(mediaItem));
-            }
+            MediaItems.ReplaceRange(_availableMediaItems
+                .Where(mediaItem => mediaItem.CategoryId == SelectedCategory.Id)
+                .OrderBy(mediaItem => mediaItem.DisplayTitle, StringComparer.OrdinalIgnoreCase)
+                .Select(mediaItem => new LibraryMediaItemViewModel(mediaItem)));
         }
+        else MediaItems.ReplaceRange([]);
 
         OnPropertyChanged(nameof(HasMediaItems));
         OnPropertyChanged(nameof(SelectedCategoryMediaCountText));

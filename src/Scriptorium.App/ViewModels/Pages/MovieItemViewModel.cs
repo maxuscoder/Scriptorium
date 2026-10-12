@@ -6,7 +6,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Presents an indexed movie in the library browser.
 /// </summary>
-public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem
+public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard
 {
     public MediaItem MediaItem => movie;
 
@@ -19,6 +19,18 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
     public bool HasManualMetadata => movie.HasManualMetadata;
 
     public string SourceFolder => movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies";
+
+    public Guid? ThumbnailMediaItemId => MediaItemId;
+
+    public void UpdateThumbnail(MediaThumbnailState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        var pathChanged = ThumbnailPath != state.ThumbnailPath;
+        var overrideChanged = MediaItem.ThumbnailOverride != state.ThumbnailOverride;
+        state.ApplyTo(MediaItem);
+        if (pathChanged) OnPropertyChanged(nameof(ThumbnailPath));
+        if (overrideChanged) OnPropertyChanged(nameof(HasManualMetadata));
+    }
 
     public string? ThumbnailPath => movie.ThumbnailPath;
 

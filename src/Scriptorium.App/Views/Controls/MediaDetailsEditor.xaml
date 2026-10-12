@@ -52,7 +52,10 @@
                     </DockPanel>
                     <controls:CategoryArtworkPreview Height="100" Margin="0,8,0,8" ThumbnailPath="{Binding EditableThumbnailPath}" />
                     <TextBox MaxLength="1000" Text="{Binding EditableThumbnailPath, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Thumbnail path" />
-                    <Button Margin="0,8,0,0" HorizontalAlignment="Left" Command="{Binding ChooseThumbnailCommand}" Content="Choose image" Style="{StaticResource Button.Secondary}" BorderThickness="0" />
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Margin="0,0,8,8" Command="{Binding ChooseThumbnailCommand}" Content="Choose image" Style="{StaticResource Button.Secondary}" BorderThickness="0" />
+                        <Button Margin="0,0,0,8" Command="{Binding RegenerateThumbnailCommand}" Content="Regenerate thumbnail" Style="{StaticResource Button.Secondary}" BorderThickness="0" AutomationProperties.Name="Regenerate automatic thumbnail" />
+                    </WrapPanel>
                     <TextBlock Style="{StaticResource Editor.Status}" Text="{Binding ThumbnailStatus}" />
                 </StackPanel>
 

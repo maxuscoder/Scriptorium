@@ -24,6 +24,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
     private readonly IMediaTitleService? _mediaTitleService;
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
@@ -64,7 +65,8 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IConfirmationDialog? confirmationDialog = null,
         IMediaDescriptionService? mediaDescriptionService = null,
-        IMediaReleaseYearService? mediaReleaseYearService = null)
+        IMediaReleaseYearService? mediaReleaseYearService = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _categoryRepository = categoryRepository;
@@ -75,6 +77,8 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         _mediaTitleService = mediaTitleService;
         _mediaTypeService = mediaTypeService;
         _mediaThumbnailService = mediaThumbnailService;
+        _automaticThumbnails = automaticThumbnails;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
         _mediaMetadataResetService = mediaMetadataResetService;
         _confirmationDialog = confirmationDialog;
         _mediaDescriptionService = mediaDescriptionService;
@@ -97,6 +101,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => _movie is not null);
         RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => _movie is not null);
         RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => _movie is not null);
+        RegenerateThumbnailCommand = new AsyncRelayCommand(RegenerateThumbnailAsync, () => _automaticThumbnails is not null);
         RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => _movie is not null);
         RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => _movie is not null);
     }
@@ -111,6 +116,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         }
 
         _disposed = true;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
         Player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
         Player.Dispose();
         _returnPage = null;
@@ -293,6 +299,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
     public ICommand RestoreTitleCommand { get; }
     public ICommand RestoreDescriptionCommand { get; }
     public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RegenerateThumbnailCommand { get; }
     public ICommand RestoreThumbnailCommand { get; }
     public ICommand RestoreMediaTypeCommand { get; }
 
@@ -310,6 +317,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         IsEditing = false;
         _returnPage = returnPage;
         _movie = movie;
+        _automaticThumbnails?.Enqueue([movie.Id], prioritize: true);
         SelectedMediaType = movie.MediaType;
         MediaTypeStatus = string.Empty;
         await RefreshCategoryOptionsAsync(movie.CategoryId);

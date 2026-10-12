@@ -8,7 +8,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Presents an indexed media item in the main library browser.
 /// </summary>
-public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBase, IMediaFavoriteItem
+public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard
 {
     /// <summary>Gets the indexed item represented by this card.</summary>
     public MediaItem MediaItem { get; } = mediaItem;
@@ -18,6 +18,18 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
     public bool HasManualMetadata => MediaItem.HasManualMetadata;
 
     public string SourcePath => MediaItem.Path;
+
+    public Guid? ThumbnailMediaItemId => MediaItemId;
+
+    public void UpdateThumbnail(MediaThumbnailState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        var pathChanged = ThumbnailPath != state.ThumbnailPath;
+        var overrideChanged = MediaItem.ThumbnailOverride != state.ThumbnailOverride;
+        state.ApplyTo(MediaItem);
+        if (pathChanged) OnPropertyChanged(nameof(ThumbnailPath));
+        if (overrideChanged) OnPropertyChanged(nameof(HasManualMetadata));
+    }
 
     public string? ThumbnailPath => MediaItem.ThumbnailPath;
 

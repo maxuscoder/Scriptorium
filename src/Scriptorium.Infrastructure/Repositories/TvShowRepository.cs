@@ -92,7 +92,7 @@ public sealed class TvShowRepository(
             .ToListAsync(cancellationToken);
         var episodes = await context.Episodes
             .AsNoTracking()
-            .Join(context.Seasons.AsNoTracking(), episode => episode.SeasonId, season => season.Id, (episode, season) => new { episode, season.TVShowId, season.Id })
+            .Join(context.Seasons.AsNoTracking(), episode => episode.SeasonId, season => season.Id, (episode, season) => new { episode, season.TVShowId, season.Id, season.SeasonNumber })
             .Join(
                 context.MediaItems.AsNoTracking(),
                 row => row.episode.MediaItemId,
@@ -100,6 +100,10 @@ public sealed class TvShowRepository(
                 (row, mediaItem) => new MediaSummaryRow(
                     row.TVShowId,
                     row.Id,
+                    row.SeasonNumber,
+                    row.episode.SortOrder,
+                    mediaItem.Id,
+                    mediaItem.Path,
                     mediaItem.ThumbnailPath,
                     mediaItem.TitleOverride,
                     mediaItem.DescriptionOverride,
@@ -120,13 +124,15 @@ public sealed class TvShowRepository(
         var episodesByShow = episodes.GroupBy(episode => episode.ShowId).ToDictionary(group => group.Key, group => group.ToArray());
         return shows.Select(show =>
         {
-            var items = episodesByShow.GetValueOrDefault(show.Id) ?? [];
+            var items = (episodesByShow.GetValueOrDefault(show.Id) ?? [])
+                .OrderBy(item => item.SeasonNumber).ThenBy(item => item.SortOrder)
+                .ThenBy(item => item.FilePath, StringComparer.OrdinalIgnoreCase).ToArray();
             var progress = items.Select(ProgressPercentage).DefaultIfEmpty(0).ToArray();
             return new TvShowLibrarySummary(
                 show.Id,
                 show.Title,
                 show.LibraryFolder?.DisplayNameOrName ?? "Imported TV library",
-                items.Select(item => item.ThumbnailPath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)),
+                items.FirstOrDefault()?.ThumbnailPath,
                 items.Select(item => item.SeasonId).Distinct().Count(),
                 show.EpisodeCount > 0 ? show.EpisodeCount : items.Length,
                 items.Any(HasManualMetadata),
@@ -136,7 +142,8 @@ public sealed class TvShowRepository(
                 items.Where(item => item.LastPlayed is not null).Select(item => item.LastPlayed).DefaultIfEmpty().Max(),
                 progress.Min(),
                 progress.Max(),
-                items.Any(item => item.IsFavorite));
+                items.Any(item => item.IsFavorite),
+                items.FirstOrDefault()?.MediaItemId);
         }).ToArray();
     }
 
@@ -162,6 +169,10 @@ public sealed class TvShowRepository(
     private sealed record MediaSummaryRow(
         Guid ShowId,
         Guid SeasonId,
+        int SeasonNumber,
+        int SortOrder,
+        Guid MediaItemId,
+        string FilePath,
         string? ThumbnailPath,
         string? TitleOverride,
         string? DescriptionOverride,

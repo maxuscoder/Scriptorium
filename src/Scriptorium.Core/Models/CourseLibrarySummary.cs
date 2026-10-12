@@ -14,4 +14,5 @@ public sealed record CourseLibrarySummary(
     DateTimeOffset? LatestPlayback,
     double LowestPlaybackProgress,
     double HighestPlaybackProgress,
-    bool HasFavorite);
+    bool HasFavorite,
+    Guid? ThumbnailMediaItemId = null);

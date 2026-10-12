@@ -14,6 +14,7 @@ public partial class CategoryArtworkPreview : UserControl
         new PropertyMetadata(null, OnThumbnailPathChanged));
 
     private long _loadVersion;
+    private string? _displayedThumbnailPath;
 
     public CategoryArtworkPreview() => InitializeComponent();
 
@@ -34,16 +35,25 @@ public partial class CategoryArtworkPreview : UserControl
 
     private async void OnLoaded(object sender, RoutedEventArgs args)
     {
+        ThumbnailCache.SourceChanged -= OnThumbnailSourceChanged;
         ThumbnailCache.CacheCleared -= OnCacheCleared;
         ThumbnailCache.CacheCleared += OnCacheCleared;
+        ThumbnailCache.SourceChanged += OnThumbnailSourceChanged;
         await LoadThumbnailAsync(ThumbnailPath);
     }
 
     private void OnUnloaded(object sender, RoutedEventArgs args)
     {
+        ThumbnailCache.SourceChanged -= OnThumbnailSourceChanged;
         ThumbnailCache.CacheCleared -= OnCacheCleared;
         Interlocked.Increment(ref _loadVersion);
         ArtworkImage.Source = null;
+    }
+
+    private void OnThumbnailSourceChanged(string path)
+    {
+        if (IsLoaded && string.Equals(path, ThumbnailPath, StringComparison.OrdinalIgnoreCase))
+            _ = LoadThumbnailAsync(ThumbnailPath);
     }
 
     private void OnCacheCleared(object? sender, EventArgs args)
@@ -57,10 +67,12 @@ public partial class CategoryArtworkPreview : UserControl
     private async Task LoadThumbnailAsync(string? thumbnailPath)
     {
         var version = Interlocked.Increment(ref _loadVersion);
-        ArtworkImage.Source = null;
+        if (!string.Equals(_displayedThumbnailPath, thumbnailPath, StringComparison.OrdinalIgnoreCase))
+            ArtworkImage.Source = null;
         var thumbnail = await ThumbnailCache.GetAsync(thumbnailPath);
         if (version == _loadVersion && IsLoaded)
         {
+            _displayedThumbnailPath = thumbnailPath;
             ArtworkImage.Source = thumbnail;
         }
     }

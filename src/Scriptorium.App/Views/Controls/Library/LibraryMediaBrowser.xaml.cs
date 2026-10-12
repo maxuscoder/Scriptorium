@@ -31,6 +31,13 @@ public partial class LibraryMediaBrowser : UserControl
         }
     }
 
+    private void OnCardRowLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ItemsControl { DataContext: LibraryBrowserCardsRow row } &&
+            DataContext is LibraryPageViewModel viewModel)
+            viewModel.PrioritizeBrowserRow(row);
+    }
+
     private void UpdateBrowserWidth(double width)
     {
         if (DataContext is LibraryPageViewModel viewModel)

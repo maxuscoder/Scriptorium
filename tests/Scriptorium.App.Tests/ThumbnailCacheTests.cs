@@ -110,6 +110,19 @@ public sealed class ThumbnailCacheTests
         Assert.NotNull(await ThumbnailCache.GetAsync(fixture.SourcePath, fixture.CacheDirectory));
     }
 
+    [Fact]
+    public async Task CacheWriteFailureStillDisplaysTheDecodedImage()
+    {
+        using var fixture = new ThumbnailFixture();
+        fixture.WriteSourceImage(320, 180);
+        var blockedDirectory = Path.Combine(Path.GetDirectoryName(fixture.SourcePath)!, "not-a-directory");
+        await File.WriteAllTextAsync(blockedDirectory, "file blocks directory creation");
+        var image = await ThumbnailCache.GetAsync(fixture.SourcePath, blockedDirectory);
+        Assert.NotNull(image);
+        Assert.Equal(320, image.PixelWidth);
+        Assert.Equal(180, image.PixelHeight);
+    }
+
     private sealed class ThumbnailFixture : IDisposable
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"scriptorium-thumbnails-{Guid.NewGuid():N}");

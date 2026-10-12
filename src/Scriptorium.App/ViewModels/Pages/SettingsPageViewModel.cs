@@ -3,6 +3,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -24,6 +25,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     private bool _automaticLibraryScanningEnabled;
     private int _libraryScanFrequencyMinutes;
     private bool _scanLibraryOnStartup;
+    private bool _automaticThumbnailsEnabled;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
     private double _playbackVolume;
     private double _playbackSpeed;
     private bool _startFullscreenOnPlayback;
@@ -41,8 +44,11 @@ public sealed class SettingsPageViewModel : PageViewModel
         IApplicationInfoService applicationInfo,
         DatabaseLocation databaseLocation,
         IApplicationResetService applicationResetService,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
+        _automaticThumbnails = automaticThumbnails;
+        _automaticThumbnailsEnabled = settingsService.Settings.AutomaticThumbnailsEnabled;
         _settingsService = settingsService;
         _themeService = themeService;
         _libraryPage = libraryPage;
@@ -89,7 +95,8 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     public string DatabaseLocation => _databaseLocation.FilePath;
 
-    public string ThumbnailCacheLocation => ThumbnailCache.CacheDirectory;
+    public string ThumbnailCacheLocation => _automaticThumbnails is null ? ThumbnailCache.CacheDirectory :
+        $"{ThumbnailCache.CacheDirectory}\n{_automaticThumbnails.CacheDirectory}";
 
     public Task EnsureLibraryStatisticsLoadedAsync() => _libraryPage.EnsureLibraryDataLoadedAsync();
 
@@ -124,7 +131,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     }
 
     public async Task RefreshThumbnailCacheSizeAsync() =>
-        ThumbnailCacheSizeBytes = await ThumbnailCache.GetDiskCacheSizeAsync();
+        ThumbnailCacheSizeBytes = await ThumbnailCache.GetDiskCacheSizeAsync() +
+            (_automaticThumbnails is null ? 0 : await _automaticThumbnails.GetCacheSizeAsync());
 
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
 
@@ -135,6 +143,18 @@ public sealed class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<LibraryScanFrequencyOption> LibraryScanFrequencyOptions => LibraryScanFrequency.Options;
 
     public IReadOnlyList<PlaybackCompletionThresholdOption> PlaybackCompletionThresholdOptions => PlaybackCompletionThreshold.Options;
+
+    public bool AutomaticThumbnailsEnabled
+    {
+        get => _automaticThumbnailsEnabled;
+        set
+        {
+            if (!SetProperty(ref _automaticThumbnailsEnabled, value)) return;
+            _settingsService.Settings.AutomaticThumbnailsEnabled = value;
+            if (_automaticThumbnails is not null) _automaticThumbnails.Enabled = value;
+            SaveChanges();
+        }
+    }
 
     public bool AutomaticLibraryScanningEnabled
     {
@@ -360,6 +380,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         IsClearingThumbnailCache = true;
         try
         {
+            if (_automaticThumbnails is not null) await _automaticThumbnails.ClearCacheAsync();
             await ThumbnailCache.ClearDiskCacheAsync();
             await RefreshThumbnailCacheSizeAsync();
             _notifications?.Show("The thumbnail cache was cleared. Previews will regenerate when needed.");
@@ -437,6 +458,7 @@ public sealed class SettingsPageViewModel : PageViewModel
             LibrarySortOrder = sortOrder;
         }
         FavoritesFirst = settings.LibraryFavoritesFirst;
+        AutomaticThumbnailsEnabled = settings.AutomaticThumbnailsEnabled;
         AutomaticLibraryScanningEnabled = settings.AutomaticLibraryScanningEnabled;
         LibraryScanFrequencyMinutes = settings.LibraryScanFrequencyMinutes;
         ScanLibraryOnStartup = settings.ScanLibraryOnStartup;

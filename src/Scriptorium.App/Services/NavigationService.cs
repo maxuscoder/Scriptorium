@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.ViewModels.Pages;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.Services;
 
@@ -10,9 +11,12 @@ public sealed class NavigationService : INavigationService
 {
     private readonly ILogger<NavigationService> _logger;
 
-    public NavigationService(ILogger<NavigationService> logger)
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+
+    public NavigationService(ILogger<NavigationService> logger, IAutomaticThumbnailService? automaticThumbnails = null)
     {
         _logger = logger;
+        _automaticThumbnails = automaticThumbnails;
     }
 
     public PageViewModel? CurrentPage { get; private set; }
@@ -28,6 +32,7 @@ public sealed class NavigationService : INavigationService
             return;
         }
 
+        _automaticThumbnails?.NotifyUserInteraction();
         CurrentPage = page;
         _logger.LogInformation("Navigated to {PageTitle}.", page.Title);
         Navigated?.Invoke(page);

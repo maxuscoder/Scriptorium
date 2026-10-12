@@ -21,7 +21,8 @@ public sealed partial class MediaScannerService(
     ITvShowHierarchySynchronizer tvShowHierarchySynchronizer,
     ITutorialCourseSynchronizer tutorialCourseSynchronizer,
     ILogger<MediaScannerService>? logger = null,
-    IOperationMetrics? operationMetrics = null) : IMediaScannerService
+    IOperationMetrics? operationMetrics = null,
+    IAutomaticThumbnailService? automaticThumbnails = null) : IMediaScannerService
 {
     private readonly SemaphoreSlim _scanGate = new(1, 1);
     private int _isScanning;
@@ -178,6 +179,8 @@ public sealed partial class MediaScannerService(
                 .ConfigureAwait(false);
             await tutorialCourseSynchronizer.SynchronizeAsync(scannedFolders, synchronizedMediaItems, cancellationToken)
                 .ConfigureAwait(false);
+
+            automaticThumbnails?.Enqueue(synchronizedMediaItems.Where(item => !item.IsMissing).Select(item => item.Id));
 
             timing?.SetTag("FolderCount", scannedFolders.Count);
             timing?.SetTag("ProcessedFileCount", processedFileCount);

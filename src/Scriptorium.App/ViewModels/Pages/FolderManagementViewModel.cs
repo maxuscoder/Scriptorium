@@ -158,13 +158,15 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
-        var folders = await _libraryFolderRepository.GetAllAsync(cancellationToken);
-        cancellationToken.ThrowIfCancellationRequested();
+        var refreshedFolders = await Task.Run(async () =>
+        {
+            var folders = await _libraryFolderRepository.GetAllAsync(cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return folders.OrderBy(folder => folder.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(folder => new ConfiguredFolderViewModel(folder, _libraryFolderValidator.Validate(folder.Path)))
+                .ToArray();
+        }, cancellationToken);
         var selectedFolderId = SelectedFolder?.Id;
-        var refreshedFolders = folders
-            .OrderBy(folder => folder.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(folder => new ConfiguredFolderViewModel(folder, _libraryFolderValidator.Validate(folder.Path)))
-            .ToArray();
         cancellationToken.ThrowIfCancellationRequested();
 
         ConfiguredFolders.Clear();

@@ -46,7 +46,7 @@ public partial class CategoriesPage : UserControl
         if (DataContext is CategoriesPageViewModel viewModel)
         {
             await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
-            await viewModel.RefreshAsync();
+            await viewModel.EnsurePageDataLoadedAsync();
         }
     }
 

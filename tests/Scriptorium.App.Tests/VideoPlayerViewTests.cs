@@ -135,6 +135,7 @@ public sealed class VideoPlayerViewTests
             await MediaCardResourceChecks.VerifyAsync(application.Resources);
             await HomeResourceChecks.VerifyAsync(application.Resources);
             await LibraryResourceChecks.VerifyAsync(application.Resources);
+            await ThumbnailSmoothnessResourceChecks.VerifyAsync(application.Resources);
         }
         finally
         {

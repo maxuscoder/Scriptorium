@@ -9,6 +9,8 @@ public sealed class MediaThumbnailService(IMediaItemRepository mediaItemReposito
     /// <inheritdoc />
     public event Action<Guid>? ThumbnailChanged;
 
+    internal void NotifyChanged(Guid mediaItemId) => ThumbnailChanged?.Invoke(mediaItemId);
+
     /// <inheritdoc />
     public async Task<bool> SaveAsync(
         Guid mediaItemId,
@@ -28,9 +30,8 @@ public sealed class MediaThumbnailService(IMediaItemRepository mediaItemReposito
             return true;
         }
 
-        mediaItem.ThumbnailOverride = normalizedPath;
-        mediaItem.ThumbnailPath = normalizedPath;
-        await mediaItemRepository.UpdateAsync(mediaItem, cancellationToken);
+        if (!await mediaItemRepository.UpdateThumbnailOverrideAsync(mediaItemId, normalizedPath, cancellationToken))
+            return false;
         ThumbnailChanged?.Invoke(mediaItemId);
         return true;
     }

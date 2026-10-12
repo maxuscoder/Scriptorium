@@ -7,7 +7,8 @@ namespace Scriptorium.Infrastructure.Services;
 /// <summary>
 /// Persists metadata found during media import and updates existing file-path matches.
 /// </summary>
-public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaItemRepository)
+public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaItemRepository,
+    IAutomaticThumbnailService? automaticThumbnails = null)
     : IImportedMediaPersistenceService
 {
     /// <inheritdoc />
@@ -26,6 +27,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         {
             CopyMetadata(importedMedia, existingItem, filePath);
             await mediaItemRepository.UpdateAsync(existingItem, cancellationToken);
+            automaticThumbnails?.Enqueue([existingItem.Id]);
             return existingItem;
         }
 
@@ -49,6 +51,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         };
 
         await mediaItemRepository.AddAsync(mediaItem, cancellationToken);
+        automaticThumbnails?.Enqueue([mediaItem.Id]);
         return mediaItem;
     }
 
@@ -108,6 +111,7 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
 
         await mediaItemRepository.UpdateRangeAsync(updatedItems, cancellationToken);
         await mediaItemRepository.AddRangeAsync(addedItems, cancellationToken);
+        automaticThumbnails?.Enqueue(savedItems.Select(item => item.Id));
         return savedItems;
     }
 

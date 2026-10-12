@@ -104,6 +104,29 @@ public sealed class SettingsServiceTests
         }
     }
 
+    [Fact]
+    public async Task AutomaticThumbnailsDefaultOnAndPersistDisabledPreference()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Scriptorium-thumbnail-settings-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var file = Path.Combine(directory, "settings.json");
+        try
+        {
+            await File.WriteAllTextAsync(file, "{}");
+            var service = new SettingsService(new TestSettingsFileLocation(file), NullLogger<SettingsService>.Instance);
+            await service.LoadAsync();
+            Assert.True(service.Settings.AutomaticThumbnailsEnabled);
+            service.Settings.AutomaticThumbnailsEnabled = false;
+            await service.SaveAsync();
+            var restored = new SettingsService(new TestSettingsFileLocation(file), NullLogger<SettingsService>.Instance);
+            await restored.LoadAsync();
+            Assert.False(restored.Settings.AutomaticThumbnailsEnabled);
+            restored.Settings.ResetToDefaults();
+            Assert.True(restored.Settings.AutomaticThumbnailsEnabled);
+        }
+        finally { File.Delete(file); Directory.Delete(directory); }
+    }
+
     private sealed class TestSettingsFileLocation(string filePath) : ISettingsFileLocation
     {
         public string FilePath { get; } = filePath;

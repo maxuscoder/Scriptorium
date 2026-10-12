@@ -4,21 +4,39 @@ using System.Windows.Input;
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>Presents a lightweight television-show collection in the library browser.</summary>
-public sealed class TvShowCollectionViewModel
+public sealed class TvShowCollectionViewModel : ViewModelBase, IMediaThumbnailCard
 {
     private readonly TVShow? _show;
     private readonly TvShowLibrarySummary? _summary;
 
-    public TvShowCollectionViewModel(TVShow show) => _show = show;
-    public TvShowCollectionViewModel(TvShowLibrarySummary summary) => _summary = summary;
+    private string? _thumbnailPath;
+    public Guid? ThumbnailMediaItemId { get; }
+
+    public TvShowCollectionViewModel(TVShow show)
+    {
+        _show = show;
+        var cover = show.Seasons.OrderBy(season => season.SeasonNumber).SelectMany(season => season.Episodes.OrderBy(episode => episode.SortOrder).ThenBy(episode => episode.FilePath, StringComparer.OrdinalIgnoreCase)).Select(episode => episode.MediaItem).FirstOrDefault();
+        ThumbnailMediaItemId = cover?.Id;
+        _thumbnailPath = cover?.ThumbnailPath;
+    }
+    public TvShowCollectionViewModel(TvShowLibrarySummary summary)
+    {
+        _summary = summary;
+        ThumbnailMediaItemId = summary.ThumbnailMediaItemId;
+        _thumbnailPath = summary.ThumbnailPath;
+    }
+
+    public void UpdateThumbnail(MediaThumbnailState state)
+    {
+        if (state.MediaItemId == ThumbnailMediaItemId)
+            SetProperty(ref _thumbnailPath, state.ThumbnailPath, nameof(ThumbnailPath));
+    }
 
     public Guid Id => _summary?.Id ?? _show!.Id;
     public string Title => MediaDisplayText.TitleOrFallback(_summary?.Title ?? _show!.Title, "Untitled TV show");
     public bool HasManualMetadata => _summary?.HasManualMetadata ?? _show!.Seasons.SelectMany(season => season.Episodes).Any(episode => episode.MediaItem.HasManualMetadata);
     public string SourceFolder => _summary?.SourceFolder ?? _show!.LibraryFolder?.DisplayNameOrName ?? "Imported TV library";
-    public string? ThumbnailPath => _summary is { } summary
-        ? summary.ThumbnailPath
-        : _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.ThumbnailPath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path));
+    public string? ThumbnailPath => _thumbnailPath;
     public int SeasonCount => _summary?.SeasonCount ?? _show!.Seasons.Count;
     public int EpisodeCount => _summary?.EpisodeCount ?? _show!.EpisodeCount;
     public string CardMetadata => MediaCardMetadata.Join("TV show",

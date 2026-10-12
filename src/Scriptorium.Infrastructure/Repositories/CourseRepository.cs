@@ -137,6 +137,9 @@ public sealed class CourseRepository(
                 mediaItem => mediaItem.Id,
                 (lesson, mediaItem) => new MediaSummaryRow(
                     lesson.CourseId,
+                    lesson.SortOrder,
+                    mediaItem.Id,
+                    mediaItem.Path,
                     mediaItem.ThumbnailPath,
                     mediaItem.TitleOverride,
                     mediaItem.DescriptionOverride,
@@ -157,13 +160,14 @@ public sealed class CourseRepository(
         var lessonsByCourse = lessons.GroupBy(lesson => lesson.ParentId).ToDictionary(group => group.Key, group => group.ToArray());
         return courses.Select(course =>
         {
-            var items = lessonsByCourse.GetValueOrDefault(course.Id) ?? [];
+            var items = (lessonsByCourse.GetValueOrDefault(course.Id) ?? [])
+                .OrderBy(item => item.SortOrder).ThenBy(item => item.FilePath, StringComparer.OrdinalIgnoreCase).ToArray();
             var progress = items.Select(ProgressPercentage).DefaultIfEmpty(0).ToArray();
             return new CourseLibrarySummary(
                 course.Id,
                 course.Title,
                 course.LibraryFolder.DisplayNameOrName,
-                items.Select(item => item.ThumbnailPath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)),
+                items.FirstOrDefault()?.ThumbnailPath,
                 items.Length,
                 items.Any(HasManualMetadata),
                 items.Select(item => item.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min(),
@@ -172,7 +176,8 @@ public sealed class CourseRepository(
                 items.Where(item => item.LastPlayed is not null).Select(item => item.LastPlayed).DefaultIfEmpty().Max(),
                 progress.Min(),
                 progress.Max(),
-                items.Any(item => item.IsFavorite));
+                items.Any(item => item.IsFavorite),
+                items.FirstOrDefault()?.MediaItemId);
         }).ToArray();
     }
 
@@ -217,6 +222,9 @@ public sealed class CourseRepository(
 
     private sealed record MediaSummaryRow(
         Guid ParentId,
+        int SortOrder,
+        Guid MediaItemId,
+        string FilePath,
         string? ThumbnailPath,
         string? TitleOverride,
         string? DescriptionOverride,
