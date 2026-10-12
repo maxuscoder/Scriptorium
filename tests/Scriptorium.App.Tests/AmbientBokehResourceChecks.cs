@@ -34,7 +34,10 @@ internal static class AmbientBokehResourceChecks
             Assert.All(bubbles, bubble =>
             {
                 Assert.Null(bubble.Effect);
-                Assert.True(Assert.IsType<RadialGradientBrush>(bubble.Fill).IsFrozen);
+                Assert.True(bubble.Fill is RadialGradientBrush or ImageBrush);
+                Assert.True(bubble.Fill.IsFrozen);
+                if (bubble.Fill is ImageBrush mist)
+                    Assert.True(Assert.IsAssignableFrom<BitmapSource>(mist.ImageSource).IsFrozen);
             });
             var animated = SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
             Assert.True(animated == Drift(bubbles[0]).HasAnimatedProperties,

@@ -64,12 +64,59 @@ public partial class AmbientBokehBackground : UserControl
             _bubbleSizes.Add(new Size(bubble.Width, bubble.Height));
             var center = ((RadialGradientBrush)bubble.Fill).GradientStops[0].Color;
             var peak = Math.Max(center.R, Math.Max(center.G, center.B)) * center.ScA * bubble.Opacity;
-            bubble.OpacityMask = CreateDitherMask(peak);
+            if (center.R == center.G && center.G == center.B && bubble.Opacity <= 0.13)
+            {
+                // Bake very faint charcoal at its final brightness: applying tiny
+                // opacity after gradient rendering loses levels and brings back rings.
+                bubble.Fill = CreateDiffuseCharcoalBrush(_bubbleSizes[^1], center, bubble.Opacity);
+                bubble.Opacity = 1; // The original opacity is already in the texture.
+                RenderOptions.SetBitmapScalingMode(bubble, BitmapScalingMode.NearestNeighbor);
+            }
+            else bubble.OpacityMask = CreateDitherMask(peak);
             bubble.RenderTransform = new TransformGroup { Children = { new ScaleTransform(), new TranslateTransform() } };
         }
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         IsVisibleChanged += (_, _) => UpdateMotion();
+    }
+
+    private static ImageBrush CreateDiffuseCharcoalBrush(Size size, Color color, double opacity)
+    {
+        // A single smooth mist profile, generated once. Premultiplied color and
+        // alpha are stochastically rounded together, so even the lowest brightness
+        // levels fade gradually instead of forming broad concentric bands.
+        // Match the maximum layout scale to keep the dither finer than a UI pixel.
+        var width = (int)Math.Ceiling(size.Width * 1.15);
+        var height = (int)Math.Ceiling(size.Height * 1.15);
+        // Retain the mean brightness of the previous fine opacity-mask dither.
+        var peak = Math.Max(color.R, Math.Max(color.G, color.B)) * color.ScA * opacity;
+        var bakedOpacity = opacity * (1 - Math.Min(0.65, 2 / Math.Max(peak, 1)) / 2);
+        var pixels = new byte[width * height * 4];
+        uint noise = 0x51F15E;
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var dx = (2 * (x + 0.5) - width) / width;
+            var dy = (2 * (y + 0.5) - height) / height;
+            var radiusSquared = dx * dx + dy * dy;
+            if (radiusSquared >= 1) continue;
+            // This bell has no inner plateau and approaches zero smoothly at the edge.
+            var alpha = color.ScA * bakedOpacity * Math.Exp(-3 * radiusSquared / (1 - radiusSquared));
+            noise ^= noise << 13;
+            noise ^= noise >> 17;
+            noise ^= noise << 5;
+            var threshold = (noise & 0xFFFF) / 65536.0;
+            var index = (y * width + x) * 4;
+            pixels[index] = (byte)Math.Floor(color.B * alpha + threshold);
+            pixels[index + 1] = (byte)Math.Floor(color.G * alpha + threshold);
+            pixels[index + 2] = (byte)Math.Floor(color.R * alpha + threshold);
+            pixels[index + 3] = (byte)Math.Floor(255 * alpha + threshold);
+        }
+        var texture = BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, pixels, width * 4);
+        texture.Freeze();
+        var brush = new ImageBrush(texture) { Stretch = Stretch.Fill };
+        brush.Freeze();
+        return brush;
     }
 
     private static ImageBrush CreateDitherMask(double peak)
