@@ -177,6 +177,51 @@
             <GradientStop Color="sc#0.027071,0.863157,0.258183,0.008023" Offset="0.95" />
             <GradientStop Color="sc#0.000000,0.863157,0.258183,0.008023" Offset="1.00" />
         </RadialGradientBrush>
+        <!-- Earlier, continuous falloff removes the upper-left accent's disk-like rim. -->
+        <RadialGradientBrush x:Key="Bokeh.Near.SoftAmber"
+            ColorInterpolationMode="ScRgbLinearInterpolation" po:Freeze="True">
+            <GradientStop Color="sc#1.000000,0.863157,0.258183,0.008023" Offset="0.000" />
+            <GradientStop Color="sc#0.998750,0.863157,0.258183,0.008023" Offset="0.025" />
+            <GradientStop Color="sc#0.995000,0.863157,0.258183,0.008023" Offset="0.050" />
+            <GradientStop Color="sc#0.988750,0.863157,0.258183,0.008023" Offset="0.075" />
+            <GradientStop Color="sc#0.980001,0.863157,0.258183,0.008023" Offset="0.100" />
+            <GradientStop Color="sc#0.968753,0.863157,0.258183,0.008023" Offset="0.125" />
+            <GradientStop Color="sc#0.955008,0.863157,0.258183,0.008023" Offset="0.150" />
+            <GradientStop Color="sc#0.938770,0.863157,0.258183,0.008023" Offset="0.175" />
+            <GradientStop Color="sc#0.920044,0.863157,0.258183,0.008023" Offset="0.200" />
+            <GradientStop Color="sc#0.898841,0.863157,0.258183,0.008023" Offset="0.225" />
+            <GradientStop Color="sc#0.875173,0.863157,0.258183,0.008023" Offset="0.250" />
+            <GradientStop Color="sc#0.849061,0.863157,0.258183,0.008023" Offset="0.275" />
+            <GradientStop Color="sc#0.820532,0.863157,0.258183,0.008023" Offset="0.300" />
+            <GradientStop Color="sc#0.789624,0.863157,0.258183,0.008023" Offset="0.325" />
+            <GradientStop Color="sc#0.756387,0.863157,0.258183,0.008023" Offset="0.350" />
+            <GradientStop Color="sc#0.720887,0.863157,0.258183,0.008023" Offset="0.375" />
+            <GradientStop Color="sc#0.683210,0.863157,0.258183,0.008023" Offset="0.400" />
+            <GradientStop Color="sc#0.643467,0.863157,0.258183,0.008023" Offset="0.425" />
+            <GradientStop Color="sc#0.601796,0.863157,0.258183,0.008023" Offset="0.450" />
+            <GradientStop Color="sc#0.558373,0.863157,0.258183,0.008023" Offset="0.475" />
+            <GradientStop Color="sc#0.513417,0.863157,0.258183,0.008023" Offset="0.500" />
+            <GradientStop Color="sc#0.467199,0.863157,0.258183,0.008023" Offset="0.525" />
+            <GradientStop Color="sc#0.420049,0.863157,0.258183,0.008023" Offset="0.550" />
+            <GradientStop Color="sc#0.372372,0.863157,0.258183,0.008023" Offset="0.575" />
+            <GradientStop Color="sc#0.324652,0.863157,0.258183,0.008023" Offset="0.600" />
+            <GradientStop Color="sc#0.277468,0.863157,0.258183,0.008023" Offset="0.625" />
+            <GradientStop Color="sc#0.231494,0.863157,0.258183,0.008023" Offset="0.650" />
+            <GradientStop Color="sc#0.187507,0.863157,0.258183,0.008023" Offset="0.675" />
+            <GradientStop Color="sc#0.146377,0.863157,0.258183,0.008023" Offset="0.700" />
+            <GradientStop Color="sc#0.109036,0.863157,0.258183,0.008023" Offset="0.725" />
+            <GradientStop Color="sc#0.076426,0.863157,0.258183,0.008023" Offset="0.750" />
+            <GradientStop Color="sc#0.049399,0.863157,0.258183,0.008023" Offset="0.775" />
+            <GradientStop Color="sc#0.028566,0.863157,0.258183,0.008023" Offset="0.800" />
+            <GradientStop Color="sc#0.014091,0.863157,0.258183,0.008023" Offset="0.825" />
+            <GradientStop Color="sc#0.005477,0.863157,0.258183,0.008023" Offset="0.850" />
+            <GradientStop Color="sc#0.001454,0.863157,0.258183,0.008023" Offset="0.875" />
+            <GradientStop Color="sc#0.000198,0.863157,0.258183,0.008023" Offset="0.900" />
+            <GradientStop Color="sc#0.000007,0.863157,0.258183,0.008023" Offset="0.925" />
+            <GradientStop Color="sc#0.000000,0.863157,0.258183,0.008023" Offset="0.950" />
+            <GradientStop Color="sc#0.000000,0.863157,0.258183,0.008023" Offset="0.975" />
+            <GradientStop Color="sc#0.000000,0.863157,0.258183,0.008023" Offset="1.000" />
+        </RadialGradientBrush>
         <RadialGradientBrush x:Key="Bokeh.Near.Orange"
             ColorInterpolationMode="ScRgbLinearInterpolation" po:Freeze="True">
             <GradientStop Color="sc#1.000000,0.783538,0.184475,0.008568" Offset="0.00" />
@@ -230,43 +275,46 @@
         </Style>
     </UserControl.Resources>
     <Grid Background="{Binding Background, ElementName=Root}">
+        <!-- One cached, dithered surface stays below the animated bubble field. -->
+        <Grid x:Name="ContentBackdrop"
+            RenderOptions.BitmapScalingMode="NearestNeighbor" />
         <!-- Viewport anchors and local offsets keep the loose clusters together
              on resize without stretching circles or magnifying their drift. -->
         <Grid x:Name="BubbleField" SizeChanged="OnBubbleFieldSizeChanged">
             <Canvas x:Name="Bubbles">
                 <!-- Large, diffuse background disks; some extend beyond the viewport. -->
                 <Ellipse Width="650" Height="620"
-                    Fill="{StaticResource Bokeh.Distant.Orange}" Opacity="0.055" />
+                    Fill="{StaticResource Bokeh.Distant.Orange}" Opacity="0.0451" />
                 <Ellipse Width="620" Height="620"
                     Fill="{StaticResource Bokeh.Distant.Charcoal}" Opacity="0.115" />
                 <Ellipse Width="540" Height="590"
                     Fill="{StaticResource Bokeh.Distant.Charcoal}" Opacity="0.047" />
                 <Ellipse Width="490" Height="460"
-                    Fill="{StaticResource Bokeh.Distant.Amber}" Opacity="0.055" />
+                    Fill="{StaticResource Bokeh.Distant.Amber}" Opacity="0.0451" />
                 <Ellipse Width="430" Height="430"
                     Fill="{StaticResource Bokeh.Distant.Charcoal}" Opacity="0.080" />
                 <!-- Loose overlapping groups, plus a few quiet interior bubbles. -->
                 <Ellipse Width="270" Height="264"
-                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.170" />
+                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.1394" />
                 <Ellipse Width="196" Height="196"
                     Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.140" />
                 <Ellipse Width="320" Height="300"
                     Fill="{StaticResource Bokeh.Midground.Charcoal}" Opacity="0.120" />
                 <Ellipse Width="270" Height="260"
-                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.250" />
+                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.205" />
                 <Ellipse Width="230" Height="230"
                     Fill="{StaticResource Bokeh.Midground.Charcoal}" Opacity="0.170" />
                 <Ellipse Width="180" Height="180"
                     Fill="{StaticResource Bokeh.Midground.Amber}" Opacity="0.100" />
                 <Ellipse Width="235" Height="235"
-                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.120" />
+                    Fill="{StaticResource Bokeh.Midground.Orange}" Opacity="0.0984" />
                 <Ellipse Width="160" Height="160"
                     Fill="{StaticResource Bokeh.Midground.Charcoal}" Opacity="0.110" />
                 <Ellipse Width="150" Height="150"
                     Fill="{StaticResource Bokeh.Midground.Amber}" Opacity="0.060" />
                 <!-- Restrained foreground disks; faint accents blend into nearby clusters. -->
                 <Ellipse Width="128" Height="124"
-                    Fill="{StaticResource Bokeh.Near.Amber}" Opacity="0.340" />
+                    Fill="{StaticResource Bokeh.Near.SoftAmber}" Opacity="0.340" />
                 <Ellipse Width="86" Height="86"
                     Fill="{StaticResource Bokeh.Near.Orange}" Opacity="0.160" />
                 <Ellipse Width="96" Height="96"
