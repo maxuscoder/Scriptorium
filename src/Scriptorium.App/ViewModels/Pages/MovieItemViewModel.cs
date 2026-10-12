@@ -6,7 +6,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Presents an indexed movie in the library browser.
 /// </summary>
-public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard
+public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard, IMediaPlaybackCard
 {
     public MediaItem MediaItem => movie;
 
@@ -62,6 +62,17 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
         movie.IsFavorite = isFavorite;
         OnPropertyChanged(nameof(IsFavorite));
+    }
+
+    public void UpdatePlayback(MediaPlaybackState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        state.ApplyTo(MediaItem);
+        OnPropertyChanged(nameof(HasPlaybackProgress));
+        OnPropertyChanged(nameof(PlaybackProgressPercentage));
+        OnPropertyChanged(nameof(PlaybackProgressText));
+        OnPropertyChanged(nameof(CardMetadata));
+        OnPropertyChanged(nameof(Runtime));
     }
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(movie);

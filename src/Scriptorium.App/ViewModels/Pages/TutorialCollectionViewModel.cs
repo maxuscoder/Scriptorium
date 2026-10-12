@@ -9,6 +9,8 @@ public sealed class TutorialCollectionViewModel : ViewModelBase, IMediaThumbnail
     private readonly Course? _course;
     private readonly CourseLibrarySummary? _summary;
 
+    private CollectionPlaybackState? _playback;
+    internal void UpdatePlayback(CollectionPlaybackState state) => _playback = state;
     private string? _thumbnailPath;
     public Guid? ThumbnailMediaItemId { get; }
 
@@ -42,14 +44,14 @@ public sealed class TutorialCollectionViewModel : ViewModelBase, IMediaThumbnail
     public string CardMetadata => MediaCardMetadata.Join("Tutorial", LessonCount > 0 ? LessonCountText : null);
     public DateTimeOffset OldestImportDate => _summary?.OldestImportDate ?? _course!.Lessons.Select(lesson => lesson.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min();
     public DateTimeOffset NewestImportDate => _summary?.NewestImportDate ?? _course!.Lessons.Select(lesson => lesson.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
-    public DateTimeOffset? EarliestPlayback => _summary is { } summary
+    public DateTimeOffset? EarliestPlayback => _playback is { } playback ? playback.EarliestPlayback : _summary is { } summary
         ? summary.EarliestPlayback
         : _course!.Lessons.Select(lesson => lesson.MediaItem.LastPlayed).Where(value => value is not null).DefaultIfEmpty().Min();
-    public DateTimeOffset? LatestPlayback => _summary is { } summary
+    public DateTimeOffset? LatestPlayback => _playback is { } playback ? playback.LatestPlayback : _summary is { } summary
         ? summary.LatestPlayback
         : _course!.Lessons.Select(lesson => lesson.MediaItem.LastPlayed).Where(value => value is not null).DefaultIfEmpty().Max();
-    public double LowestPlaybackProgress => _summary?.LowestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Min();
-    public double HighestPlaybackProgress => _summary?.HighestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Max();
+    public double LowestPlaybackProgress => _playback?.LowestProgress ?? _summary?.LowestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Min();
+    public double HighestPlaybackProgress => _playback?.HighestProgress ?? _summary?.HighestPlaybackProgress ?? _course!.Lessons.Select(lesson => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem)).DefaultIfEmpty(0).Max();
     public bool HasFavorite => _summary?.HasFavorite ?? _course!.Lessons.Any(lesson => lesson.MediaItem.IsFavorite);
     public ICommand? CardActionCommand { get; init; }
     public ICommand? CardFavoriteCommand { get; init; }

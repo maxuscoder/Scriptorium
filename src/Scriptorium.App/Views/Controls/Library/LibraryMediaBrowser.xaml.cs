@@ -19,7 +19,7 @@ public partial class LibraryMediaBrowser : UserControl
 
     private void OnBrowserScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (DataContext is not LibraryPageViewModel viewModel || e.OriginalSource is not ScrollViewer scrollViewer)
+        if (!IsVisible || DataContext is not LibraryPageViewModel viewModel || e.OriginalSource is not ScrollViewer scrollViewer)
         {
             return;
         }
@@ -40,7 +40,7 @@ public partial class LibraryMediaBrowser : UserControl
 
     private void UpdateBrowserWidth(double width)
     {
-        if (DataContext is LibraryPageViewModel viewModel)
+        if (IsVisible && width > 0 && DataContext is LibraryPageViewModel viewModel)
         {
             var margin = (Thickness)FindResource("MediaCard.Margin");
             var cardWidth = (double)FindResource("MediaCard.Width");

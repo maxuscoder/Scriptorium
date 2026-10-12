@@ -8,7 +8,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed partial class LibraryPageViewModel
 {
     private readonly ConcurrentDictionary<Guid, byte> _pendingThumbnailIds = new();
-    private readonly Dispatcher _thumbnailDispatcher = Dispatcher.CurrentDispatcher;
+    private readonly Dispatcher _libraryDispatcher = Dispatcher.CurrentDispatcher;
 
     /// <summary>Prioritizes cards actually realized by the browser, including collection cover media.</summary>
     public void PrioritizeBrowserRow(LibraryBrowserCardsRow row) =>
@@ -17,7 +17,7 @@ public sealed partial class LibraryPageViewModel
 
     private void OnThumbnailChanged(Guid mediaItemId)
     {
-        if (_disposed || _thumbnailDispatcher.HasShutdownStarted) return;
+        if (_disposed || _libraryDispatcher.HasShutdownStarted) return;
         _pendingThumbnailIds[mediaItemId] = 0;
         ScheduleThumbnailUpdates();
     }
@@ -25,7 +25,7 @@ public sealed partial class LibraryPageViewModel
     private void ScheduleThumbnailUpdates()
     {
         if (Interlocked.Exchange(ref _isThumbnailRefreshQueued, 1) != 0) return;
-        _thumbnailDispatcher.BeginInvoke(DispatcherPriority.Background,
+        _libraryDispatcher.BeginInvoke(DispatcherPriority.Background,
             new Action(() => _ = ApplyThumbnailUpdatesAsync()));
     }
 

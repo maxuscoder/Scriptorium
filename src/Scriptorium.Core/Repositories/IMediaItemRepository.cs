@@ -7,6 +7,16 @@ namespace Scriptorium.Core.Repositories;
 /// </summary>
 public interface IMediaItemRepository : IRepository<MediaItem>
 {
+    /// <summary>Reads playback fields for a bounded batch of changed media.</summary>
+    async Task<IReadOnlyList<MediaPlaybackState>> GetPlaybackStatesAsync(IEnumerable<Guid> mediaItemIds,
+        CancellationToken cancellationToken = default)
+    {
+        var states = new List<MediaPlaybackState>();
+        foreach (var id in mediaItemIds.Distinct())
+            if (await GetByIdAsync(id, cancellationToken) is { } item) states.Add(MediaPlaybackState.From(item));
+        return states;
+    }
+
     /// <summary>Reads only artwork fields for a bounded batch of changed media.</summary>
     Task<IReadOnlyList<MediaThumbnailState>> GetThumbnailStatesAsync(IEnumerable<Guid> mediaItemIds,
         CancellationToken cancellationToken = default);

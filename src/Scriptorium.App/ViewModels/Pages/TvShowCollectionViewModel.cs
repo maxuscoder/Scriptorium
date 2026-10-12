@@ -9,6 +9,8 @@ public sealed class TvShowCollectionViewModel : ViewModelBase, IMediaThumbnailCa
     private readonly TVShow? _show;
     private readonly TvShowLibrarySummary? _summary;
 
+    private CollectionPlaybackState? _playback;
+    internal void UpdatePlayback(CollectionPlaybackState state) => _playback = state;
     private string? _thumbnailPath;
     public Guid? ThumbnailMediaItemId { get; }
 
@@ -44,14 +46,14 @@ public sealed class TvShowCollectionViewModel : ViewModelBase, IMediaThumbnailCa
         EpisodeCount > 0 ? $"{EpisodeCount} episode{(EpisodeCount == 1 ? "" : "s")}" : null);
     public DateTimeOffset OldestImportDate => _summary?.OldestImportDate ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Min();
     public DateTimeOffset NewestImportDate => _summary?.NewestImportDate ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.DateAdded).DefaultIfEmpty(DateTimeOffset.MinValue).Max();
-    public DateTimeOffset? EarliestPlayback => _summary is { } summary
+    public DateTimeOffset? EarliestPlayback => _playback is { } playback ? playback.EarliestPlayback : _summary is { } summary
         ? summary.EarliestPlayback
         : _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.LastPlayed).Where(value => value is not null).DefaultIfEmpty().Min();
-    public DateTimeOffset? LatestPlayback => _summary is { } summary
+    public DateTimeOffset? LatestPlayback => _playback is { } playback ? playback.LatestPlayback : _summary is { } summary
         ? summary.LatestPlayback
         : _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItem.LastPlayed).Where(value => value is not null).DefaultIfEmpty().Max();
-    public double LowestPlaybackProgress => _summary?.LowestPlaybackProgress ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => MediaPlaybackProgress.ProgressPercentage(episode.MediaItem)).DefaultIfEmpty(0).Min();
-    public double HighestPlaybackProgress => _summary?.HighestPlaybackProgress ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => MediaPlaybackProgress.ProgressPercentage(episode.MediaItem)).DefaultIfEmpty(0).Max();
+    public double LowestPlaybackProgress => _playback?.LowestProgress ?? _summary?.LowestPlaybackProgress ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => MediaPlaybackProgress.ProgressPercentage(episode.MediaItem)).DefaultIfEmpty(0).Min();
+    public double HighestPlaybackProgress => _playback?.HighestProgress ?? _summary?.HighestPlaybackProgress ?? _show!.Seasons.SelectMany(season => season.Episodes).Select(episode => MediaPlaybackProgress.ProgressPercentage(episode.MediaItem)).DefaultIfEmpty(0).Max();
     public bool HasFavorite => _summary?.HasFavorite ?? _show!.Seasons.SelectMany(season => season.Episodes).Any(episode => episode.MediaItem.IsFavorite);
     public string CollectionInfo => $"{SeasonCount} season{(SeasonCount == 1 ? string.Empty : "s")} · {EpisodeCount} episode{(EpisodeCount == 1 ? string.Empty : "s")}";
     public ICommand? CardActionCommand { get; init; }

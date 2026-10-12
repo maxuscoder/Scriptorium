@@ -46,7 +46,7 @@ internal static class ShellResourceChecks
             window.Show();
             await StaTest.DrainDispatcherAsync();
             var sidebar = Assert.IsType<Sidebar>(window.FindName("SidebarNavigation"));
-            var host = Descendants<ContentControl>(window).Single(control => BindingOperations.GetBinding(control, ContentControl.ContentProperty)?.Path.Path == "CurrentPage");
+            var host = Descendants<PageHost>(window).Single(control => BindingOperations.GetBinding(control, PageHost.ContentProperty)?.Path.Path == "CurrentPage");
             var ambient = Assert.IsType<AmbientBokehBackground>(window.FindName("AmbientBackground"));
             var pageLayer = Assert.IsType<Grid>(host.Parent);
             Assert.Same(ambient, pageLayer.Children[0]);

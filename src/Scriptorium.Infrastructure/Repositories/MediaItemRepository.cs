@@ -747,6 +747,18 @@ public sealed class MediaItemRepository(
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MediaPlaybackState>> GetPlaybackStatesAsync(IEnumerable<Guid> mediaItemIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = mediaItemIds.Distinct().ToArray();
+        if (ids.Length == 0) return [];
+        await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.MediaItems.AsNoTracking().Where(item => ids.Contains(item.Id))
+            .Select(item => new MediaPlaybackState(item.Id, item.MediaType, item.PlaybackPositionSeconds,
+                item.RuntimeSeconds, item.IsCompleted, item.LastPlayed, item.LastPlayedUnixTimeMilliseconds))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<MediaThumbnailState>> GetThumbnailStatesAsync(IEnumerable<Guid> mediaItemIds,
         CancellationToken cancellationToken = default)
     {

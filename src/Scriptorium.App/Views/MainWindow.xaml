@@ -17,7 +17,7 @@
         <controls:Sidebar x:Name="SidebarNavigation" />
         <Grid Grid.Column="1" ClipToBounds="True">
             <controls:AmbientBokehBackground x:Name="AmbientBackground" />
-            <ContentControl MinWidth="0" MinHeight="0" Content="{Binding CurrentPage}" />
+            <controls:PageHost MinWidth="0" MinHeight="0" Content="{Binding CurrentPage}" />
         </Grid>
         <controls:NotificationCenter Grid.ColumnSpan="2" HorizontalAlignment="Right"
             VerticalAlignment="Top" Margin="{StaticResource Spacing.M}"

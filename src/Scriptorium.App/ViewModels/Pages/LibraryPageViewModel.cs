@@ -326,6 +326,8 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
         _browserQueryCancellationSource?.Cancel();
         _browserQueryCancellationSource?.Dispose();
         _browserQueryCancellationSource = null;
+        _pendingPlaybackIds.Clear();
+        _pendingThumbnailIds.Clear();
         _loadedBrowserMediaItems.Clear();
         CategoryFilters.Clear();
         Tutorials.Clear();
@@ -1456,38 +1458,6 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
     {
         RestoreDefaultPreferences();
         await RefreshLibraryDataAsync();
-    }
-
-    private void OnPlaybackProgressSaved(Guid mediaItemId)
-    {
-        if (Interlocked.Exchange(ref _isPlaybackRefreshQueued, 1) != 0)
-        {
-            return;
-        }
-
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            _ = dispatcher.InvokeAsync(RefreshAfterPlaybackAsync);
-            return;
-        }
-
-        _ = RefreshAfterPlaybackAsync();
-    }
-
-    private async Task RefreshAfterPlaybackAsync()
-    {
-        try
-        {
-            if (!IsScanning)
-            {
-                await RefreshLibraryDataAsync();
-            }
-        }
-        finally
-        {
-            Volatile.Write(ref _isPlaybackRefreshQueued, 0);
-        }
     }
 
     private void OnFavoriteChanged(Guid mediaItemId)
