@@ -38,11 +38,14 @@ internal static class LibraryResourceChecks
             null, [Path.Combine(location.DirectoryPath, "library.db")], null)!;
         using var logger = new Serilog.LoggerConfiguration().CreateLogger();
         var scanner = new RecordingScanner();
+        var confirmation = new AcceptingConfirmationDialog();
+        var reset = new RecordingApplicationReset();
         var importer = new RecordingImporter(location.DirectoryPath);
         using var services = new ServiceCollection().AddScriptoriumApplication(new ConfigurationBuilder().Build(), location, location, database, logger)
             .AddSingleton<IMediaScannerService>(scanner)
             .AddSingleton<IImportFolderDialog>(importer)
-            .AddSingleton<IConfirmationDialog, AcceptingConfirmationDialog>()
+            .AddSingleton<IConfirmationDialog>(confirmation)
+            .AddSingleton<IApplicationResetService>(reset)
             .BuildServiceProvider();
         var factory = services.GetRequiredService<IDbContextFactory<ScriptoriumDbContext>>();
         await using (var db = await factory.CreateDbContextAsync()) await db.Database.MigrateAsync();
@@ -284,6 +287,7 @@ internal static class LibraryResourceChecks
             window.Width = 1200;
             await StaTest.DrainDispatcherAsync();
 
+            Assert.Same(settingsViewModel.ClearAllDataCommand, ((Button)settingsPage.FindName("ClearAllDataButton")).Command);
             Assert.Same(settingsViewModel.ResetSettingsCommand, ((Button)settingsPage.FindName("ResetSettingsButton")).Command);
             Assert.Same(settingsViewModel.ClearThumbnailCacheCommand, ((Button)settingsPage.FindName("ClearThumbnailCacheButton")).Command);
             Assert.Equal("Export", ((Button)settingsPage.FindName("ExportSettingsButton")).Content);
@@ -338,7 +342,8 @@ internal static class LibraryResourceChecks
             foreach (var control in new Control[] { resumeToggle, completion, volume, speed,
                          (Button)settingsPage.FindName("ExportSettingsButton"),
                          (Button)settingsPage.FindName("ImportSettingsButton"),
-                         (Button)settingsPage.FindName("ResetSettingsButton") })
+                         (Button)settingsPage.FindName("ResetSettingsButton"),
+                         (Button)settingsPage.FindName("ClearAllDataButton") })
             {
                 Assert.True(control.IsTabStop);
                 VerifyKeyboardFocusVisual(control);
@@ -384,6 +389,23 @@ internal static class LibraryResourceChecks
             Assert.Equal(1, settingsViewModel.PlaybackSpeed);
             Assert.False(settingsViewModel.StartFullscreenOnPlayback);
             Assert.Equal("Home", settingsViewModel.StartupPage);
+            confirmation.Accept = false;
+            await settingsViewModel.ClearAllDataCommand.ExecuteAsync();
+            Assert.Equal(0, reset.Calls);
+            Assert.Equal("Clear all app data", confirmation.LastTitle);
+            Assert.Contains("original media files will not be deleted", confirmation.LastMessage);
+            confirmation.Accept = true;
+            var clearing = settingsViewModel.ClearAllDataCommand.ExecuteAsync();
+            Assert.False(settingsViewModel.ClearAllDataCommand.CanExecute(null));
+            await settingsViewModel.ClearAllDataCommand.ExecuteAsync();
+            Assert.Equal(1, reset.Calls);
+            reset.Complete.SetResult();
+            await clearing;
+            Assert.True(settingsViewModel.ClearAllDataCommand.CanExecute(null));
+            reset.Fail = true;
+            await settingsViewModel.ClearAllDataCommand.ExecuteAsync();
+            Assert.Contains(services.GetRequiredService<INotificationService>().Items,
+                item => item.Message == "App data could not be cleared. Try again.");
             Assert.True(settingsViewModel.ClearThumbnailCacheCommand.CanExecute(null));
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
@@ -735,7 +757,26 @@ internal static class LibraryResourceChecks
     }
     private sealed class AcceptingConfirmationDialog : IConfirmationDialog
     {
-        public bool Confirm(string message, string title) => true;
+        public bool Accept { get; set; } = true;
+        public string LastTitle { get; private set; } = string.Empty;
+        public string LastMessage { get; private set; } = string.Empty;
+        public bool Confirm(string message, string title)
+        {
+            LastTitle = title;
+            LastMessage = message;
+            return Accept;
+        }
+    }
+    private sealed class RecordingApplicationReset : IApplicationResetService
+    {
+        public int Calls { get; private set; }
+        public bool Fail { get; set; }
+        public TaskCompletionSource Complete { get; } = new();
+        public Task ResetAndRestartAsync()
+        {
+            Calls++;
+            return Fail ? Task.FromException(new IOException("Restart failed")) : Complete.Task;
+        }
     }
     private sealed class RecordingScanner : IMediaScannerService
     {

@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddLogging(logging => logging.AddSerilog(logger, dispose: false));
         services.AddScriptoriumInfrastructure(databaseLocation.ConnectionString);
 
+        services.AddSingleton<IApplicationResetService>(_ => ApplicationResetService.CreateDefault());
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
         services.AddSingleton<INotificationService, NotificationService>();

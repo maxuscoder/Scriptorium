@@ -30,8 +30,14 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var applyingReset = true;
         try
         {
+            // Reset before opening logs, SQLite, settings or starting any background work.
+            var applicationReset = ApplicationResetService.CreateDefault();
+            await applicationReset.ApplyPendingResetAsync();
+            applyingReset = false;
+
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: false)
@@ -54,6 +60,7 @@ public partial class App : Application
                 settingsFileLocation,
                 databaseLocation,
                 Log.Logger);
+            services.AddSingleton<IApplicationResetService>(applicationReset);
 
             _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
             {
@@ -94,7 +101,9 @@ public partial class App : Application
         {
             Log.Fatal(exception, "Scriptorium failed during startup.");
             MessageBox.Show(
-                "Scriptorium could not start. Details have been written to the application log.",
+                applyingReset
+                    ? $"Scriptorium could not finish clearing its app data. Close other Scriptorium instances and reopen the app to retry. {exception.Message}"
+                    : "Scriptorium could not start. Details have been written to the application log.",
                 "Scriptorium",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);

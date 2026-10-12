@@ -243,6 +243,18 @@
                 </StackPanel>
             </Border>
 
+            <TextBlock Style="{StaticResource Settings.SectionHeading}" Text="Start fresh" />
+            <Border Style="{StaticResource Settings.Group}">
+                <Grid Style="{StaticResource Settings.Row}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Clear all app data" />
+                        <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Remove indexed folders, library, categories, favorites, history, settings and caches. The app will restart as a fresh install. Your original media files are kept." />
+                    </StackPanel>
+                    <Button x:Name="ClearAllDataButton" Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Command="{Binding ClearAllDataCommand}" Content="Clear all data" Style="{StaticResource Settings.DestructiveAction}" AutomationProperties.Name="Clear all app data" />
+                </Grid>
+            </Border>
+
             <TextBlock Style="{StaticResource Settings.SectionHeading}" Text="Cache" />
             <Border Style="{StaticResource Settings.Group}">
                 <Grid Style="{StaticResource Settings.Row}">

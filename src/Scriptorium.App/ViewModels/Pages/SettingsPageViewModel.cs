@@ -15,6 +15,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     private readonly IConfirmationDialog _confirmationDialog;
     private readonly IApplicationInfoService _applicationInfo;
     private readonly DatabaseLocation _databaseLocation;
+    private readonly IApplicationResetService _applicationResetService;
     private long _thumbnailCacheSizeBytes;
     private bool _isClearingThumbnailCache;
     private string _libraryLayout;
@@ -39,6 +40,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         IConfirmationDialog confirmationDialog,
         IApplicationInfoService applicationInfo,
         DatabaseLocation databaseLocation,
+        IApplicationResetService applicationResetService,
         INotificationService? notifications = null)
     {
         _settingsService = settingsService;
@@ -48,6 +50,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         _confirmationDialog = confirmationDialog;
         _applicationInfo = applicationInfo;
         _databaseLocation = databaseLocation;
+        _applicationResetService = applicationResetService;
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
             ? sortOrder
@@ -69,6 +72,7 @@ public sealed class SettingsPageViewModel : PageViewModel
             ClearThumbnailCacheAsync,
             () => !IsClearingThumbnailCache);
         ResetSettingsCommand = new AsyncRelayCommand(ResetSettingsAsync);
+        ClearAllDataCommand = new AsyncRelayCommand(ClearAllDataAsync);
     }
 
     public override string Title => "Settings";
@@ -94,6 +98,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public AsyncRelayCommand ClearThumbnailCacheCommand { get; }
 
     public AsyncRelayCommand ResetSettingsCommand { get; }
+
+    public AsyncRelayCommand ClearAllDataCommand { get; }
 
     public long ThumbnailCacheSizeBytes
     {
@@ -366,6 +372,25 @@ public sealed class SettingsPageViewModel : PageViewModel
         finally
         {
             IsClearingThumbnailCache = false;
+        }
+    }
+
+    private async Task ClearAllDataAsync()
+    {
+        if (!_confirmationDialog.Confirm(
+                "Permanently clear all Scriptorium app data? This removes indexed folders, your library, categories, favorites, playback history, settings and cached thumbnails. Your original media files will not be deleted. Scriptorium will restart with an empty library and default settings. This cannot be undone.",
+                "Clear all app data"))
+        {
+            return;
+        }
+
+        try
+        {
+            await _applicationResetService.ResetAndRestartAsync();
+        }
+        catch (Exception exception)
+        {
+            _notifications?.Report(exception, "App data could not be cleared. Try again.", NotificationSeverity.Warning);
         }
     }
 
