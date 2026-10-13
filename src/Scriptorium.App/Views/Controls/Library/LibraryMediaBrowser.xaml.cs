@@ -35,9 +35,6 @@ public partial class LibraryMediaBrowser : UserControl
         }
 
         _scrollViewer = scrollViewer;
-        if (scrollViewer.VerticalOffset > 1 &&
-            (!_showScrollToTop || e.ViewportWidthChange != 0 || e.ExtentWidthChange != 0 || e.ExtentHeightChange != 0))
-            UpdateScrollToTopAlignment();
         UpdateScrollToTopButton(scrollViewer.VerticalOffset > (_showScrollToTop ? 1 : 48));
         if (!IsVisible || DataContext is not LibraryPageViewModel viewModel) return;
 
@@ -51,22 +48,6 @@ public partial class LibraryMediaBrowser : UserControl
     private void OnScrollToTop(object sender, RoutedEventArgs e)
     {
         if (_scrollViewer is not null) SmoothScrollBehavior.ScrollToTop(_scrollViewer);
-    }
-
-    private void UpdateScrollToTopAlignment()
-    {
-        if (DataContext is not LibraryPageViewModel viewModel || BrowserList.ActualWidth <= 0) return;
-
-        var inset = BrowserList.Padding;
-        var cardMargin = (Thickness)FindResource("MediaCard.Margin");
-        var rightEdge = viewModel.IsListLayout
-            ? BrowserList.ActualWidth - SystemParameters.VerticalScrollBarWidth - inset.Right - cardMargin.Right
-            : inset.Left + viewModel.BrowserRows.OfType<LibraryBrowserCardsRow>()
-                .Select(row => row.Count).DefaultIfEmpty(1).Max() *
-                (viewModel.BrowserCardWidth + cardMargin.Left + cardMargin.Right) - cardMargin.Right;
-        var margin = ScrollToTopButton.Margin;
-        ScrollToTopButton.Margin = new Thickness(margin.Left, margin.Top,
-            Math.Max(0, BrowserList.ActualWidth - rightEdge), margin.Bottom);
     }
 
     private void UpdateScrollToTopButton(bool show)
@@ -121,7 +102,6 @@ public partial class LibraryMediaBrowser : UserControl
             var inset = (Thickness)FindResource("Library.BrowserInset");
             viewModel.UpdateBrowserWidth(Math.Max(1, width - SystemParameters.VerticalScrollBarWidth - inset.Left - inset.Right),
                 (double)FindResource("Library.CardMinimumWidth"), cardWidth, margin.Left + margin.Right);
-            UpdateScrollToTopAlignment();
         }
     }
 }
