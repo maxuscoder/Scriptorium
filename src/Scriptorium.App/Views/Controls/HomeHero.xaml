@@ -1,11 +1,11 @@
-﻿<UserControl x:Class="Scriptorium.App.Views.Controls.HomeHero" x:Name="Root"
+<UserControl x:Class="Scriptorium.App.Views.Controls.HomeHero" x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
     Loaded="OnLoaded" Unloaded="OnUnloaded">
     <UserControl.Resources>
         <Style x:Key="Hero.Copy" TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
-            <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True">
+            <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True">
                 <Setter Property="Foreground" Value="{StaticResource Home.Hero.TextSecondary}" />
             </DataTrigger></Style.Triggers>
         </Style>
@@ -71,7 +71,7 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="Hero.More" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <Style x:Key="Hero.Icon" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
             <Setter Property="Width" Value="36" />
             <Setter Property="Height" Value="36" />
             <Setter Property="Padding" Value="0" />
@@ -119,83 +119,117 @@
     </UserControl.Resources>
     <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.SurfaceHeader}">
         <Grid.Style><Style TargetType="Grid">
-            <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True">
+            <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True">
                 <Setter Property="MinHeight" Value="{DynamicResource Home.Hero.Height}" />
             </DataTrigger></Style.Triggers>
         </Style></Grid.Style>
-        <Grid x:Name="ArtworkLayer">
-            <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" />
-                <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-            </Style></Grid.Style>
-            <!-- An ImageBrush does not let the image's natural aspect ratio enlarge the hero. -->
-            <Border><Border.Background><ImageBrush ImageSource="{Binding Artwork, ElementName=Root}" Stretch="UniformToFill" AlignmentX="Right" /></Border.Background></Border>
-            <Border Background="{StaticResource Home.Hero.Shade}" />
-            <Border Background="{StaticResource Home.Hero.Fade}" />
-        </Grid>
-        <Grid Margin="{StaticResource Home.Hero.Padding}">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel MaxWidth="{StaticResource Home.Hero.TextWidth}" HorizontalAlignment="Left" VerticalAlignment="Bottom">
-                <TextBlock Text="{Binding Eyebrow, ElementName=Root}" Style="{StaticResource Hero.Eyebrow}" />
-                <TextBlock Text="{Binding HeroTitle, ElementName=Root}" TextWrapping="Wrap" Margin="{StaticResource Home.Copy.Gap}">
-                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">
-                        <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDark}" /></DataTrigger></Style.Triggers>
-                    </Style></TextBlock.Style>
-                </TextBlock>
-                <TextBlock Text="{Binding HeroMetadata, ElementName=Root}" Style="{StaticResource Hero.Copy}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
-                <TextBlock Text="{Binding PositionText, ElementName=Root}" FontSize="{StaticResource FontSize.Metadata}" Margin="{StaticResource Home.Copy.Gap}">
-                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Hero.Copy}">
-                        <Style.Triggers><DataTrigger Binding="{Binding PositionText, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
-                    </Style></TextBlock.Style>
-                </TextBlock>
-                <ProgressBar x:Name="Progress" Width="{StaticResource Home.Hero.ProgressWidth}" HorizontalAlignment="Left" Margin="{StaticResource Home.Copy.Gap}">
-                    <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource Hero.Progress}">
-                        <Setter Property="Visibility" Value="Collapsed" />
-                        <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-                    </Style></ProgressBar.Style>
-                </ProgressBar>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}">
-                    <Button x:Name="ContinueButton" Style="{StaticResource Hero.ActionPrimary}"
-                        Command="{Binding OpenCommand, ElementName=Root}"
-                        ToolTip="Open the player using your saved playback preferences">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Width="13.33" Height="13.33"
-                                  Margin="0,0,5.33,0" Data="M8,5.14V19.14L19,12.14L8,5.14Z"
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
-                            <TextBlock Text="{Binding ActionText, ElementName=Root}" VerticalAlignment="Center" />
-                        </StackPanel>
+        <Grid x:Name="Overlay">
+            <Grid x:Name="ArtworkLayer">
+                <Grid.Style><Style TargetType="Grid"><Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                </Style></Grid.Style>
+                <!-- An ImageBrush does not let the image's natural aspect ratio enlarge the hero. -->
+                <Border x:Name="ThumbnailBackdrop">
+                    <Border.Style><Style TargetType="Border">
+                        <Style.Triggers><DataTrigger Binding="{Binding Preview.HasPreview, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    </Style></Border.Style>
+                    <Border.Background><ImageBrush ImageSource="{Binding Artwork, ElementName=Root}" Stretch="UniformToFill" AlignmentX="Right" /></Border.Background>
+                </Border>
+                <Border Background="{StaticResource Home.Hero.Shade}" />
+                <Border Background="{StaticResource Home.Hero.Fade}" />
+            </Grid>
+            <Grid Margin="{StaticResource Home.Hero.Padding}">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel MaxWidth="{StaticResource Home.Hero.TextWidth}" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+                    <TextBlock Text="{Binding Eyebrow, ElementName=Root}" Style="{StaticResource Hero.Eyebrow}" />
+                    <TextBlock Text="{Binding HeroTitle, ElementName=Root}" TextWrapping="Wrap" Margin="{StaticResource Home.Copy.Gap}">
+                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">
+                            <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDark}" /></DataTrigger></Style.Triggers>
+                        </Style></TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding HeroMetadata, ElementName=Root}" Style="{StaticResource Hero.Copy}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding PositionText, ElementName=Root}" FontSize="{StaticResource FontSize.Metadata}" Margin="{StaticResource Home.Copy.Gap}">
+                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Hero.Copy}">
+                            <Style.Triggers><DataTrigger Binding="{Binding PositionText, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                        </Style></TextBlock.Style>
+                    </TextBlock>
+                    <ProgressBar x:Name="Progress" Width="{StaticResource Home.Hero.ProgressWidth}" HorizontalAlignment="Left" Margin="{StaticResource Home.Copy.Gap}">
+                        <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource Hero.Progress}">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                        </Style></ProgressBar.Style>
+                    </ProgressBar>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}">
+                        <Button x:Name="ContinueButton" Style="{StaticResource Hero.ActionPrimary}"
+                            Command="{Binding OpenCommand, ElementName=Root}"
+                            ToolTip="Open the player using your saved playback preferences">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Width="13.33" Height="13.33"
+                                      Margin="0,0,5.33,0" Data="M8,5.14V19.14L19,12.14L8,5.14Z"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform" />
+                                <TextBlock Text="{Binding ActionText, ElementName=Root}" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="DetailsButton" Margin="16,0,0,0" Style="{StaticResource Hero.ActionSecondary}"
+                            Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding Media, ElementName=Root}"
+                            ToolTip="Open details">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Width="16" Height="16" Margin="0,0,5.33,0"
+                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform">
+                                    <Path.Data>
+                                        <PathGeometry FillRule="EvenOdd"
+                                            Figures="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 Z M12,4 A8,8 0 1 1 12,20 A8,8 0 1 1 12,4 Z M11,10 H13 V17 H11 Z M11,7 H13 V9 H11 Z" />
+                                    </Path.Data>
+                                </Path>
+                                <TextBlock Text="Details" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="FavoriteButton" Grid.Column="1" Style="{StaticResource Hero.Icon}" VerticalAlignment="Top"
+                        Command="{Binding FavoriteCommand, ElementName=Root}" CommandParameter="{Binding Media, ElementName=Root}"
+                        SizeChanged="OnIconSizeChanged" ToolTip="{Binding FavoriteText, ElementName=Root}" AutomationProperties.Name="{Binding FavoriteText, ElementName=Root}">
+                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" FontSize="18">
+                        <TextBlock.Style><Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="&#xEB51;" />
+                            <Style.Triggers><DataTrigger Binding="{Binding Media.IsFavorite, ElementName=Root}" Value="True">
+                                <Setter Property="Text" Value="&#xEB52;" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                            </DataTrigger></Style.Triggers>
+                        </Style></TextBlock.Style>
+                    </TextBlock>
+                </Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                    <Button x:Name="PausePreviewButton" Style="{StaticResource Hero.Icon}" Margin="0,0,8,0"
+                            Command="{Binding Preview.TogglePlaybackCommand, ElementName=Root}" IsEnabled="{Binding Preview.HasPreview, ElementName=Root, FallbackValue=False}"
+                            SizeChanged="OnIconSizeChanged" ToolTip="{Binding Preview.PlaybackActionText, ElementName=Root}" AutomationProperties.Name="{Binding Preview.PlaybackActionText, ElementName=Root}">
+                        <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" FontSize="16">
+                            <TextBlock.Style><Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE768;" />
+                                <Style.Triggers><DataTrigger Binding="{Binding Preview.IsPlaying, ElementName=Root}" Value="True"><Setter Property="Text" Value="&#xE769;" /></DataTrigger></Style.Triggers>
+                            </Style></TextBlock.Style>
+                        </TextBlock>
                     </Button>
-                    <Button x:Name="DetailsButton" Margin="16,0,0,0" Style="{StaticResource Hero.ActionSecondary}"
-                        Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding Media, ElementName=Root}"
-                        ToolTip="Open details">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Width="16" Height="16" Margin="0,0,5.33,0"
-                                  Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" Stretch="Uniform">
-                                <Path.Data>
-                                    <PathGeometry FillRule="EvenOdd"
-                                        Figures="M12,2 A10,10 0 1 0 12,22 A10,10 0 1 0 12,2 Z M12,4 A8,8 0 1 1 12,20 A8,8 0 1 1 12,4 Z M11,10 H13 V17 H11 Z M11,7 H13 V9 H11 Z" />
-                                </Path.Data>
-                            </Path>
-                            <TextBlock Text="Details" VerticalAlignment="Center" />
-                        </StackPanel>
+                    <Button x:Name="MutePreviewButton" Style="{StaticResource Hero.Icon}"
+                            Command="{Binding Preview.ToggleMuteCommand, ElementName=Root}" IsEnabled="{Binding Preview.HasPreview, ElementName=Root, FallbackValue=False}"
+                            SizeChanged="OnIconSizeChanged" ToolTip="{Binding Preview.MuteActionText, ElementName=Root}" AutomationProperties.Name="{Binding Preview.MuteActionText, ElementName=Root}">
+                        <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" FontSize="16">
+                            <TextBlock.Style><Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE74F;" />
+                                <Style.Triggers><DataTrigger Binding="{Binding Preview.IsMuted, ElementName=Root}" Value="False"><Setter Property="Text" Value="&#xE767;" /></DataTrigger></Style.Triggers>
+                            </Style></TextBlock.Style>
+                        </TextBlock>
                     </Button>
                 </StackPanel>
-            </StackPanel>
-            <Button x:Name="More" Grid.Column="1" Style="{StaticResource Hero.More}" VerticalAlignment="Top" Click="OnMore" SizeChanged="OnMoreSizeChanged" ToolTip="More actions" AutomationProperties.Name="More actions">
-                <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" FontSize="24" Text="&#xE712;" />
-                <Button.ContextMenu>
-                    <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-                        <MenuItem Header="Open player" Command="{Binding OpenCommand}" CommandParameter="{Binding Media}" />
-                        <MenuItem Header="{Binding FavoriteText}" Command="{Binding FavoriteCommand}" CommandParameter="{Binding Media}">
-                            <MenuItem.Style><Style TargetType="MenuItem" BasedOn="{StaticResource Menu.Item}">
-                                <Style.Triggers><DataTrigger Binding="{Binding FavoriteCommand}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
-                            </Style></MenuItem.Style>
-                        </MenuItem>
-                    </ContextMenu>
-                </Button.ContextMenu>
-            </Button>
+            </Grid>
+            <Border BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" CornerRadius="{StaticResource Radius.Card}"
+                    IsHitTestVisible="False" />
+            <Border IsHitTestVisible="False">
+                <Border.Background><DrawingBrush Stretch="Fill"><DrawingBrush.Drawing>
+                    <GeometryDrawing x:Name="CornerMaskDrawing" Brush="{DynamicResource Brush.Background}" />
+                </DrawingBrush.Drawing></DrawingBrush></Border.Background>
+            </Border>
         </Grid>
-        <Border BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" CornerRadius="{StaticResource Radius.Card}"
-                IsHitTestVisible="False" />
     </Grid>
 </UserControl>
 

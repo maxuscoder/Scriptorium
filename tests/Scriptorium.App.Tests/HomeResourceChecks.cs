@@ -219,12 +219,19 @@ internal static class HomeResourceChecks
             Assert.Equal(media[1].Id, home.Hero!.MediaItemId);
             await StaTest.DrainDispatcherAsync();
             Assert.Same(home.Hero, continueButton.CommandParameter);
-            var more = (Button)hero.FindName("More");
-            typeof(Button).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(more, null);
+            var favoriteButton = (Button)hero.FindName("FavoriteButton");
+            Assert.Null(favoriteButton.ContextMenu);
+            Assert.Same(home.ToggleFavoriteCommand, favoriteButton.Command);
+            Assert.Same(home.Hero, favoriteButton.CommandParameter);
+            var wasFavorite = home.Hero!.IsFavorite;
+            await ((AsyncRelayCommand)favoriteButton.Command).ExecuteAsync(favoriteButton.CommandParameter);
+            await home.RefreshAsync();
             await StaTest.DrainDispatcherAsync();
-            Assert.True(more.ContextMenu.IsOpen);
-            foreach (var action in more.ContextMenu.Items.Cast<MenuItem>()) Assert.Same(home.Hero, action.CommandParameter);
-            more.ContextMenu.IsOpen = false;
+            Assert.Equal(!wasFavorite, (await repository.GetByIdAsync(home.Hero!.MediaItemId))!.IsFavorite);
+            Assert.Equal(!wasFavorite ? "Remove from favorites" : "Add to favorites", hero.FavoriteText);
+            Assert.Same(home.Hero, favoriteButton.CommandParameter);
+            Assert.False(((Button)hero.FindName("PausePreviewButton")).IsEnabled);
+            Assert.False(((Button)hero.FindName("MutePreviewButton")).IsEnabled);
 
             // Match the single-resumable-item Home layout: Recently added follows the hero.
             foreach (var item in media.Skip(2).Take(2)) await playback.SetCompletionAsync(item.Id, true);
@@ -257,8 +264,7 @@ internal static class HomeResourceChecks
             {
                 if (visit == 0)
                 {
-                    more.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                    Assert.True(more.ContextMenu.IsOpen);
+                    Assert.Null(favoriteButton.ContextMenu);
                 }
                 else
                 {
@@ -268,7 +274,6 @@ internal static class HomeResourceChecks
                 }
                 host.Content = new DetailPage();
                 await StaTest.DrainDispatcherAsync();
-                Assert.False(more.ContextMenu.IsOpen);
                 Assert.False(shelfCard.ContextMenu.IsOpen);
                 Assert.False(page.IsVisible);
                 Assert.True(page.IsLoaded);

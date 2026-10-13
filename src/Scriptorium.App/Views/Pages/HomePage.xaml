@@ -14,7 +14,7 @@
                     <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" />
                 </Border>
                 <controls:HomeHero x:Name="Hero" Media="{Binding Hero}" HeroMetadata="{Binding HeroMetadata}" OpenCommand="{Binding OpenMediaCommand}"
-                    FavoriteCommand="{Binding ToggleFavoriteCommand}" Margin="{StaticResource Home.Hero.Margin}"
+                    FavoriteCommand="{Binding ToggleFavoriteCommand}" Preview="{Binding HeroPreview}" Margin="{StaticResource Home.Hero.Margin}"
                     Visibility="{Binding HasHero, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <ItemsControl x:Name="Shelves" ItemsSource="{Binding Shelves}" SizeChanged="OnHomeLayoutSizeChanged">
                     <ItemsControl.ItemTemplate><DataTemplate>

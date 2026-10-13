@@ -1,5 +1,9 @@
 # Embedded video playback
 
+Home's featured card autoplays a 20-second sample starting at 10% of the media's actual runtime once each time Home becomes visible. It starts muted, with pause/resume and mute/unmute controls at the bottom right, and restores the thumbnail when the sample ends (or the file ends sooner). Navigation releases the preview and returning repeats the same sample from its 10% starting point. Unavailable or unplayable media, including files with an unknown runtime, retain their thumbnail. The top-right heart toggles favorites directly.
+
+`HomeHeroPreviewViewModel` uses the existing playback factory in a separate session, without playback-history, progress, or preference writes. Its timer uses the media position, so paused time does not consume the sample. The view keeps its copy and controls in LibVLC's foreground overlay while video is attached, then restores its regular WPF layout after playback. Native decoding resources are released asynchronously when playback ends or the page becomes hidden.
+
 Movie details now show a paused video preview above the title. Play/Pause resumes the current session, Replay restarts a finished video, and Fullscreen opens the same session in a borderless window. Use the exit button or Escape to return; F11 toggles fullscreen while the player has keyboard focus. A brief centered icon confirms playback, seek, volume, and mute actions.
 
 ## Keyboard shortcuts
@@ -32,6 +36,8 @@ The player is connected to movie details, tutorial lessons, and TV-show episodes
 Run `dotnet test Scriptorium.sln` on Windows with the .NET 9 SDK. The official LibVLC Windows runtime is restored and copied to the application/test output by NuGet. The separate `Scriptorium.App.Tests` project keeps WPF checks out of the existing platform-independent Core/Infrastructure tests.
 
 The tests cover paused initialization, resume without resetting position, end/replay, invalid or unavailable media, replacing a session, idempotent cleanup, actual local MP4 decoding and file release, `VideoView` attachment, fullscreen continuity, Escape, and navigation cleanup. A TV-page navigation check holds native-style teardown and progress writes behind separate gates, verifies that the destination tab loads and accepts input within 250 ms, and tests a quick return while the previous session is still closing. Native tests verify asynchronous/idempotent release and runtime shutdown file release. UI checks load theme resources in an invisible test window and never start the application or access its database.
+
+Home preview checks cover the 10% starting point and 20-second sample across different runtimes, pause/resume, mute, repeat visits, short or unavailable videos, direct favorites, and unchanged watch progress. The native Home check also verifies the seek using the file's actual runtime, cropping, scroll clipping, and restoring isolated test artwork when the preview ends.
 
 The packaged third-party versions and their package-supplied license references are recorded in `THIRD-PARTY-NOTICES.txt`, which is copied beside the application output. Distribution preparation must preserve notices accompanying the exact packages and runtime files. This integration structure is not, by itself, a guarantee of legal compliance.
 

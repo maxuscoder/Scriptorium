@@ -47,7 +47,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         ILogger<MainWindowViewModel> logger, INotificationService? notifications = null,
         ISettingsService? settingsService = null, IFavoriteService? favorites = null,
         IAutomaticThumbnailService? automaticThumbnails = null,
-        ITvShowRepository? tvShows = null, ICourseRepository? courses = null)
+        ITvShowRepository? tvShows = null, ICourseRepository? courses = null,
+        IVideoPlaybackFactory? videoPlaybackFactory = null)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
         ArgumentNullException.ThrowIfNull(detailsCoordinator);
@@ -63,6 +64,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         _automaticThumbnails = automaticThumbnails;
         _tvShows = tvShows;
         _courses = courses;
+        HeroPreview = videoPlaybackFactory is null ? null : new HomeHeroPreviewViewModel(videoPlaybackFactory, logger);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         OpenMediaCommand = new AsyncRelayCommand(OpenMediaAsync, parameter => parameter is LibraryMediaItemViewModel);
         ToggleFavoriteCommand = favorites is null ? null : new AsyncRelayCommand(ToggleFavoriteAsync,
@@ -76,6 +78,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     public ObservableCollection<LibraryMediaItemViewModel> RecentlyWatchedMedia { get; } = [];
     public ObservableCollection<HomeShelfViewModel> Shelves { get; } = [];
     public LibraryMediaItemViewModel? Hero { get; private set; }
+    public HomeHeroPreviewViewModel? HeroPreview { get; }
     public string HeroMetadata => Hero is { } hero
         ? HomeHeroMetadata.For(hero.MediaItem,
             _heroMetadataItemId == hero.MediaItemId ? _heroShow : null,
@@ -246,6 +249,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        HeroPreview?.Dispose();
         _playbackProgressService.PlaybackProgressSaved -= OnMediaChanged;
         if (_favorites is not null) _favorites.FavoriteChanged -= OnMediaChanged;
         _settings.PropertyChanged -= OnSettingsChanged;

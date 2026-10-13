@@ -419,7 +419,7 @@ public sealed class VideoPlayerTests
         public IVideoOutput VideoOutput { get; } = new FakeVideoOutput();
         public bool IsPlaying { get; private set; }
         public TimeSpan Position { get; set; }
-        public TimeSpan Duration => TimeSpan.FromSeconds(60);
+        public TimeSpan Duration { get; set; } = TimeSpan.FromSeconds(60);
         public double Volume { get; set; }
         public double PlaybackSpeed { get; set; } = 1;
         public bool Disposed { get; private set; }
