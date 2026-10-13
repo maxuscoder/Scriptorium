@@ -23,6 +23,7 @@ public partial class HomeHero : UserControl
     public static readonly DependencyProperty HeroTitleProperty = DependencyProperty.Register(nameof(HeroTitle), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty EyebrowProperty = DependencyProperty.Register(nameof(Eyebrow), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty PositionTextProperty = DependencyProperty.Register(nameof(PositionText), typeof(string), typeof(HomeHero));
+    public static readonly DependencyProperty DurationTextProperty = DependencyProperty.Register(nameof(DurationText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty HeroMetadataProperty = DependencyProperty.Register(nameof(HeroMetadata), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty ActionTextProperty = DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty FavoriteTextProperty = DependencyProperty.Register(nameof(FavoriteText), typeof(string), typeof(HomeHero));
@@ -55,6 +56,7 @@ public partial class HomeHero : UserControl
     public string HeroTitle { get => (string)GetValue(HeroTitleProperty); private set => SetValue(HeroTitleProperty, value); }
     public string Eyebrow { get => (string)GetValue(EyebrowProperty); private set => SetValue(EyebrowProperty, value); }
     public string PositionText { get => (string)GetValue(PositionTextProperty); private set => SetValue(PositionTextProperty, value); }
+    public string DurationText { get => (string)GetValue(DurationTextProperty); private set => SetValue(DurationTextProperty, value); }
     public string HeroMetadata { get => (string)GetValue(HeroMetadataProperty); set => SetValue(HeroMetadataProperty, value); }
     public string ActionText { get => (string)GetValue(ActionTextProperty); private set => SetValue(ActionTextProperty, value); }
     public string FavoriteText { get => (string)GetValue(FavoriteTextProperty); private set => SetValue(FavoriteTextProperty, value); }
@@ -145,7 +147,10 @@ public partial class HomeHero : UserControl
         Eyebrow = resumable ? "PICK UP WHERE YOU LEFT OFF" : "RECENTLY WATCHED";
         ActionText = resumable ? "Continue in player" : "Open player";
         var position = TimeSpan.FromSeconds(item?.PlaybackPositionSeconds ?? 0);
-        PositionText = resumable ? "Stopped at " + position.ToString(position.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss") : "";
+        PositionText = resumable ? position.ToString(position.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss") : "";
+        var duration = TimeSpan.FromSeconds(item?.RuntimeSeconds ?? 0);
+        DurationText = resumable && duration > TimeSpan.Zero
+            ? "/ " + duration.ToString(duration.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss") : "";
         FavoriteText = Media?.IsFavorite == true ? "Remove from favorites" : "Add to favorites";
     }
     private async Task LoadArtworkAsync()

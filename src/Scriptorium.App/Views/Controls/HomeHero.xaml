@@ -13,38 +13,97 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
         </Style>
+        <LinearGradientBrush x:Key="Hero.ActionFill" StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Color="#FFFF8A2B" Offset="0" />
+            <GradientStop Color="#FFFF6508" Offset="0.45" />
+            <GradientStop Color="#FFF04400" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="Hero.ActionHoverFill" StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Color="#FFFF9A43" Offset="0" />
+            <GradientStop Color="#FFFF741C" Offset="0.45" />
+            <GradientStop Color="#FFFF5208" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="Hero.DetailsFill" StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Color="#EE27272B" Offset="0" />
+            <GradientStop Color="#EE202024" Offset="1" />
+        </LinearGradientBrush>
         <Style x:Key="Hero.Progress" TargetType="ProgressBar" BasedOn="{StaticResource MediaCard.Progress}">
-            <Setter Property="Height" Value="6" />
-            <Setter Property="Foreground" Value="#FFFF9100" />
+            <Setter Property="Height" Value="12" />
+            <Setter Property="Foreground" Value="#FFFF6508" />
             <Setter Property="Background" Value="#FF2C2F35" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ProgressBar">
-                        <Grid x:Name="PART_Track" ClipToBounds="True">
-                            <Border Background="{TemplateBinding Background}" CornerRadius="3" />
-                            <Border x:Name="PART_Indicator" HorizontalAlignment="Left"
-                                    Background="{TemplateBinding Foreground}" CornerRadius="3" />
+                        <Grid x:Name="PART_Track">
+                            <Border Height="6" VerticalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="3" />
+                            <Grid x:Name="PART_Indicator" HorizontalAlignment="Left">
+                                <Border Height="6" VerticalAlignment="Center" Background="{TemplateBinding Foreground}" CornerRadius="3" />
+                                <Ellipse x:Name="ProgressMarker" Width="12" Height="12" HorizontalAlignment="Right"
+                                         Fill="White" Stroke="{TemplateBinding Foreground}" StrokeThickness="2.5">
+                                    <Ellipse.RenderTransform><TranslateTransform X="6" /></Ellipse.RenderTransform>
+                                </Ellipse>
+                            </Grid>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-        <Style x:Key="Hero.ActionPrimary" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Style x:Key="Hero.ActionPrimary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
             <Setter Property="Width" Value="171" />
             <Setter Property="Height" Value="39" />
             <Setter Property="MinHeight" Value="39" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="BorderBrush" Value="#FFFFA22B" />
-            <Setter Property="BorderThickness" Value="0.7" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource Hero.ActionFill}" />
+            <Setter Property="BorderBrush" Value="#FFFFA33F" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Border x:Name="Glow" Background="#FFFF6508" CornerRadius="12" IsHitTestVisible="False">
+                                <Border.Effect><DropShadowEffect Color="#FF6508" BlurRadius="30" ShadowDepth="6" Opacity="0.4" /></Border.Effect>
+                            </Border>
+                            <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                    behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
+                                    behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Standard}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="12">
+                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource Hero.ActionHoverFill}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.FocusRing}" />
+                                <Setter TargetName="Surface" Property="BorderThickness" Value="2" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#FFE94A00" />
+                                <Setter TargetName="Glow" Property="Opacity" Value="0.5" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Glow" Property="Visibility" Value="Collapsed" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
-        <Style x:Key="Hero.ActionSecondary" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-            <Setter Property="Width" Value="101" />
-            <Setter Property="Height" Value="39" />
-            <Setter Property="MinHeight" Value="39" />
+        <Style x:Key="Hero.ActionSecondary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+            <Setter Property="Width" Value="96" />
+            <Setter Property="Height" Value="37" />
+            <Setter Property="MinHeight" Value="37" />
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Background" Value="#FF1B1C20" />
-            <Setter Property="BorderBrush" Value="#FF383A40" />
-            <Setter Property="Foreground" Value="#FFC3C5CD" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Background" Value="{StaticResource Hero.DetailsFill}" />
+            <Setter Property="BorderBrush" Value="#FF48484D" />
+            <Setter Property="Foreground" Value="#FFE3E3E6" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -53,7 +112,7 @@
                                 behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Standard}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8">
+                                CornerRadius="12">
                             <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
                                               RecognizesAccessKey="True" />
@@ -63,8 +122,8 @@
             </Setter>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="#FF131418" />
-                    <Setter Property="BorderBrush" Value="#FF383A40" />
+                    <Setter Property="Background" Value="#FF303034" />
+                    <Setter Property="BorderBrush" Value="#FF606066" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
                     <Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" />
@@ -148,17 +207,27 @@
                         </Style></TextBlock.Style>
                     </TextBlock>
                     <TextBlock Text="{Binding HeroMetadata, ElementName=Root}" Style="{StaticResource Hero.Copy}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding PositionText, ElementName=Root}" FontSize="{StaticResource FontSize.Metadata}" Margin="{StaticResource Home.Copy.Gap}">
-                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Hero.Copy}">
-                            <Style.Triggers><DataTrigger Binding="{Binding PositionText, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
-                        </Style></TextBlock.Style>
-                    </TextBlock>
-                    <ProgressBar x:Name="Progress" Width="{StaticResource Home.Hero.ProgressWidth}" HorizontalAlignment="Left" Margin="{StaticResource Home.Copy.Gap}">
-                        <ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource Hero.Progress}">
+                    <Grid x:Name="ProgressRow" HorizontalAlignment="Left" Margin="{StaticResource Home.Copy.Gap}">
+                        <Grid.Style><Style TargetType="Grid">
                             <Setter Property="Visibility" Value="Collapsed" />
                             <Style.Triggers><DataTrigger Binding="{Binding Media.HasPlaybackProgress, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-                        </Style></ProgressBar.Style>
-                    </ProgressBar>
+                        </Style></Grid.Style>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <ProgressBar x:Name="Progress" Width="{StaticResource Home.Hero.ProgressWidth}" VerticalAlignment="Center"
+                                     Style="{StaticResource Hero.Progress}" AutomationProperties.Name="Saved playback progress" />
+                        <TextBlock x:Name="ProgressTime" Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0"
+                                   Style="{StaticResource Hero.Copy}" FontSize="10.5">
+                            <Run Text="{Binding PositionText, ElementName=Root, Mode=OneWay}">
+                                <Run.Style><Style TargetType="Run">
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                                    <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDark}" />
+                                    </DataTrigger></Style.Triggers>
+                                </Style></Run.Style>
+                            </Run>
+                            <Run Text="{Binding DurationText, ElementName=Root, Mode=OneWay}" />
+                        </TextBlock>
+                    </Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="{StaticResource Home.Action.Gap}">
                         <Button x:Name="ContinueButton" Style="{StaticResource Hero.ActionPrimary}"
                             Command="{Binding OpenCommand, ElementName=Root}"
@@ -170,7 +239,7 @@
                                 <TextBlock Text="{Binding ActionText, ElementName=Root}" VerticalAlignment="Center" />
                             </StackPanel>
                         </Button>
-                        <Button x:Name="DetailsButton" Margin="16,0,0,0" Style="{StaticResource Hero.ActionSecondary}"
+                        <Button x:Name="DetailsButton" Margin="14,0,0,0" Style="{StaticResource Hero.ActionSecondary}"
                             Command="{Binding OpenCommand, ElementName=Root}" CommandParameter="{Binding Media, ElementName=Root}"
                             ToolTip="Open details">
                             <StackPanel Orientation="Horizontal">
