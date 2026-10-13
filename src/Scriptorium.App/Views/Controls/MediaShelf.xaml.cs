@@ -22,6 +22,7 @@ public partial class MediaShelf : UserControl
     private bool _arrowFocusableBeforeMousePress;
     private HwndSource? _source;
     public MediaShelf() => InitializeComponent();
+    public double ArtworkHeight => (double)FindResource("MediaCard.Width") / (double)FindResource("MediaCard.ArtworkRatio");
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     public IEnumerable ItemsSource { get => (IEnumerable)GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
     public ICommand? OpenCommand { get => (ICommand?)GetValue(OpenCommandProperty); set => SetValue(OpenCommandProperty, value); }

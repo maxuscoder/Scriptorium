@@ -114,12 +114,27 @@ internal static class HomeResourceChecks
                 Assert.True(hero.ActualWidth <= page.ActualWidth);
                 var shelf = Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added");
                 Assert.True(shelf.HasOverflow);
+                var previous = (Button)shelf.FindName("PreviousButton");
+                var next = (Button)shelf.FindName("NextButton");
+                Assert.Equal(Visibility.Collapsed, previous.Visibility);
+                Assert.Equal(Visibility.Visible, next.Visibility);
+                var artwork = (Grid)Descendants<MediaCard>(shelf).First().FindName("Artwork");
+                var artworkCenter = artwork.TranslatePoint(new Point(0, artwork.ActualHeight / 2), shelf).Y;
+                Assert.InRange(Math.Abs(next.TranslatePoint(new Point(0, next.ActualHeight / 2), shelf).Y - artworkCenter), 0, 1);
                 shelf.MoveBy(300, false);
                 await StaTest.DrainDispatcherAsync();
                 Assert.True(shelf.CanScrollLeft);
+                Assert.Equal(Visibility.Visible, previous.Visibility);
+                Assert.Equal(Visibility.Visible, next.Visibility);
+                shelf.MoveBy(double.MaxValue, false);
+                await StaTest.DrainDispatcherAsync();
+                Assert.Equal(Visibility.Visible, previous.Visibility);
+                Assert.Equal(Visibility.Collapsed, next.Visibility);
                 shelf.MoveBy(-double.MaxValue, false);
                 await StaTest.DrainDispatcherAsync();
                 Assert.False(shelf.CanScrollLeft);
+                Assert.Equal(Visibility.Collapsed, previous.Visibility);
+                Assert.Equal(Visibility.Visible, next.Visibility);
             }
             // Existing favorites service persists changes and notifies Home to update its real shelves.
             var favoriteCard = home.Hero!;
