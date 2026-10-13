@@ -10,7 +10,8 @@
     <Thickness x:Key="Home.Shelf.Margin">0,0,0,12</Thickness>
     <Thickness x:Key="Home.Shelf.Padding">0,8,8,12</Thickness>
     <Thickness x:Key="Home.Shelf.CardMargin">0,4,20,16</Thickness>
-    <Thickness x:Key="Home.Shelf.NavigationMargin">8,13,8,0</Thickness>
+    <!-- 18 DIP inside the card viewport; its right edge is inset by 8 DIP of shelf padding. -->
+    <Thickness x:Key="Home.Shelf.NavigationMargin">18,13,26,0</Thickness>
     <sys:Double x:Key="Home.Hero.Height">280</sys:Double>
     <sys:Double x:Key="Home.Hero.TextWidth">440</sys:Double>
     <sys:Double x:Key="Home.Hero.ProgressWidth">267</sys:Double>

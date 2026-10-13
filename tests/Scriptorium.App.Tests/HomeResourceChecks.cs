@@ -118,6 +118,19 @@ internal static class HomeResourceChecks
                 var next = (Button)shelf.FindName("NextButton");
                 Assert.Equal(Visibility.Collapsed, previous.Visibility);
                 Assert.Equal(Visibility.Visible, next.Visibility);
+                Assert.False(previous.IsEnabled);
+                Assert.True(next.IsEnabled);
+                var cardViewport = Descendants<ScrollContentPresenter>(shelf).Single();
+                Assert.InRange(next.ActualWidth, 44, 48);
+                Assert.Equal(next.ActualWidth, next.ActualHeight);
+                Assert.InRange(cardViewport.ActualWidth - next.TranslatePoint(new Point(next.ActualWidth, 0), cardViewport).X, 16, 20);
+                foreach (var arrow in new[] { previous, next })
+                {
+                    Assert.True(arrow.Focusable);
+                    Assert.True(System.Windows.Input.KeyboardNavigation.GetIsTabStop(arrow));
+                    Assert.NotNull(arrow.FocusVisualStyle);
+                    Assert.Null(arrow.Effect);
+                }
                 AssertViewportFade(shelf, left: false, right: true);
                 var artwork = (Grid)Descendants<MediaCard>(shelf).First().FindName("Artwork");
                 var artworkCenter = artwork.TranslatePoint(new Point(0, artwork.ActualHeight / 2), shelf).Y;
@@ -127,6 +140,10 @@ internal static class HomeResourceChecks
                 Assert.True(shelf.CanScrollLeft);
                 Assert.Equal(Visibility.Visible, previous.Visibility);
                 Assert.Equal(Visibility.Visible, next.Visibility);
+                Assert.InRange(previous.ActualWidth, 44, 48);
+                Assert.Equal(previous.ActualWidth, previous.ActualHeight);
+                Assert.InRange(previous.TranslatePoint(new Point(), cardViewport).X, 16, 20);
+                Assert.InRange(Math.Abs(previous.TranslatePoint(new Point(0, previous.ActualHeight / 2), shelf).Y - artworkCenter), 0, 1);
                 AssertViewportFade(shelf, left: true, right: true);
                 var viewport = Descendants<ScrollContentPresenter>(shelf).Single();
                 var mask = viewport.OpacityMask;
@@ -137,12 +154,33 @@ internal static class HomeResourceChecks
                 await StaTest.DrainDispatcherAsync();
                 Assert.Equal(Visibility.Visible, previous.Visibility);
                 Assert.Equal(Visibility.Collapsed, next.Visibility);
+                Assert.True(previous.IsEnabled);
+                Assert.False(next.IsEnabled);
                 AssertViewportFade(shelf, left: true, right: false);
                 shelf.MoveBy(-double.MaxValue, false);
                 await StaTest.DrainDispatcherAsync();
                 Assert.False(shelf.CanScrollLeft);
                 Assert.Equal(Visibility.Collapsed, previous.Visibility);
                 Assert.Equal(Visibility.Visible, next.Visibility);
+                if (width == 640)
+                {
+                    // Invoke the actual button handlers, including their existing animated scroll.
+                    var scroll = Descendants<ScrollViewer>(shelf).Single();
+                    async Task WaitForOffsetAsync(double target)
+                    {
+                        var deadline = DateTime.UtcNow.AddSeconds(3);
+                        while (Math.Abs(scroll.HorizontalOffset - target) > 0.02 && DateTime.UtcNow < deadline)
+                            await Task.Delay(20);
+                        Assert.InRange(Math.Abs(scroll.HorizontalOffset - target), 0, 0.02);
+                    }
+                    var target = Math.Min(scroll.ScrollableWidth, scroll.ViewportWidth * (double)resources["Home.Shelf.ScrollFraction"]);
+                    next.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitForOffsetAsync(target);
+                    Assert.True(previous.IsEnabled);
+                    previous.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    await WaitForOffsetAsync(0);
+                    Assert.False(previous.IsEnabled);
+                }
             }
             var shortShelf = Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added");
             var originalItems = shortShelf.ItemsSource;
