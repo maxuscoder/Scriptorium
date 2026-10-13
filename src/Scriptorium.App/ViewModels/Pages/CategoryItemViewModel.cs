@@ -119,7 +119,7 @@ public sealed class CategoryItemViewModel : ViewModelBase
             // Fall through to the neutral fallback for legacy or invalid values.
         }
 
-        return new SolidColorBrush(System.Windows.Media.Color.FromRgb(204, 75, 8));
+        return new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 101, 8));
     }
 
     private static bool TryParseColor(string value, out Color color)

@@ -18,7 +18,7 @@
     <Thickness x:Key="MediaCard.Actions.Margin">8</Thickness>
     <Thickness x:Key="MediaCard.Shadow.Inset">12,8,12,8</Thickness>
     <Thickness x:Key="MediaCard.Action.Gap">0,0,8,0</Thickness>
-    <SolidColorBrush x:Key="MediaCard.Brush.Progress" Color="#FF9D00" />
+    <SolidColorBrush x:Key="MediaCard.Brush.Progress" Color="{DynamicResource Color.Accent}" />
     <SolidColorBrush x:Key="MediaCard.Brush.Action" Color="#E616171A" />
     <SolidColorBrush x:Key="MediaCard.Brush.ActionHover" Color="#F025272C" />
     <SolidColorBrush x:Key="MediaCard.Brush.Icon" Color="#F5F5F7" />

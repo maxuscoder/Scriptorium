@@ -19,7 +19,7 @@ public partial class CategoryColorPicker : UserControl, INotifyPropertyChanged
             nameof(SelectedColor),
             typeof(string),
             typeof(CategoryColorPicker),
-            new FrameworkPropertyMetadata("#FF9803", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedColorChanged));
+            new FrameworkPropertyMetadata("#FF6508", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedColorChanged));
 
     public static readonly DependencyProperty PreviewBrushProperty = PreviewBrushPropertyKey.DependencyProperty;
 

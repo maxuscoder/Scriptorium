@@ -31,7 +31,7 @@ internal static class DesignSystemResourceChecks
         {
             Assert.Equal(Color.FromRgb(0x0B, 0x0B, 0x0D), ((SolidColorBrush)resources["Brush.Background"]).Color);
             Assert.Equal(Color.FromArgb(0x12, 255, 255, 255), ((SolidColorBrush)resources["Brush.Border"]).Color);
-            Assert.Equal(Color.FromArgb(0x18, 255, 0x9D, 0), ((SolidColorBrush)resources["Brush.AccentMuted"]).Color);
+            Assert.Equal(Color.FromArgb(0x18, 255, 0x65, 0x08), ((SolidColorBrush)resources["Brush.AccentMuted"]).Color);
             var theme = new ThemeService(resources);
             var originalColors = ThemeService.LightColors.Keys.ToDictionary(key => key, key => ((SolidColorBrush)resources[$"Brush.{key}"]).Color);
 

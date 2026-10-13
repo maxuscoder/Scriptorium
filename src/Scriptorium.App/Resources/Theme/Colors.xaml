@@ -10,13 +10,13 @@
     <Color x:Key="Color.SurfaceOverlay">#1E1E22</Color>
     <Color x:Key="Color.NavigationSelected">#0AFFFFFF</Color>
     <SolidColorBrush x:Key="Brush.NavigationSelected" Color="{StaticResource Color.NavigationSelected}" />
-    <!-- Sidebar-only palette: keep the cinematic content and shared accents unchanged. -->
+    <!-- Sidebar surface roles share the app accent palette. -->
     <Color x:Key="Color.Sidebar.Background">#202024</Color>
     <Color x:Key="Color.Sidebar.Selected">#34343A</Color>
     <Color x:Key="Color.Sidebar.Hover">#2D2D32</Color>
     <Color x:Key="Color.Sidebar.Pressed">#39393F</Color>
     <Color x:Key="Color.Sidebar.Highlight">#0CFFFFFF</Color>
-    <Color x:Key="Color.Sidebar.Accent">#FFA51C</Color>
+    <Color x:Key="Color.Sidebar.Accent">#FF6508</Color>
     <!-- A uniform graphite surface avoids quantized bands in very dark gradients. -->
     <SolidColorBrush x:Key="Brush.Sidebar.Background" Color="{StaticResource Color.Sidebar.Background}" />
     <SolidColorBrush x:Key="Brush.Sidebar.Selected" Color="{StaticResource Color.Sidebar.Selected}" />
@@ -27,36 +27,36 @@
     <Color x:Key="Color.SurfacePressed">#26262B</Color>
     <Color x:Key="Color.Border">#12FFFFFF</Color>
     <Color x:Key="Color.BorderStrong">#1CFFFFFF</Color>
-    <Color x:Key="Color.Accent">#FF9D00</Color>
-    <Color x:Key="Color.AccentStrong">#FFAD24</Color>
-    <Color x:Key="Color.AccentPressed">#E58D00</Color>
-    <Color x:Key="Color.AccentMuted">#18FF9D00</Color>
-    <Color x:Key="Color.AccentBorder">#55FF9D00</Color>
+    <Color x:Key="Color.Accent">#FF6508</Color>
+    <Color x:Key="Color.AccentStrong">#FF8A2B</Color>
+    <Color x:Key="Color.AccentPressed">#E94A00</Color>
+    <Color x:Key="Color.AccentMuted">#18FF6508</Color>
+    <Color x:Key="Color.AccentBorder">#55FF6508</Color>
     <!-- Primary button surface tokens. Kept separate from Accent so other orange UI cues remain flat. -->
     <Color x:Key="Color.PrimaryButton.Text">#FFFFFFFF</Color>
-    <Color x:Key="Color.PrimaryButton.Depth">#FFDB6200</Color>
-    <Color x:Key="Color.PrimaryButton.NormalHighlight">#FFFFB54A</Color>
-    <Color x:Key="Color.PrimaryButton.NormalMid">#FFFF8F0A</Color>
-    <Color x:Key="Color.PrimaryButton.NormalBase">#FFED6200</Color>
-    <Color x:Key="Color.PrimaryButton.HoverDepth">#FFAF4E00</Color>
-    <Color x:Key="Color.PrimaryButton.HoverHighlight">#FFCC913B</Color>
-    <Color x:Key="Color.PrimaryButton.HoverMid">#FFCC7208</Color>
-    <Color x:Key="Color.PrimaryButton.HoverBase">#FFBE4E00</Color>
-    <Color x:Key="Color.PrimaryButton.PressedDepth">#FFA94300</Color>
-    <Color x:Key="Color.PrimaryButton.PressedHighlight">#FFF9B33F</Color>
-    <Color x:Key="Color.PrimaryButton.PressedMid">#FFF58A0A</Color>
-    <Color x:Key="Color.PrimaryButton.PressedBase">#FFD85D00</Color>
-    <Color x:Key="Color.PrimaryButton.DisabledDepth">#FFB89A75</Color>
-    <Color x:Key="Color.PrimaryButton.DisabledHighlight">#FFE0D8C5</Color>
-    <Color x:Key="Color.PrimaryButton.DisabledMid">#FFD1B27A</Color>
-    <Color x:Key="Color.PrimaryButton.DisabledBase">#FFC29A5F</Color>
-    <Color x:Key="Color.PrimaryButton.DisabledText">#FF71562D</Color>
-    <Color x:Key="Color.SelectionSurface">#18FF9D00</Color>
+    <Color x:Key="Color.PrimaryButton.Depth">#D93F00</Color>
+    <Color x:Key="Color.PrimaryButton.NormalHighlight">#FF8A2B</Color>
+    <Color x:Key="Color.PrimaryButton.NormalMid">#FF6508</Color>
+    <Color x:Key="Color.PrimaryButton.NormalBase">#F04400</Color>
+    <Color x:Key="Color.PrimaryButton.HoverDepth">#E94A00</Color>
+    <Color x:Key="Color.PrimaryButton.HoverHighlight">#FF9A43</Color>
+    <Color x:Key="Color.PrimaryButton.HoverMid">#FF741C</Color>
+    <Color x:Key="Color.PrimaryButton.HoverBase">#FF5208</Color>
+    <Color x:Key="Color.PrimaryButton.PressedDepth">#B83300</Color>
+    <Color x:Key="Color.PrimaryButton.PressedHighlight">#F57729</Color>
+    <Color x:Key="Color.PrimaryButton.PressedMid">#E94A00</Color>
+    <Color x:Key="Color.PrimaryButton.PressedBase">#D93F00</Color>
+    <Color x:Key="Color.PrimaryButton.DisabledDepth">#B88A75</Color>
+    <Color x:Key="Color.PrimaryButton.DisabledHighlight">#E0CFC5</Color>
+    <Color x:Key="Color.PrimaryButton.DisabledMid">#D1A08B</Color>
+    <Color x:Key="Color.PrimaryButton.DisabledBase">#C28B70</Color>
+    <Color x:Key="Color.PrimaryButton.DisabledText">#714A3A</Color>
+    <Color x:Key="Color.SelectionSurface">#18FF6508</Color>
     <Color x:Key="Color.NavigationHover">#1E1E22</Color>
     <Color x:Key="Color.Success">#63D297</Color>
     <Color x:Key="Color.SuccessSurface">#1863D297</Color>
-    <Color x:Key="Color.Warning">#E5B567</Color>
-    <Color x:Key="Color.WarningSurface">#18E5B567</Color>
+    <Color x:Key="Color.Warning">#FF955C</Color>
+    <Color x:Key="Color.WarningSurface">#18FF955C</Color>
     <Color x:Key="Color.Danger">#FF6B6B</Color>
     <Color x:Key="Color.DangerSurface">#18FF6B6B</Color>
     <Color x:Key="Color.DangerHover">#FF8585</Color>
@@ -68,7 +68,7 @@
     <Color x:Key="Color.TextOnAccent">#0B0B0D</Color>
     <Color x:Key="Color.TextOnDanger">#0B0B0D</Color>
     <Color x:Key="Color.TextOnDark">#F5F5F7</Color>
-    <Color x:Key="Color.FocusRing">#FF9D00</Color>
+    <Color x:Key="Color.FocusRing">#FF6508</Color>
     <Color x:Key="Color.Shadow">#000000</Color>
     <Color x:Key="Color.Overlay">#99000000</Color>
     <Color x:Key="Color.ArtworkScrim">#44000000</Color>

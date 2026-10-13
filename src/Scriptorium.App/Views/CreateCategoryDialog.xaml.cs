@@ -72,7 +72,7 @@ public partial class CreateCategoryDialog : Window
         }
         else if (!TryParseColor(color, out _))
         {
-            message = "Enter a valid hex color such as #FF9803.";
+            message = "Enter a valid hex color such as #FF6508.";
         }
 
         CreateButton.IsEnabled = message.Length == 0;
