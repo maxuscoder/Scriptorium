@@ -191,9 +191,10 @@ public static class SmoothScrollBehavior
 
             var actual = horizontal ? _viewer.HorizontalOffset : _viewer.VerticalOffset;
             var viewport = horizontal ? _viewer.ViewportWidth : _viewer.ViewportHeight;
-            // Cached rows cover the small render-only displacement. Re-measure in chunks,
-            // rather than invalidating the entire virtualized card tree on every frame.
-            if (finalFrame || Math.Abs(offset - actual) >= Math.Min(96, viewport * 0.25))
+            // A full page is cached on each side. Use half of it between layout commits,
+            // leaving headroom for the next frame while avoiding per-frame re-measure
+            // during fast scrolling on a large viewport.
+            if (finalFrame || Math.Abs(offset - actual) >= Math.Max(1, viewport * 0.5))
                 Apply(offset, horizontal);
             UpdateTranslation();
         }
@@ -257,7 +258,10 @@ public static class SmoothScrollBehavior
 /// <summary>Analytic critically damped spring: continuous velocity, no bounce, independent of frame rate.</summary>
 internal sealed class ScrollSpring
 {
-    private const double Frequency = 20;
+    private const double BaseFrequency = 20;
+    private const double MaximumFrequency = 80;
+    private const double WheelStep = 120;
+    private double _frequency = BaseFrequency;
     private double _position;
     private double _velocity;
     public double Target { get; private set; }
@@ -269,14 +273,21 @@ internal sealed class ScrollSpring
         {
             _position = Target = current;
             _velocity = 0;
+            _frequency = BaseFrequency;
         }
         else if (delta * (Target - _position) < 0)
         {
             // A reversal cancels pending travel so the next frame follows the new direction.
             _position = Target = current;
             _velocity = 0;
+            _frequency = BaseFrequency;
         }
         Target = Math.Clamp(Target + delta, 0, maximum);
+        // Keep isolated wheel steps gentle, but catch up when rapid input builds up
+        // pending travel. Preserve velocity and retain the faster response until the
+        // gesture settles so releasing the wheel does not leave a long, slow tail.
+        _frequency = Math.Max(_frequency, Math.Clamp(
+            BaseFrequency * Math.Abs(Target - _position) / WheelStep, BaseFrequency, MaximumFrequency));
         IsActive = Math.Abs(Target - _position) > 0.001;
     }
 
@@ -284,10 +295,10 @@ internal sealed class ScrollSpring
     {
         Target = Math.Clamp(Target, 0, maximum);
         var displacement = _position - Target;
-        var coefficient = _velocity + Frequency * displacement;
-        var decay = Math.Exp(-Frequency * seconds);
+        var coefficient = _velocity + _frequency * displacement;
+        var decay = Math.Exp(-_frequency * seconds);
         _position = Math.Clamp(Target + (displacement + coefficient * seconds) * decay, 0, maximum);
-        _velocity = (_velocity - Frequency * coefficient * seconds) * decay;
+        _velocity = (_velocity - _frequency * coefficient * seconds) * decay;
         if (Math.Abs(Target - _position) < 0.02 && Math.Abs(_velocity) < 0.5)
         {
             _position = Target;

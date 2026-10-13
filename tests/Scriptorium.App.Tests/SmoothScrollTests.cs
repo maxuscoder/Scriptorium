@@ -61,6 +61,34 @@ public sealed class SmoothScrollTests
         Assert.False(slow.IsActive);
     }
 
+    [Theory]
+    [InlineData(60, 120)]
+    [InlineData(120, 60)]
+    [InlineData(120, 120)]
+    [InlineData(60, 360)]
+    public void RapidInputKeepsUpAndStopsPromptly(int refreshRate, double delta)
+    {
+        var spring = new ScrollSpring();
+        double position = 0;
+        const double maximum = 100000;
+        for (var frame = 0; frame < refreshRate; frame++)
+        {
+            spring.MoveBy(position, delta, maximum);
+            var next = spring.Advance(1.0 / refreshRate, maximum);
+            Assert.InRange(next, position, spring.Target);
+            position = next;
+            // At most 50 ms of input should remain pending during a fast gesture.
+            Assert.InRange(spring.Target - position, 0, delta * refreshRate * 0.05);
+        }
+        Assert.Equal(delta * refreshRate, spring.Target);
+        for (var frame = 0; frame < refreshRate / 5; frame++)
+            position = spring.Advance(1.0 / refreshRate, maximum);
+        Assert.InRange(spring.Target - position, 0, 0.5);
+
+        spring.MoveBy(position, -120, maximum);
+        Assert.True(spring.Advance(1.0 / refreshRate, maximum) < position);
+    }
+
     [Fact]
     public Task WheelAnimatesRealOffsetsAndManualScrollingTakesOver() => StaTest.Run(async () =>
     {
@@ -83,6 +111,13 @@ public sealed class SmoothScrollTests
                 Assert.Equal(0, viewer.VerticalOffset);
             await WaitUntil(() => Math.Abs(viewer.VerticalOffset - 1) < 0.005);
             Assert.Equal(1, viewer.VerticalOffset, 2);
+
+            for (var input = 0; input < 12; input++)
+            {
+                SmoothScrollBehavior.ScrollBy(viewer, 120);
+                await Task.Delay(16);
+            }
+            await WaitUntil(() => Math.Abs(viewer.VerticalOffset - 1441) < 0.005);
 
             SmoothScrollBehavior.ScrollBy(viewer, 300);
             await Task.Delay(70);
@@ -222,6 +257,15 @@ public sealed class SmoothScrollTests
             edgeFailure = null;
             SmoothScrollBehavior.ScrollBy(viewer, 2000, horizontal);
             await WaitUntil(() => Math.Abs((horizontal ? viewer.HorizontalOffset : viewer.VerticalOffset) - 2600) < 0.005 &&
+                ReferenceEquals(originalTransform, panel.RenderTransform));
+            Assert.Null(edgeFailure);
+
+            for (var input = 0; input < 12; input++)
+            {
+                SmoothScrollBehavior.ScrollBy(viewer, 120, horizontal);
+                await Task.Delay(16);
+            }
+            await WaitUntil(() => Math.Abs((horizontal ? viewer.HorizontalOffset : viewer.VerticalOffset) - 4040) < 0.005 &&
                 ReferenceEquals(originalTransform, panel.RenderTransform));
             Assert.Null(edgeFailure);
         }
