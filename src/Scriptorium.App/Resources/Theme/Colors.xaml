@@ -10,6 +10,20 @@
     <Color x:Key="Color.SurfaceOverlay">#1E1E22</Color>
     <Color x:Key="Color.NavigationSelected">#0AFFFFFF</Color>
     <SolidColorBrush x:Key="Brush.NavigationSelected" Color="{StaticResource Color.NavigationSelected}" />
+    <!-- Sidebar-only palette: keep the cinematic content and shared accents unchanged. -->
+    <Color x:Key="Color.Sidebar.Background">#202024</Color>
+    <Color x:Key="Color.Sidebar.Selected">#34343A</Color>
+    <Color x:Key="Color.Sidebar.Hover">#2D2D32</Color>
+    <Color x:Key="Color.Sidebar.Pressed">#39393F</Color>
+    <Color x:Key="Color.Sidebar.Highlight">#0CFFFFFF</Color>
+    <Color x:Key="Color.Sidebar.Accent">#FFA51C</Color>
+    <!-- A uniform graphite surface avoids quantized bands in very dark gradients. -->
+    <SolidColorBrush x:Key="Brush.Sidebar.Background" Color="{StaticResource Color.Sidebar.Background}" />
+    <SolidColorBrush x:Key="Brush.Sidebar.Selected" Color="{StaticResource Color.Sidebar.Selected}" />
+    <SolidColorBrush x:Key="Brush.Sidebar.Hover" Color="{StaticResource Color.Sidebar.Hover}" />
+    <SolidColorBrush x:Key="Brush.Sidebar.Pressed" Color="{StaticResource Color.Sidebar.Pressed}" />
+    <SolidColorBrush x:Key="Brush.Sidebar.Highlight" Color="{StaticResource Color.Sidebar.Highlight}" />
+    <SolidColorBrush x:Key="Brush.Sidebar.Accent" Color="{StaticResource Color.Sidebar.Accent}" />
     <Color x:Key="Color.SurfacePressed">#26262B</Color>
     <Color x:Key="Color.Border">#12FFFFFF</Color>
     <Color x:Key="Color.BorderStrong">#1CFFFFFF</Color>

@@ -15,42 +15,37 @@
             </Button>
         </DataTemplate>
     </UserControl.Resources>
-    <!-- Transparent client surface exposes Mica; MainWindow supplies the opaque fallback. -->
-    <DockPanel Margin="{StaticResource Shell.Padding}" LastChildFill="True">
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="{StaticResource Shell.Brand.Height}"
-            Margin="{StaticResource Shell.Brand.Margin}">
-            <Button x:Name="LogoButton" Click="OnLogoClick" Padding="0" BorderThickness="0"
-                Background="Transparent">
-                <Button.Style>
-                    <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
-                        <Setter Property="ToolTip" Value="Collapse sidebar" />
-                        <Setter Property="AutomationProperties.Name" Value="Collapse sidebar" />
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
-                                <Setter Property="ToolTip" Value="Expand sidebar" />
-                                <Setter Property="AutomationProperties.Name" Value="Expand sidebar" />
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Button.Style>
-                <Image Width="{StaticResource Space.6}" Height="{StaticResource Space.6}"
-                    Source="/Scriptorium.App;component/Assets/logo-32px.png" Stretch="Uniform" />
-            </Button>
-            <TextBlock Text="Scriptorium" FontWeight="SemiBold">
-                <TextBlock.Style>
-                    <Style TargetType="TextBlock" BasedOn="{StaticResource Shell.ExpandedText}">
-                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-                    </Style>
-                </TextBlock.Style>
-            </TextBlock>
-        </StackPanel>
-        <Border DockPanel.Dock="Bottom" Margin="{StaticResource Shell.Settings.Margin}"
-            Padding="{StaticResource Shell.Settings.Padding}" BorderBrush="{DynamicResource Brush.Border}"
-            BorderThickness="{StaticResource Shell.Settings.Divider}">
-            <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding SecondaryNavigationItems}" />
-        </Border>
-        <ScrollViewer behaviors:SmoothScrollBehavior.IsEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-            <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding PrimaryNavigationItems}" />
-        </ScrollViewer>
-    </DockPanel>
+    <Grid Background="{DynamicResource Brush.Sidebar.Background}">
+        <DockPanel Margin="{StaticResource Shell.Padding}" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="{StaticResource Shell.Brand.Height}"
+                Margin="{StaticResource Shell.Brand.Margin}">
+                <Button x:Name="LogoButton" Click="OnLogoClick" Padding="0" BorderThickness="0"
+                    Background="Transparent">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource Button.Base}">
+                            <Setter Property="ToolTip" Value="Collapse sidebar" />
+                            <Setter Property="AutomationProperties.Name" Value="Collapse sidebar" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCompact, ElementName=Root}" Value="True">
+                                    <Setter Property="ToolTip" Value="Expand sidebar" />
+                                    <Setter Property="AutomationProperties.Name" Value="Expand sidebar" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <Image Width="{StaticResource Space.6}" Height="{StaticResource Space.6}"
+                        Source="/Scriptorium.App;component/Assets/logo-32px.png" Stretch="Uniform" />
+                </Button>
+                <TextBlock Text="Scriptorium" Style="{StaticResource Shell.Brand}" />
+            </StackPanel>
+            <Border DockPanel.Dock="Bottom" Margin="{StaticResource Shell.Settings.Margin}"
+                Padding="{StaticResource Shell.Settings.Padding}" BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="{StaticResource Shell.Settings.Divider}">
+                <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding SecondaryNavigationItems}" />
+            </Border>
+            <ScrollViewer behaviors:SmoothScrollBehavior.IsEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding PrimaryNavigationItems}" />
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
 </UserControl>

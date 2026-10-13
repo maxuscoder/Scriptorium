@@ -54,6 +54,12 @@ public sealed class ThemeService : IThemeService
         ["SelectionSurface"] = Parse("#E9E9E9"),
         ["NavigationHover"] = Parse("#F0F0F0"),
         ["NavigationSelected"] = Parse("#0A000000"),
+        ["Sidebar.Background"] = Parse("#E9E9ED"),
+        ["Sidebar.Selected"] = Parse("#D7D7DE"),
+        ["Sidebar.Hover"] = Parse("#E0E0E6"),
+        ["Sidebar.Pressed"] = Parse("#CECED6"),
+        ["Sidebar.Highlight"] = Parse("#30000000"),
+        ["Sidebar.Accent"] = Parse("#C25200"),
         ["Success"] = Parse("#137C49"),
         ["SuccessSurface"] = Parse("#E8F4EC"),
         ["Warning"] = Parse("#9A6000"),
@@ -109,21 +115,21 @@ public sealed class ThemeService : IThemeService
 
     private void UpdatePrimaryButtonGradients(IReadOnlyDictionary<string, Color> colors)
     {
-        _resources["Brush.PrimaryButton.Normal"] = CreatePrimaryButtonGradient(colors,
+        _resources["Brush.PrimaryButton.Normal"] = CreateVerticalGradient(colors,
             ("PrimaryButton.NormalHighlight", 0), ("PrimaryButton.NormalMid", 0.26),
             ("PrimaryButton.NormalBase", 0.72), ("PrimaryButton.NormalBase", 1));
-        _resources["Brush.PrimaryButton.Hover"] = CreatePrimaryButtonGradient(colors,
+        _resources["Brush.PrimaryButton.Hover"] = CreateVerticalGradient(colors,
             ("PrimaryButton.HoverHighlight", 0), ("PrimaryButton.HoverMid", 0.26),
             ("PrimaryButton.HoverBase", 0.72), ("PrimaryButton.HoverBase", 1));
-        _resources["Brush.PrimaryButton.Pressed"] = CreatePrimaryButtonGradient(colors,
+        _resources["Brush.PrimaryButton.Pressed"] = CreateVerticalGradient(colors,
             ("PrimaryButton.PressedHighlight", 0), ("PrimaryButton.PressedMid", 0.34),
             ("PrimaryButton.PressedBase", 0.78), ("PrimaryButton.PressedBase", 1));
-        _resources["Brush.PrimaryButton.Disabled"] = CreatePrimaryButtonGradient(colors,
+        _resources["Brush.PrimaryButton.Disabled"] = CreateVerticalGradient(colors,
             ("PrimaryButton.DisabledHighlight", 0), ("PrimaryButton.DisabledMid", 0.38),
             ("PrimaryButton.DisabledBase", 1));
     }
 
-    private static LinearGradientBrush CreatePrimaryButtonGradient(
+    private static LinearGradientBrush CreateVerticalGradient(
         IReadOnlyDictionary<string, Color> colors, params (string Key, double Offset)[] stops)
     {
         var brush = new LinearGradientBrush { StartPoint = new Point(0.5, 0), EndPoint = new Point(0.5, 1) };

@@ -88,7 +88,7 @@
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserLoadingRow}"><controls:LoadingIndicator Margin="0,18,0,18" HorizontalAlignment="Center" ProgressWidth="110" Message="Loading more items…" /></DataTemplate>
             </ListBox.Resources>
         </ListBox>
-        <!-- Float beneath the filters without shifting cards when the button appears. -->
+        <!-- Float beneath the filters, aligned with the cards' right edge. -->
         <Button x:Name="ScrollToTopButton" Grid.Row="1" Panel.ZIndex="2"
                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,24,0"
                 Visibility="Collapsed" Opacity="0" IsHitTestVisible="False"
