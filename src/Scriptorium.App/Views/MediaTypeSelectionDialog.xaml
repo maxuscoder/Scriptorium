@@ -1,4 +1,4 @@
-<Window
+<Window FontFamily="{StaticResource FontFamily.Application}"
     x:Class="Scriptorium.App.Views.MediaTypeSelectionDialog"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

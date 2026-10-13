@@ -287,6 +287,7 @@ public partial class VideoPlayer : UserControl
             Height = owner?.ActualHeight ?? 540,
             Content = playerContent
         };
+        fullscreenWindow.SetResourceReference(Window.FontFamilyProperty, "FontFamily.Application");
         fullscreenWindow.SetResourceReference(Window.BackgroundProperty, "Brush.Background");
         _fullscreenWindow = fullscreenWindow;
         IsFullscreen = true;

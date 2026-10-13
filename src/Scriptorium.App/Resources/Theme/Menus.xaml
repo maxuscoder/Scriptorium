@@ -82,6 +82,7 @@
     <Style TargetType="MenuItem" BasedOn="{StaticResource Menu.Item}" />
     <Style TargetType="ContextMenu">
         <Style.Resources><Style TargetType="Separator" BasedOn="{StaticResource Menu.Separator}" /></Style.Resources>
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="Padding" Value="{StaticResource Padding.Menu}" />
         <Setter Property="Template">
             <Setter.Value>

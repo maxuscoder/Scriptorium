@@ -1,4 +1,4 @@
-<Window x:Class="Scriptorium.App.Views.MainWindow" x:Name="Root"
+<Window FontFamily="{StaticResource FontFamily.Application}" x:Class="Scriptorium.App.Views.MainWindow" x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"

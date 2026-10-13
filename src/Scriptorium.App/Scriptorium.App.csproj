@@ -33,16 +33,23 @@
     <Resource Include="Assets\logo-32px.png" />
     <Resource Include="Assets\logo-90px.png" />
     <Resource Include="Assets\scriptorium.ico" />
+    <Resource Include="Assets\Fonts\Satoshi\*.otf" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Assets\Fonts\Satoshi\FFL.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Target Name="ValidateSatoshiFonts" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('Assets\Fonts\Satoshi\Satoshi-Regular.otf') Or !Exists('Assets\Fonts\Satoshi\Satoshi-Medium.otf') Or !Exists('Assets\Fonts\Satoshi\Satoshi-Bold.otf') Or !Exists('Assets\Fonts\Satoshi\FFL.txt')"
+           Text="Satoshi font assets are missing. Run powershell -ExecutionPolicy Bypass -File scripts/Prepare-Satoshi.ps1 from the repository root before building." />
+  </Target>
 
   <ItemGroup>
     <Page Update="Views\CreateCategoryDialog.xaml">
