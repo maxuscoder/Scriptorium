@@ -11,7 +11,7 @@ namespace Scriptorium.App.Services;
 /// <summary>Best-effort decoration only. WPF and Windows retain all non-client input and sizing.</summary>
 internal sealed class WindowBackdropController : IDisposable
 {
-    private const int ImmersiveDarkMode = 20, CornerPreference = 33, SystemBackdropType = 38;
+    private const int ImmersiveDarkMode = 20, CornerPreference = 33, CaptionColor = 35, SystemBackdropType = 38;
     private readonly MainWindow _window;
     private readonly HwndSource _source;
     private bool _disposed;
@@ -43,7 +43,12 @@ internal sealed class WindowBackdropController : IDisposable
             // Unsupported attributes return a failing HRESULT; no window behavior depends on them.
             SetAttribute(ImmersiveDarkMode, dark ? 1 : 0);
             if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000))
+            {
                 SetAttribute(CornerPreference, 2); // DWMWCP_ROUND; DWM handles maximized corners.
+                // Match the dark header token while preserving Windows-owned caption controls.
+                // COLORREF is 0x00BBGGRR; -1 restores system colors in light/high-contrast mode.
+                SetAttribute(CaptionColor, dark ? color.R | color.G << 8 | color.B << 16 : -1);
+            }
             if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22621))
             {
                 var margins = new Margins(mica ? -1 : 0);
