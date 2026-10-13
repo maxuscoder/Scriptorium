@@ -18,6 +18,9 @@ public partial class MediaShelf : UserControl
     public static readonly DependencyProperty CanScrollLeftProperty = DependencyProperty.Register(nameof(CanScrollLeft), typeof(bool), typeof(MediaShelf));
     public static readonly DependencyProperty CanScrollRightProperty = DependencyProperty.Register(nameof(CanScrollRight), typeof(bool), typeof(MediaShelf));
     private ScrollViewer? _scroll;
+    private ScrollContentPresenter? _viewport;
+    private double _fadeViewportWidth;
+    private int _fadeState = -1;
     private Button? _mousePressedArrow;
     private bool _arrowFocusableBeforeMousePress;
     private HwndSource? _source;
@@ -33,29 +36,79 @@ public partial class MediaShelf : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         _scroll = FindScrollViewer(Items);
+        _viewport = _scroll?.Template.FindName("PART_ScrollContentPresenter", _scroll) as ScrollContentPresenter;
+        if (_viewport is not null) _viewport.SizeChanged += OnViewportSizeChanged;
         _source = PresentationSource.FromVisual(this) as HwndSource;
         _source?.RemoveHook(WindowProcedure);
         _source?.AddHook(WindowProcedure);
-        UpdateArrows();
+        UpdateScrollState();
     }
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         RestoreArrowFocusability();
         if (_scroll is not null) SmoothScrollBehavior.Stop(_scroll);
+        if (_viewport is not null) _viewport.SizeChanged -= OnViewportSizeChanged;
+        _viewport = null;
+        _fadeState = -1;
         _source?.RemoveHook(WindowProcedure);
         _source = null;
         _scroll = null;
     }
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        _scroll ??= e.OriginalSource as ScrollViewer;
-        UpdateArrows();
+        if (e.OriginalSource is not ScrollViewer scroll || (_scroll is not null && _scroll != scroll)) return;
+        _scroll ??= scroll;
+        if (e.HorizontalChange != 0 || e.ExtentWidthChange != 0 || e.ViewportWidthChange != 0)
+            UpdateScrollState();
     }
-    private void UpdateArrows()
+    private void UpdateScrollState()
     {
-        HasOverflow = _scroll?.ScrollableWidth > 1;
-        CanScrollLeft = _scroll?.HorizontalOffset > 1;
-        CanScrollRight = _scroll is { } scroll && scroll.HorizontalOffset < scroll.ScrollableWidth - 1;
+        var overflow = _scroll?.ScrollableWidth > 1;
+        var left = _scroll?.HorizontalOffset > 1;
+        var right = _scroll is { } scroll && scroll.HorizontalOffset < scroll.ScrollableWidth - 1;
+        if (HasOverflow != overflow) HasOverflow = overflow;
+        if (CanScrollLeft != left) CanScrollLeft = left;
+        if (CanScrollRight != right) CanScrollRight = right;
+        UpdateViewportFade();
+    }
+    private void OnViewportSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.WidthChanged) UpdateViewportFade();
+    }
+    private void UpdateViewportFade()
+    {
+        if (_viewport is null || _viewport.ActualWidth <= 0) return;
+        var width = _viewport.ActualWidth;
+        var state = (CanScrollLeft ? 1 : 0) | (CanScrollRight ? 2 : 0);
+        if (_fadeState == state && _fadeViewportWidth == width) return;
+        _fadeState = state;
+        _fadeViewportWidth = width;
+        if (state == 0)
+        {
+            _viewport.OpacityMask = null;
+            return;
+        }
+
+        // One stationary mask on the clipped viewport fades artwork and text into
+        // the live background. Color overlays would obscure the animated bokeh.
+        // Rebuild only on boundary/size changes; never animate stops or mask cards.
+        var edge = Math.Min((double)FindResource("Home.Shelf.EdgeFadeWidth"), width / 2) / width;
+        var mask = new LinearGradientBrush
+        {
+            // Relative brush bounds can include cached, offscreen virtualized cards.
+            // Absolute coordinates keep the fade anchored to the viewport instead.
+            MappingMode = BrushMappingMode.Absolute,
+            StartPoint = new Point(0, 0), EndPoint = new Point(width, 0),
+            GradientStops =
+            {
+                new GradientStop(CanScrollLeft ? Colors.Transparent : Colors.White, 0),
+                new GradientStop(Colors.White, edge),
+                new GradientStop(Colors.White, 1 - edge),
+                new GradientStop(CanScrollRight ? Colors.Transparent : Colors.White, 1)
+            }
+        };
+        mask.Freeze();
+        _viewport.OpacityMask = mask;
     }
     private void OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

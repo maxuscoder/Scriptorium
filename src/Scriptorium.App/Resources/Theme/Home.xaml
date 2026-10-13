@@ -16,6 +16,7 @@
     <sys:Double x:Key="Home.Hero.ProgressWidth">267</sys:Double>
     <sys:Double x:Key="Home.Shelf.Height">244</sys:Double>
     <sys:Double x:Key="Home.Shelf.ScrollFraction">0.8</sys:Double>
+    <sys:Double x:Key="Home.Shelf.EdgeFadeWidth">72</sys:Double>
     <SolidColorBrush x:Key="Home.Hero.TextSecondary" Color="#C0C0C6" />
     <LinearGradientBrush x:Key="Home.Hero.Shade" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="#F50B0B0D" Offset="0" />

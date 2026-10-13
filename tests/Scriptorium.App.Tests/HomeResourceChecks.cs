@@ -118,6 +118,7 @@ internal static class HomeResourceChecks
                 var next = (Button)shelf.FindName("NextButton");
                 Assert.Equal(Visibility.Collapsed, previous.Visibility);
                 Assert.Equal(Visibility.Visible, next.Visibility);
+                AssertViewportFade(shelf, left: false, right: true);
                 var artwork = (Grid)Descendants<MediaCard>(shelf).First().FindName("Artwork");
                 var artworkCenter = artwork.TranslatePoint(new Point(0, artwork.ActualHeight / 2), shelf).Y;
                 Assert.InRange(Math.Abs(next.TranslatePoint(new Point(0, next.ActualHeight / 2), shelf).Y - artworkCenter), 0, 1);
@@ -126,16 +127,37 @@ internal static class HomeResourceChecks
                 Assert.True(shelf.CanScrollLeft);
                 Assert.Equal(Visibility.Visible, previous.Visibility);
                 Assert.Equal(Visibility.Visible, next.Visibility);
+                AssertViewportFade(shelf, left: true, right: true);
+                var viewport = Descendants<ScrollContentPresenter>(shelf).Single();
+                var mask = viewport.OpacityMask;
+                shelf.MoveBy(20, false);
+                await StaTest.DrainDispatcherAsync();
+                Assert.Same(mask, viewport.OpacityMask); // Interior scrolling must not rebuild the mask.
                 shelf.MoveBy(double.MaxValue, false);
                 await StaTest.DrainDispatcherAsync();
                 Assert.Equal(Visibility.Visible, previous.Visibility);
                 Assert.Equal(Visibility.Collapsed, next.Visibility);
+                AssertViewportFade(shelf, left: true, right: false);
                 shelf.MoveBy(-double.MaxValue, false);
                 await StaTest.DrainDispatcherAsync();
                 Assert.False(shelf.CanScrollLeft);
                 Assert.Equal(Visibility.Collapsed, previous.Visibility);
                 Assert.Equal(Visibility.Visible, next.Visibility);
             }
+            var shortShelf = Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added");
+            var originalItems = shortShelf.ItemsSource;
+            shortShelf.ItemsSource = home.Shelves.Single(shelf => shelf.Title == "Recently added").Items.Take(1).ToArray();
+            await StaTest.DrainDispatcherAsync();
+            Assert.False(shortShelf.HasOverflow);
+            Assert.False(shortShelf.CanScrollLeft);
+            Assert.False(shortShelf.CanScrollRight);
+            Assert.Null(Descendants<ScrollContentPresenter>(shortShelf).Single().OpacityMask);
+            shortShelf.ItemsSource = Array.Empty<object>();
+            await StaTest.DrainDispatcherAsync();
+            Assert.Null(Descendants<ScrollContentPresenter>(shortShelf).Single().OpacityMask);
+            shortShelf.ItemsSource = originalItems;
+            await StaTest.DrainDispatcherAsync();
+            AssertViewportFade(shortShelf, left: false, right: true);
             // Existing favorites service persists changes and notifies Home to update its real shelves.
             var favoriteCard = home.Hero!;
             await ((AsyncRelayCommand)home.ToggleFavoriteCommand!).ExecuteAsync(favoriteCard);
@@ -276,6 +298,66 @@ internal static class HomeResourceChecks
         }
     }
     private sealed class DetailPage : PageViewModel { public override string Title => "Media details"; }
+    private static void AssertViewportFade(MediaShelf shelf, bool left, bool right)
+    {
+        var viewport = Descendants<ScrollContentPresenter>(shelf).Single();
+        var mask = viewport.OpacityMask;
+        Assert.NotNull(mask);
+        Assert.True(mask.IsFrozen);
+        // Only the clipped card viewport is masked, including card copy. The heading
+        // and navigation live outside it, and the virtualized panel stays intact.
+        Assert.Single(Descendants<UIElement>(shelf), element => element.OpacityMask is not null);
+        Assert.Null(shelf.OpacityMask);
+        Assert.IsType<VirtualizingStackPanel>(Descendants<VirtualizingStackPanel>(shelf).Single());
+        Assert.All(Descendants<MediaCard>(shelf), card => Assert.Null(card.OpacityMask));
+        Assert.All(Descendants<Button>(shelf), button => Assert.Null(button.OpacityMask));
+        var width = (int)Math.Ceiling(viewport.ActualWidth);
+        var height = (int)Math.Ceiling(viewport.ActualHeight);
+        byte[] RenderPixels()
+        {
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(viewport);
+            var pixels = new byte[width * height * 4];
+            bitmap.CopyPixels(pixels, width * 4, 0);
+            return pixels;
+        }
+        var faded = RenderPixels();
+        byte[] baseline;
+        try
+        {
+            viewport.OpacityMask = null;
+            baseline = RenderPixels();
+        }
+        finally { viewport.OpacityMask = mask; }
+
+        var copy = (StackPanel)Descendants<MediaCard>(shelf).First().FindName("Copy");
+        var copyTop = copy.TranslatePoint(new Point(), viewport).Y;
+        var artworkSamples = 0;
+        var copySamples = 0;
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var index = (y * width + x) * 4 + 3;
+            if (baseline[index] < 32) continue;
+            // Test rendered alpha against the requested 60–90 DIP fade band,
+            // allowing raster rounding. This catches masks moving with content
+            // or using a percentage width after a viewport resize.
+            var distance = Math.Min(left ? x + 0.5 : double.MaxValue,
+                right ? viewport.ActualWidth - x - 0.5 : double.MaxValue);
+            var lower = baseline[index] * Math.Clamp(distance / 90, 0, 1);
+            var upper = baseline[index] * Math.Clamp(distance / 60, 0, 1);
+            Assert.True(faded[index] >= lower - 3 && faded[index] <= upper + 3,
+                $"Fade alpha {faded[index]} versus {baseline[index]} at ({x}, {y}); viewport {viewport.ActualWidth}; expected {lower - 3}–{upper + 3}; left {left}, right {right}.");
+            if (distance > 8 && distance < 60 && faded[index] < baseline[index] - 5)
+            {
+                if (y < copyTop) artworkSamples++;
+                else copySamples++;
+            }
+        }
+        Assert.True(artworkSamples > 0, "Artwork did not fade at an overflowing edge.");
+        // Some right-only viewports end in a card's trailing gap rather than copy.
+        if (left) Assert.True(copySamples > 0, "Card text did not fade with artwork.");
+    }
     private sealed class Factory(DbContextOptions<ScriptoriumDbContext> options) : IDbContextFactory<ScriptoriumDbContext>
     {
         public ScriptoriumDbContext CreateDbContext() => new(options);
