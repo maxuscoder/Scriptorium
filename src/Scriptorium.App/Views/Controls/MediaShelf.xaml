@@ -31,17 +31,17 @@
                 </DataTemplate></ListBox.ItemTemplate>
             </ListBox>
             <Grid Height="{Binding ArtworkHeight, ElementName=Root}" VerticalAlignment="Top" Margin="{StaticResource Home.Shelf.NavigationMargin}">
-                <Button x:Name="PreviousButton" Style="{StaticResource Home.Shelf.NavigationButton}" HorizontalAlignment="Left" VerticalAlignment="Center"
+                <Button x:Name="PreviousButton" Style="{StaticResource Home.Shelf.NavigationButton}" HorizontalAlignment="Left" HorizontalContentAlignment="Left" VerticalAlignment="Center"
                     Click="OnPrevious" IsEnabled="{Binding CanScrollLeft, ElementName=Root}"
                     Visibility="{Binding CanScrollLeft, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"
                     ToolTip="Previous titles" AutomationProperties.Name="Previous titles">
-                    <Path Data="M 8,1 L 2,7 L 8,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                    <Path Margin="4,0,0,0" Data="M 8,1 L 2,7 L 8,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                 </Button>
-                <Button x:Name="NextButton" Style="{StaticResource Home.Shelf.NavigationButton}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                <Button x:Name="NextButton" Style="{StaticResource Home.Shelf.NavigationButton}" HorizontalAlignment="Right" HorizontalContentAlignment="Right" VerticalAlignment="Center"
                     Click="OnNext" IsEnabled="{Binding CanScrollRight, ElementName=Root}"
                     Visibility="{Binding CanScrollRight, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"
                     ToolTip="More titles" AutomationProperties.Name="More titles">
-                    <Path Data="M 2,1 L 8,7 L 2,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                    <Path Margin="0,0,4,0" Data="M 2,1 L 8,7 L 2,13" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.75" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
                 </Button>
             </Grid>
         </Grid>

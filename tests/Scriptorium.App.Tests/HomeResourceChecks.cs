@@ -123,7 +123,10 @@ internal static class HomeResourceChecks
                 var cardViewport = Descendants<ScrollContentPresenter>(shelf).Single();
                 Assert.InRange(next.ActualWidth, 44, 48);
                 Assert.Equal(next.ActualWidth, next.ActualHeight);
-                Assert.InRange(cardViewport.ActualWidth - next.TranslatePoint(new Point(next.ActualWidth, 0), cardViewport).X, 16, 20);
+                Assert.InRange(Math.Abs(cardViewport.ActualWidth - next.TranslatePoint(new Point(next.ActualWidth, 0), cardViewport).X), 0, 1);
+                var nextChevron = Assert.IsType<System.Windows.Shapes.Path>(next.Content);
+                var nextInk = nextChevron.RenderedGeometry.Bounds;
+                Assert.InRange(cardViewport.ActualWidth - nextChevron.TranslatePoint(new Point(nextInk.X + nextInk.Width / 2, 0), cardViewport).X, 6, 12);
                 foreach (var arrow in new[] { previous, next })
                 {
                     Assert.True(arrow.Focusable);
@@ -142,7 +145,10 @@ internal static class HomeResourceChecks
                 Assert.Equal(Visibility.Visible, next.Visibility);
                 Assert.InRange(previous.ActualWidth, 44, 48);
                 Assert.Equal(previous.ActualWidth, previous.ActualHeight);
-                Assert.InRange(previous.TranslatePoint(new Point(), cardViewport).X, 16, 20);
+                Assert.InRange(Math.Abs(previous.TranslatePoint(new Point(), cardViewport).X), 0, 1);
+                var previousChevron = Assert.IsType<System.Windows.Shapes.Path>(previous.Content);
+                var previousInk = previousChevron.RenderedGeometry.Bounds;
+                Assert.InRange(previousChevron.TranslatePoint(new Point(previousInk.X + previousInk.Width / 2, 0), cardViewport).X, 6, 12);
                 Assert.InRange(Math.Abs(previous.TranslatePoint(new Point(0, previous.ActualHeight / 2), shelf).Y - artworkCenter), 0, 1);
                 AssertViewportFade(shelf, left: true, right: true);
                 var viewport = Descendants<ScrollContentPresenter>(shelf).Single();

@@ -209,51 +209,27 @@
             </Trigger>
         </Style.Triggers>
     </Style>
-    <!-- Frosted graphite through translucency, without backdrop blur or effects. -->
-    <SolidColorBrush x:Key="Home.Shelf.Navigation.Background" Color="#E6222428" po:Freeze="True" />
-    <SolidColorBrush x:Key="Home.Shelf.Navigation.Hover" Color="#F02B2E33" po:Freeze="True" />
-    <SolidColorBrush x:Key="Home.Shelf.Navigation.Pressed" Color="#F01B1D21" po:Freeze="True" />
-    <SolidColorBrush x:Key="Home.Shelf.Navigation.Border" Color="#26FFFFFF" po:Freeze="True" />
-    <SolidColorBrush x:Key="Home.Shelf.Navigation.HoverBorder" Color="#3DFFFFFF" po:Freeze="True" />
+    <!-- Floating chevrons with a transparent hit area and no hover surface. -->
     <SolidColorBrush x:Key="Home.Shelf.Navigation.Foreground" Color="#E6E7EB" po:Freeze="True" />
-    <Style x:Key="Home.Shelf.NavigationFocus" TargetType="Control" BasedOn="{StaticResource Focus.Keyboard}">
-        <Setter Property="Template"><Setter.Value>
-            <ControlTemplate TargetType="Control">
-                <Border Margin="{StaticResource Margin.Focus}" BorderBrush="{DynamicResource Brush.FocusRing}"
-                    BorderThickness="{StaticResource BorderThickness.Focus}" CornerRadius="999" />
-            </ControlTemplate>
-        </Setter.Value></Setter>
-    </Style>
-    <Style x:Key="Home.Shelf.NavigationButton" TargetType="Button" BasedOn="{StaticResource Button.RoundIcon}">
+    <Style x:Key="Home.Shelf.NavigationButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
         <Setter Property="Width" Value="46" />
         <Setter Property="Height" Value="46" />
         <Setter Property="MinWidth" Value="46" />
         <Setter Property="MinHeight" Value="46" />
-        <Setter Property="Background" Value="{StaticResource Home.Shelf.Navigation.Background}" />
-        <Setter Property="BorderBrush" Value="{StaticResource Home.Shelf.Navigation.Border}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Foreground" Value="{StaticResource Home.Shelf.Navigation.Foreground}" />
-        <Setter Property="FocusVisualStyle" Value="{StaticResource Home.Shelf.NavigationFocus}" />
         <Setter Property="Template"><Setter.Value>
             <ControlTemplate TargetType="Button">
-                <Border x:Name="Surface" CornerRadius="999" SnapsToDevicePixels="True"
-                    behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
-                    behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Instant}"
+                <Border x:Name="Surface" Background="{TemplateBinding Background}" SnapsToDevicePixels="True"
                     BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
                     <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
                 </Border>
             </ControlTemplate>
         </Setter.Value></Setter>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{StaticResource Home.Shelf.Navigation.Hover}" />
-                <Setter Property="BorderBrush" Value="{StaticResource Home.Shelf.Navigation.HoverBorder}" />
-            </Trigger>
-            <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="{StaticResource Home.Shelf.Navigation.Pressed}" />
-                <Setter Property="BorderBrush" Value="{StaticResource Home.Shelf.Navigation.Border}" />
-            </Trigger>
-        </Style.Triggers>
     </Style>
     <Style x:Key="CategoryColorSwatch" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
         <Setter Property="Width" Value="{StaticResource Control.Height.Compact}" />
