@@ -1,11 +1,17 @@
 using System.Windows.Controls;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using Scriptorium.App.Behaviors;
 using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Views.Controls.Library;
 
 public partial class LibraryMediaBrowser : UserControl
 {
+    private ScrollViewer? _scrollViewer;
+    private bool _showScrollToTop;
+    private int _scrollToTopAnimationVersion;
     public LibraryMediaBrowser()
     {
         InitializeComponent();
@@ -23,16 +29,60 @@ public partial class LibraryMediaBrowser : UserControl
 
     private void OnBrowserScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (!IsVisible || DataContext is not LibraryPageViewModel viewModel || e.OriginalSource is not ScrollViewer scrollViewer)
+        if (e.OriginalSource is not ScrollViewer scrollViewer || !BrowserList.IsAncestorOf(scrollViewer))
         {
             return;
         }
+
+        _scrollViewer = scrollViewer;
+        UpdateScrollToTopButton(scrollViewer.VerticalOffset > (_showScrollToTop ? 1 : 48));
+        if (!IsVisible || DataContext is not LibraryPageViewModel viewModel) return;
 
         var remainingScroll = scrollViewer.ScrollableHeight - scrollViewer.VerticalOffset;
         if (remainingScroll <= Math.Max(scrollViewer.ViewportHeight * 1.5, 240))
         {
             _ = viewModel.RequestNextBrowserPageAsync();
         }
+    }
+
+    private void OnScrollToTop(object sender, RoutedEventArgs e)
+    {
+        if (_scrollViewer is not null) SmoothScrollBehavior.ScrollToTop(_scrollViewer);
+    }
+
+    private void UpdateScrollToTopButton(bool show)
+    {
+        if (_showScrollToTop == show) return;
+        _showScrollToTop = show;
+        var version = ++_scrollToTopAnimationVersion;
+        var button = ScrollToTopButton;
+        var translation = (TranslateTransform)button.RenderTransform;
+        var fromOpacity = button.Opacity;
+        var fromY = show && button.Visibility != Visibility.Visible ? 8 : translation.Y;
+        button.BeginAnimation(UIElement.OpacityProperty, null);
+        translation.BeginAnimation(TranslateTransform.YProperty, null);
+        button.IsHitTestVisible = show;
+        button.IsEnabled = show;
+        button.Opacity = show ? 1 : 0;
+        translation.Y = 0;
+        if (!IsLoaded || !SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast)
+        {
+            button.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+
+        button.Visibility = Visibility.Visible;
+        var duration = (Duration)FindResource("Motion.Duration.Fast");
+        var easing = (IEasingFunction)FindResource("Motion.Easing.Enter");
+        var fade = new DoubleAnimation(fromOpacity, show ? 1 : 0, duration)
+        { EasingFunction = easing, FillBehavior = FillBehavior.Stop };
+        fade.Completed += (_, _) =>
+        {
+            if (version == _scrollToTopAnimationVersion && !show) button.Visibility = Visibility.Collapsed;
+        };
+        button.BeginAnimation(UIElement.OpacityProperty, fade);
+        translation.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(fromY, 0, duration)
+        { EasingFunction = easing, FillBehavior = FillBehavior.Stop });
     }
 
     private void OnCardRowLoaded(object sender, RoutedEventArgs e)

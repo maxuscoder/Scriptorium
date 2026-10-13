@@ -73,6 +73,8 @@ public static class SmoothScrollBehavior
     internal static void ScrollBy(ScrollViewer viewer, double delta, bool horizontal = false, bool animate = true) =>
         Motions.GetValue(viewer, static value => new ScrollMotion(value)).MoveBy(delta, horizontal, animate);
 
+    internal static void ScrollToTop(ScrollViewer viewer) => ScrollBy(viewer, -double.MaxValue);
+
     internal static void Stop(ScrollViewer viewer)
     {
         if (Motions.TryGetValue(viewer, out var motion)) motion.Stop();

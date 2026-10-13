@@ -188,6 +188,34 @@ internal static class LibraryResourceChecks
                 }
                 VerifyBrowserColumnLayout(page, vm);
                 Render(page, $"library-{width:0}", 1);
+                if (width == 660)
+                {
+                    var browser = Descendants<LibraryMediaBrowser>(page).Single();
+                    var backToTop = (Button)browser.FindName("ScrollToTopButton");
+                    var browserList = (ListBox)browser.FindName("BrowserList");
+                    var scroll = Descendants<ScrollViewer>(browserList).First();
+                    Assert.Equal(Visibility.Collapsed, backToTop.Visibility);
+                    var viewportHeight = browserList.ActualHeight;
+                    scroll.ScrollToVerticalOffset(360);
+                    await StaTest.DrainDispatcherAsync();
+                    Assert.Equal(Visibility.Visible, backToTop.Visibility);
+                    Assert.True(backToTop.IsHitTestVisible);
+                    Assert.Equal("Back to top", AutomationProperties.GetName(backToTop));
+                    Assert.True(backToTop.TranslatePoint(new Point(), page).Y >=
+                        toolbar.TranslatePoint(new Point(), page).Y + toolbar.ActualHeight);
+                    Assert.Equal(viewportHeight, browserList.ActualHeight);
+                    await Task.Delay(180);
+                    Render(page, "library-back-to-top-660", 1);
+                    backToTop.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
+                        Assert.True(scroll.VerticalOffset > 0, "Back to top jumped instead of animating.");
+                    var deadline = DateTime.UtcNow.AddSeconds(3);
+                    while ((scroll.VerticalOffset > 0 || backToTop.Visibility != Visibility.Collapsed) &&
+                        DateTime.UtcNow < deadline) await Task.Delay(20);
+                    Assert.Equal(0, scroll.VerticalOffset);
+                    Assert.Equal(Visibility.Collapsed, backToTop.Visibility);
+                    Assert.False(backToTop.IsHitTestVisible);
+                }
             }
             // Reproduce a requested window width exceeding the available desktop width.
             window.MaxWidth = 1000;
