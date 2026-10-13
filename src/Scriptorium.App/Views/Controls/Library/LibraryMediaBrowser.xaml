@@ -2,6 +2,7 @@
     x:Class="Scriptorium.App.Views.Controls.Library.LibraryMediaBrowser"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:pages="clr-namespace:Scriptorium.App.ViewModels.Pages"
     Loaded="OnLoaded">
@@ -27,7 +28,7 @@
             </TextBlock>
         </StackPanel>
 
-        <ListBox x:Name="BrowserList" Grid.Row="1" Padding="{StaticResource Library.BrowserInset}" Background="Transparent" BorderThickness="0" ItemsSource="{Binding BrowserRows}" ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.ScrollChanged="OnBrowserScrollChanged" VirtualizingPanel.CacheLength="1" VirtualizingPanel.CacheLengthUnit="Page" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.VirtualizationMode="Recycling" SizeChanged="OnBrowserSizeChanged">
+        <ListBox behaviors:SmoothScrollBehavior.IsEnabled="True" x:Name="BrowserList" Grid.Row="1" Padding="{StaticResource Library.BrowserInset}" Background="Transparent" BorderThickness="0" ItemsSource="{Binding BrowserRows}" ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.ScrollChanged="OnBrowserScrollChanged" VirtualizingPanel.CacheLength="1" VirtualizingPanel.CacheLengthUnit="Page" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.VirtualizationMode="Recycling" SizeChanged="OnBrowserSizeChanged">
             <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">

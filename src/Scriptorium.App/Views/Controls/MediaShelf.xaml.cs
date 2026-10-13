@@ -4,7 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
+using Scriptorium.App.Behaviors;
 
 namespace Scriptorium.App.Views.Controls;
 
@@ -20,8 +20,6 @@ public partial class MediaShelf : UserControl
     private ScrollViewer? _scroll;
     private Button? _mousePressedArrow;
     private bool _arrowFocusableBeforeMousePress;
-    private VirtualizingStackPanel? _itemsPanel;
-    private TranslateTransform? _contentTranslation;
     private HwndSource? _source;
     public MediaShelf() => InitializeComponent();
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
@@ -34,12 +32,6 @@ public partial class MediaShelf : UserControl
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         _scroll = FindScrollViewer(Items);
-        _itemsPanel = FindItemsPanel(Items);
-        if (_itemsPanel is not null)
-        {
-            _contentTranslation = new TranslateTransform();
-            _itemsPanel.RenderTransform = _contentTranslation;
-        }
         _source = PresentationSource.FromVisual(this) as HwndSource;
         _source?.RemoveHook(WindowProcedure);
         _source?.AddHook(WindowProcedure);
@@ -48,17 +40,10 @@ public partial class MediaShelf : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         RestoreArrowFocusability();
-        if (_contentTranslation is { IsFrozen: false } translation)
-        {
-            translation.BeginAnimation(TranslateTransform.XProperty, null);
-            translation.X = 0;
-        }
-        if (_itemsPanel is not null) _itemsPanel.RenderTransform = Transform.Identity;
+        if (_scroll is not null) SmoothScrollBehavior.Stop(_scroll);
         _source?.RemoveHook(WindowProcedure);
         _source = null;
         _scroll = null;
-        _itemsPanel = null;
-        _contentTranslation = null;
     }
     private void OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
@@ -98,33 +83,13 @@ public partial class MediaShelf : UserControl
     internal void MoveBy(double delta, bool animate)
     {
         if (_scroll is null) return;
-        var currentTranslation = _contentTranslation?.X ?? 0;
-        _contentTranslation?.BeginAnimation(TranslateTransform.XProperty, null);
-        var visibleOffset = _scroll.HorizontalOffset - currentTranslation;
-        var end = Math.Clamp(_scroll.HorizontalOffset + delta, 0, _scroll.ScrollableWidth);
-        var shouldAnimate = animate && _contentTranslation is not null && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
-
-        // Update virtualization and layout once, then move its already-laid-out content on the render path.
-        _scroll.ScrollToHorizontalOffset(end);
-        if (_contentTranslation is null) return;
-        if (shouldAnimate)
-        {
-            var initialTranslation = end - visibleOffset;
-            _contentTranslation.X = 0;
-            _contentTranslation.BeginAnimation(TranslateTransform.XProperty,
-                new DoubleAnimation(initialTranslation, 0, (Duration)FindResource("Motion.Duration.Deliberate"))
-                { EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Standard"), FillBehavior = FillBehavior.Stop });
-        }
-        else
-        {
-            _contentTranslation.X = 0;
-        }
+        SmoothScrollBehavior.ScrollBy(_scroll, delta, horizontal: true, animate: animate);
     }
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
         if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && HasOverflow)
         {
-            MoveBy(-e.Delta, false);
+            MoveBy(-e.Delta, true);
             e.Handled = true;
             return;
         }
@@ -132,7 +97,7 @@ public partial class MediaShelf : UserControl
         for (DependencyObject? ancestor = VisualTreeHelper.GetParent(this); ancestor is not null; ancestor = VisualTreeHelper.GetParent(ancestor))
             if (ancestor is ScrollViewer outer)
             {
-                outer.ScrollToVerticalOffset(outer.VerticalOffset - e.Delta);
+                SmoothScrollBehavior.ScrollBy(outer, -e.Delta);
                 e.Handled = true;
                 break;
             }
@@ -142,7 +107,7 @@ public partial class MediaShelf : UserControl
         // WM_MOUSEHWHEEL: horizontal wheels and precision trackpads retain their pixel deltas.
         if (!handled && message == 0x020E && IsMouseOver && HasOverflow)
         {
-            MoveBy((short)((wParam.ToInt64() >> 16) & 0xffff), false);
+            MoveBy((short)((wParam.ToInt64() >> 16) & 0xffff), true);
             handled = true;
         }
         return IntPtr.Zero;
@@ -152,14 +117,6 @@ public partial class MediaShelf : UserControl
         if (owner is ScrollViewer scroll) return scroll;
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(owner); i++)
             if (FindScrollViewer(VisualTreeHelper.GetChild(owner, i)) is { } child) return child;
-        return null;
-    }
-
-    private static VirtualizingStackPanel? FindItemsPanel(DependencyObject owner)
-    {
-        if (owner is VirtualizingStackPanel panel) return panel;
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(owner); i++)
-            if (FindItemsPanel(VisualTreeHelper.GetChild(owner, i)) is { } child) return child;
         return null;
     }
 
