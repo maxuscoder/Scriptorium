@@ -291,6 +291,15 @@
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="{StaticResource Settings.AboutLabelMargin}" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Media types" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" TextWrapping="Wrap"><TextBlock.Text><MultiBinding StringFormat="{}{0}, {1}, {2}"><Binding Path="LibraryPage.MovieCountText" /><Binding Path="LibraryPage.TutorialCountText" /><Binding Path="LibraryPage.TvShowCountText" /></MultiBinding></TextBlock.Text></TextBlock></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
+                    <Grid Style="{StaticResource Settings.Row}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Margin="{StaticResource Settings.AboutLabelMargin}" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Supported media file types" />
+                        <TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Helper}" Text="{Binding SupportedMediaFileTypes}" TextWrapping="Wrap" />
+                    </Grid>
+                    <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="{StaticResource Settings.AboutLabelMargin}" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Database" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding DatabaseLocation}" TextWrapping="Wrap" /></Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions><TextBlock Margin="{StaticResource Settings.AboutLabelMargin}" VerticalAlignment="Center" Style="{StaticResource Settings.RowTitle}" Text="Thumbnail cache location" /><TextBlock Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding ThumbnailCacheLocation}" TextWrapping="Wrap" /></Grid>

@@ -44,6 +44,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         IApplicationInfoService applicationInfo,
         DatabaseLocation databaseLocation,
         IApplicationResetService applicationResetService,
+        IMediaFormatService mediaFormatService,
         INotificationService? notifications = null,
         IAutomaticThumbnailService? automaticThumbnails = null)
     {
@@ -57,6 +58,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         _applicationInfo = applicationInfo;
         _databaseLocation = databaseLocation;
         _applicationResetService = applicationResetService;
+        SupportedMediaFileTypes = string.Join(", ", mediaFormatService.SupportedExtensions.OrderBy(extension => extension, StringComparer.Ordinal));
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
             ? sortOrder
@@ -92,6 +94,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public string ApplicationVersion => _applicationInfo.Version;
 
     public string BuildInformation => _applicationInfo.BuildInformation;
+
+    public string SupportedMediaFileTypes { get; }
 
     public string DatabaseLocation => _databaseLocation.FilePath;
 
