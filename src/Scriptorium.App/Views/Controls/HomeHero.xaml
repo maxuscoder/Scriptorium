@@ -134,7 +134,7 @@
         </Grid>
         <Grid Margin="{StaticResource Home.Hero.Padding}">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel MaxWidth="{StaticResource Home.Hero.TextWidth}" HorizontalAlignment="Left" VerticalAlignment="Center">
+            <StackPanel MaxWidth="{StaticResource Home.Hero.TextWidth}" HorizontalAlignment="Left" VerticalAlignment="Bottom">
                 <TextBlock Text="{Binding Eyebrow, ElementName=Root}" Style="{StaticResource Hero.Eyebrow}" />
                 <TextBlock Text="{Binding HeroTitle, ElementName=Root}" TextWrapping="Wrap" Margin="{StaticResource Home.Copy.Gap}">
                     <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">

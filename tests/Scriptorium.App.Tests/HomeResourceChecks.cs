@@ -91,6 +91,7 @@ internal static class HomeResourceChecks
             Assert.False(hero.HasArtwork);
             Assert.Equal("Continue in player", hero.ActionText);
             Assert.Equal("Stopped at 20:00", hero.PositionText);
+            Assert.Equal("Movie · 2h 49m total · 2h 29m remaining", hero.HeroMetadata);
             Assert.Equal(home.Hero.PlaybackProgressPercentage, ((ProgressBar)hero.FindName("Progress")).Value);
             Assert.True(hero.ActualHeight < 280); // Compact fallback, not an empty cinematic poster.
             var continueButton = (Button)hero.FindName("ContinueButton");

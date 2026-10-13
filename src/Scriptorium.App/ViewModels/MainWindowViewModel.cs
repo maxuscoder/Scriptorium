@@ -27,6 +27,11 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     private readonly INotificationService? _notifications;
     private readonly ApplicationSettings _settings;
     private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private readonly ITvShowRepository? _tvShows;
+    private readonly ICourseRepository? _courses;
+    private Guid? _heroMetadataItemId;
+    private TVShow? _heroShow;
+    private Course? _heroCourse;
     private string? _statusMessage;
     private bool _isRefreshing;
     private Task? _refreshTask;
@@ -41,7 +46,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         IMediaDetailsNavigationCoordinator detailsCoordinator, IPlaybackProgressService playbackProgressService,
         ILogger<MainWindowViewModel> logger, INotificationService? notifications = null,
         ISettingsService? settingsService = null, IFavoriteService? favorites = null,
-        IAutomaticThumbnailService? automaticThumbnails = null)
+        IAutomaticThumbnailService? automaticThumbnails = null,
+        ITvShowRepository? tvShows = null, ICourseRepository? courses = null)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
         ArgumentNullException.ThrowIfNull(detailsCoordinator);
@@ -55,6 +61,8 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         _settings = settingsService?.Settings ?? new ApplicationSettings();
         _favorites = favorites;
         _automaticThumbnails = automaticThumbnails;
+        _tvShows = tvShows;
+        _courses = courses;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         OpenMediaCommand = new AsyncRelayCommand(OpenMediaAsync, parameter => parameter is LibraryMediaItemViewModel);
         ToggleFavoriteCommand = favorites is null ? null : new AsyncRelayCommand(ToggleFavoriteAsync,
@@ -68,6 +76,11 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
     public ObservableCollection<LibraryMediaItemViewModel> RecentlyWatchedMedia { get; } = [];
     public ObservableCollection<HomeShelfViewModel> Shelves { get; } = [];
     public LibraryMediaItemViewModel? Hero { get; private set; }
+    public string HeroMetadata => Hero is { } hero
+        ? HomeHeroMetadata.For(hero.MediaItem,
+            _heroMetadataItemId == hero.MediaItemId ? _heroShow : null,
+            _heroMetadataItemId == hero.MediaItemId ? _heroCourse : null)
+        : "";
     public ApplicationSettings Settings => _settings;
     public bool HasIncompleteMedia => IncompleteMedia.Count != 0;
     public string IncompleteMediaCountText => $"{IncompleteMedia.Count} item{(IncompleteMedia.Count == 1 ? "" : "s")}";
@@ -140,6 +153,15 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
                 foreach (var item in await historyTask) RecentlyWatchedMedia.Add(Card(item));
                 _recentlyAdded = (await addedTask).Select(Card).ToArray();
                 _favoriteItems = (await favoritesTask).Select(Card).ToArray();
+                var metadataItem = IncompleteMedia.FirstOrDefault() ?? RecentlyWatchedMedia.FirstOrDefault(item => !item.IsMissing);
+                var show = metadataItem?.MediaItem.MediaType == MediaType.TvShow && _tvShows is not null
+                    ? await Task.Run(() => _tvShows.GetByMediaItemIdAsync(metadataItem.MediaItemId)) : null;
+                var course = metadataItem?.MediaItem.MediaType == MediaType.Tutorial && _courses is not null
+                    ? await Task.Run(() => _courses.GetByMediaItemIdAsync(metadataItem.MediaItemId)) : null;
+                if (_disposed) return;
+                _heroMetadataItemId = metadataItem?.MediaItemId;
+                _heroShow = show;
+                _heroCourse = course;
                 StatusMessage = null;
                 RebuildShelves();
                 _hasLoadedHomepageData = true;
@@ -179,7 +201,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
 
     private void NotifyPresentation()
     {
-        foreach (var name in new[] { nameof(Hero), nameof(HasHero), nameof(HasContent), nameof(ShowEmpty), nameof(ShowLoading), nameof(HasError),
+        foreach (var name in new[] { nameof(Hero), nameof(HeroMetadata), nameof(HasHero), nameof(HasContent), nameof(ShowEmpty), nameof(ShowLoading), nameof(HasError),
             nameof(HasIncompleteMedia), nameof(IncompleteMediaCountText), nameof(HasRecentlyWatchedMedia) }) OnPropertyChanged(name);
     }
 
@@ -229,6 +251,7 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         _settings.PropertyChanged -= OnSettingsChanged;
         IncompleteMedia.Clear(); RecentlyWatchedMedia.Clear(); Shelves.Clear();
         _recentlyAdded = []; _favoriteItems = []; Hero = null;
+        _heroMetadataItemId = null; _heroShow = null; _heroCourse = null;
         _hasLoadedHomepageData = false;
     }
 }
