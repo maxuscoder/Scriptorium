@@ -120,7 +120,7 @@
     <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.SurfaceHeader}">
         <Grid.Style><Style TargetType="Grid">
             <Style.Triggers><DataTrigger Binding="{Binding HasArtwork, ElementName=Root}" Value="True">
-                <Setter Property="MinHeight" Value="{StaticResource Home.Hero.Height}" />
+                <Setter Property="MinHeight" Value="{DynamicResource Home.Hero.Height}" />
             </DataTrigger></Style.Triggers>
         </Style></Grid.Style>
         <Grid x:Name="ArtworkLayer">

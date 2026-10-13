@@ -110,7 +110,7 @@ internal static class HomeResourceChecks
             {
                 window.Width = width;
                 await StaTest.DrainDispatcherAsync();
-                var outer = (ScrollViewer)page.Content;
+                var outer = Descendants<ScrollViewer>(page).Single(viewer => viewer.Name == "HomeScroll");
                 Assert.Equal(0, outer.ScrollableWidth);
                 Assert.True(hero.ActualWidth <= page.ActualWidth);
                 var shelf = Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added");
@@ -226,6 +226,11 @@ internal static class HomeResourceChecks
             foreach (var action in more.ContextMenu.Items.Cast<MenuItem>()) Assert.Same(home.Hero, action.CommandParameter);
             more.ContextMenu.IsOpen = false;
 
+            // Match the single-resumable-item Home layout: Recently added follows the hero.
+            foreach (var item in media.Skip(2).Take(2)) await playback.SetCompletionAsync(item.Id, true);
+            await home.RefreshAsync();
+            await StaTest.DrainDispatcherAsync();
+
             // Render the real Home view with isolated test artwork, never the user's cache.
             var preview = await ThumbnailCache.GetAsync(Path.Combine(AppContext.BaseDirectory, "media-card-fixture.png"), Path.Combine(AppContext.BaseDirectory, "home-thumbnail-cache"));
             Assert.NotNull(preview);
@@ -233,7 +238,7 @@ internal static class HomeResourceChecks
             hero.SetValue((DependencyPropertyKey)typeof(HomeHero).GetField("HasArtworkPropertyKey", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)!, true);
 
             // Returning to Home keeps the hero, decoded artwork, shelves, and scroll positions.
-            var outerScroll = (ScrollViewer)page.Content;
+            var outerScroll = Descendants<ScrollViewer>(page).Single(viewer => viewer.Name == "HomeScroll");
             outerScroll.ScrollToVerticalOffset(100);
             var addedShelf = Descendants<MediaShelf>(page).First(shelf => shelf.Title == "Recently added");
             addedShelf.MoveBy(300, false);
@@ -288,16 +293,52 @@ internal static class HomeResourceChecks
                 Assert.Single(host.Children);
             }
 
-            foreach (var width in new[] { 1120d, 640d })
+            outerScroll.ScrollToTop();
+            foreach (var (width, height) in new[] { (1200d, 760d), (1120d, 800d), (640d, 800d) })
             {
                 window.Width = width;
+                window.Height = height;
                 await StaTest.DrainDispatcherAsync();
-                Assert.InRange(hero.ActualHeight, 332, 352);
+                Assert.True(hero.ActualHeight > 332);
+                var firstShelf = Descendants<MediaShelf>(page).First();
+                Assert.Equal("Recently added", firstShelf.Title);
+                var shelfBottom = firstShelf.TranslatePoint(new Point(0, firstShelf.ActualHeight), outerScroll).Y;
+                Assert.InRange(Math.Abs(outerScroll.ViewportHeight - shelfBottom), 0, 1);
+                var scrollDown = Descendants<Button>(page).Single(button => button.Name == "ScrollDownButton");
+                Assert.Equal(Visibility.Visible, scrollDown.Visibility);
+                Assert.Equal(Visibility.Collapsed, Descendants<Button>(page).Single(button => button.Name == "ScrollUpButton").Visibility);
+                var buttonCenter = scrollDown.TranslatePoint(new Point(scrollDown.ActualWidth / 2, 0), outerScroll).X;
+                Assert.InRange(Math.Abs(buttonCenter - outerScroll.ViewportWidth / 2), 0, 1);
                 var bitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
                 bitmap.Render(page);
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using var output = File.Create(Path.Combine(AppContext.BaseDirectory, $"home-{width:0}.png")); encoder.Save(output);
             }
+            var scrollDownButton = Descendants<Button>(page).Single(button => button.Name == "ScrollDownButton");
+            scrollDownButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            var scrollDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (outerScroll.ScrollableHeight - outerScroll.VerticalOffset > 1 && DateTime.UtcNow < scrollDeadline)
+                await Task.Delay(25);
+            await StaTest.DrainDispatcherAsync();
+            Assert.InRange(outerScroll.ScrollableHeight - outerScroll.VerticalOffset, 0, 1);
+            Assert.Equal(Visibility.Collapsed, scrollDownButton.Visibility);
+            var scrollUpButton = Descendants<Button>(page).Single(button => button.Name == "ScrollUpButton");
+            Assert.Equal(Visibility.Visible, scrollUpButton.Visibility);
+            var upButtonPosition = scrollUpButton.TranslatePoint(new Point(scrollUpButton.ActualWidth / 2, 0), outerScroll);
+            Assert.InRange(Math.Abs(upButtonPosition.X - outerScroll.ViewportWidth / 2), 0, 1);
+            Assert.Equal(16, upButtonPosition.Y, 1);
+            var bottomBitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+            bottomBitmap.Render(page);
+            var bottomEncoder = new PngBitmapEncoder(); bottomEncoder.Frames.Add(BitmapFrame.Create(bottomBitmap));
+            using (var output = File.Create(Path.Combine(AppContext.BaseDirectory, "home-bottom.png"))) bottomEncoder.Save(output);
+            scrollUpButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            scrollDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (outerScroll.VerticalOffset > 1 && DateTime.UtcNow < scrollDeadline)
+                await Task.Delay(25);
+            await StaTest.DrainDispatcherAsync();
+            Assert.InRange(outerScroll.VerticalOffset, 0, 1);
+            Assert.Equal(Visibility.Collapsed, scrollUpButton.Visibility);
+            Assert.Equal(Visibility.Visible, scrollDownButton.Visibility);
             // A retained page still checks for invalidated data when it becomes visible again.
             host.Content = new DetailPage();
             await StaTest.DrainDispatcherAsync();
@@ -320,6 +361,8 @@ internal static class HomeResourceChecks
             Assert.True(home.ShowEmpty);
             Assert.Empty(home.Shelves);
             Assert.Null(home.Hero);
+            Assert.Equal(Visibility.Collapsed, scrollDownButton.Visibility);
+            Assert.Equal(Visibility.Collapsed, scrollUpButton.Visibility);
             Assert.Equal(Visibility.Visible, Descendants<Border>(page).Single(border => border.Name == "EmptyState").Visibility);
             await using (var db = factory.CreateDbContext()) await db.Database.ExecuteSqlRawAsync("DROP TABLE MediaItems");
             await home.RefreshAsync();
