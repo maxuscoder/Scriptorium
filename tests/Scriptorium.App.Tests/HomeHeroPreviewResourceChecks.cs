@@ -42,6 +42,7 @@ internal static class HomeHeroPreviewResourceChecks
         {
             window.Show();
             await WaitUntil(() => preview.HasPreview);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             // Use isolated test artwork/cache; do not read or write the user's thumbnail cache.
             var artwork = await ThumbnailCache.GetAsync(Path.Combine(AppContext.BaseDirectory, "media-card-fixture.png"),
                 Path.Combine(AppContext.BaseDirectory, "home-preview-thumbnail-cache"));
@@ -92,6 +93,7 @@ internal static class HomeHeroPreviewResourceChecks
             hero.Visibility = Visibility.Visible;
             await WaitUntil(() => preview.HasPreview);
             Assert.True(preview.IsPlaying);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             Assert.True(preview.IsMuted);
             Assert.Equal("Pause preview", pause.ToolTip);
             await WaitUntil(() => !preview.HasPreview);

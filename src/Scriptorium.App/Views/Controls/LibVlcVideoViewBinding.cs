@@ -73,7 +73,56 @@ public static class LibVlcVideoViewBinding
     {
         if (target is VideoView videoView)
         {
-            videoView.MediaPlayer = (args.NewValue as LibVlcVideoOutput)?.MediaPlayer;
+            (videoView.GetValue(AttachmentProperty) as OutputAttachment)?.Detach();
+            videoView.SetValue(AttachmentProperty, args.NewValue is LibVlcVideoOutput output
+                ? new OutputAttachment(videoView, output) : null);
+            if (args.NewValue is not LibVlcVideoOutput) videoView.MediaPlayer = null;
+        }
+    }
+
+    private static readonly DependencyProperty AttachmentProperty = DependencyProperty.RegisterAttached(
+        "Attachment", typeof(OutputAttachment), typeof(LibVlcVideoViewBinding));
+
+    private sealed class OutputAttachment
+    {
+        private readonly VideoView _view;
+        private readonly LibVlcVideoOutput _output;
+
+        internal OutputAttachment(VideoView view, LibVlcVideoOutput output)
+        {
+            _view = view;
+            _output = output;
+            view.MediaPlayer = output.MediaPlayer;
+            view.Loaded += OnLoaded;
+            view.LayoutUpdated += OnLayoutUpdated;
+            TryAttach();
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs args)
+        {
+            _view.LayoutUpdated -= OnLayoutUpdated;
+            _view.LayoutUpdated += OnLayoutUpdated;
+            TryAttach();
+        }
+
+        private void OnLayoutUpdated(object? sender, EventArgs args) => TryAttach();
+
+        private void TryAttach()
+        {
+            if (!_view.IsLoaded || _output.MediaPlayer.NativeReference == IntPtr.Zero) return;
+            _view.ApplyTemplate();
+            if (_view.Template?.FindName("PART_PlayerHost", _view) is not HwndHost host || host.Handle == IntPtr.Zero)
+                return;
+            // Reattach explicitly: VideoView may have applied its template while Handle was still zero.
+            _output.MediaPlayer.Hwnd = host.Handle;
+            _view.LayoutUpdated -= OnLayoutUpdated;
+            _output.NotifyAttached();
+        }
+
+        internal void Detach()
+        {
+            _view.Loaded -= OnLoaded;
+            _view.LayoutUpdated -= OnLayoutUpdated;
         }
     }
 }

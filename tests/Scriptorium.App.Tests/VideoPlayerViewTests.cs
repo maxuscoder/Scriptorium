@@ -70,8 +70,14 @@ public sealed class VideoPlayerViewTests
         var window = new Window { Width = 1000, Height = 900, Content = page, ShowActivated = false, ShowInTaskbar = false };
         try
         {
+            // A details page can activate before VideoView has built its native render target.
+            player.Activate();
+            await Task.Delay(250);
+            Assert.False(player.IsReady);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             window.Show();
             await WaitUntil(() => player.IsReady);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             await Task.Delay(500);
             var inlineView = Descendants<VideoPlayer>(page).Single();
             var inlineSurface = Descendants<VideoView>(inlineView).Single();
@@ -131,6 +137,7 @@ public sealed class VideoPlayerViewTests
             Assert.Empty(FullscreenWindows(window));
             Assert.False(player.IsReady);
             Assert.Null(player.VideoOutput);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             // Keep native playback assertions independent of the shared theme checks.
             await DesignSystemResourceChecks.VerifyAsync(application.Resources);
             await AmbientBokehResourceChecks.VerifyAsync(application.Resources);

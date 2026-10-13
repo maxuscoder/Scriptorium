@@ -20,9 +20,11 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     private Task? _disposeTask;
     private readonly LibVLC _libVlc;
     private readonly MediaPlayer _player;
+    private readonly LibVlcVideoOutput _output;
     private Media? _media;
     private string? _filePath;
     private bool _opening;
+    private bool _waitingForOutput;
     private volatile bool _disposed;
     private double _playbackSpeed = 1;
 
@@ -33,7 +35,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         _dispatcher = Dispatcher.CurrentDispatcher;
         _libVlc = runtime.Instance;
         _player = new MediaPlayer(_libVlc);
-        VideoOutput = new LibVlcVideoOutput(_player);
+        _output = new LibVlcVideoOutput(_player, OnOutputAttached);
+        VideoOutput = _output;
         _player.Playing += OnPlaying;
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnEncounteredError;
@@ -99,12 +102,29 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         _media = new Media(_libVlc, new Uri(_filePath, UriKind.Absolute));
         _player.Media = _media;
         _opening = true;
+        _waitingForOutput = true;
+        // VideoView's binding can arrive before its template has built a native HWND.
+        // Starting without that HWND lets LibVLC create its own top-level video window.
+        StartOpeningWhenAttached();
+    }
+
+    private void OnOutputAttached()
+    {
+        if (_disposed) return;
+        try { StartOpeningWhenAttached(); }
+        catch (Exception exception) { PostFailure(exception); }
+    }
+
+    private void StartOpeningWhenAttached()
+    {
+        if (!_waitingForOutput || _disposed || _player.Hwnd == IntPtr.Zero) return;
+        _waitingForOutput = false;
         if (!_player.Play())
         {
             _opening = false;
             throw new MediaPlaybackException(
                 MediaPlaybackFailureKind.UnsupportedFormat,
-                _filePath,
+                _filePath!,
                 "LibVLC could not start the media.");
         }
     }
@@ -112,6 +132,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     public void Play()
     {
         ThrowIfDisposed();
+        if (_player.Hwnd == IntPtr.Zero || _waitingForOutput)
+            throw new InvalidOperationException("The embedded video output is not ready.");
         _player.SetPause(false);
         if (!_player.IsPlaying && !_player.Play())
             throw new InvalidOperationException("LibVLC could not resume playback.");
@@ -127,6 +149,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     {
         ThrowIfDisposed();
         _opening = false;
+        _waitingForOutput = false;
         _player.Stop();
     }
 
@@ -192,6 +215,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
             if (_disposeTask is not null) return new ValueTask(_disposeTask);
             _disposed = true;
             _opening = false;
+            _waitingForOutput = false;
             _disposeTask = _runtime.ReleaseAsync(DisposeNativeResources);
             return new ValueTask(_disposeTask);
         }
@@ -211,7 +235,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     }
 }
 
-internal sealed class LibVlcVideoOutput(MediaPlayer mediaPlayer) : IVideoOutput
+internal sealed class LibVlcVideoOutput(MediaPlayer mediaPlayer, Action onAttached) : IVideoOutput
 {
     internal MediaPlayer MediaPlayer { get; } = mediaPlayer;
+    internal void NotifyAttached() => onAttached();
 }

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows.Interop;
 using Scriptorium.App.Services;
 using Xunit;
 
@@ -7,7 +8,7 @@ namespace Scriptorium.App.Tests;
 public sealed class LocalVideoPlaybackTests
 {
     [Fact]
-    public Task LocalMp4OpensPausesResumesAndReleasesFile() => StaTest.Run(async () =>
+    public Task LocalMp4WaitsForEmbeddedOutputThenPausesResumesAndReleasesFile() => StaTest.Run(async () =>
     {
         // Copy to a filename that also checks spaces and non-ASCII local paths.
         var path = Path.Combine(Path.GetTempPath(), $"Scriptorium preview ș {Guid.NewGuid():N}.mp4");
@@ -21,7 +22,15 @@ public sealed class LocalVideoPlaybackTests
                 player.Opened += (_, _) => opened.TrySetResult();
                 player.Failed += (_, error) => opened.TrySetException(error);
                 player.Open(path);
+                await Task.Delay(250);
+                Assert.False(opened.Task.IsCompleted);
+                Assert.False(player.IsPlaying);
+                Assert.Equal(IntPtr.Zero, ((LibVlcVideoOutput)player.VideoOutput).MediaPlayer.Hwnd);
+                Assert.Throws<InvalidOperationException>(player.Play);
+                NativeVideoWindowChecks.AssertNoStandaloneOutput();
+                using var videoHost = AttachOutput(player);
                 await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                NativeVideoWindowChecks.AssertNoStandaloneOutput();
                 Assert.NotNull(player.VideoOutput);
                 Assert.InRange(player.Duration.TotalSeconds, 3.9, 4.1);
                 await Task.Delay(300);
@@ -58,6 +67,7 @@ public sealed class LocalVideoPlaybackTests
             var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             player.Opened += (_, _) => opened.TrySetResult();
             player.Failed += (_, error) => opened.TrySetException(error);
+            using var videoHost = AttachOutput(player);
             player.Open(path);
             await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
             var release = player.DisposeAsync().AsTask();
@@ -71,6 +81,34 @@ public sealed class LocalVideoPlaybackTests
             File.Delete(path);
         }
     });
+
+    [Fact]
+    public Task ClosingBeforeOutputAttachmentCancelsThePendingOpen() => StaTest.Run(async () =>
+    {
+        using var runtime = new LibVlcRuntime();
+        using var player = new LibVlcVideoPlayback(runtime);
+        var opened = false;
+        player.Opened += (_, _) => opened = true;
+        player.Open(Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"));
+        await player.DisposeAsync();
+        // A late view attachment notification must not restart a released native session.
+        ((LibVlcVideoOutput)player.VideoOutput).NotifyAttached();
+        await StaTest.DrainDispatcherAsync();
+        Assert.False(opened);
+        NativeVideoWindowChecks.AssertNoStandaloneOutput();
+    });
+
+    private static HwndSource AttachOutput(LibVlcVideoPlayback playback)
+    {
+        var host = new HwndSource(new HwndSourceParameters("Scriptorium playback test surface")
+        {
+            Width = 96, Height = 64, WindowStyle = unchecked((int)0x80000000)
+        });
+        var output = (LibVlcVideoOutput)playback.VideoOutput;
+        output.MediaPlayer.Hwnd = host.Handle;
+        output.NotifyAttached();
+        return host;
+    }
 
     private static async Task WaitUntil(Func<bool> predicate)
     {
