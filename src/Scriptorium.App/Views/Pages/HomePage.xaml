@@ -6,16 +6,9 @@
     xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages" Loaded="OnLoaded" Background="Transparent">
     <ScrollViewer behaviors:SmoothScrollBehavior.IsEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
         <StackPanel Margin="{StaticResource Home.Page.Padding}">
-            <Grid Margin="{StaticResource Home.Toolbar.Margin}">
-                <TextBlock Text="Home" Style="{StaticResource Text.SectionTitle}" />
-                <Button HorizontalAlignment="Right" Style="{StaticResource Button.RoundIcon}" Command="{Binding RefreshCommand}"
-                    ToolTip="Refresh Home" AutomationProperties.Name="Refresh Home">
-                    <TextBlock FontFamily="{StaticResource MediaCard.FontFamily.Icons}" Text="&#xE72C;" />
-                </Button>
-            </Grid>
             <controls:LoadingIndicator Message="Finding your next watch..." Detail="Loading your local media."
                 Visibility="{Binding ShowLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <Border Style="{StaticResource Surface}" Padding="{StaticResource Spacing.M}" Margin="{StaticResource Home.Toolbar.Margin}"
+            <Border Style="{StaticResource Surface}" Padding="{StaticResource Spacing.M}" Margin="{StaticResource Home.Status.Margin}"
                 Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Secondary}" TextWrapping="Wrap" />
             </Border>

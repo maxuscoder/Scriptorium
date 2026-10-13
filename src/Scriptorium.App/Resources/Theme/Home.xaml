@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <Thickness x:Key="Home.Page.Padding">28,20,28,24</Thickness>
-    <Thickness x:Key="Home.Toolbar.Margin">0,0,0,16</Thickness>
+    <Thickness x:Key="Home.Status.Margin">0,0,0,16</Thickness>
     <Thickness x:Key="Home.Hero.Padding">32</Thickness>
     <Thickness x:Key="Home.Hero.Margin">0,0,0,24</Thickness>
     <Thickness x:Key="Home.Copy.Gap">0,8,0,0</Thickness>
@@ -12,7 +12,7 @@
     <Thickness x:Key="Home.Shelf.CardMargin">0,4,20,16</Thickness>
     <!-- Flush with the card viewport; its right edge is inset by 8 DIP of shelf padding. -->
     <Thickness x:Key="Home.Shelf.NavigationMargin">0,13,8,0</Thickness>
-    <sys:Double x:Key="Home.Hero.Height">280</sys:Double>
+    <sys:Double x:Key="Home.Hero.Height">332</sys:Double>
     <sys:Double x:Key="Home.Hero.TextWidth">440</sys:Double>
     <sys:Double x:Key="Home.Hero.ProgressWidth">267</sys:Double>
     <sys:Double x:Key="Home.Shelf.Height">244</sys:Double>

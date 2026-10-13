@@ -291,7 +291,7 @@ internal static class HomeResourceChecks
             {
                 window.Width = width;
                 await StaTest.DrainDispatcherAsync();
-                Assert.InRange(hero.ActualHeight, 280, 300);
+                Assert.InRange(hero.ActualHeight, 332, 352);
                 var bitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
                 bitmap.Render(page);
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
