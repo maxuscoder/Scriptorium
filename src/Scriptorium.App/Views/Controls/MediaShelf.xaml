@@ -29,7 +29,7 @@
                 <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter /></ControlTemplate></Setter.Value></Setter>
             </Style></ListBox.ItemContainerStyle>
             <ListBox.ItemTemplate><DataTemplate>
-                <controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource MediaCard.Margin}" IsListLayout="False"
+                <controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource Home.Shelf.CardMargin}" IsListLayout="False"
                     Title="{Binding Title}" Metadata="{Binding CardMetadata}" ThumbnailPath="{Binding ThumbnailPath}"
                     IsMissing="{Binding IsMissing}" IsFavorite="{Binding IsFavorite}" HasPlaybackProgress="{Binding HasPlaybackProgress}"
                     PlaybackProgressPercentage="{Binding PlaybackProgressPercentage}" ActionText="Open" ActionParameter="{Binding}"
