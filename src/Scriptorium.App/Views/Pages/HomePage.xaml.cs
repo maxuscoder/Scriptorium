@@ -34,7 +34,7 @@ public partial class HomePage : UserControl
     private void OnHomeScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (e.OriginalSource != HomeScroll || ScrollDownButton is null || ScrollUpButton is null) return;
-        ScrollDownButton.Visibility = HomeScroll.ScrollableHeight > 1 && HomeScroll.VerticalOffset <= 1
+        ScrollDownButton.Visibility = HomeScroll.ScrollableHeight - HomeScroll.VerticalOffset > 1
             ? Visibility.Visible : Visibility.Collapsed;
         ScrollUpButton.Visibility = HomeScroll.VerticalOffset > 1
             ? Visibility.Visible : Visibility.Collapsed;
