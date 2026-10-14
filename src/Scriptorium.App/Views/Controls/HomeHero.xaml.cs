@@ -213,12 +213,9 @@ public partial class HomeHero : UserControl
     private void OnCacheCleared(object? sender, EventArgs e) { if (IsLoaded) _ = LoadArtworkAsync(); }
     private void OnFrameSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        var radius = ((CornerRadius)FindResource("Radius.Card")).TopLeft;
+        var radius = ((CornerRadius)FindResource("Home.Hero.CornerRadius")).TopLeft;
         Frame.Clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
         if (_videoSurface is { } surface) LibVlcVideoViewBinding.FillToBounds(surface);
-        // Native video cannot use WPF's rounded clip; conceal its outer corners in the foreground.
-        CornerMaskDrawing.Geometry = new CombinedGeometry(GeometryCombineMode.Exclude,
-            new RectangleGeometry(new Rect(e.NewSize)), new RectangleGeometry(new Rect(e.NewSize), radius, radius));
         UpdateIconBackdrops();
     }
 
@@ -234,7 +231,8 @@ public partial class HomeHero : UserControl
             var transform = surface.TransformToAncestor(viewport).Inverse;
             if (transform is not null) visible.Intersect(transform.TransformBounds(new Rect(viewport.RenderSize)));
         }
-        LibVlcVideoViewBinding.ClipBackdrop(surface, Overlay, visible);
+        var radius = ((CornerRadius)FindResource("Home.Hero.CornerRadius")).TopLeft;
+        LibVlcVideoViewBinding.ClipBackdrop(surface, Overlay, visible, radius);
     }
 
     private void UpdateIconBackdrops()

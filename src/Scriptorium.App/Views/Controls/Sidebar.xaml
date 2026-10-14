@@ -15,7 +15,7 @@
         </DataTemplate>
     </UserControl.Resources>
     <Border Background="{DynamicResource Brush.Sidebar.Frost}" BorderBrush="{DynamicResource Brush.BorderStrong}"
-            BorderThickness="0,0,1,0" CornerRadius="0,10,0,0">
+            BorderThickness="0,0,1,0" CornerRadius="0,0,0,0">
         <DockPanel Margin="{StaticResource Shell.Padding}" LastChildFill="True">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="{StaticResource Shell.Brand.Height}"
                 Margin="{StaticResource Shell.Brand.Margin}">

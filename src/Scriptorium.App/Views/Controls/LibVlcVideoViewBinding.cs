@@ -29,8 +29,8 @@ public static class LibVlcVideoViewBinding
         if (player.CropGeometry != crop) player.CropGeometry = crop;
     }
 
-    /// <summary>Native/foreground windows need their own region when a background card scrolls out of view.</summary>
-    public static void ClipBackdrop(VideoView view, FrameworkElement overlay, Rect visibleBounds)
+    /// <summary>Clips native/foreground windows to the rounded card and its visible scroll viewport.</summary>
+    public static void ClipBackdrop(VideoView view, FrameworkElement overlay, Rect visibleBounds, double cornerRadius)
     {
         var foreground = Window.GetWindow(overlay);
         if (foreground is null || PresentationSource.FromVisual(view)?.CompositionTarget is not { } target) return;
@@ -40,29 +40,52 @@ public static class LibVlcVideoViewBinding
         var top = (int)Math.Ceiling(bounds.Top);
         var right = (int)Math.Floor(bounds.Right);
         var bottom = (int)Math.Floor(bounds.Bottom);
+        var frame = Rect.Transform(new Rect(view.RenderSize), transform);
+        var width = (int)Math.Round(frame.Width);
+        var height = (int)Math.Round(frame.Height);
+        var diameterX = (int)Math.Round(cornerRadius * 2 * transform.M11);
+        var diameterY = (int)Math.Round(cornerRadius * 2 * transform.M22);
         var foregroundHandle = new WindowInteropHelper(foreground).Handle;
         var videoHandle = view.MediaPlayer?.Hwnd ?? IntPtr.Zero;
-        var clip = new BackdropClip(foregroundHandle, videoHandle, left, top, right, bottom);
+        var clip = new BackdropClip(foregroundHandle, videoHandle, left, top, right, bottom,
+            width, height, diameterX, diameterY);
         if (Equals(view.GetValue(BackdropClipProperty), clip)) return;
         view.SetValue(BackdropClipProperty, clip);
-        SetRegion(foregroundHandle, left, top, right, bottom);
-        SetRegion(videoHandle, left, top, right, bottom);
+        SetRegion(foregroundHandle, clip);
+        SetRegion(videoHandle, clip);
     }
 
     private static readonly DependencyProperty BackdropClipProperty = DependencyProperty.RegisterAttached(
         "BackdropClip", typeof(BackdropClip), typeof(LibVlcVideoViewBinding));
-    private sealed record BackdropClip(IntPtr Foreground, IntPtr Video, int Left, int Top, int Right, int Bottom);
+    private sealed record BackdropClip(IntPtr Foreground, IntPtr Video, int Left, int Top, int Right, int Bottom,
+        int Width, int Height, int DiameterX, int DiameterY);
 
-    private static void SetRegion(IntPtr handle, int left, int top, int right, int bottom)
+    private static void SetRegion(IntPtr handle, BackdropClip clip)
     {
         if (handle == IntPtr.Zero) return;
-        var region = CreateRectRgn(left, top, Math.Max(left, right), Math.Max(top, bottom));
-        // Windows owns the region on success; on failure it remains ours.
-        if (region != IntPtr.Zero && SetWindowRgn(handle, region, true) == 0) DeleteObject(region);
+        var region = CreateRoundRectRgn(0, 0, clip.Width, clip.Height, clip.DiameterX, clip.DiameterY);
+        if (region == IntPtr.Zero) return;
+        var viewport = CreateRectRgn(clip.Left, clip.Top, Math.Max(clip.Left, clip.Right), Math.Max(clip.Top, clip.Bottom));
+        try
+        {
+            // Intersect with the viewport without rounding the edge exposed by scrolling.
+            if (viewport == IntPtr.Zero || CombineRgn(region, region, viewport, 1 /* RGN_AND */) == 0) return;
+            // Windows owns the region on success; on failure it remains ours.
+            if (SetWindowRgn(handle, region, true) != 0) region = IntPtr.Zero;
+        }
+        finally
+        {
+            if (viewport != IntPtr.Zero) DeleteObject(viewport);
+            if (region != IntPtr.Zero) DeleteObject(region);
+        }
     }
 
     [DllImport("gdi32.dll")]
     private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRoundRectRgn(int left, int top, int right, int bottom, int widthEllipse, int heightEllipse);
+    [DllImport("gdi32.dll")]
+    private static extern int CombineRgn(IntPtr destination, IntPtr source1, IntPtr source2, int mode);
     [DllImport("user32.dll")]
     private static extern int SetWindowRgn(IntPtr handle, IntPtr region, [MarshalAs(UnmanagedType.Bool)] bool redraw);
     [DllImport("gdi32.dll")]

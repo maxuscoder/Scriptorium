@@ -4,6 +4,7 @@
     xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
     Loaded="OnLoaded" Unloaded="OnUnloaded">
     <UserControl.Resources>
+        <CornerRadius x:Key="Home.Hero.CornerRadius">18</CornerRadius>
         <Style x:Key="Hero.Copy" TargetType="TextBlock" BasedOn="{StaticResource Text.Secondary}">
             <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True">
                 <Setter Property="Foreground" Value="{StaticResource Home.Hero.TextSecondary}" />
@@ -176,7 +177,7 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.Background}">
+    <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="Transparent">
         <Grid.Style><Style TargetType="Grid">
             <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True">
                 <Setter Property="MinHeight" Value="{DynamicResource Home.Hero.Height}" />
@@ -292,13 +293,8 @@
                     </Button>
                 </StackPanel>
             </Grid>
-            <Border BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" CornerRadius="{StaticResource Radius.Card}"
+            <Border BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="1" CornerRadius="{StaticResource Home.Hero.CornerRadius}"
                     IsHitTestVisible="False" />
-            <Border IsHitTestVisible="False">
-                <Border.Background><DrawingBrush Stretch="Fill"><DrawingBrush.Drawing>
-                    <GeometryDrawing x:Name="CornerMaskDrawing" Brush="{DynamicResource Brush.Background}" />
-                </DrawingBrush.Drawing></DrawingBrush></Border.Background>
-            </Border>
         </Grid>
     </Grid>
 </UserControl>

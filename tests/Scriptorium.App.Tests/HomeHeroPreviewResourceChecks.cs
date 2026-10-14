@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -64,15 +65,21 @@ internal static class HomeHeroPreviewResourceChecks
             Assert.Equal(Visibility.Collapsed, thumbnail.Visibility);
             var surface = Descendants<VideoView>(hero).Single();
             Assert.NotEqual(IntPtr.Zero, surface.MediaPlayer!.Hwnd);
+            AssertRoundedCorners(surface, hero);
+            window.Width = 820;
+            await StaTest.DrainDispatcherAsync();
+            AssertRoundedCorners(surface, hero);
             // The four-second fixture's sample starts at 0.4s, ignoring its deliberately wrong 120s metadata.
             Assert.InRange(surface.MediaPlayer.Time, 300, 2000);
             Assert.False(string.IsNullOrEmpty(surface.MediaPlayer.CropGeometry));
             scroll.ScrollToVerticalOffset(100);
             await StaTest.DrainDispatcherAsync();
             Assert.True(ReadClip(surface.MediaPlayer.Hwnd).Top > 0);
+            AssertRoundedCorners(surface, hero, scrolled: true);
             scroll.ScrollToTop();
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(0, ReadClip(surface.MediaPlayer.Hwnd).Top);
+            AssertRoundedCorners(surface, hero);
             Assert.Same(preview.ToggleMuteCommand, mute.Command);
             mute.Command.Execute(null);
             Assert.False(preview.IsMuted);
@@ -140,6 +147,36 @@ internal static class HomeHeroPreviewResourceChecks
         public override void WriteLine(string? message) => Messages.AppendLine(message);
     }
 
+    private static void AssertRoundedCorners(VideoView surface, HomeHero hero, bool scrolled = false)
+    {
+        var overlay = (FrameworkElement)hero.FindName("Overlay");
+        var foreground = new WindowInteropHelper(Window.GetWindow(overlay)).Handle;
+        var transform = PresentationSource.FromVisual(surface)!.CompositionTarget!.TransformToDevice;
+        var size = Rect.Transform(new Rect(surface.RenderSize), transform);
+        var width = (int)Math.Round(size.Width);
+        var height = (int)Math.Round(size.Height);
+        foreach (var handle in new[] { surface.MediaPlayer!.Hwnd, foreground })
+        {
+            var region = CreateRectRgn(0, 0, 0, 0);
+            try
+            {
+                Assert.NotEqual(0, GetWindowRgn(handle, region));
+                Assert.False(PtInRegion(region, 0, 0));
+                Assert.False(PtInRegion(region, width - 1, 0));
+                Assert.False(PtInRegion(region, 0, height - 1));
+                Assert.False(PtInRegion(region, width - 1, height - 1));
+                Assert.True(PtInRegion(region, width / 2, height / 2));
+                if (scrolled)
+                {
+                    Assert.NotEqual(0, GetRgnBox(region, out var bounds));
+                    Assert.True(PtInRegion(region, 0, bounds.Top));
+                }
+                else Assert.True(PtInRegion(region, width / 2, 0));
+            }
+            finally { DeleteObject(region); }
+        }
+    }
+
     private static NativeRect ReadClip(IntPtr handle)
     {
         var region = CreateRectRgn(0, 0, 0, 0);
@@ -160,6 +197,9 @@ internal static class HomeHeroPreviewResourceChecks
     private static extern int GetWindowRgn(IntPtr handle, IntPtr region);
     [DllImport("gdi32.dll")]
     private static extern int GetRgnBox(IntPtr region, out NativeRect box);
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool PtInRegion(IntPtr region, int x, int y);
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(IntPtr region);
 }
