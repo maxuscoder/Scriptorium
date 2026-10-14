@@ -320,11 +320,26 @@ internal static class HomeResourceChecks
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using var output = File.Create(Path.Combine(AppContext.BaseDirectory, $"home-{width:0}.png")); encoder.Save(output);
             }
+            // Wheel input over a shelf must match native page scrolling, with no animation tail.
+            outerScroll.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, -120)
+                { RoutedEvent = UIElement.MouseWheelEvent });
+            await StaTest.DrainDispatcherAsync();
+            var nativeWheelOffset = outerScroll.VerticalOffset;
+            Assert.True(nativeWheelOffset > 0);
+            outerScroll.ScrollToTop();
+            await StaTest.DrainDispatcherAsync();
+            Descendants<MediaShelf>(page).First().RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(
+                System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, -120)
+                { RoutedEvent = UIElement.PreviewMouseWheelEvent });
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(nativeWheelOffset, outerScroll.VerticalOffset);
+            await Task.Delay(150);
+            Assert.Equal(nativeWheelOffset, outerScroll.VerticalOffset);
+            outerScroll.ScrollToTop();
+            await StaTest.DrainDispatcherAsync();
             var scrollDownButton = Descendants<Button>(page).Single(button => button.Name == "ScrollDownButton");
             scrollDownButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            var scrollDeadline = DateTime.UtcNow.AddSeconds(5);
-            while (outerScroll.ScrollableHeight - outerScroll.VerticalOffset > 1 && DateTime.UtcNow < scrollDeadline)
-                await Task.Delay(25);
             await StaTest.DrainDispatcherAsync();
             Assert.InRange(outerScroll.ScrollableHeight - outerScroll.VerticalOffset, 0, 1);
             Assert.Equal(Visibility.Collapsed, scrollDownButton.Visibility);
@@ -338,9 +353,6 @@ internal static class HomeResourceChecks
             var bottomEncoder = new PngBitmapEncoder(); bottomEncoder.Frames.Add(BitmapFrame.Create(bottomBitmap));
             using (var output = File.Create(Path.Combine(AppContext.BaseDirectory, "home-bottom.png"))) bottomEncoder.Save(output);
             scrollUpButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            scrollDeadline = DateTime.UtcNow.AddSeconds(5);
-            while (outerScroll.VerticalOffset > 1 && DateTime.UtcNow < scrollDeadline)
-                await Task.Delay(25);
             await StaTest.DrainDispatcherAsync();
             Assert.InRange(outerScroll.VerticalOffset, 0, 1);
             Assert.Equal(Visibility.Collapsed, scrollUpButton.Visibility);

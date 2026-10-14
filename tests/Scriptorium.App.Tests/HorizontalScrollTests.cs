@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Scriptorium.App.Behaviors;
@@ -8,7 +7,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
-public sealed class SmoothScrollTests
+public sealed class HorizontalScrollTests
 {
     [Theory]
     [InlineData(1)]
@@ -90,94 +89,50 @@ public sealed class SmoothScrollTests
     }
 
     [Fact]
-    public Task WheelAnimatesRealOffsetsAndManualScrollingTakesOver() => StaTest.Run(async () =>
+    public Task HorizontalAnimationYieldsToManualScrollingAndStopsOnUnload() => StaTest.Run(async () =>
     {
         var viewer = new ScrollViewer { Content = new Border { Height = 2400, Width = 2400 },
             HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden };
-        SmoothScrollBehavior.SetIsEnabled(viewer, true);
         var window = new Window { Content = viewer, Width = 320, Height = 240,
             ShowActivated = false, ShowInTaskbar = false };
         try
         {
             window.Show();
             await StaTest.DrainDispatcherAsync();
-            var wheel = new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, -1)
-            {
-                RoutedEvent = UIElement.PreviewMouseWheelEvent
-            };
-            viewer.RaiseEvent(wheel);
-            Assert.True(wheel.Handled);
-            if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
-                Assert.Equal(0, viewer.VerticalOffset);
-            await WaitUntil(() => Math.Abs(viewer.VerticalOffset - 1) < 0.005);
-            Assert.Equal(1, viewer.VerticalOffset, 2);
+            viewer.ScrollToVerticalOffset(400);
+            await StaTest.DrainDispatcherAsync();
+            HorizontalScrollBehavior.ScrollBy(viewer, 120);
+            HorizontalScrollBehavior.ScrollBy(viewer, 120);
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - 240) < 0.005);
+            Assert.Equal(400, viewer.VerticalOffset);
 
-            for (var input = 0; input < 12; input++)
-            {
-                SmoothScrollBehavior.ScrollBy(viewer, 120);
-                await Task.Delay(16);
-            }
-            await WaitUntil(() => Math.Abs(viewer.VerticalOffset - 1441) < 0.005);
-
-            SmoothScrollBehavior.ScrollBy(viewer, 300);
+            HorizontalScrollBehavior.ScrollBy(viewer, 300);
             await Task.Delay(70);
-            viewer.ScrollToVerticalOffset(800);
+            viewer.ScrollToHorizontalOffset(800);
             await StaTest.DrainDispatcherAsync();
             await Task.Delay(350);
-            Assert.Equal(800, viewer.VerticalOffset, 2);
+            Assert.Equal(800, viewer.HorizontalOffset, 2);
 
-            SmoothScrollBehavior.ScrollBy(viewer, 120, horizontal: true);
-            SmoothScrollBehavior.ScrollBy(viewer, 120, horizontal: true);
-            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - 240) < 0.005);
-            Assert.Equal(240, viewer.HorizontalOffset, 2);
-
-            SmoothScrollBehavior.ScrollBy(viewer, 300);
+            HorizontalScrollBehavior.ScrollBy(viewer, 300);
             window.Content = null;
             await StaTest.DrainDispatcherAsync();
-            var offsetAfterUnload = viewer.VerticalOffset;
+            var offsetAfterUnload = viewer.HorizontalOffset;
             await Task.Delay(100);
-            Assert.Equal(offsetAfterUnload, viewer.VerticalOffset);
+            Assert.Equal(offsetAfterUnload, viewer.HorizontalOffset);
+            Assert.Equal(400, viewer.VerticalOffset);
         }
         finally { window.Close(); }
     });
 
     [Fact]
-    public Task PixelVirtualizationStaysEnabledDuringAnimatedScrolling() => StaTest.Run(async () =>
-    {
-        var list = new ListBox { ItemsSource = Enumerable.Range(0, 1000).Select(index => $"Title {index}") };
-        ScrollViewer.SetCanContentScroll(list, true);
-        VirtualizingPanel.SetIsVirtualizing(list, true);
-        VirtualizingPanel.SetVirtualizationMode(list, VirtualizationMode.Recycling);
-        VirtualizingPanel.SetScrollUnit(list, ScrollUnit.Pixel);
-        SmoothScrollBehavior.SetIsEnabled(list, true);
-        var window = new Window { Content = list, Width = 320, Height = 240,
-            ShowActivated = false, ShowInTaskbar = false };
-        try
-        {
-            window.Show();
-            await StaTest.DrainDispatcherAsync();
-            var viewer = Descendants<ScrollViewer>(list).First();
-            SmoothScrollBehavior.ScrollBy(viewer, 240);
-            await WaitUntil(() => Math.Abs(viewer.VerticalOffset - 240) < 0.05);
-            Assert.Equal(240, viewer.VerticalOffset, 1);
-            Assert.True(viewer.CanContentScroll);
-            Assert.True(VirtualizingPanel.GetIsVirtualizing(list));
-            Assert.InRange(Descendants<ListBoxItem>(list).Count(), 1, 100);
-        }
-        finally { window.Close(); }
-    });
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public Task CachedVirtualizedContentMovesWithoutMeasuringEveryFrameOrExposingBlankEdges(bool horizontal) => StaTest.Run(async () =>
+    public Task CachedVirtualizedContentMovesWithoutMeasuringEveryFrameOrExposingBlankEdges() => StaTest.Run(async () =>
     {
         var panelFactory = new FrameworkElementFactory(typeof(CountingVirtualizingPanel));
-        panelFactory.SetValue(VirtualizingStackPanel.OrientationProperty, horizontal ? Orientation.Horizontal : Orientation.Vertical);
+        panelFactory.SetValue(VirtualizingStackPanel.OrientationProperty, Orientation.Horizontal);
         var itemFactory = new FrameworkElementFactory(typeof(Border));
         itemFactory.SetValue(Border.BackgroundProperty, Brushes.Orange);
         itemFactory.SetValue(FrameworkElement.HeightProperty, 40.0);
-        if (horizontal) itemFactory.SetValue(FrameworkElement.WidthProperty, 40.0);
+        itemFactory.SetValue(FrameworkElement.WidthProperty, 40.0);
         var list = new ListBox
         {
             ItemsSource = Enumerable.Range(0, 1000),
@@ -193,8 +148,8 @@ public sealed class SmoothScrollTests
         containerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch));
         list.ItemContainerStyle = containerStyle;
         ScrollViewer.SetCanContentScroll(list, true);
-        ScrollViewer.SetHorizontalScrollBarVisibility(list, horizontal ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Disabled);
-        ScrollViewer.SetVerticalScrollBarVisibility(list, horizontal ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden);
+        ScrollViewer.SetHorizontalScrollBarVisibility(list, ScrollBarVisibility.Hidden);
+        ScrollViewer.SetVerticalScrollBarVisibility(list, ScrollBarVisibility.Disabled);
         VirtualizingPanel.SetScrollUnit(list, ScrollUnit.Pixel);
         VirtualizingPanel.SetVirtualizationMode(list, VirtualizationMode.Recycling);
         VirtualizingPanel.SetCacheLength(list, new VirtualizationCacheLength(1));
@@ -211,16 +166,16 @@ public sealed class SmoothScrollTests
             frames++;
             if (panel?.RenderTransform is not TransformGroup group || viewer is null) return;
             var translation = group.Children.OfType<TranslateTransform>().Last();
-            if (Math.Abs(horizontal ? translation.X : translation.Y) < 3) return;
+            if (Math.Abs(translation.X) < 3) return;
             if (panel.IsMeasureValid) renderOnlyFrames++;
             // Cached cards must still cover the newly revealed edge between layout commits.
             var bitmap = new RenderTargetBitmap((int)viewer.ActualWidth, (int)viewer.ActualHeight, 96, 96, PixelFormats.Pbgra32);
             bitmap.Render(viewer);
             var color = new byte[4];
-            bitmap.CopyPixels(new Int32Rect(horizontal ? bitmap.PixelWidth - 15 : 40,
-                horizontal ? bitmap.PixelHeight / 2 : bitmap.PixelHeight - 15, 1, 1), color, 4, 0);
+            bitmap.CopyPixels(new Int32Rect(bitmap.PixelWidth - 15,
+                bitmap.PixelHeight / 2, 1, 1), color, 4, 0);
             if (color[0] != 0 || color[1] != 165 || color[2] != 255)
-                edgeFailure ??= $"Blank cached-content edge: BGR {color[0]}, {color[1]}, {color[2]}; translation {translation}; horizontal {horizontal}.";
+                edgeFailure ??= $"Blank cached-content edge: BGR {color[0]}, {color[1]}, {color[2]}; translation {translation}.";
             checkedEdges++;
         };
         try
@@ -232,8 +187,8 @@ public sealed class SmoothScrollTests
             var originalTransform = panel.RenderTransform;
             panel.MeasurePasses = 0;
             CompositionTarget.Rendering += sampleFrame;
-            SmoothScrollBehavior.ScrollBy(viewer, 240, horizontal);
-            await WaitUntil(() => Math.Abs((horizontal ? viewer.HorizontalOffset : viewer.VerticalOffset) - 240) < 0.005 &&
+            HorizontalScrollBehavior.ScrollBy(viewer, 240);
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - 240) < 0.005 &&
                 ReferenceEquals(originalTransform, panel.RenderTransform),
                 () => $"Offset {viewer.HorizontalOffset}, {viewer.VerticalOffset}; transform {panel.RenderTransform}; frames {frames}; measures {panel.MeasurePasses}.");
             if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
@@ -245,27 +200,26 @@ public sealed class SmoothScrollTests
             }
             Assert.InRange(Descendants<ListBoxItem>(list).Count(), 1, 100);
 
-            SmoothScrollBehavior.ScrollBy(viewer, 240, horizontal);
+            HorizontalScrollBehavior.ScrollBy(viewer, 240);
             await Task.Delay(70);
-            if (horizontal) viewer.ScrollToHorizontalOffset(600);
-            else viewer.ScrollToVerticalOffset(600);
+            viewer.ScrollToHorizontalOffset(600);
             await StaTest.DrainDispatcherAsync();
             await Task.Delay(350);
-            Assert.Equal(600, horizontal ? viewer.HorizontalOffset : viewer.VerticalOffset);
+            Assert.Equal(600, viewer.HorizontalOffset);
             Assert.Same(originalTransform, panel.RenderTransform);
 
             edgeFailure = null;
-            SmoothScrollBehavior.ScrollBy(viewer, 2000, horizontal);
-            await WaitUntil(() => Math.Abs((horizontal ? viewer.HorizontalOffset : viewer.VerticalOffset) - 2600) < 0.005 &&
+            HorizontalScrollBehavior.ScrollBy(viewer, 2000);
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - 2600) < 0.005 &&
                 ReferenceEquals(originalTransform, panel.RenderTransform));
             Assert.Null(edgeFailure);
 
             for (var input = 0; input < 12; input++)
             {
-                SmoothScrollBehavior.ScrollBy(viewer, 120, horizontal);
+                HorizontalScrollBehavior.ScrollBy(viewer, 120);
                 await Task.Delay(16);
             }
-            await WaitUntil(() => Math.Abs((horizontal ? viewer.HorizontalOffset : viewer.VerticalOffset) - 4040) < 0.005 &&
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - 4040) < 0.005 &&
                 ReferenceEquals(originalTransform, panel.RenderTransform));
             Assert.Null(edgeFailure);
         }

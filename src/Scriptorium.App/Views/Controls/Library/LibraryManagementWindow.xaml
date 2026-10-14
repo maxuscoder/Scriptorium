@@ -15,12 +15,12 @@
         </StackPanel>
         <TabControl Grid.Row="1" Style="{StaticResource Library.ManagementTabs}">
             <TabItem Header="Watched folders">
-                <ScrollViewer behaviors:SmoothScrollBehavior.IsEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <library:WatchedFoldersPanel />
                 </ScrollViewer>
             </TabItem>
             <TabItem Header="TV-show groups">
-                <ScrollViewer behaviors:SmoothScrollBehavior.IsEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <library:TvShowGroupManager />
                 </ScrollViewer>
             </TabItem>

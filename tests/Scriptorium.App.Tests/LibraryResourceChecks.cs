@@ -207,8 +207,8 @@ internal static class LibraryResourceChecks
                     await Task.Delay(180);
                     Render(page, "library-back-to-top-660", 1);
                     backToTop.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                    if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
-                        Assert.True(scroll.VerticalOffset > 0, "Back to top jumped instead of animating.");
+                    await StaTest.DrainDispatcherAsync();
+                    Assert.Equal(0, scroll.VerticalOffset);
                     var deadline = DateTime.UtcNow.AddSeconds(3);
                     while ((scroll.VerticalOffset > 0 || backToTop.Visibility != Visibility.Collapsed) &&
                         DateTime.UtcNow < deadline) await Task.Delay(20);

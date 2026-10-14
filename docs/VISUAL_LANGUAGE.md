@@ -223,7 +223,10 @@ MediaShelf uses horizontal ListBox virtualization/recycling, pixel scrolling and
 the Phase 3 MediaCard, explicitly retaining grid presentation regardless of the
 Library layout setting. Arrows appear on hover/keyboard focus when overflowing.
 Shift+wheel and native WM_MOUSEHWHEEL scroll horizontally; vertical wheel input
-continues scrolling Home. Arrows use a short animation with reduced-motion support.
+continues scrolling Home through the same native WPF wheel handling as other pages.
+All pages use native vertical scrolling without easing, springs, or frame-driven
+scroll transforms. Home's top/bottom and Library's back-to-top buttons jump directly
+to their destinations. Horizontal shelf arrows retain reduced-motion-aware animation.
 The native hook is local to the owning window and removed on unload. Shelf padding
 leaves room for card scale/shadows at viewport edges. This is a curated, bounded
 Home surface, not a replacement for browsing the full Library.

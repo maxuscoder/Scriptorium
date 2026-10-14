@@ -54,7 +54,7 @@ public static class DropdownScrollBehavior
             return;
         }
 
-        SmoothScrollBehavior.ScrollBy(scrollViewer, -args.Delta / 3.0);
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - args.Delta / 3.0);
         args.Handled = true;
     }
 }

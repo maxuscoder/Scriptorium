@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -46,7 +46,7 @@ public partial class MediaShelf : UserControl
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
         RestoreArrowFocusability();
-        if (_scroll is not null) SmoothScrollBehavior.Stop(_scroll);
+        if (_scroll is not null) HorizontalScrollBehavior.Stop(_scroll);
         if (_viewport is not null) _viewport.SizeChanged -= OnViewportSizeChanged;
         _viewport = null;
         _fadeState = -1;
@@ -137,7 +137,7 @@ public partial class MediaShelf : UserControl
     internal void MoveBy(double delta, bool animate)
     {
         if (_scroll is null) return;
-        SmoothScrollBehavior.ScrollBy(_scroll, delta, horizontal: true, animate: animate);
+        HorizontalScrollBehavior.ScrollBy(_scroll, delta, animate: animate);
     }
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
@@ -151,7 +151,11 @@ public partial class MediaShelf : UserControl
         for (DependencyObject? ancestor = VisualTreeHelper.GetParent(this); ancestor is not null; ancestor = VisualTreeHelper.GetParent(ancestor))
             if (ancestor is ScrollViewer outer)
             {
-                SmoothScrollBehavior.ScrollBy(outer, -e.Delta);
+                outer.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+                {
+                    RoutedEvent = MouseWheelEvent,
+                    Source = outer
+                });
                 e.Handled = true;
                 break;
             }

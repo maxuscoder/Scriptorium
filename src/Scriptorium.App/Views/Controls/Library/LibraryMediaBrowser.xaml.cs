@@ -2,7 +2,6 @@ using System.Windows.Controls;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using Scriptorium.App.Behaviors;
 using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Views.Controls.Library;
@@ -47,7 +46,7 @@ public partial class LibraryMediaBrowser : UserControl
 
     private void OnScrollToTop(object sender, RoutedEventArgs e)
     {
-        if (_scrollViewer is not null) SmoothScrollBehavior.ScrollToTop(_scrollViewer);
+        _scrollViewer?.ScrollToTop();
     }
 
     private void UpdateScrollToTopButton(bool show)

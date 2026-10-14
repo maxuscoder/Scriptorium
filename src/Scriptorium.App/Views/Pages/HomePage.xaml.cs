@@ -1,6 +1,5 @@
 using System.Windows.Controls;
 using System.Windows;
-using Scriptorium.App.Behaviors;
 using Scriptorium.App.ViewModels;
 
 namespace Scriptorium.App.Views.Pages;
@@ -42,10 +41,10 @@ public partial class HomePage : UserControl
     }
 
     private void OnScrollToTop(object sender, RoutedEventArgs e) =>
-        SmoothScrollBehavior.ScrollToTop(HomeScroll);
+        HomeScroll.ScrollToTop();
 
     private void OnScrollToBottom(object sender, RoutedEventArgs e) =>
-        SmoothScrollBehavior.ScrollBy(HomeScroll, double.MaxValue);
+        HomeScroll.ScrollToBottom();
 
     private void UpdateHeroHeight()
     {

@@ -2,7 +2,6 @@
     x:Class="Scriptorium.App.Views.Pages.CategoriesPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages"
     Loaded="OnLoaded" Background="Transparent">
@@ -13,7 +12,7 @@
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
     </UserControl.Resources>
-    <ScrollViewer behaviors:SmoothScrollBehavior.IsEnabled="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="24,14,24,32" MaxWidth="1400" SizeChanged="OnContentSizeChanged">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
