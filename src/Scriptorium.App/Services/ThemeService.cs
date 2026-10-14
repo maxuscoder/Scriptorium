@@ -60,6 +60,17 @@ public sealed class ThemeService : IThemeService
         ["Sidebar.Pressed"] = Parse("#CECED6"),
         ["Sidebar.Highlight"] = Parse("#30000000"),
         ["Sidebar.Accent"] = Parse("#FF6508"),
+        ["Sidebar.FrostEnd"] = Parse("#EBE7E8ED"),
+        ["Sidebar.SelectedEnd"] = Parse("#E4D0D2DC"),
+        ["ControlSurface.Top"] = Parse("#FAFFFFFF"),
+        ["ControlSurface.Bottom"] = Parse("#F5E9EAF0"),
+        ["ControlSurface.Selected"] = Parse("#DADDE5"),
+        ["Card.Surface"] = Parse("#EEFFFFFF"),
+        ["Card.Hover"] = Parse("#FFF5F6FA"),
+        ["Card.Border"] = Parse("#10000000"),
+        ["Card.BorderHover"] = Parse("#30000000"),
+        ["ScrollBar.Default"] = Parse("#9699A3"),
+        ["ScrollBar.Hover"] = Parse("#626671"),
         ["Success"] = Parse("#137C49"),
         ["SuccessSurface"] = Parse("#E8F4EC"),
         ["Warning"] = Parse("#C44906"),
@@ -111,6 +122,14 @@ public sealed class ThemeService : IThemeService
         }
 
         UpdatePrimaryButtonGradients(colors);
+        // Replace shared gradients too: existing controls and detached popups must
+        // refresh immediately when switching Light / Dark / System.
+        _resources["Brush.Sidebar.Frost"] = CreateVerticalGradient(colors,
+            ("Sidebar.Background", 0), ("Sidebar.FrostEnd", 1));
+        _resources["Brush.Sidebar.SelectedSurface"] = CreateVerticalGradient(colors,
+            ("Sidebar.Selected", 0), ("Sidebar.SelectedEnd", 1));
+        _resources["Brush.ControlSurface"] = CreateVerticalGradient(colors,
+            ("ControlSurface.Top", 0), ("ControlSurface.Bottom", 1));
     }
 
     private void UpdatePrimaryButtonGradients(IReadOnlyDictionary<string, Color> colors)

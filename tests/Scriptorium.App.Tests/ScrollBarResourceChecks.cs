@@ -30,7 +30,7 @@ internal static class ScrollBarResourceChecks
             Assert.Equal(16, track.Thumb.ActualWidth);
             var pill = (Border)track.Thumb.Template.FindName("Pill", track.Thumb);
             Assert.Equal(5, PillWidth(pill), 6);
-            Assert.Equal(Color.FromRgb(0x55, 0x55, 0x5D), PillColor(pill));
+            Assert.Equal(((SolidColorBrush)resources["Brush.ScrollBar.Default"]).Color, PillColor(pill));
             var width = viewer.ViewportWidth;
 
             ScrollBar.PageDownCommand.Execute(null, bar);
@@ -48,7 +48,7 @@ internal static class ScrollBarResourceChecks
                 .GetField("IsMouseOverPropertyKey", BindingFlags.Static | BindingFlags.NonPublic)!.GetValue(null)!;
             track.Thumb.SetValue(hoverKey, true);
             Assert.Equal(7, PillWidth(pill), 6);
-            Assert.Equal(Color.FromRgb(0x89, 0x89, 0x91), PillColor(pill));
+            Assert.Equal(((SolidColorBrush)resources["Brush.ScrollBar.Hover"]).Color, PillColor(pill));
             Assert.Equal(width, viewer.ViewportWidth);
             // Use the native Thumb events and ScrollBar handlers without moving the user's mouse.
             typeof(Thumb).GetProperty(nameof(Thumb.IsDragging))!.GetSetMethod(true)!.Invoke(track.Thumb, [true]);
@@ -56,12 +56,12 @@ internal static class ScrollBarResourceChecks
             track.Thumb.RaiseEvent(new DragDeltaEventArgs(0, 40));
             await LayoutAsync(window);
             Assert.Equal(7, PillWidth(pill), 6);
-            Assert.Equal(Color.FromRgb(0xFF, 0x6A, 0), PillColor(pill));
+            Assert.Equal(((SolidColorBrush)resources["Brush.ScrollBar.Hover"]).Color, PillColor(pill));
             Assert.True(viewer.VerticalOffset > 0);
             Assert.Equal(width, viewer.ViewportWidth);
-            // Captured dragging stays orange and wide after the pointer leaves the thumb.
+            // Captured dragging stays graphite and wide after the pointer leaves the thumb.
             track.Thumb.SetValue(hoverKey, false);
-            Assert.Equal(Color.FromRgb(0xFF, 0x6A, 0), ((SolidColorBrush)track.Thumb.Background).Color);
+            Assert.Equal(((SolidColorBrush)resources["Brush.ScrollBar.Hover"]).Color, ((SolidColorBrush)track.Thumb.Background).Color);
             track.Thumb.RaiseEvent(new DragCompletedEventArgs(0, 40, false));
             typeof(Thumb).GetProperty(nameof(Thumb.IsDragging))!.GetSetMethod(true)!.Invoke(track.Thumb, [false]);
             Assert.Equal(5, PillWidth(pill), 6);

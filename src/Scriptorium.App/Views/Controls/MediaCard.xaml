@@ -35,6 +35,7 @@
         <Grid.RenderTransform><ScaleTransform /></Grid.RenderTransform>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Border x:Name="CardSurface" Grid.RowSpan="2" Grid.ColumnSpan="2" Style="{StaticResource MediaCard.Surface}" IsHitTestVisible="False" />
         <Grid x:Name="ArtworkFrame">
             <Grid.Style><Style TargetType="Grid">
                 <Setter Property="Grid.ColumnSpan" Value="2" />
@@ -42,7 +43,6 @@
                     <Setter Property="Grid.ColumnSpan" Value="1" /><Setter Property="Width" Value="{StaticResource MediaCard.ListArtworkWidth}" />
                 </DataTrigger></Style.Triggers>
             </Style></Grid.Style>
-            <Border x:Name="ArtworkShadow" Margin="{StaticResource MediaCard.Shadow.Inset}" CornerRadius="{StaticResource Radius.Card}" Background="{StaticResource MediaCard.Brush.Fallback}" />
             <Grid x:Name="Artwork" SizeChanged="OnArtworkSizeChanged">
                 <Border Background="{StaticResource MediaCard.Brush.Fallback}" />
                 <Image x:Name="ArtworkImage" Stretch="UniformToFill" Source="{Binding ThumbnailSource, ElementName=Root}" ImageFailed="OnThumbnailImageFailed"
@@ -80,11 +80,6 @@
                                 </Style.Triggers>
                             </Style></Button.Style>
                         </Button>
-                        <Button x:Name="MoreAction" Content="&#xE712;" Click="OnMoreClick" ToolTip="More actions" AutomationProperties.Name="More actions">
-                            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource MediaCard.IconAction}">
-                                <Style.Triggers><DataTrigger Binding="{Binding HasActions, ElementName=Root}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
-                            </Style></Button.Style>
-                        </Button>
                     </StackPanel>
                 </Grid>
                 <ProgressBar x:Name="PlaybackProgress" Margin="8,0,8,8" VerticalAlignment="Bottom" Value="{Binding PlaybackProgressPercentage, ElementName=Root}"
@@ -95,12 +90,10 @@
                     </Style></ProgressBar.Style>
                 </ProgressBar>
             </Grid>
-            <Border BorderBrush="#FF383A40" BorderThickness="0.7"
-                    CornerRadius="{StaticResource Radius.Card}" IsHitTestVisible="False" />
         </Grid>
         <StackPanel x:Name="Copy">
             <StackPanel.Style><Style TargetType="StackPanel">
-                <Setter Property="Grid.Row" Value="1" /><Setter Property="Grid.ColumnSpan" Value="2" />
+                <Setter Property="Grid.Row" Value="1" /><Setter Property="VerticalAlignment" Value="Top" /><Setter Property="Grid.ColumnSpan" Value="2" />
                 <Setter Property="Margin" Value="{StaticResource MediaCard.Copy.Margin}" />
                 <Style.Triggers><DataTrigger Binding="{Binding IsListLayout, ElementName=Root}" Value="True">
                     <Setter Property="Grid.Row" Value="0" /><Setter Property="Grid.Column" Value="1" /><Setter Property="Grid.ColumnSpan" Value="1" />
@@ -126,6 +119,16 @@
                 </Style></TextBlock.Style>
             </TextBlock>
         </StackPanel>
+        <Button x:Name="MoreAction" Content="&#xE712;" Grid.Column="1" HorizontalAlignment="Right"
+                Margin="{StaticResource MediaCard.More.Margin}" Click="OnMoreClick" ToolTip="More actions" AutomationProperties.Name="More actions">
+            <Button.Style><Style TargetType="Button" BasedOn="{StaticResource MediaCard.MoreAction}">
+                <Setter Property="Grid.Row" Value="1" /><Setter Property="VerticalAlignment" Value="Top" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsListLayout, ElementName=Root}" Value="True"><Setter Property="Grid.Row" Value="0" /><Setter Property="VerticalAlignment" Value="Center" /></DataTrigger>
+                    <DataTrigger Binding="{Binding HasActions, ElementName=Root}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                </Style.Triggers>
+            </Style></Button.Style>
+        </Button>
     </Grid>
 </UserControl>
 

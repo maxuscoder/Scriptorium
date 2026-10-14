@@ -15,9 +15,14 @@
                 MaxWidth="{StaticResource Shell.Sidebar.MaxWidth}" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
+        <!-- Preserve the sidebar's existing lighting coordinates, clipped to its column. -->
+        <Grid x:Name="SidebarAtmosphereViewport" ClipToBounds="True">
+            <controls:AmbientBokehBackground x:Name="AmbientBackground" HorizontalAlignment="Left"
+                Width="{Binding ActualWidth, ElementName=ShellLayout}" />
+        </Grid>
         <controls:Sidebar x:Name="SidebarNavigation" ToggleRequested="OnSidebarToggleRequested" ClipToBounds="True" />
         <Grid Grid.Column="1" ClipToBounds="True">
-            <controls:AmbientBokehBackground x:Name="AmbientBackground" />
+            <controls:ContentAtmosphereBackground x:Name="ContentBackground" />
             <controls:PageHost x:Name="PageContent" MinWidth="0" MinHeight="0"
                 Content="{Binding CurrentPage}" />
         </Grid>

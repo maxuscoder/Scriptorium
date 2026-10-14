@@ -753,7 +753,19 @@ internal static class LibraryResourceChecks
     private static void Render(FrameworkElement page, string name, double scale)
     {
         var bitmap = new RenderTargetBitmap((int)(page.ActualWidth * scale), (int)(page.ActualHeight * scale), 96 * scale, 96 * scale, PixelFormats.Pbgra32);
-        bitmap.Render(page);
+        // Capture local bounds explicitly: Render(page) also applies its LayoutTransform,
+        // which doubles the scale and crops the right/bottom of the 150% QA image.
+        var drawing = new DrawingVisual();
+        using (var context = drawing.RenderOpen())
+        {
+            var bounds = new Rect(0, 0, page.ActualWidth, page.ActualHeight);
+            context.DrawRectangle(new VisualBrush(page)
+            {
+                ViewboxUnits = BrushMappingMode.Absolute,
+                Viewbox = page.LayoutTransform.TransformBounds(bounds), Stretch = Stretch.Fill
+            }, null, bounds);
+        }
+        bitmap.Render(drawing);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(Path.Combine(AppContext.BaseDirectory, name + ".png")); encoder.Save(file);
     }

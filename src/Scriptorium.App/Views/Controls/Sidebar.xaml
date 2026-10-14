@@ -14,7 +14,8 @@
             </Button>
         </DataTemplate>
     </UserControl.Resources>
-    <Grid Background="{DynamicResource Brush.Sidebar.Background}">
+    <Border Background="{DynamicResource Brush.Sidebar.Frost}" BorderBrush="{DynamicResource Brush.BorderStrong}"
+            BorderThickness="0,0,1,0" CornerRadius="0,10,0,0">
         <DockPanel Margin="{StaticResource Shell.Padding}" LastChildFill="True">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="{StaticResource Shell.Brand.Height}"
                 Margin="{StaticResource Shell.Brand.Margin}">
@@ -33,7 +34,7 @@
                         </Style>
                     </Button.Style>
                     <Image Width="{StaticResource Space.6}" Height="{StaticResource Space.6}"
-                        Source="/Scriptorium.App;component/Assets/logo-32px.png" Stretch="Uniform" />
+                        Source="/Scriptorium.App;component/Assets/logo-90px.png" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
                 </Button>
                 <TextBlock Text="Scriptorium" Style="{StaticResource Shell.Brand}" />
             </StackPanel>
@@ -49,5 +50,5 @@
                 <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding PrimaryNavigationItems}" />
             </ScrollViewer>
         </DockPanel>
-    </Grid>
+    </Border>
 </UserControl>

@@ -49,6 +49,9 @@
     <Thickness x:Key="Spacing.None">0</Thickness>
     <Thickness x:Key="Padding.Page">32,28,32,48</Thickness>
     <Thickness x:Key="Padding.Page.Compact">24</Thickness>
+    <Thickness x:Key="Categories.ContentInset">24,14,24,32</Thickness>
+    <Thickness x:Key="EmptyState.Margin">0,24,0,24</Thickness>
+    <Thickness x:Key="EmptyState.IconMargin">0,0,0,16</Thickness>
     <Thickness x:Key="Padding.Badge">8,3</Thickness>
     <Thickness x:Key="Padding.Menu">4</Thickness>
     <Thickness x:Key="Padding.MenuItem">12,8</Thickness>

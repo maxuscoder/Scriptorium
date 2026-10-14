@@ -3,20 +3,23 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    xmlns:converters="clr-namespace:Scriptorium.App.Converters"
     xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages"
     Loaded="OnLoaded" Background="Transparent">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <converters:ViewportContentHeightConverter x:Key="ViewportContentHeightConverter" />
         <Style x:Key="Collections.Tile" TargetType="Button" BasedOn="{StaticResource Category.CollectionTile}">
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
     </UserControl.Resources>
-    <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="24,14,24,32" MaxWidth="1400" SizeChanged="OnContentSizeChanged">
+    <ScrollViewer x:Name="CategoryViewport" Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="CategoryContent" Margin="{StaticResource Categories.ContentInset}" MaxWidth="1400" SizeChanged="OnContentSizeChanged"
+              MinHeight="{Binding ViewportHeight, ElementName=CategoryViewport, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Categories.ContentInset}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -119,13 +122,14 @@
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel Grid.Row="5" MaxWidth="520" Margin="0,40,0,24" HorizontalAlignment="Center">
+            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="520" Margin="{StaticResource EmptyState.Margin}" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding HasCategories}" Value="False" /><Condition Binding="{Binding IsRefreshing}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers>
                     </Style>
                 </StackPanel.Style>
+                <TextBlock HorizontalAlignment="Center" Margin="{StaticResource EmptyState.IconMargin}" FontFamily="{StaticResource Shell.FontFamily.Icons}" FontSize="{StaticResource Icon.Size.Feature}" Foreground="{DynamicResource Brush.TextSecondary}" Text="&#xE8B7;" AutomationProperties.Name="Collections" />
                 <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.EmptyStateTitle}" Text="No categories yet" />
                 <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body.Center}" Text="Create a collection to bring related movies, shows, and tutorials together." />
                 <Button Margin="0,18,0,0" HorizontalAlignment="Center" Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />

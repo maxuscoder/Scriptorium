@@ -165,7 +165,7 @@
     <Thickness x:Key="Library.ToolbarMargin">0,12,0,2</Thickness>
     <Thickness x:Key="Library.CommandGap">0,0,10,10</Thickness>
     <Thickness x:Key="Library.ToolbarCommandGap">0,0,10,8</Thickness>
-    <Thickness x:Key="Library.BrowserInset">36,8,36,12</Thickness>
+    <Thickness x:Key="Library.BrowserInset">20,8,20,12</Thickness>
     <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
     <sys:Double x:Key="Library.HeaderBreakpoint">520</sys:Double>
     <sys:Double x:Key="Library.ToolbarControlHeight">40</sys:Double>
@@ -176,24 +176,16 @@
     <GridLength x:Key="Library.FilterColumnGap">24</GridLength>
     <Thickness x:Key="Library.FilterStackGap">0,16,0,0</Thickness>
     <sys:Double x:Key="Library.CardMinimumWidth">250</sys:Double>
-    <LinearGradientBrush x:Key="Library.Brush.Control" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="{DynamicResource Color.SurfaceOverlay}" Offset="0"/>
-        <GradientStop Color="{DynamicResource Color.SurfaceElevated}" Offset="1"/>
-    </LinearGradientBrush>
-    <LinearGradientBrush x:Key="Library.Brush.Search" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="{DynamicResource Color.SurfaceElevated}" Offset="0"/>
-        <GradientStop Color="{DynamicResource Color.Surface}" Offset="1"/>
-    </LinearGradientBrush>
     <Style x:Key="Library.Title" TargetType="TextBlock" BasedOn="{StaticResource Text.PageTitle}">
-        <Setter Property="FontSize" Value="36"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.PageTitle}"/>
     </Style>
     <Style x:Key="Library.ItemCount" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
         <Setter Property="FontSize" Value="{StaticResource FontSize.Label}"/>
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
         <Setter Property="Margin" Value="0,2,0,0"/>
     </Style>
     <Style x:Key="Library.ToolbarSearchField" TargetType="Border" BasedOn="{StaticResource Library.SearchField}">
-        <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
         <Setter Property="Padding" Value="12,0"/>
         <Style.Triggers>
@@ -210,7 +202,7 @@
     <Style x:Key="Library.SortComboBox" TargetType="ComboBox" BasedOn="{StaticResource Library.ComboBox}">
         <Style.Resources><CornerRadius x:Key="Radius.Input">10</CornerRadius></Style.Resources>
         <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
-        <Setter Property="Background" Value="{StaticResource Library.Brush.Control}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
         <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
     </Style>
     <Style x:Key="Library.CommandIcon" TargetType="TextBlock">
@@ -221,13 +213,13 @@
     <Style x:Key="Library.HeaderAction" TargetType="Button" BasedOn="{StaticResource Button.Text}">
         <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
         <Setter Property="Height" Value="{StaticResource Control.Height.Default}"/>
-        <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
         <Setter Property="Padding" Value="12,0"/>
         <Setter Property="Margin" Value="6,0,0,0"/>
-        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/></Trigger></Style.Triggers>
+        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/></Trigger></Style.Triggers>
     </Style>
     <Style x:Key="Library.HeaderOverflow" TargetType="Button" BasedOn="{StaticResource Library.HeaderAction}">
         <Setter Property="Width" Value="{StaticResource Control.Height.Default}"/>
@@ -238,7 +230,7 @@
         <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
-        <Setter Property="Background" Value="{StaticResource Library.Brush.Control}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
         <Style.Triggers>
@@ -249,7 +241,7 @@
     <Style x:Key="Library.LayoutSegment" TargetType="Border" BasedOn="{StaticResource Surface.Elevated}">
         <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
         <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
-        <Setter Property="Background" Value="{StaticResource Library.Brush.Search}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>

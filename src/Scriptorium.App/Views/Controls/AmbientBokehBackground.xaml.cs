@@ -17,33 +17,18 @@ public partial class AmbientBokehBackground : UserControl
     // with the bubble sizes so related circles remain loosely grouped on resize.
     private static readonly BubblePlacement[] Placements =
     [
-        // Background: broad, soft silhouettes, with only a trace near the center.
-        new(-0.045, 0.080),
-        new(0.920, 0.880),
-        new(0.480, 0.580),
-        new(1.000, 0.130),
-        new(0.160, 0.970),
-        // Midground: local offsets preserve overlapping groups at any window width.
-        new(0.130, 0.210, -32, -12),
-        new(0.130, 0.210, 92, 50),
-        new(0.130, 0.210, -48, 119),
-        new(0.860, 0.800, 17, -6),
-        new(0.860, 0.800, -88, -35),
-        new(0.860, 0.800, -15, 87),
-        new(0.970, 0.230, -6, -9),
-        new(0.220, 0.810, -10, -2),
-        new(0.560, 0.410),
-        // Foreground: asymmetric accents, with a few isolated bubbles.
-        new(0.130, 0.210, 7, -41),
-        new(0.130, 0.210, 100, -25),
-        new(0.130, 0.210, -62, 72),
-        new(0.860, 0.800, -42, 19),
-        new(0.860, 0.800, 62, -41),
-        new(0.970, 0.230, -61, 33),
-        new(0.970, 0.230, -29, 78),
-        new(0.130, 0.210, 135, 43),
-        new(0.860, 0.800, -101, 67),
-        new(0.280, 0.860),
+        new(0.36, 0.02),
+        new(0.94, 0.65),
+        new(0.46, 0.58),
+        new(0.86, -0.02),
+        new(0.08, 0.65),
+        new(0.14, 0.22),
+        new(0.56, 0.41),
+        new(0.91, 0.92),
+        new(0.12, 0.93),
+        new(0.60, 0.20),
+        new(0.58, 0.04),
+        new(0.96, 0.88)
     ];
 
     private const int ContentTextureWidth = 1024;
@@ -68,16 +53,11 @@ public partial class AmbientBokehBackground : UserControl
         {
             _bubbleSizes.Add(new Size(bubble.Width, bubble.Height));
             var center = ((RadialGradientBrush)bubble.Fill).GradientStops[0].Color;
-            var peak = Math.Max(center.R, Math.Max(center.G, center.B)) * center.ScA * bubble.Opacity;
-            if (center.R == center.G && center.G == center.B)
-            {
-                // Use the same smooth profile for every charcoal bubble so foreground
-                // accents cannot fall back to a banded gradient as opacity changes.
-                bubble.Fill = CreateDiffuseCharcoalBrush(_bubbleSizes[^1], center, bubble.Opacity);
-                bubble.Opacity = 1; // The original opacity is already in the texture.
-                RenderOptions.SetBitmapScalingMode(bubble, BitmapScalingMode.NearestNeighbor);
-            }
-            else bubble.OpacityMask = CreateDitherMask(peak);
+            bubble.Fill = GetDiffuseGlowBrush(_bubbleSizes[^1], center,
+                bubble.Opacity * (double)FindResource("Bokeh.Intensity"));
+            bubble.Opacity = 1; // Alpha, color and grain are already baked together.
+            // Bilinear resampling is sufficient for diffuse light and keeps drift inexpensive.
+            RenderOptions.SetBitmapScalingMode(bubble, BitmapScalingMode.LowQuality);
             bubble.RenderTransform = new TransformGroup { Children = { new ScaleTransform(), new TranslateTransform() } };
         }
         Loaded += OnLoaded;
@@ -134,7 +114,21 @@ public partial class AmbientBokehBackground : UserControl
         return brush;
     }
 
-    private static ImageBrush CreateDiffuseCharcoalBrush(Size size, Color color, double opacity)
+    private static readonly Dictionary<(Size Size, Color Color, double Opacity), ImageBrush> GlowBrushes = [];
+
+    private static ImageBrush GetDiffuseGlowBrush(Size size, Color color, double opacity)
+    {
+        // Frozen textures are shared across shells/previews, never recreated per frame or resize.
+        lock (GlowBrushes)
+        {
+            var key = (size, color, opacity);
+            if (!GlowBrushes.TryGetValue(key, out var brush))
+                GlowBrushes[key] = brush = CreateDiffuseGlowBrush(size, color, opacity);
+            return brush;
+        }
+    }
+
+    private static ImageBrush CreateDiffuseGlowBrush(Size size, Color color, double opacity)
     {
         // A single smooth mist profile, generated once. Premultiplied color and
         // alpha are stochastically rounded together, so even the lowest brightness
@@ -171,39 +165,6 @@ public partial class AmbientBokehBackground : UserControl
         var brush = new ImageBrush(texture) { Stretch = Stretch.Fill };
         brush.Freeze();
         return brush;
-    }
-
-    private static ImageBrush CreateDitherMask(double peak)
-    {
-        // Near-black gradients have very few output levels. A fixed, tiny texture
-        // disperses those quantization boundaries instead of showing circular bands.
-        // Limit variation to roughly two output levels even on the bright bubbles.
-        const int size = 64;
-        var variation = Math.Min(0.65, 2 / Math.Max(peak, 1));
-        var pixels = new byte[size * size * 4];
-        uint noise = 0x51F15E;
-        for (var index = 0; index < pixels.Length; index += 4)
-        {
-            noise ^= noise << 13;
-            noise ^= noise >> 17;
-            noise ^= noise << 5;
-            var alpha = (byte)Math.Round(255 * (1 - variation * (noise & 0xFFFF) / 65535.0));
-            // White premultiplied pixels: only alpha is used by the opacity mask.
-            pixels[index] = pixels[index + 1] = pixels[index + 2] = pixels[index + 3] = alpha;
-        }
-        var texture = BitmapSource.Create(size, size, 96, 96, PixelFormats.Pbgra32, null, pixels, size * 4);
-        texture.Freeze();
-        var mask = new ImageBrush(texture)
-        {
-            TileMode = TileMode.Tile,
-            ViewportUnits = BrushMappingMode.Absolute,
-            Viewport = new Rect(0, 0, size, size),
-            ViewboxUnits = BrushMappingMode.Absolute,
-            Viewbox = new Rect(0, 0, size, size),
-            Stretch = Stretch.None
-        };
-        mask.Freeze();
-        return mask;
     }
 
     private static void OnBackgroundChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args) =>
@@ -283,16 +244,16 @@ public partial class AmbientBokehBackground : UserControl
     private Storyboard CreateMotion()
     {
         var storyboard = new Storyboard();
-        Timeline.SetDesiredFrameRate(storyboard, 24);
+        Timeline.SetDesiredFrameRate(storyboard, 15);
         var index = 0;
         foreach (Ellipse bubble in Bubbles.Children)
         {
-            // AutoReverse makes a full seamless loop twice the leg duration (28–58s).
+            // AutoReverse makes a full seamless loop twice the leg duration (28â€“58s).
             // X/Y use different periods and directions; travel stays in viewport pixels.
             AddMotion(storyboard, bubble, TransformPath(1, TranslateTransform.XProperty), 0,
-                (index % 2 == 0 ? 1 : -1) * (32 + index % 5 * 12), 14 + index % 8 * 2);
+                (index % 2 == 0 ? 1 : -1) * (12 + index % 5 * 4), 14 + index % 8 * 2);
             AddMotion(storyboard, bubble, TransformPath(1, TranslateTransform.YProperty), 0,
-                (index % 3 == 0 ? -1 : 1) * (30 + index % 4 * 11), 17 + index % 7 * 2);
+                (index % 3 == 0 ? -1 : 1) * (10 + index % 4 * 4), 17 + index % 7 * 2);
             var breath = 1.025 + index % 3 * 0.01;
             AddMotion(storyboard, bubble, TransformPath(0, ScaleTransform.ScaleXProperty), 1, breath, 20 + index % 5 * 2);
             AddMotion(storyboard, bubble, TransformPath(0, ScaleTransform.ScaleYProperty), 1, breath, 20 + index % 5 * 2);

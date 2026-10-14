@@ -8,11 +8,10 @@
                 <Grid x:Name="SearchArea" Width="{StaticResource Library.SearchWidth}"
                       MaxWidth="{Binding ActualWidth, ElementName=ToolbarRoot}"
                       Height="{StaticResource Library.ToolbarControlHeight}" Margin="{StaticResource Library.ToolbarCommandGap}">
-                    <Border Background="{DynamicResource Brush.SurfaceElevated}" CornerRadius="{StaticResource Radius.Card}" Effect="{StaticResource Elevation.1}" IsHitTestVisible="False"/>
                     <Border Style="{StaticResource Library.ToolbarSearchField}">
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                            <TextBlock Margin="0,0,10,0" Style="{StaticResource Library.CommandIcon}" Foreground="{DynamicResource Brush.TextMuted}" Text="&#xE721;"/>
+                            <TextBlock Margin="0,0,10,0" Style="{StaticResource Library.CommandIcon}" Foreground="{DynamicResource Brush.TextSecondary}" Text="&#xE721;"/>
                             <TextBox x:Name="SearchBox" Grid.Column="1" Style="{StaticResource Library.SearchTextBox}" Text="{Binding SearchQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search library"/>
                             <TextBlock Grid.Column="1" Text="Search library&#x2026;" IsHitTestVisible="False" VerticalAlignment="Center">
                                 <TextBlock.Style><Style BasedOn="{StaticResource Text.Metadata}" TargetType="TextBlock"><Setter Property="FontSize" Value="{StaticResource FontSize.Control}"/><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding SearchQuery}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger><DataTrigger Binding="{Binding SearchQuery}" Value="{x:Null}"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
@@ -30,12 +29,12 @@
                 <Border x:Name="LayoutSegment" Style="{StaticResource Library.LayoutSegment}">
                   <StackPanel Orientation="Horizontal">
                     <Button x:Name="GridButton" Command="{Binding SetGridLayoutCommand}" ToolTip="Grid view" AutomationProperties.Name="Grid view">
-                        <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Resources><CornerRadius x:Key="Radius.Control">10,0,0,10</CornerRadius></Style.Resources><Style.Triggers><DataTrigger Binding="{Binding IsGridLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Resources><CornerRadius x:Key="Radius.Control">10,0,0,10</CornerRadius></Style.Resources><Style.Triggers><DataTrigger Binding="{Binding IsGridLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.ControlSurface.Selected}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
                         <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE80A;"/>
                     </Button>
                     <Border Width="1" Height="22" VerticalAlignment="Center" Background="{DynamicResource Brush.Border}" IsHitTestVisible="False"/>
                     <Button x:Name="ListButton" Command="{Binding SetListLayoutCommand}" ToolTip="List view" AutomationProperties.Name="List view">
-                        <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Resources><CornerRadius x:Key="Radius.Control">0,10,10,0</CornerRadius></Style.Resources><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
+                        <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Resources><CornerRadius x:Key="Radius.Control">0,10,10,0</CornerRadius></Style.Resources><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.ControlSurface.Selected}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
                         <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE8FD;"/>
                     </Button>
                   </StackPanel>

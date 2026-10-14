@@ -61,8 +61,13 @@ internal static class ShellResourceChecks
             var host = Descendants<PageHost>(window).Single(control => BindingOperations.GetBinding(control, PageHost.ContentProperty)?.Path.Path == "CurrentPage");
             var ambient = Assert.IsType<AmbientBokehBackground>(window.FindName("AmbientBackground"));
             var pageLayer = Assert.IsType<Grid>(host.Parent);
-            Assert.Same(ambient, pageLayer.Children[0]);
+            Assert.IsType<ContentAtmosphereBackground>(pageLayer.Children[0]);
             Assert.Same(host, pageLayer.Children[1]);
+            var shellLayer = Assert.IsType<Grid>(pageLayer.Parent);
+            var sidebarViewport = Assert.IsType<Grid>(shellLayer.Children[0]);
+            Assert.True(sidebarViewport.ClipToBounds);
+            Assert.Same(ambient, sidebarViewport.Children[0]);
+            Assert.Equal(shellLayer.ActualWidth, ambient.ActualWidth);
             // Represent the selected destination without loading content pages or their data operations.
             var title = new FrameworkElementFactory(typeof(TextBlock));
             title.SetBinding(TextBlock.TextProperty, new Binding("Title"));
@@ -262,7 +267,7 @@ internal static class ShellResourceChecks
             Assert.Equal(Colors.White, Assert.IsType<SolidColorBrush>(window.ChromeBrush).Color);
             theme.Apply("Dark");
             await DrainSidebarAsync();
-            Assert.Equal(Color.FromRgb(16, 16, 18), Assert.IsType<SolidColorBrush>(window.ChromeBrush).Color);
+            Assert.Equal(((SolidColorBrush)resources["Brush.SurfaceHeader"]).Color, Assert.IsType<SolidColorBrush>(window.ChromeBrush).Color);
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
         finally

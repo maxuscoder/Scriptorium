@@ -7,7 +7,7 @@
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="Buttons.xaml" />
     </ResourceDictionary.MergedDictionaries>
-    <!--  Shell-only tokens. Shared controls and page content retain the Phase 1 system.  -->
+    <!-- Shell tokens share the graphite palette with toolbar and card surfaces. -->
     <sys:Double x:Key="Shell.Sidebar.Width">232</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.MinWidth">180</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.MaxWidth">360</sys:Double>
@@ -106,7 +106,7 @@
                         <Border
                             x:Name="Selected"
                             behaviors:OpacityTransition.Duration="{StaticResource Shell.Motion.Selection}"
-                            Background="{DynamicResource Brush.Sidebar.Selected}"
+                            Background="{DynamicResource Brush.Sidebar.SelectedSurface}"
                             BorderBrush="{DynamicResource Brush.Sidebar.Highlight}"
                             BorderThickness="1"
                             CornerRadius="{StaticResource Shell.Item.Radius}"
@@ -146,6 +146,9 @@
                             <Setter TargetName="Indicator" Property="behaviors:OpacityTransition.Target" Value="1" />
                             <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
                         </DataTrigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

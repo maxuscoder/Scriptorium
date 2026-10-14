@@ -54,7 +54,7 @@
     </Style>
     <!-- Checkmarks carry selection; the surface tint and focus outline stay quiet. -->
     <SolidColorBrush x:Key="Brush.ComboBox.Selection" Color="{DynamicResource Color.Accent}" Opacity="0.01" />
-    <SolidColorBrush x:Key="Brush.ComboBox.Focus" Color="{DynamicResource Color.Accent}" Opacity="0.28" />
+    <SolidColorBrush x:Key="Brush.ComboBox.Focus" Color="{DynamicResource Color.Accent}" Opacity="0.72" />
     <Style x:Key="Input.ComboBox.ScrollBar" TargetType="ScrollBar" BasedOn="{StaticResource ScrollBar.Premium}" />
     <ControlTemplate x:Key="Input.ComboBox.ScrollViewer" TargetType="ScrollViewer">
         <Grid>

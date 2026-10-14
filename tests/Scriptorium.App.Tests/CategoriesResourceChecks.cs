@@ -54,7 +54,10 @@ internal static class CategoriesResourceChecks
         using var viewModel = new CategoriesPageViewModel(categories, service, new Confirmation(), new CreateDialog(), media,
             new FavoriteService(media), detailsCoordinator: navigation);
         var page = new CategoriesPage { DataContext = viewModel };
-        var window = new Window { Content = page, Width = 1160, Height = 1040, ShowActivated = false, ShowInTaskbar = false };
+        var content = new Grid();
+        content.Children.Add(new ContentAtmosphereBackground());
+        content.Children.Add(page);
+        var window = new Window { Content = content, Width = 1160, Height = 1040, ShowActivated = false, ShowInTaskbar = false };
         var trace = new BindingTrace();
         var source = PresentationTraceSources.DataBindingSource;
         var previousLevel = source.Switch.Level;
@@ -143,6 +146,17 @@ internal static class CategoriesResourceChecks
             await StaTest.DrainDispatcherAsync();
             Assert.Empty(CollectionButtons(page));
             Assert.Contains(Descendants<TextBlock>(page), text => text.IsVisible && text.Text == "No categories yet");
+            foreach (var height in new[] { 1000d, 600d })
+            {
+                window.Height = height;
+                await StaTest.DrainDispatcherAsync();
+                var emptyState = (StackPanel)page.FindName("CategoriesEmptyState");
+                var viewport = (ScrollViewer)page.FindName("CategoryViewport");
+                var centerY = emptyState.TranslatePoint(new Point(0, emptyState.ActualHeight / 2), page).Y;
+                Assert.InRange(centerY / page.ActualHeight, 0.45, 0.70);
+                Assert.InRange(viewport.ScrollableHeight, 0, 1);
+                Assert.InRange(viewport.ScrollableWidth, 0, 1);
+            }
             await RenderAsync(page, "categories-empty.png");
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
@@ -221,7 +235,7 @@ internal static class CategoriesResourceChecks
             Descendants<Border>(tile).First().Background = tile.Background.CloneCurrentValue();
         await StaTest.DrainDispatcherAsync();
         var bitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(page);
+        bitmap.Render((Visual)page.Parent);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(Path.Combine(AppContext.BaseDirectory, name));

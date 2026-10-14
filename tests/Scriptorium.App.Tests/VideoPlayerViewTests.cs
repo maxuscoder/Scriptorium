@@ -141,6 +141,7 @@ public sealed class VideoPlayerViewTests
             // Keep native playback assertions independent of the shared theme checks.
             await DesignSystemResourceChecks.VerifyAsync(application.Resources);
             await AmbientBokehResourceChecks.VerifyAsync(application.Resources);
+            await ContentAtmosphereResourceChecks.VerifyAsync(application.Resources);
             await ShellResourceChecks.VerifyAsync(application.Resources);
             await MediaCardResourceChecks.VerifyAsync(application.Resources);
             await HomeResourceChecks.VerifyAsync(application.Resources);

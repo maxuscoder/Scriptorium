@@ -30,7 +30,8 @@ internal static class AmbientBokehResourceChecks
             Assert.False(background.IsHitTestVisible);
             Assert.False(background.Focusable);
             Assert.True(background.ClipToBounds);
-            Assert.InRange(bubbles.Length, 16, 28);
+            // Fewer shared, diffuse layers than the original 24-bubble field.
+            Assert.InRange(bubbles.Length, 8, 16);
             Assert.All(bubbles, bubble =>
             {
                 Assert.Null(bubble.Effect);

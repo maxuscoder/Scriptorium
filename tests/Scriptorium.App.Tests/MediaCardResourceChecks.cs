@@ -203,7 +203,7 @@ internal static class MediaCardResourceChecks
         Assert.False(cards[2].HasUsableThumbnail);
         Assert.False(cards[0].ShowPlaybackProgress);
         Assert.True(cards[1].ShowPlaybackProgress);
-        Assert.Null(((Border)cards[0].FindName("ArtworkShadow")).Effect);
+        Assert.Null(((Border)cards[0].FindName("CardSurface")).Effect);
         await StaTest.DrainDispatcherAsync();
         Assert.Null(cards[0].ToolTip); // No artwork/card tooltip or raw filename popup.
         var titleBlock = Descendants<TextBlock>(cards[0]).Single(block => block.Text == "Interstellar" && block.Visibility == Visibility.Visible);
@@ -220,7 +220,12 @@ internal static class MediaCardResourceChecks
         cards[1].Focus();
         await StaTest.DrainDispatcherAsync();
         Assert.True(cards[1].IsEngaged);
-        Assert.NotNull(((Border)cards[1].FindName("ArtworkShadow")).Effect);
+        Assert.Null(((Border)cards[1].FindName("CardSurface")).Effect);
+        Assert.Equal(((SolidColorBrush)resources["Brush.Card.Hover"]).Color,
+            ((SolidColorBrush)Scriptorium.App.Behaviors.BrushTransition.GetTarget((Border)cards[1].FindName("CardSurface"))!).Color);
+        var more = (Button)cards[1].FindName("MoreAction");
+        Assert.False(((Grid)cards[1].FindName("Artwork")).IsAncestorOf(more));
+        Assert.Equal(1, Grid.GetRow(more));
         Assert.True(((Grid)cards[1].FindName("Actions")).IsHitTestVisible);
         var measured = cards[1].DesiredSize;
         // Invisible test windows do not advance compositor clocks. Verify settled base values.
@@ -236,7 +241,7 @@ internal static class MediaCardResourceChecks
         SaveImage(canvas, Path.Combine(AppContext.BaseDirectory, "media-cards-engaged.png"), (int)canvas.ActualWidth, (int)canvas.ActualHeight);
         panel.Children.Clear();
         await StaTest.DrainDispatcherAsync();
-        Assert.Null(((Border)cards[1].FindName("ArtworkShadow")).Effect);
+        Assert.Null(((Border)cards[1].FindName("CardSurface")).Effect);
         Assert.Equal(1, transform.ScaleX);
         Assert.False(cards[1].IsEngaged);
         Assert.Null(cards[0].ThumbnailSource);

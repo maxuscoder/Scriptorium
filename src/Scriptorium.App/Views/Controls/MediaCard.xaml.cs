@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Effects;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media.Media3D;
 
@@ -433,52 +432,10 @@ public partial class MediaCard : UserControl
         var engaged = !forceRest && (IsMouseOver || IsKeyboardFocusWithin || ContextMenu?.IsOpen == true);
         SetValue(IsEngagedPropertyKey, engaged);
         var animate = !forceRest && IsLoaded && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
-        var scale = (ScaleTransform)CardVisual.RenderTransform;
-        // A render transform does not change row height, wrap measurement, or virtualized item size.
-        var zoom = engaged && !IsListLayout && !SystemParameters.HighContrast && SystemParameters.ClientAreaAnimation
-            ? (double)FindResource("MediaCard.HoverScale") : 1;
-        AnimateValue(scale, ScaleTransform.ScaleXProperty, zoom, animate && !IsListLayout);
-        AnimateValue(scale, ScaleTransform.ScaleYProperty, zoom, animate && !IsListLayout);
+        // Surface/opacity feedback keeps artwork sharp and within the viewport at every DPI.
         AnimateValue(ArtworkImage, UIElement.OpacityProperty, engaged ? 1 : (double)FindResource("MediaCard.Artwork.RestOpacity"), animate);
         AnimateValue(HoverScrim, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
         AnimateValue(Actions, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
-        UpdateShadow(engaged && !SystemParameters.HighContrast, animate);
-    }
-
-    private void UpdateShadow(bool visible, bool animate)
-    {
-        if (visible && ArtworkShadow.Effect is null)
-            ArtworkShadow.Effect = ((DropShadowEffect)FindResource("MediaCard.Shadow")).CloneCurrentValue();
-
-        if (ArtworkShadow.Effect is not DropShadowEffect shadow) return;
-        if (visible)
-        {
-            AnimateValue(shadow, DropShadowEffect.OpacityProperty,
-                (double)FindResource("MediaCard.Shadow.Opacity"), animate);
-            return;
-        }
-
-        if (!animate)
-        {
-            shadow.BeginAnimation(DropShadowEffect.OpacityProperty, null);
-            ArtworkShadow.Effect = null;
-            return;
-        }
-
-        var from = shadow.Opacity;
-        shadow.BeginAnimation(DropShadowEffect.OpacityProperty, null);
-        shadow.Opacity = 0;
-        var fade = new DoubleAnimation(from, 0, (Duration)FindResource("MediaCard.Motion.Duration"))
-        {
-            EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Exit"),
-            FillBehavior = FillBehavior.Stop
-        };
-        fade.Completed += (_, _) =>
-        {
-            if (!IsEngaged && ReferenceEquals(ArtworkShadow.Effect, shadow))
-                ArtworkShadow.Effect = null;
-        };
-        shadow.BeginAnimation(DropShadowEffect.OpacityProperty, fade);
     }
 
     private void AnimateValue(DependencyObject target, DependencyProperty property, double value, bool animate)
