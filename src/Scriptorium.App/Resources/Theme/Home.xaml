@@ -22,10 +22,19 @@
     <LinearGradientBrush x:Key="Home.Hero.Shade" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="#F50B0B0D" Offset="0" />
         <GradientStop Color="#D90B0B0D" Offset="0.4" />
-        <GradientStop Color="#400B0B0D" Offset="1" />
+        <GradientStop Color="#000B0B0D" Offset="0.85" />
     </LinearGradientBrush>
+    <!-- Edge-only fades share the frame's background; leave the image center clear. -->
     <LinearGradientBrush x:Key="Home.Hero.Fade" StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#000B0B0D" Offset="0.35" />
+        <GradientStop Color="{DynamicResource Color.Background}" Offset="0" />
+        <GradientStop Color="#000B0B0D" Offset="0.08" />
+        <GradientStop Color="#000B0B0D" Offset="0.55" />
+        <GradientStop Color="{DynamicResource Color.Background}" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="Home.Hero.EdgeFade" StartPoint="0,0" EndPoint="1,0">
+        <GradientStop Color="{DynamicResource Color.Background}" Offset="0" />
+        <GradientStop Color="#000B0B0D" Offset="0.04" />
+        <GradientStop Color="#000B0B0D" Offset="0.88" />
         <GradientStop Color="{DynamicResource Color.Background}" Offset="1" />
     </LinearGradientBrush>
 </ResourceDictionary>

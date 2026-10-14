@@ -176,7 +176,7 @@
             </Setter>
         </Style>
     </UserControl.Resources>
-    <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.SurfaceHeader}">
+    <Grid x:Name="Frame" SizeChanged="OnFrameSizeChanged" Background="{DynamicResource Brush.Background}">
         <Grid.Style><Style TargetType="Grid">
             <Style.Triggers><DataTrigger Binding="{Binding HasBackdrop, ElementName=Root}" Value="True">
                 <Setter Property="MinHeight" Value="{DynamicResource Home.Hero.Height}" />
@@ -196,6 +196,7 @@
                 </Border>
                 <Border Background="{StaticResource Home.Hero.Shade}" />
                 <Border Background="{StaticResource Home.Hero.Fade}" />
+                <Border Background="{StaticResource Home.Hero.EdgeFade}" IsHitTestVisible="False" />
             </Grid>
             <Grid Margin="{StaticResource Home.Hero.Padding}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

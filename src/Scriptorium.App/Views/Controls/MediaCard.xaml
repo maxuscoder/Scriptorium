@@ -31,11 +31,11 @@
         </ContextMenu>
     </UserControl.ContextMenu>
     <!-- One artwork/title template for grid and list. Only positioning changes. -->
-    <Grid x:Name="CardVisual" RenderTransformOrigin="0.5,0.5" Background="Transparent">
+    <Grid x:Name="CardVisual" RenderTransformOrigin="0.5,0.5" Background="Transparent" SizeChanged="OnCardSizeChanged">
         <Grid.RenderTransform><ScaleTransform /></Grid.RenderTransform>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <Border x:Name="CardSurface" Grid.RowSpan="2" Grid.ColumnSpan="2" Style="{StaticResource MediaCard.Surface}" IsHitTestVisible="False" />
+        <Border x:Name="CardSurface" Grid.RowSpan="2" Grid.ColumnSpan="2" Style="{StaticResource MediaCard.Surface}" BorderThickness="0" IsHitTestVisible="False" />
         <Grid x:Name="ArtworkFrame">
             <Grid.Style><Style TargetType="Grid">
                 <Setter Property="Grid.ColumnSpan" Value="2" />
@@ -43,7 +43,7 @@
                     <Setter Property="Grid.ColumnSpan" Value="1" /><Setter Property="Width" Value="{StaticResource MediaCard.ListArtworkWidth}" />
                 </DataTrigger></Style.Triggers>
             </Style></Grid.Style>
-            <Grid x:Name="Artwork" SizeChanged="OnArtworkSizeChanged">
+            <Grid x:Name="Artwork" SizeChanged="OnArtworkSizeChanged" ClipToBounds="True">
                 <Border Background="{StaticResource MediaCard.Brush.Fallback}" />
                 <Image x:Name="ArtworkImage" Stretch="UniformToFill" Source="{Binding ThumbnailSource, ElementName=Root}" ImageFailed="OnThumbnailImageFailed"
                     Opacity="{StaticResource MediaCard.Artwork.RestOpacity}" />
@@ -115,7 +115,11 @@
             <TextBlock x:Name="MetadataText" Text="{Binding Metadata, ElementName=Root}" Margin="{StaticResource MediaCard.Metadata.Margin}" TextTrimming="CharacterEllipsis">
                 <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
                     <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
-                    <Style.Triggers><DataTrigger Binding="{Binding Metadata, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers>
+                    <!-- Reserve the metadata line so sparse cards keep the same height. -->
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Metadata, ElementName=Root}" Value=""><Setter Property="Visibility" Value="Hidden" /></DataTrigger>
+                        <DataTrigger Binding="{Binding Metadata, ElementName=Root}" Value="{x:Null}"><Setter Property="Visibility" Value="Hidden" /></DataTrigger>
+                    </Style.Triggers>
                 </Style></TextBlock.Style>
             </TextBlock>
         </StackPanel>
@@ -129,6 +133,10 @@
                 </Style.Triggers>
             </Style></Button.Style>
         </Button>
+        <!-- Draw the hairline above artwork as well as copy, without changing measure. -->
+        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" IsHitTestVisible="False"
+                BorderBrush="{Binding BorderBrush, ElementName=CardSurface}"
+                BorderThickness="{StaticResource BorderThickness.Hairline}" CornerRadius="{StaticResource Radius.Card}" />
     </Grid>
 </UserControl>
 

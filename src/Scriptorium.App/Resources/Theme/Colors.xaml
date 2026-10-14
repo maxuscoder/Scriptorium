@@ -97,9 +97,9 @@
     <Color x:Key="Color.ControlSurface.Bottom">#EB23252D</Color>
     <Color x:Key="Color.ControlSurface.Selected">#E33B3E49</Color>
     <Color x:Key="Color.Card.Surface">#D914161C</Color>
-    <Color x:Key="Color.Card.Hover">#EF22252D</Color>
-    <Color x:Key="Color.Card.Border">#08FFFFFF</Color>
-    <Color x:Key="Color.Card.BorderHover">#26FFFFFF</Color>
+    <Color x:Key="Color.Card.Hover">#EF1D2027</Color>
+    <Color x:Key="Color.Card.Border">#FF2A2D34</Color>
+    <Color x:Key="Color.Card.BorderHover">#FF383C45</Color>
     <Color x:Key="Color.ScrollBar.Default">#626570</Color>
     <Color x:Key="Color.ScrollBar.Hover">#969AA6</Color>
 

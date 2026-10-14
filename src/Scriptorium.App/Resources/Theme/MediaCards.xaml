@@ -11,9 +11,9 @@
     <sys:Int32 x:Key="MediaCard.ToolTip.Delay">800</sys:Int32>
     <sys:Int32 x:Key="MediaCard.ToolTip.Duration">6000</sys:Int32>
     <Thickness x:Key="MediaCard.Margin">4,4,16,16</Thickness>
-    <Thickness x:Key="MediaCard.Copy.Margin">8,8,40,10</Thickness>
-    <Thickness x:Key="MediaCard.Copy.ListMargin">16,8,40,10</Thickness>
-    <Thickness x:Key="MediaCard.More.Margin">0,4,4,0</Thickness>
+    <Thickness x:Key="MediaCard.Copy.Margin">12,8,44,10</Thickness>
+    <Thickness x:Key="MediaCard.Copy.ListMargin">16,8,44,10</Thickness>
+    <Thickness x:Key="MediaCard.More.Margin">0,3,6,0</Thickness>
     <Thickness x:Key="MediaCard.Metadata.Margin">0,4,0,0</Thickness>
     <Thickness x:Key="MediaCard.Actions.Margin">8</Thickness>
     <Thickness x:Key="MediaCard.Action.Gap">0,0,8,0</Thickness>

@@ -3,7 +3,7 @@
                     xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- Open sections and quiet row rules keep controls, not containers, in focus. -->
     <Thickness x:Key="Settings.PageMargin">40,32,40,48</Thickness>
-    <Thickness x:Key="Settings.SectionHeadingMargin">0,32,0,6</Thickness>
+    <Thickness x:Key="Settings.SectionHeadingMargin">8,32,8,10</Thickness>
     <Thickness x:Key="Settings.RowContentMargin">8,14,24,14</Thickness>
     <Thickness x:Key="Settings.ValueMargin">0,0,8,0</Thickness>
     <Thickness x:Key="Settings.RowDescriptionMargin">0,4,0,0</Thickness>
@@ -19,6 +19,8 @@
     </Style>
     <Style x:Key="Settings.Group" TargetType="Border">
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="0,1,0,0" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
     <Style x:Key="Settings.Row" TargetType="Grid">
@@ -27,6 +29,7 @@
     </Style>
     <Style x:Key="Settings.RowTitle" TargetType="TextBlock" BasedOn="{StaticResource Text.Label}">
         <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="FontWeight" Value="Medium" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
     </Style>
     <Style x:Key="Settings.RowDescription" TargetType="TextBlock" BasedOn="{StaticResource Text.Helper}">
@@ -37,6 +40,11 @@
     </Style>
     <Style x:Key="Settings.RowDivider" TargetType="Border" BasedOn="{StaticResource Divider}">
         <Setter Property="Margin" Value="{StaticResource Settings.DividerMargin}" />
+        <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style x:Key="Settings.Switch" TargetType="CheckBox" BasedOn="{StaticResource Toggle.Switch}">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style x:Key="Settings.ComboBox" TargetType="ComboBox" BasedOn="{StaticResource Input.ComboBox}">
         <Setter Property="MinWidth" Value="160" />

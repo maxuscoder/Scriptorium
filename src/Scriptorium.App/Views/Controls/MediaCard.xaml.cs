@@ -422,8 +422,16 @@ public partial class MediaCard : UserControl
         if (width <= 0) return;
         var height = width / (double)FindResource("MediaCard.ArtworkRatio");
         Artwork.Height = height;
+    }
+
+    private void OnCardSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // Clip the component once: artwork joins the copy with a straight edge in both layouts.
+        // Geometry is rebuilt only on resize, never on hover or focus.
         var radius = ((CornerRadius)FindResource("Radius.Card")).TopLeft;
-        Artwork.Clip = new RectangleGeometry(new Rect(0, 0, width, height), radius, radius);
+        var clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
+        clip.Freeze();
+        CardVisual.Clip = clip;
     }
 
     private void UpdateEngagement(bool forceRest = false)

@@ -22,7 +22,7 @@
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Resume from last position" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Continue a video from where you stopped." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding ResumePlaybackEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Resume from last position" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding ResumePlaybackEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Resume from last position" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
@@ -35,13 +35,16 @@
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /><ColumnDefinition Width="{StaticResource Settings.VolumeLabelWidth}" /></Grid.ColumnDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Default volume" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Volume for newly opened media." />
                         </StackPanel>
-                        <Slider Grid.Column="1" Style="{StaticResource Settings.VolumeSlider}" Maximum="1" Minimum="0" TickFrequency="0.05" Value="{Binding PlaybackVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Default playback volume" />
-                        <TextBlock Grid.Column="2" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
+                        <Grid Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.VolumeLabelWidth}" /></Grid.ColumnDefinitions>
+                            <Slider Style="{StaticResource Settings.VolumeSlider}" Maximum="1" Minimum="0" TickFrequency="0.05" Value="{Binding PlaybackVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Default playback volume" />
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
+                        </Grid>
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
@@ -59,7 +62,7 @@
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Start videos fullscreen" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Open a video in fullscreen when playback begins." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding StartFullscreenOnPlayback, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Start videos fullscreen" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding StartFullscreenOnPlayback, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Start videos fullscreen" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -72,7 +75,7 @@
                         <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Show Continue Watching" />
                         <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Show recent playback progress on Home." />
                     </StackPanel>
-                    <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding ShowContinueWatching, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Show Continue Watching on Home" />
+                    <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding ShowContinueWatching, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Show Continue Watching on Home" />
                 </Grid>
             </Border>
 
@@ -129,7 +132,7 @@
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Show favorites first" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Keep favorite items at the top of the library." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding FavoritesFirst, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Show favorites first" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding FavoritesFirst, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Show favorites first" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -142,7 +145,7 @@
                         <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Automatic thumbnails" />
                         <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Use artwork beside each video or create a preview in the background. Custom images take priority." />
                     </StackPanel>
-                    <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding AutomaticThumbnailsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Automatic thumbnails" />
+                    <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding AutomaticThumbnailsEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Automatic thumbnails" />
                 </Grid>
             </Border>
 
@@ -186,7 +189,7 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                         </StackPanel>
-                                        <CheckBox Grid.Column="1" Margin="16,0" VerticalAlignment="Center" Command="{Binding DataContext.SaveFolderStateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" Style="{StaticResource Toggle.Switch}" ToolTip="Include in scans" AutomationProperties.Name="Include folder in scans" />
+                                        <CheckBox Grid.Column="1" Margin="16,0" VerticalAlignment="Center" Command="{Binding DataContext.SaveFolderStateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" IsChecked="{Binding IsEnabled, Mode=TwoWay}" Style="{StaticResource Settings.Switch}" ToolTip="Include in scans" AutomationProperties.Name="Include folder in scans" />
                                         <Button Grid.Column="2" VerticalAlignment="Center" Command="{Binding DataContext.RemoveFolderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" Content="Remove" Style="{StaticResource Button.Text}" AutomationProperties.Name="Remove library folder" />
                                     </Grid>
                                 </Border>
@@ -206,7 +209,7 @@
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Automatic scanning" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Check watched folders for new or changed media while Scriptorium is open." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding AutomaticLibraryScanningEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Automatic library scanning" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding AutomaticLibraryScanningEnabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Automatic library scanning" />
                     </Grid>
                     <Border Style="{StaticResource Settings.RowDivider}" />
                     <Grid Style="{StaticResource Settings.Row}">
@@ -224,7 +227,7 @@
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Scan on startup" />
                             <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Check watched folders when Scriptorium opens." />
                         </StackPanel>
-                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding DataContext.ScanLibraryOnStartup, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Toggle.Switch}" AutomationProperties.Name="Scan library on startup" />
+                        <CheckBox Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" IsChecked="{Binding DataContext.ScanLibraryOnStartup, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Settings.Switch}" AutomationProperties.Name="Scan library on startup" />
                     </Grid>
                 </StackPanel>
             </Border>
