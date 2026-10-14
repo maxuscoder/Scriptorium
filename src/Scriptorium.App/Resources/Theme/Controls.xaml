@@ -6,7 +6,6 @@
         <ResourceDictionary Source="Inputs.xaml" />
         <ResourceDictionary Source="Toggles.xaml" />
         <ResourceDictionary Source="Menus.xaml" />
-        <ResourceDictionary Source="Chrome.xaml" />
         <ResourceDictionary Source="MediaCards.xaml" />
         <ResourceDictionary Source="Home.xaml" />
     </ResourceDictionary.MergedDictionaries>

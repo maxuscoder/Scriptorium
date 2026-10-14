@@ -1,5 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors">
+    <SolidColorBrush x:Key="Brush.ScrollBar.Default" Color="#55555D" />
+    <SolidColorBrush x:Key="Brush.ScrollBar.Hover" Color="#898991" />
+    <SolidColorBrush x:Key="Brush.ScrollBar.Dragging" Color="#FF6A00" />
     <Style x:Key="ScrollBar.TrackButton" TargetType="RepeatButton">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Focusable" Value="False" />
@@ -12,92 +16,147 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Only the pill is scaled. The transparent Thumb keeps a 16 px hit area.
+         Render transforms and color blending never remeasure the scrolling content. -->
+    <ControlTemplate x:Key="ScrollBar.VerticalThumbTemplate" TargetType="Thumb">
+        <Grid Background="Transparent">
+            <Border x:Name="Pill" Width="7" HorizontalAlignment="Center"
+                    CornerRadius="3.5" RenderTransformOrigin="0.5,0.5"
+                    behaviors:BrushTransition.Target="{TemplateBinding Background}"
+                    behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Fast}">
+                <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
+            </Border>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <!-- Idle = 5/7 of the 7 px pill; hover and captured dragging = 7 px.
+                 A single trigger handles leaving the hit area while dragging. -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsMouseOver" Value="False" />
+                    <Condition Property="IsDragging" Value="False" />
+                </MultiTrigger.Conditions>
+                <Setter TargetName="Pill" Property="behaviors:RenderScaleTransition.X" Value="0.7142857142857143" />
+            </MultiTrigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <ControlTemplate x:Key="ScrollBar.HorizontalThumbTemplate" TargetType="Thumb">
+        <Grid Background="Transparent">
+            <Border x:Name="Pill" Height="7" VerticalAlignment="Center"
+                    CornerRadius="3.5" RenderTransformOrigin="0.5,0.5"
+                    behaviors:BrushTransition.Target="{TemplateBinding Background}"
+                    behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Fast}">
+                <Border.RenderTransform><ScaleTransform /></Border.RenderTransform>
+            </Border>
+        </Grid>
+        <ControlTemplate.Triggers>
+            <!-- Idle = 5/7 of the 7 px pill; hover and captured dragging = 7 px.
+                 A single trigger handles leaving the hit area while dragging. -->
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsMouseOver" Value="False" />
+                    <Condition Property="IsDragging" Value="False" />
+                </MultiTrigger.Conditions>
+                <Setter TargetName="Pill" Property="behaviors:RenderScaleTransition.Y" Value="0.7142857142857143" />
+            </MultiTrigger>
+        </ControlTemplate.Triggers>
+    </ControlTemplate>
     <Style x:Key="ScrollBar.VerticalThumb" TargetType="Thumb">
-        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Compact}" />
-        <Setter Property="Background" Value="{DynamicResource Brush.TextMuted}" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Thumb">
-                    <Border
-                        Margin="{StaticResource ScrollBar.ThumbInset}"
-                        Background="{TemplateBinding Background}"
-                        CornerRadius="{StaticResource CornerRadius.XS}" />
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="MinHeight" Value="32" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Background" Value="{StaticResource Brush.ScrollBar.Default}" />
+        <Setter Property="Template" Value="{StaticResource ScrollBar.VerticalThumbTemplate}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource Brush.TextSecondary}" />
+                <Setter Property="Background" Value="{StaticResource Brush.ScrollBar.Hover}" />
             </Trigger>
             <Trigger Property="IsDragging" Value="True">
-                <Setter Property="Background" Value="{DynamicResource Brush.TextPrimary}" />
+                <Setter Property="Background" Value="{StaticResource Brush.ScrollBar.Dragging}" />
             </Trigger>
         </Style.Triggers>
     </Style>
     <Style x:Key="ScrollBar.HorizontalThumb" TargetType="Thumb" BasedOn="{StaticResource ScrollBar.VerticalThumb}">
-        <Setter Property="MinWidth" Value="{StaticResource Control.Height.Default}" />
+        <Setter Property="MinWidth" Value="32" />
         <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Template" Value="{StaticResource ScrollBar.HorizontalThumbTemplate}" />
     </Style>
     <ControlTemplate x:Key="ScrollBar.VerticalTemplate" TargetType="ScrollBar">
-        <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
-            <Border
-                Width="{StaticResource ScrollBar.TrackSize}"
-                HorizontalAlignment="Center"
-                Background="{DynamicResource Brush.SurfaceElevated}"
-                CornerRadius="{StaticResource CornerRadius.XS}" />
-            <Track x:Name="PART_Track" Width="{StaticResource ScrollBar.TrackSize}" IsDirectionReversed="True">
+        <Grid Background="{TemplateBinding Background}">
+            <Track x:Name="PART_Track" Orientation="Vertical" IsDirectionReversed="True">
                 <Track.DecreaseRepeatButton>
-                    <RepeatButton
-                        Command="ScrollBar.PageUpCommand"
-                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
-                        Style="{StaticResource ScrollBar.TrackButton}" />
+                    <RepeatButton Command="ScrollBar.PageUpCommand"
+                                  CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                                  Style="{StaticResource ScrollBar.TrackButton}" />
                 </Track.DecreaseRepeatButton>
-                <Track.Thumb>
-                    <Thumb Style="{StaticResource ScrollBar.VerticalThumb}" />
-                </Track.Thumb>
+                <Track.Thumb><Thumb Style="{StaticResource ScrollBar.VerticalThumb}" /></Track.Thumb>
                 <Track.IncreaseRepeatButton>
-                    <RepeatButton
-                        Command="ScrollBar.PageDownCommand"
-                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
-                        Style="{StaticResource ScrollBar.TrackButton}" />
+                    <RepeatButton Command="ScrollBar.PageDownCommand"
+                                  CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                                  Style="{StaticResource ScrollBar.TrackButton}" />
                 </Track.IncreaseRepeatButton>
             </Track>
         </Grid>
     </ControlTemplate>
     <ControlTemplate x:Key="ScrollBar.HorizontalTemplate" TargetType="ScrollBar">
-        <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
-            <Border
-                Height="{StaticResource ScrollBar.TrackSize}"
-                VerticalAlignment="Center"
-                Background="{DynamicResource Brush.SurfaceElevated}"
-                CornerRadius="{StaticResource CornerRadius.XS}" />
-            <Track x:Name="PART_Track" Height="{StaticResource ScrollBar.TrackSize}" IsDirectionReversed="False">
+        <Grid Background="{TemplateBinding Background}">
+            <Track x:Name="PART_Track" Orientation="Horizontal" IsDirectionReversed="False">
                 <Track.DecreaseRepeatButton>
-                    <RepeatButton
-                        Command="ScrollBar.PageLeftCommand"
-                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
-                        Style="{StaticResource ScrollBar.TrackButton}" />
+                    <RepeatButton Command="ScrollBar.PageLeftCommand"
+                                  CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                                  Style="{StaticResource ScrollBar.TrackButton}" />
                 </Track.DecreaseRepeatButton>
-                <Track.Thumb>
-                    <Thumb Style="{StaticResource ScrollBar.HorizontalThumb}" />
-                </Track.Thumb>
+                <Track.Thumb><Thumb Style="{StaticResource ScrollBar.HorizontalThumb}" /></Track.Thumb>
                 <Track.IncreaseRepeatButton>
-                    <RepeatButton
-                        Command="ScrollBar.PageRightCommand"
-                        CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
-                        Style="{StaticResource ScrollBar.TrackButton}" />
+                    <RepeatButton Command="ScrollBar.PageRightCommand"
+                                  CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
+                                  Style="{StaticResource ScrollBar.TrackButton}" />
                 </Track.IncreaseRepeatButton>
             </Track>
         </Grid>
     </ControlTemplate>
-    <Style TargetType="ScrollBar">
+    <Style x:Key="ScrollBar.Premium" TargetType="ScrollBar">
         <Setter Property="Background" Value="Transparent" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Width" Value="{StaticResource ScrollBar.TrackSize}" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsTabStop" Value="False" />
         <Setter Property="Template" Value="{StaticResource ScrollBar.VerticalTemplate}" />
-        <Setter Property="UseLayoutRounding" Value="True" />
         <Style.Triggers>
             <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto" />
+                <Setter Property="Height" Value="{StaticResource ScrollBar.TrackSize}" />
                 <Setter Property="Template" Value="{StaticResource ScrollBar.HorizontalTemplate}" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+    <Style TargetType="ScrollBar" BasedOn="{StaticResource ScrollBar.Premium}" />
+
+    <!-- Main viewports reserve the rail even when Auto collapses the scrollbar.
+         PART names, offsets and CanContentScroll preserve native input and virtualization. -->
+    <Style x:Key="ScrollViewer.MainContent" TargetType="ScrollViewer">
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollViewer">
+                    <Grid Background="{TemplateBinding Background}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="{StaticResource ScrollBar.Gutter}" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}"
+                                                Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                                CanContentScroll="{TemplateBinding CanContentScroll}" />
+                        <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical"
+                                   Minimum="0" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                                   Value="{TemplateBinding VerticalOffset}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+                        <ScrollBar x:Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal"
+                                   Minimum="0" Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}"
+                                   Value="{TemplateBinding HorizontalOffset}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 </ResourceDictionary>

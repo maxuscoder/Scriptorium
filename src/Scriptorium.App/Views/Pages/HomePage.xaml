@@ -4,7 +4,7 @@
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages" Loaded="OnLoaded" Background="Transparent">
     <Grid>
-        <ScrollViewer x:Name="HomeScroll" SizeChanged="OnHomeLayoutSizeChanged" ScrollChanged="OnHomeScrollChanged" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
+        <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" x:Name="HomeScroll" SizeChanged="OnHomeLayoutSizeChanged" ScrollChanged="OnHomeScrollChanged" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
             <StackPanel Margin="{StaticResource Home.Page.Padding}">
                 <controls:LoadingIndicator Message="Finding your next watch..." Detail="Loading your local media."
                     Visibility="{Binding ShowLoading, Converter={StaticResource BooleanToVisibilityConverter}}" />

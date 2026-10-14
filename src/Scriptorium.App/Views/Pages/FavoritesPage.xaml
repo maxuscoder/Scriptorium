@@ -4,7 +4,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     Loaded="OnLoaded">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="32,28,32,48">
             <Grid>
                 <Grid.ColumnDefinitions>

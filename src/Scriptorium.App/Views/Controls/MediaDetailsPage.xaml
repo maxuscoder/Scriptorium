@@ -32,7 +32,7 @@
             <ColumnDefinition x:Name="MainColumn" Width="*" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <ScrollViewer x:Name="MainContent" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" x:Name="MainContent" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <Grid Margin="24,14,24,32">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />

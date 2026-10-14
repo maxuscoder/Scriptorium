@@ -7,7 +7,7 @@
     Loaded="OnLoaded">
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-        <StackPanel>
+        <StackPanel Margin="{StaticResource Library.StatusInset}">
             <Grid Margin="0,12,0,0" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <controls:LoadingIndicator Message="Loading your library…" Detail="Reading indexed media and collections. You can continue using the app." />
@@ -28,6 +28,19 @@
         </StackPanel>
 
         <ListBox x:Name="BrowserList" Grid.Row="1" Padding="{StaticResource Library.BrowserInset}" Background="Transparent" BorderThickness="0" ItemsSource="{Binding BrowserRows}" ScrollViewer.CanContentScroll="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.ScrollChanged="OnBrowserScrollChanged" VirtualizingPanel.CacheLength="1" VirtualizingPanel.CacheLengthUnit="Page" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.ScrollUnit="Pixel" VirtualizingPanel.VirtualizationMode="Recycling" SizeChanged="OnBrowserSizeChanged">
+            <!-- The system ListBox chrome adds an inset even with BorderThickness=0.
+                 Keep the viewport at the page edge and padding inside its presenter. -->
+            <ListBox.Template>
+                <ControlTemplate TargetType="ListBox">
+                    <ScrollViewer x:Name="PART_ScrollViewer" Style="{StaticResource ScrollViewer.MainContent}"
+                                  Focusable="False" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+                                  CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                  HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                  VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}">
+                        <ItemsPresenter />
+                    </ScrollViewer>
+                </ControlTemplate>
+            </ListBox.Template>
             <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">

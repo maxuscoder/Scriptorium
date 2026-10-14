@@ -1,6 +1,9 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="Chrome.xaml" />
+    </ResourceDictionary.MergedDictionaries>
     <Style x:Key="Input.TextBox" TargetType="TextBox">
         <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
         <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
@@ -52,69 +55,7 @@
     <!-- Checkmarks carry selection; the surface tint and focus outline stay quiet. -->
     <SolidColorBrush x:Key="Brush.ComboBox.Selection" Color="{DynamicResource Color.Accent}" Opacity="0.01" />
     <SolidColorBrush x:Key="Brush.ComboBox.Focus" Color="{DynamicResource Color.Accent}" Opacity="0.28" />
-    <!-- Scoped to dropdowns so page scrollbars retain their existing appearance. -->
-    <Style x:Key="Input.ComboBox.ScrollTrackButton" TargetType="RepeatButton">
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="IsTabStop" Value="False" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="RepeatButton">
-                    <Border Background="Transparent" />
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-    <Style x:Key="Input.ComboBox.ScrollThumb" TargetType="Thumb">
-        <Setter Property="MinHeight" Value="24" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Thumb">
-                    <Grid Background="Transparent">
-                        <Border x:Name="ThumbSurface" Width="4" HorizontalAlignment="Center"
-                                Background="{DynamicResource Brush.TextSecondary}" Opacity="0.32" CornerRadius="2" />
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="ThumbSurface" Property="Opacity" Value="0.5" />
-                        </Trigger>
-                        <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="ThumbSurface" Property="Opacity" Value="0.65" />
-                        </Trigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-    <Style x:Key="Input.ComboBox.ScrollBar" TargetType="ScrollBar">
-        <Setter Property="Width" Value="10" />
-        <Setter Property="MinWidth" Value="0" />
-        <Setter Property="MinHeight" Value="0" />
-        <Setter Property="Background" Value="Transparent" />
-        <Setter Property="SnapsToDevicePixels" Value="True" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ScrollBar">
-                    <Grid Background="{TemplateBinding Background}">
-                        <Track x:Name="PART_Track" IsDirectionReversed="True" Orientation="Vertical">
-                            <Track.DecreaseRepeatButton>
-                                <RepeatButton Command="ScrollBar.PageUpCommand"
-                                              CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
-                                              Style="{StaticResource Input.ComboBox.ScrollTrackButton}" />
-                            </Track.DecreaseRepeatButton>
-                            <Track.Thumb>
-                                <Thumb Style="{StaticResource Input.ComboBox.ScrollThumb}" />
-                            </Track.Thumb>
-                            <Track.IncreaseRepeatButton>
-                                <RepeatButton Command="ScrollBar.PageDownCommand"
-                                              CommandTarget="{Binding RelativeSource={RelativeSource AncestorType=ScrollBar}}"
-                                              Style="{StaticResource Input.ComboBox.ScrollTrackButton}" />
-                            </Track.IncreaseRepeatButton>
-                        </Track>
-                    </Grid>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
+    <Style x:Key="Input.ComboBox.ScrollBar" TargetType="ScrollBar" BasedOn="{StaticResource ScrollBar.Premium}" />
     <ControlTemplate x:Key="Input.ComboBox.ScrollViewer" TargetType="ScrollViewer">
         <Grid>
             <Grid.ColumnDefinitions>

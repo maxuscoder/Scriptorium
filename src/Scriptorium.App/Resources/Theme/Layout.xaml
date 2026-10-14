@@ -88,6 +88,6 @@
     <sys:Double x:Key="Icon.Height.Chevron">6</sys:Double>
     <sys:Double x:Key="Stroke.Icon">1.5</sys:Double>
     <Thickness x:Key="Margin.InputChevron">0,0,12,0</Thickness>
-    <sys:Double x:Key="ScrollBar.TrackSize">14</sys:Double>
-    <Thickness x:Key="ScrollBar.ThumbInset">2</Thickness>
+    <sys:Double x:Key="ScrollBar.TrackSize">16</sys:Double>
+    <GridLength x:Key="ScrollBar.Gutter">16</GridLength>
 </ResourceDictionary>

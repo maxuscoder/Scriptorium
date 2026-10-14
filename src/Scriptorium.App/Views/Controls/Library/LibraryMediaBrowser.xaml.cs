@@ -99,7 +99,7 @@ public partial class LibraryMediaBrowser : UserControl
             var cardWidth = (double)FindResource("MediaCard.Width");
             // Reserve the scrollbar and edge space for the shared card's render-only hover.
             var inset = (Thickness)FindResource("Library.BrowserInset");
-            viewModel.UpdateBrowserWidth(Math.Max(1, width - SystemParameters.VerticalScrollBarWidth - inset.Left - inset.Right),
+            viewModel.UpdateBrowserWidth(Math.Max(1, width - (double)FindResource("ScrollBar.TrackSize") - inset.Left - inset.Right),
                 (double)FindResource("Library.CardMinimumWidth"), cardWidth, margin.Left + margin.Right);
         }
     }

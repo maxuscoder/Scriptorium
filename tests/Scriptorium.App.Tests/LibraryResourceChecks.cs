@@ -451,7 +451,7 @@ internal static class LibraryResourceChecks
     {
         var list = Descendants<ListBox>(page).Single(control => control.Name == "BrowserList");
         var inset = list.Padding;
-        var availableWidth = list.ActualWidth - SystemParameters.VerticalScrollBarWidth - inset.Left - inset.Right;
+        var availableWidth = list.ActualWidth - (double)page.FindResource("ScrollBar.TrackSize") - inset.Left - inset.Right;
         var margin = (Thickness)page.FindResource("MediaCard.Margin");
         var minimumSlotWidth = (double)page.FindResource("Library.CardMinimumWidth") + margin.Left + margin.Right;
         var columns = vm.BrowserRows.OfType<LibraryBrowserCardsRow>().First().Cards.Count();

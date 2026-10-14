@@ -3,9 +3,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library"
     Loaded="OnLoaded" PreviewMouseWheel="OnPagePreviewMouseWheel" ScrollViewer.ScrollChanged="OnPageScrollChanged">
-    <Grid Margin="{StaticResource Library.PageInset}">
+    <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Grid x:Name="HeaderRoot" SizeChanged="OnHeaderSizeChanged">
+        <Grid Margin="{StaticResource Library.HeaderInset}" x:Name="HeaderRoot" SizeChanged="OnHeaderSizeChanged">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel x:Name="HeaderTitle">
@@ -26,7 +26,7 @@
                 </Button>
             </WrapPanel>
         </Grid>
-        <library:LibraryToolbar Grid.Row="1" x:Name="Toolbar"/>
-        <library:LibraryMediaBrowser Grid.Row="2"/>
+        <library:LibraryToolbar Margin="{StaticResource Library.ToolbarInset}" Grid.Row="1" x:Name="Toolbar"/>
+        <library:LibraryMediaBrowser Margin="{StaticResource Library.BrowserMargin}" Grid.Row="2"/>
     </Grid>
 </UserControl>

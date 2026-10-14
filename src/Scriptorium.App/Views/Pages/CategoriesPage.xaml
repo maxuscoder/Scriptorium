@@ -12,7 +12,7 @@
             <Setter Property="BorderBrush" Value="Transparent" />
         </Style>
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="24,14,24,32" MaxWidth="1400" SizeChanged="OnContentSizeChanged">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
