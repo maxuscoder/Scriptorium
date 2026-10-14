@@ -31,7 +31,7 @@
     <CornerRadius x:Key="Shell.Indicator.Radius">2</CornerRadius>
     <FontFamily x:Key="Shell.FontFamily.Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
     <Duration x:Key="Shell.Motion.Sidebar">0:0:0.12</Duration>
-    <Duration x:Key="Shell.Motion.Hover">0:0:0.12</Duration>
+    <Duration x:Key="Shell.Motion.Hover">0:0:0.16</Duration>
     <Duration x:Key="Shell.Motion.Selection">0:0:0.15</Duration>
 
     <Style
@@ -162,7 +162,8 @@
         <Setter Property="FontSize" Value="{StaticResource Icon.Size.Default}" />
         <Setter Property="Width" Value="{StaticResource Icon.Size.Default}" />
         <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+        <Setter Property="behaviors:BrushTransition.Duration" Value="{StaticResource Shell.Motion.Hover}" />
+        <Setter Property="behaviors:BrushTransition.ForegroundTarget" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding Label}" Value="Home">
                 <Setter Property="Text" Value="&#xE80F;" />
@@ -180,7 +181,7 @@
                 <Setter Property="Text" Value="&#xE713;" />
             </DataTrigger>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="Foreground" Value="{DynamicResource Brush.Sidebar.Accent}" />
+                <Setter Property="behaviors:BrushTransition.ForegroundTarget" Value="{DynamicResource Brush.Sidebar.Accent}" />
             </DataTrigger>
         </Style.Triggers>
     </Style>
@@ -190,7 +191,8 @@
         TargetType="TextBlock">
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="{StaticResource Shell.Label.Margin}" />
-        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+        <Setter Property="behaviors:BrushTransition.Duration" Value="{StaticResource Shell.Motion.Hover}" />
+        <Setter Property="behaviors:BrushTransition.ForegroundTarget" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                 <Setter Property="FontWeight" Value="SemiBold" />

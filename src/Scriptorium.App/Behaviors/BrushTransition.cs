@@ -5,11 +5,14 @@ using System.Windows.Media.Animation;
 
 namespace Scriptorium.App.Behaviors;
 
-/// <summary>Blends solid and gradient surface colors without adding layers to each control template.</summary>
+/// <summary>Blends solid and gradient surface or text colors without adding template layers.</summary>
 public static class BrushTransition
 {
     public static readonly DependencyProperty TargetProperty = DependencyProperty.RegisterAttached(
         "Target", typeof(Brush), typeof(BrushTransition), new PropertyMetadata(null, OnTargetChanged));
+
+    public static readonly DependencyProperty ForegroundTargetProperty = DependencyProperty.RegisterAttached(
+        "ForegroundTarget", typeof(Brush), typeof(BrushTransition), new PropertyMetadata(null, OnTargetChanged));
 
     public static readonly DependencyProperty DurationProperty = DependencyProperty.RegisterAttached(
         "Duration", typeof(Duration), typeof(BrushTransition),
@@ -17,31 +20,43 @@ public static class BrushTransition
 
     public static Brush? GetTarget(DependencyObject owner) => (Brush?)owner.GetValue(TargetProperty);
     public static void SetTarget(DependencyObject owner, Brush? value) => owner.SetValue(TargetProperty, value);
+    public static Brush? GetForegroundTarget(DependencyObject owner) => (Brush?)owner.GetValue(ForegroundTargetProperty);
+    public static void SetForegroundTarget(DependencyObject owner, Brush? value) => owner.SetValue(ForegroundTargetProperty, value);
     public static Duration GetDuration(DependencyObject owner) => (Duration)owner.GetValue(DurationProperty);
     public static void SetDuration(DependencyObject owner, Duration value) => owner.SetValue(DurationProperty, value);
 
     private static void OnTargetChanged(DependencyObject owner, DependencyPropertyChangedEventArgs args)
     {
-        if (owner is not Border border) return;
+        if (owner is not FrameworkElement element) return;
+        var brushProperty = args.Property == ForegroundTargetProperty
+            ? owner switch
+            {
+                TextBlock => TextBlock.ForegroundProperty,
+                Control => Control.ForegroundProperty,
+                _ => null
+            }
+            : owner is Border ? Border.BackgroundProperty : null;
+        if (brushProperty is null) return;
+
         if (args.NewValue is not Brush target)
         {
-            border.Background = null;
+            element.SetValue(brushProperty, null);
             return;
         }
 
-        var animate = border.IsLoaded && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
-        var easing = border.TryFindResource("Motion.Easing.Standard") as IEasingFunction;
+        var animate = element.IsLoaded && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
+        var easing = element.TryFindResource("Motion.Easing.Standard") as IEasingFunction;
 
         if (target is SolidColorBrush solidTarget)
         {
-            var previous = (border.Background as SolidColorBrush)?.Color;
+            var previous = (element.GetValue(brushProperty) as SolidColorBrush)?.Color;
             var next = new SolidColorBrush(solidTarget.Color);
-            border.Background = next;
+            element.SetValue(brushProperty, next);
 
             if (animate && previous is { } from && from != solidTarget.Color)
             {
                 next.BeginAnimation(SolidColorBrush.ColorProperty,
-                    new ColorAnimation(from, solidTarget.Color, GetDuration(border))
+                    new ColorAnimation(from, solidTarget.Color, GetDuration(element))
                     {
                         EasingFunction = easing,
                         FillBehavior = FillBehavior.Stop
@@ -53,9 +68,9 @@ public static class BrushTransition
 
         if (target is GradientBrush gradientTarget)
         {
-            var previous = border.Background as GradientBrush;
+            var previous = element.GetValue(brushProperty) as GradientBrush;
             var next = gradientTarget.CloneCurrentValue();
-            border.Background = next;
+            element.SetValue(brushProperty, next);
 
             if (!animate || previous is null || previous.GradientStops.Count != next.GradientStops.Count)
                 return;
@@ -67,7 +82,7 @@ public static class BrushTransition
                 if (from == to) continue;
 
                 next.GradientStops[index].BeginAnimation(GradientStop.ColorProperty,
-                    new ColorAnimation(from, to, GetDuration(border))
+                    new ColorAnimation(from, to, GetDuration(element))
                     {
                         EasingFunction = easing,
                         FillBehavior = FillBehavior.Stop
@@ -77,6 +92,6 @@ public static class BrushTransition
             return;
         }
 
-        border.Background = target;
+        element.SetValue(brushProperty, target);
     }
 }
