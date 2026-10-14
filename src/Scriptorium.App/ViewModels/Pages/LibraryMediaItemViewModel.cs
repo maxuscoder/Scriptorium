@@ -11,7 +11,25 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard, IMediaPlaybackCard
 {
     /// <summary>Gets the indexed item represented by this card.</summary>
-    public MediaItem MediaItem { get; } = mediaItem;
+    public MediaItem MediaItem { get; private set; } = mediaItem;
+
+    // Retained Home cards keep their bindings and decoded artwork across database refreshes.
+    internal void UpdateMedia(MediaItem item)
+    {
+        if (item.Id != MediaItemId) throw new ArgumentException("The media item must match this card.", nameof(item));
+        var previous = Presentation();
+        MediaItem = item;
+        if (previous != Presentation()) OnPropertyChanged(string.Empty);
+    }
+
+    private (string Title, string Path, string? Thumbnail, bool Manual, string Kind, string Location,
+        string Detail, string Runtime, string Metadata, string Category, string Color, bool Favorite,
+        bool Missing, long Position, long? Duration, bool Completed, string? Show, int? Season,
+        int? Episode, int? Year) Presentation() =>
+        (Title, SourcePath, ThumbnailPath, HasManualMetadata, MediaType, Location, Detail, Runtime,
+            CardMetadata, CategoryName, CategoryColor, IsFavorite, IsMissing,
+            MediaItem.PlaybackPositionSeconds, MediaItem.RuntimeSeconds, MediaItem.IsCompleted,
+            MediaItem.TVShowTitle, MediaItem.SeasonNumber, MediaItem.EpisodeNumber, MediaItem.EffectiveReleaseYear);
 
     public string Title => MediaDisplayText.TitleOrFallback(MediaItem.DisplayTitle, "Untitled media");
 

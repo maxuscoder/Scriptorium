@@ -189,6 +189,13 @@ Thresholds are configured in `src/Scriptorium.App/appsettings.json` under the
 `Performance` section. The timing records are written to the same rolling log
 files as the rest of the application telemetry.
 
+Debugger output receives only `Warning` and higher; detailed diagnostics remain
+in the file at the configured logging level. Verbose EF/SQL output can delay
+navigation under F5 because [Windows debugging events suspend the process's
+threads](https://learn.microsoft.com/en-us/windows/win32/debug/debugging-events)
+while the debugger handles them. Compare responsiveness with a Release run when
+investigating a delay specific to debugging.
+
 ---
 
 # Development Rules

@@ -142,18 +142,25 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
                 var historyTask = Task.Run(() => _mediaItemRepository.GetRecentlyWatchedAsync(10));
                 await Task.WhenAll(resumeTask, addedTask, favoritesTask, historyTask);
                 if (_disposed) return;
-                // Reuse presentation objects across shelves to keep favorites consistent.
+                // Reuse cards across refreshes as well as shelves. Expiring the data cache must
+                // not discard the retained controls, decoded artwork, or shelf scroll positions.
+                var previousCards = IncompleteMedia.Concat(RecentlyWatchedMedia).Concat(_recentlyAdded)
+                    .Concat(_favoriteItems).DistinctBy(card => card.MediaItemId)
+                    .ToDictionary(card => card.MediaItemId);
                 var cards = new Dictionary<Guid, LibraryMediaItemViewModel>();
                 LibraryMediaItemViewModel Card(MediaItem item)
                 {
-                    if (!cards.TryGetValue(item.Id, out var card)) cards[item.Id] = card = new(item);
+                    if (!cards.TryGetValue(item.Id, out var card))
+                    {
+                        if (previousCards.TryGetValue(item.Id, out card)) card.UpdateMedia(item);
+                        else card = new(item);
+                        cards[item.Id] = card;
+                    }
                     return card;
                 }
-                IncompleteMedia.Clear();
-                foreach (var item in (await resumeTask).Where(item => !item.IsMissing && !item.IsCompleted && item.PlaybackPositionSeconds > 0).Take(ShelfLimit))
-                    IncompleteMedia.Add(Card(item));
-                RecentlyWatchedMedia.Clear();
-                foreach (var item in await historyTask) RecentlyWatchedMedia.Add(Card(item));
+                Synchronize(IncompleteMedia, (await resumeTask).Where(item => !item.IsMissing && !item.IsCompleted && item.PlaybackPositionSeconds > 0)
+                    .Take(ShelfLimit).Select(Card).ToArray());
+                Synchronize(RecentlyWatchedMedia, (await historyTask).Select(Card).ToArray());
                 _recentlyAdded = (await addedTask).Select(Card).ToArray();
                 _favoriteItems = (await favoritesTask).Select(Card).ToArray();
                 var metadataItem = IncompleteMedia.FirstOrDefault() ?? RecentlyWatchedMedia.FirstOrDefault(item => !item.IsMissing);
@@ -188,18 +195,34 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         Hero = _settings.ShowContinueWatching
             ? IncompleteMedia.FirstOrDefault() ?? RecentlyWatchedMedia.FirstOrDefault(item => !item.IsMissing)
             : null;
-        Shelves.Clear();
+        var shelves = new List<HomeShelfViewModel>();
         void Add(string title, IEnumerable<LibraryMediaItemViewModel> items)
         {
             var entries = items.Take(ShelfLimit).ToArray();
-            if (entries.Length != 0) Shelves.Add(new(title, entries));
+            if (entries.Length == 0) return;
+            var existing = Shelves.FirstOrDefault(shelf => shelf.Title == title);
+            shelves.Add(existing is not null && existing.Items.SequenceEqual(entries)
+                ? existing : new(title, entries));
         }
         if (_settings.ShowContinueWatching)
             Add("Continue watching", IncompleteMedia.Where(item => item.MediaItemId != Hero?.MediaItemId));
         Add("Recently added", _recentlyAdded);
         Add("Favorites", _favoriteItems);
         Add("Recently watched", RecentlyWatchedMedia);
+        Synchronize(Shelves, shelves);
         NotifyPresentation();
+    }
+
+    private static void Synchronize<T>(ObservableCollection<T> collection, IReadOnlyList<T> items)
+    {
+        for (var index = 0; index < items.Count; index++)
+        {
+            if (index < collection.Count && EqualityComparer<T>.Default.Equals(collection[index], items[index])) continue;
+            var existingIndex = collection.IndexOf(items[index]);
+            if (existingIndex >= 0) collection.Move(existingIndex, index);
+            else collection.Insert(index, items[index]);
+        }
+        while (collection.Count > items.Count) collection.RemoveAt(collection.Count - 1);
     }
 
     private void NotifyPresentation()

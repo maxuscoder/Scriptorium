@@ -357,6 +357,37 @@ internal static class HomeResourceChecks
             Assert.InRange(outerScroll.VerticalOffset, 0, 1);
             Assert.Equal(Visibility.Collapsed, scrollUpButton.Visibility);
             Assert.Equal(Visibility.Visible, scrollDownButton.Visibility);
+            // Expiring the 30-second data cache must preserve shelves, card models, and scroll
+            // positions. Virtualization may still recycle offscreen card controls during layout.
+            var retainedShelves = Descendants<MediaShelf>(page).ToArray();
+            var addedScroll = Descendants<ScrollViewer>(retainedShelves.Single(shelf => shelf.Title == "Recently added")).Single();
+            addedScroll.ScrollToHorizontalOffset(180);
+            await StaTest.DrainDispatcherAsync();
+            Assert.True(addedScroll.HorizontalOffset > 0);
+            var retainedModels = home.Shelves.ToArray();
+            var retainedOffsets = retainedShelves.Select(shelf => Descendants<ScrollViewer>(shelf).Single().HorizontalOffset).ToArray();
+            var shelfChanges = 0;
+            var cardChanges = 0;
+            home.Shelves.CollectionChanged += (_, _) => shelfChanges++;
+            foreach (var card in retainedModels.SelectMany(shelf => shelf.Items).Distinct())
+                card.PropertyChanged += (_, _) => cardChanges++;
+            for (var visit = 0; visit < 3; visit++)
+            {
+                host.Content = new DetailPage();
+                await StaTest.DrainDispatcherAsync();
+                typeof(MainWindowViewModel).GetField("_lastSuccessfulRefreshUtc", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .SetValue(home, DateTimeOffset.UtcNow.AddMinutes(-1));
+                host.Content = home;
+                await home.EnsureHomepageDataLoadedAsync();
+                await StaTest.DrainDispatcherAsync();
+                Assert.Equal(retainedModels, home.Shelves);
+                Assert.Equal(retainedShelves, Descendants<MediaShelf>(page));
+                Assert.Equal(retainedOffsets, retainedShelves.Select(shelf => Descendants<ScrollViewer>(shelf).Single().HorizontalOffset));
+                Assert.Equal(0, shelfChanges);
+                Assert.Equal(0, cardChanges);
+                Assert.Equal(0, unloads);
+            }
+
             // A retained page still checks for invalidated data when it becomes visible again.
             host.Content = new DetailPage();
             await StaTest.DrainDispatcherAsync();

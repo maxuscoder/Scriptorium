@@ -74,7 +74,14 @@ public partial class HomeHero : UserControl
         _observed = IsLoaded ? Media : null;
         if (_observed is not null) _observed.PropertyChanged += OnItemPropertyChanged;
     }
-    private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateCopy();
+    private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        UpdateCopy();
+        // Home refreshes update the existing card rather than replacing Media.
+        if (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName == nameof(LibraryMediaItemViewModel.ThumbnailPath))
+            _ = LoadArtworkAsync();
+        if (string.IsNullOrEmpty(e.PropertyName)) UpdatePreviewActivation();
+    }
     private static void OnPreviewChanged(DependencyObject owner, DependencyPropertyChangedEventArgs e)
     {
         var hero = (HomeHero)owner;

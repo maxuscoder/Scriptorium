@@ -251,7 +251,10 @@ public partial class App : Application
         return new LoggerConfiguration()
             .MinimumLevel.Is(minimumLevel)
             .Enrich.FromLogContext()
-            .WriteTo.Debug()
+            // Debug output is a process-wide debugger event under F5. A burst of EF/SQL
+            // messages from a background Home refresh can therefore suspend the UI too.
+            // Preserve detailed diagnostics in the file while keeping debugger output quiet.
+            .WriteTo.Debug(restrictedToMinimumLevel: LogEventLevel.Warning)
             .WriteTo.File(
                 logFileLocation.FilePathTemplate,
                 rollingInterval: RollingInterval.Day,
