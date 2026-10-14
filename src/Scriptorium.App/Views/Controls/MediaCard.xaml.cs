@@ -426,9 +426,11 @@ public partial class MediaCard : UserControl
 
     private void OnCardSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        // Clip the component once: artwork joins the copy with a straight edge in both layouts.
+        // Content sits inside the border; match its inner curve so the stroke never covers artwork.
+        // WPF Border measures CornerRadius from the center of its stroke.
+        // Artwork still joins the copy with a straight edge in both layouts.
         // Geometry is rebuilt only on resize, never on hover or focus.
-        var radius = ((CornerRadius)FindResource("Radius.Card")).TopLeft;
+        var radius = Math.Max(0, CardSurface.CornerRadius.TopLeft - CardSurface.BorderThickness.Left / 2);
         var clip = new RectangleGeometry(new Rect(e.NewSize), radius, radius);
         clip.Freeze();
         CardVisual.Clip = clip;

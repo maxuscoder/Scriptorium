@@ -31,11 +31,11 @@
         </ContextMenu>
     </UserControl.ContextMenu>
     <!-- One artwork/title template for grid and list. Only positioning changes. -->
+    <Border x:Name="CardSurface" Style="{StaticResource MediaCard.Surface}">
     <Grid x:Name="CardVisual" RenderTransformOrigin="0.5,0.5" Background="Transparent" SizeChanged="OnCardSizeChanged">
         <Grid.RenderTransform><ScaleTransform /></Grid.RenderTransform>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <Border x:Name="CardSurface" Grid.RowSpan="2" Grid.ColumnSpan="2" Style="{StaticResource MediaCard.Surface}" BorderThickness="0" IsHitTestVisible="False" />
         <Grid x:Name="ArtworkFrame">
             <Grid.Style><Style TargetType="Grid">
                 <Setter Property="Grid.ColumnSpan" Value="2" />
@@ -133,10 +133,7 @@
                 </Style.Triggers>
             </Style></Button.Style>
         </Button>
-        <!-- Draw the hairline above artwork as well as copy, without changing measure. -->
-        <Border Grid.RowSpan="2" Grid.ColumnSpan="2" IsHitTestVisible="False"
-                BorderBrush="{Binding BorderBrush, ElementName=CardSurface}"
-                BorderThickness="{StaticResource BorderThickness.Hairline}" CornerRadius="{StaticResource Radius.Card}" />
     </Grid>
+    </Border>
 </UserControl>
 
