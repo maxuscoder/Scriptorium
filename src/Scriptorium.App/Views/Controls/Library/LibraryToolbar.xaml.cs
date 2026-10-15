@@ -21,6 +21,24 @@ public partial class LibraryToolbar : UserControl
     {
         CloseFilterPanel();
         SortBox.IsDropDownOpen = false;
+        MoreActionsButton.ContextMenu.IsOpen = false;
+    }
+
+    private void OnMoreActions(object sender, RoutedEventArgs e)
+    {
+        CloseDropdowns();
+        MoreActionsButton.ContextMenu.PlacementTarget = MoreActionsButton;
+        MoreActionsButton.ContextMenu.IsOpen = true;
+    }
+
+    private void OnManageLibrary(object sender, RoutedEventArgs e)
+    {
+        CloseDropdowns();
+        new LibraryManagementWindow
+        {
+            Owner = Window.GetWindow(this),
+            DataContext = DataContext
+        }.ShowDialog();
     }
 
     private void OnOpenFilterPanel(object sender, RoutedEventArgs e)

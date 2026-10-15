@@ -4,29 +4,8 @@
     xmlns:library="clr-namespace:Scriptorium.App.Views.Controls.Library"
     Loaded="OnLoaded" PreviewMouseWheel="OnPagePreviewMouseWheel" ScrollViewer.ScrollChanged="OnPageScrollChanged">
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <Grid Margin="{StaticResource Library.HeaderInset}" x:Name="HeaderRoot" SizeChanged="OnHeaderSizeChanged">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <StackPanel x:Name="HeaderTitle">
-                <TextBlock Style="{StaticResource Library.Title}" Text="Library"/>
-                <TextBlock Style="{StaticResource Library.ItemCount}" Text="{Binding MediaCountText}"/>
-            </StackPanel>
-            <WrapPanel x:Name="HeaderActions" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                <Button x:Name="AddFolderButton" Command="{Binding FolderManagement.ImportFolderCommand}" Style="{StaticResource Library.HeaderAction}">
-                    <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Library.CommandIcon}" Foreground="{DynamicResource Brush.Accent}" Text="&#xE710;"/><TextBlock Margin="{StaticResource Margin.IconLabel}" Text="Add folder"/></StackPanel>
-                </Button>
-                <Button x:Name="RescanButton" Command="{Binding RefreshLibraryCommand}" Style="{StaticResource Library.HeaderAction}" ToolTip="Rescan enabled library folders">
-                    <StackPanel Orientation="Horizontal"><TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE72C;"/>
-                        <TextBlock Margin="{StaticResource Margin.IconLabel}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Rescan"/><Style.Triggers><DataTrigger Binding="{Binding IsScanning}" Value="True"><Setter Property="Text" Value="Scanning…"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-                    </StackPanel>
-                </Button>
-                <Button x:Name="ManageLibraryButton" Style="{StaticResource Library.HeaderOverflow}" ToolTip="Manage Library" AutomationProperties.Name="Manage Library" Click="OnManageLibrary">
-                    <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE712;"/>
-                </Button>
-            </WrapPanel>
-        </Grid>
-        <library:LibraryToolbar Margin="{StaticResource Library.ToolbarInset}" Grid.Row="1" x:Name="Toolbar"/>
-        <library:LibraryMediaBrowser Margin="{StaticResource Library.BrowserMargin}" Grid.Row="2"/>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <library:LibraryToolbar Margin="{StaticResource Library.ToolbarInset}" x:Name="Toolbar"/>
+        <library:LibraryMediaBrowser Margin="{StaticResource Library.BrowserMargin}" Grid.Row="1"/>
     </Grid>
 </UserControl>
