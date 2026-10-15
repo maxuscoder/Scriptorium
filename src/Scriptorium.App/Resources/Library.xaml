@@ -164,7 +164,9 @@
     <Thickness x:Key="Library.ToolbarMargin">0,0,0,2</Thickness>
     <Thickness x:Key="Library.CommandGap">0,0,10,10</Thickness>
     <Thickness x:Key="Library.ToolbarCommandGap">0,0,10,8</Thickness>
-    <Thickness x:Key="Library.BrowserInset">20,8,20,12</Thickness>
+    <Thickness x:Key="Library.BrowserInset">20,8,8,12</Thickness>
+    <!-- Cancel the last card's trailing margin while preserving gaps between cards. -->
+    <Thickness x:Key="Library.CardRowMargin">0,0,-16,4</Thickness>
     <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
     <sys:Double x:Key="Library.ToolbarControlHeight">40</sys:Double>
     <sys:Double x:Key="Library.ToolbarMinimumWidth">800</sys:Double>

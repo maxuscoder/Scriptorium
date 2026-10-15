@@ -659,8 +659,10 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
                     ? 1
                     : Math.Clamp((int)Math.Floor(_browserWidth / (_browserCardMinimumWidth + _browserCardHorizontalMargin)), 1, 8);
                 if (_browserWidth > 0)
-                    BrowserCardWidth = Math.Max(1, Math.Min(_browserCardPreferredWidth,
-                        _browserWidth / _browserColumnCount - _browserCardHorizontalMargin));
+                {
+                    var cardWidth = _browserWidth / _browserColumnCount - _browserCardHorizontalMargin;
+                    BrowserCardWidth = Math.Max(1, value ? Math.Min(_browserCardPreferredWidth, cardWidth) : cardWidth);
+                }
                 if (_browserDataInitialized && !IsLoading)
                 {
                     _ = ReloadBrowserItemsAsync();
@@ -1016,7 +1018,8 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
         var columnCount = IsListLayout
             ? 1
             : Math.Clamp((int)Math.Floor(width / (_browserCardMinimumWidth + _browserCardHorizontalMargin)), 1, 8);
-        BrowserCardWidth = Math.Max(1, Math.Min(_browserCardPreferredWidth, width / columnCount - _browserCardHorizontalMargin));
+        var cardWidth = width / columnCount - _browserCardHorizontalMargin;
+        BrowserCardWidth = Math.Max(1, IsListLayout ? Math.Min(_browserCardPreferredWidth, cardWidth) : cardWidth);
         if (columnCount == _browserColumnCount)
         {
             return;

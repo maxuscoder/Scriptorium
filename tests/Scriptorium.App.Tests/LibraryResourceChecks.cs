@@ -463,7 +463,9 @@ internal static class LibraryResourceChecks
     {
         var list = Descendants<ListBox>(page).Single(control => control.Name == "BrowserList");
         var inset = list.Padding;
-        var availableWidth = list.ActualWidth - (double)page.FindResource("ScrollBar.TrackSize") - inset.Left - inset.Right;
+        var rowMargin = (Thickness)page.FindResource("Library.CardRowMargin");
+        var availableWidth = list.ActualWidth - (double)page.FindResource("ScrollBar.TrackSize")
+            - inset.Left - inset.Right - rowMargin.Left - rowMargin.Right;
         var margin = (Thickness)page.FindResource("MediaCard.Margin");
         var minimumSlotWidth = (double)page.FindResource("Library.CardMinimumWidth") + margin.Left + margin.Right;
         var columns = vm.BrowserRows.OfType<LibraryBrowserCardsRow>().First().Cards.Count();
@@ -474,6 +476,15 @@ internal static class LibraryResourceChecks
         if (columns < 8)
             Assert.True((columns + 1) * minimumSlotWidth > availableWidth,
                 $"{columns} columns leave room for another card in the {availableWidth:0.##}-pixel viewport.");
+
+        var cards = Descendants<MediaCard>(page).Take(columns).ToArray();
+        Assert.Equal(columns, cards.Length);
+        var firstBounds = cards[0].TransformToAncestor(page).TransformBounds(new Rect(cards[0].RenderSize));
+        var lastBounds = cards[^1].TransformToAncestor(page).TransformBounds(new Rect(cards[^1].RenderSize));
+        var toolbar = (LibraryToolbar)page.FindName("Toolbar");
+        var toolbarBounds = toolbar.TransformToAncestor(page).TransformBounds(new Rect(toolbar.RenderSize));
+        Assert.InRange(Math.Abs(firstBounds.Left - toolbarBounds.Left), 0, 1);
+        Assert.InRange(Math.Abs(lastBounds.Right - toolbarBounds.Right), 0, 1);
     }
 
     private static void VerifyKeyboardFocusVisual(Control control)
