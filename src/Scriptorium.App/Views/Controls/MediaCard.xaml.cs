@@ -442,7 +442,9 @@ public partial class MediaCard : UserControl
         var engaged = !forceRest && (IsMouseOver || IsKeyboardFocusWithin || ContextMenu?.IsOpen == true);
         SetValue(IsEngagedPropertyKey, engaged);
         var animate = !forceRest && IsLoaded && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast;
-        // Surface/opacity feedback keeps artwork sharp and within the viewport at every DPI.
+        // Move the whole surface while the root keeps a stable hover area and layout.
+        AnimateValue(CardLift, TranslateTransform.YProperty,
+            animate && IsMouseOver ? (double)FindResource("Motion.Distance.HoverLift") : 0, animate);
         AnimateValue(ArtworkImage, UIElement.OpacityProperty, engaged ? 1 : (double)FindResource("MediaCard.Artwork.RestOpacity"), animate);
         AnimateValue(HoverScrim, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
         AnimateValue(Actions, UIElement.OpacityProperty, engaged ? 1 : 0, animate);
