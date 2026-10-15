@@ -6,7 +6,7 @@
         <DataTemplate x:Key="SidebarNavigationItemTemplate">
             <Button Style="{StaticResource Shell.NavigationItem}"
                 Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:Sidebar}}}"
-                CommandParameter="{Binding}" ToolTip="{Binding Label}" AutomationProperties.Name="{Binding Label}">
+                CommandParameter="{Binding}" AutomationProperties.Name="{Binding Label}">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource Shell.NavigationIcon}" />
                     <TextBlock Text="{Binding Label}" Style="{StaticResource Shell.ExpandedText}" />
