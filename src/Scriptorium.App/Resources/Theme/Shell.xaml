@@ -60,15 +60,12 @@
                         <Border
                             x:Name="Line"
                             Width="1"
-                            HorizontalAlignment="Center"
-                            Background="{DynamicResource Brush.Border}"
+                            HorizontalAlignment="Right"
+                            Background="{DynamicResource Brush.BorderStrong}"
                             Opacity="0" />
                     </Grid>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Line" Property="Opacity" Value="1" />
-                        </Trigger>
-                        <Trigger Property="IsKeyboardFocused" Value="True">
                             <Setter TargetName="Line" Property="Opacity" Value="1" />
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
