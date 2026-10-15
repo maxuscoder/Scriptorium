@@ -142,6 +142,7 @@
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}"
+                                                behaviors:VerticalScrollFade.Height="48"
                                                 Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                                 ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                                                 CanContentScroll="{TemplateBinding CanContentScroll}" />
