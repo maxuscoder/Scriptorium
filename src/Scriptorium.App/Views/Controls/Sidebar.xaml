@@ -39,10 +39,10 @@
                 <TextBlock Text="Scriptorium" Style="{StaticResource Shell.Brand}" />
             </StackPanel>
             <Border DockPanel.Dock="Top" Height="{StaticResource Stroke.Hairline}"
-                Margin="{StaticResource Shell.Brand.Divider.Margin}" Background="{DynamicResource Brush.Border}"
+                Margin="{StaticResource Shell.Brand.Divider.Margin}" Background="{DynamicResource Brush.BorderStrong}"
                 IsHitTestVisible="False" />
             <Border DockPanel.Dock="Bottom" Margin="{StaticResource Shell.Settings.Margin}"
-                Padding="{StaticResource Shell.Settings.Padding}" BorderBrush="{DynamicResource Brush.Border}"
+                Padding="{StaticResource Shell.Settings.Padding}" BorderBrush="{DynamicResource Brush.BorderStrong}"
                 BorderThickness="{StaticResource Shell.Settings.Divider}">
                 <ItemsControl ItemTemplate="{StaticResource SidebarNavigationItemTemplate}" ItemsSource="{Binding SecondaryNavigationItems}" />
             </Border>
