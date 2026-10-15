@@ -44,7 +44,7 @@
                       </StackPanel>
                     </Border>
                     <Button x:Name="MoreActionsButton" Grid.Column="5" Style="{StaticResource Library.ToolbarOverflow}" ToolTip="Library actions" AutomationProperties.Name="Library actions" Click="OnMoreActions">
-                        <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE712;"/>
+                        <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE8B7;"/>
                         <Button.ContextMenu>
                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Placement="Bottom">
                                 <MenuItem x:Name="AddFolderMenuItem" Header="Add folder" Command="{Binding FolderManagement.ImportFolderCommand}"/>
