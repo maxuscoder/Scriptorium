@@ -38,9 +38,9 @@ internal static class DesignSystemResourceChecks
             panel.Children.Add(new TextBlock { Text = "Fluent Cinema", Style = (Style)resources["Text.PageTitle"] });
             panel.Children.Add(new TextBlock { Text = "Shared resources | Scriptorium", Style = (Style)resources["Text.Secondary"], Margin = new Thickness(0, 8, 0, 16) });
             var buttonRow = new WrapPanel();
-            foreach (var name in new[] { "Primary", "Secondary", "Destructive", "Text", "Icon" })
+            foreach (var name in new[] { "Primary", "Secondary", "Destructive", "Text", "Icon", "RoundIcon" })
             {
-                var button = new Button { Content = name == "Icon" ? "..." : name, Style = (Style)resources[$"Button.{name}"], Margin = new Thickness(0, 0, 8, 8) };
+                var button = new Button { Content = name is "Icon" or "RoundIcon" ? "..." : name, Style = (Style)resources[$"Button.{name}"], Margin = new Thickness(0, 0, 8, 8) };
                 var invoked = false;
                 button.Command = new RelayCommand(() => invoked = true);
                 typeof(Button).GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(button, null);
@@ -91,6 +91,7 @@ internal static class DesignSystemResourceChecks
             Assert.Equal(((Color)resources["Color.PrimaryButton.NormalBase"]), primaryGradient.GradientStops[^1].Color);
             var disabledPrimaryGradient = Assert.IsType<LinearGradientBrush>(Descendants<Border>(disabledPrimary).Skip(1).First().Background);
             Assert.Equal(((Color)resources["Color.PrimaryButton.DisabledBase"]), disabledPrimaryGradient.GradientStops[^1].Color);
+            VerifySharedButtonHover(buttonRow, resources);
             Assert.NotNull(textBox.Template.FindName("PART_ContentHost", textBox));
             Assert.Contains(Descendants<TextBlock>(combo), block => block.Text == "Movies");
             Assert.Contains(Descendants<TextBlock>(speed), block => block.Text == "1x");
@@ -120,6 +121,7 @@ internal static class DesignSystemResourceChecks
             theme.Apply("Light");
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(ThemeService.LightColors["TextPrimary"], ((SolidColorBrush)textBox.Foreground).Color);
+            VerifySharedButtonHover(buttonRow, resources);
             var lightPrimaryGradient = Assert.IsType<LinearGradientBrush>(Descendants<Border>(primary).Skip(1).First().Background);
             // Invisible windows may not advance animation clocks; verify the settled theme color.
             Assert.Equal(ThemeService.LightColors["PrimaryButton.NormalBase"],
@@ -130,6 +132,7 @@ internal static class DesignSystemResourceChecks
             foreach (var (key, color) in originalColors)
                 Assert.Equal(color, ((SolidColorBrush)resources[$"Brush.{key}"]).Color);
             await StaTest.DrainDispatcherAsync();
+            VerifySharedButtonHover(buttonRow, resources);
             Assert.Equal(((SolidColorBrush)primary.Background).Color,
                 ((SolidColorBrush)BrushTransition.GetTarget(primarySurface)!).Color);
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
@@ -150,6 +153,52 @@ internal static class DesignSystemResourceChecks
             window.Close();
             source.Listeners.Remove(trace);
             source.Switch.Level = originalLevel;
+        }
+    }
+
+    private static void VerifySharedButtonHover(WrapPanel buttons, ResourceDictionary resources)
+    {
+        // Drive WPF's real template triggers without moving the user's pointer.
+        var hoverKey = (DependencyPropertyKey)typeof(UIElement).GetField("IsMouseOverPropertyKey",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.GetValue(null)!;
+        var pressedKey = (DependencyPropertyKey)typeof(ButtonBase).GetField("IsPressedPropertyKey",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)!.GetValue(null)!;
+        var sharedButtons = buttons.Children.OfType<Button>().Where(button => button.IsEnabled &&
+            button.Template.FindName("HoverSurface", button) is Border).ToArray();
+        Assert.Equal(5, sharedButtons.Length);
+        foreach (var button in sharedButtons)
+        {
+            var surface = (Border)button.Template.FindName("BaseSurface", button);
+            var hover = (Border)button.Template.FindName("HoverSurface", button);
+            var pressed = (Border)button.Template.FindName("PressedSurface", button);
+            var background = button.Background;
+            var hoverBrush = hover.Background;
+            var expectedHover = ReferenceEquals(button.Style, resources["Button.Destructive"])
+                ? ((SolidColorBrush)resources["Brush.DangerHover"]).Color
+                : ReferenceEquals(button.Style, resources["Button.RoundIcon"])
+                    ? Color.FromRgb(0x24, 0x27, 0x2D)
+                    : ((SolidColorBrush)resources["Brush.SurfaceOverlay"]).Color;
+            Assert.Equal(expectedHover, Assert.IsType<SolidColorBrush>(hoverBrush).Color);
+            // Rapid enter/leave must only change overlay opacity, preserving RGB and the base brush.
+            for (var i = 0; i < 3; i++)
+            {
+                button.SetValue(hoverKey, true);
+                Assert.Equal(1d, OpacityTransition.GetTarget(hover));
+                Assert.Same(background, button.Background);
+                Assert.Same(background, surface.Background);
+                Assert.Same(hoverBrush, hover.Background);
+                button.SetValue(hoverKey, false);
+                Assert.Equal(0d, OpacityTransition.GetTarget(hover));
+            }
+            button.SetValue(hoverKey, true);
+            button.SetValue(pressedKey, true);
+            Assert.Equal(1d, pressed.Opacity);
+            button.SetValue(pressedKey, false);
+            Assert.Equal(0d, pressed.Opacity);
+            button.IsEnabled = false;
+            Assert.Equal(0d, OpacityTransition.GetTarget(hover));
+            button.SetValue(hoverKey, false);
+            button.IsEnabled = true;
         }
     }
 

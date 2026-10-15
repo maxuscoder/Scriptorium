@@ -42,6 +42,8 @@
         </Setter>
     </Style>
     <Style x:Key="Button.Base" TargetType="Button">
+        <Setter Property="behaviors:ButtonSurface.HoverBrush" Value="{DynamicResource Brush.SurfaceOverlay}" />
+        <Setter Property="behaviors:ButtonSurface.PressedBrush" Value="{DynamicResource Brush.SurfacePressed}" />
         <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
         <Setter Property="FontSize" Value="{StaticResource FontSize.Control}" />
         <Setter Property="FontWeight" Value="SemiBold" />
@@ -55,14 +57,34 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border Padding="{TemplateBinding Padding}"
-                            behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
-                            behaviors:BrushTransition.Duration="{StaticResource Motion.Duration.Instant}"
-                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{DynamicResource Radius.Control}" SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
-                    </Border>
+                    <Grid Background="Transparent" SnapsToDevicePixels="True">
+                        <Border x:Name="BaseSurface" Background="{TemplateBinding Background}"
+                                CornerRadius="{DynamicResource Radius.Control}" IsHitTestVisible="False" />
+                        <!-- Keep RGB fixed and fade opacity, including when the base is transparent or a gradient. -->
+                        <Border x:Name="HoverSurface" Background="{Binding Path=(behaviors:ButtonSurface.HoverBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                                CornerRadius="{DynamicResource Radius.Control}" Opacity="0" IsHitTestVisible="False"
+                                behaviors:OpacityTransition.Duration="{StaticResource Motion.Duration.Instant}" />
+                        <Border x:Name="PressedSurface" Background="{Binding Path=(behaviors:ButtonSurface.PressedBrush), RelativeSource={RelativeSource TemplatedParent}}"
+                                CornerRadius="{DynamicResource Radius.Control}" Opacity="0" IsHitTestVisible="False" />
+                        <Border Padding="{TemplateBinding Padding}"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="{DynamicResource Radius.Control}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" />
+                        </Border>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsMouseOver" Value="True" />
+                                <Condition Property="IsEnabled" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="HoverSurface" Property="behaviors:OpacityTransition.Target" Value="1" />
+                        </MultiTrigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="PressedSurface" Property="Opacity" Value="1" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -147,20 +169,16 @@
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
             </Trigger>
-            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
         </Style.Triggers>
     </Style>
     <Style x:Key="Button.Destructive" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Setter Property="behaviors:ButtonSurface.HoverBrush" Value="{DynamicResource Brush.DangerHover}" />
+        <Setter Property="behaviors:ButtonSurface.PressedBrush" Value="{DynamicResource Brush.DangerPressed}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Danger}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Danger}" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextOnDanger}" />
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.DangerHover}" /></Trigger>
-            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.DangerPressed}" /></Trigger>
-        </Style.Triggers>
     </Style>
     <Style x:Key="Button.Text" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
         <Setter Property="Background" Value="Transparent" />
@@ -176,6 +194,11 @@
         <Setter Property="Padding" Value="{StaticResource Spacing.None}" />
     </Style>
     <Style x:Key="Button.RoundIcon" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Style.Resources>
+            <CornerRadius x:Key="Radius.Control">999</CornerRadius>
+        </Style.Resources>
+        <Setter Property="behaviors:ButtonSurface.HoverBrush" Value="#24272D" />
+        <Setter Property="behaviors:ButtonSurface.PressedBrush" Value="#2C3037" />
         <Setter Property="Width" Value="36" />
         <Setter Property="Height" Value="36" />
         <Setter Property="MinWidth" Value="36" />
@@ -184,27 +207,11 @@
         <Setter Property="Background" Value="#191B20" />
         <Setter Property="BorderBrush" Value="#292C32" />
         <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="Button">
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="999"
-                            SnapsToDevicePixels="True">
-                        <ContentPresenter HorizontalAlignment="Center"
-                                          VerticalAlignment="Center" />
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="#24272D" />
                 <Setter Property="BorderBrush" Value="#3A3D44" />
             </Trigger>
             <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="#2C3037" />
                 <Setter Property="BorderBrush" Value="#444851" />
             </Trigger>
         </Style.Triggers>

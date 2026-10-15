@@ -231,16 +231,23 @@
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
     </Style>
-    <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+    <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
         <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
         <Setter Property="Width" Value="48"/>
         <Setter Property="Height" Value="38"/>
         <Setter Property="Margin" Value="0"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <!-- Selected mode has a disabled command; keep its selection visible. -->
-        <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="1"/></Trigger></Style.Triggers>
+        <Style.Triggers>
+            <MultiTrigger>
+                <MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsEnabled" Value="True"/></MultiTrigger.Conditions>
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+            </MultiTrigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="1"/></Trigger>
+        </Style.Triggers>
     </Style>
     <Style x:Key="Library.FilterChip" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
         <Setter Property="MaxWidth" Value="240"/>

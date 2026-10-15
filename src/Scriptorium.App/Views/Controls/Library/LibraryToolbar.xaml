@@ -34,12 +34,15 @@
                       <StackPanel Orientation="Horizontal">
                         <Button x:Name="GridButton" Command="{Binding SetGridLayoutCommand}" ToolTip="Grid view" AutomationProperties.Name="Grid view">
                             <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Resources><CornerRadius x:Key="Radius.Control">10,0,0,10</CornerRadius></Style.Resources><Style.Triggers><DataTrigger Binding="{Binding IsGridLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.ControlSurface.Selected}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
-                            <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE80A;"/>
+                            <Path Width="18" Height="18" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" StrokeLineJoin="Round"
+                                  Data="M3,1.5 H6 A1.5,1.5 0 0 1 7.5,3 V6 A1.5,1.5 0 0 1 6,7.5 H3 A1.5,1.5 0 0 1 1.5,6 V3 A1.5,1.5 0 0 1 3,1.5 Z M12,1.5 H15 A1.5,1.5 0 0 1 16.5,3 V6 A1.5,1.5 0 0 1 15,7.5 H12 A1.5,1.5 0 0 1 10.5,6 V3 A1.5,1.5 0 0 1 12,1.5 Z M3,10.5 H6 A1.5,1.5 0 0 1 7.5,12 V15 A1.5,1.5 0 0 1 6,16.5 H3 A1.5,1.5 0 0 1 1.5,15 V12 A1.5,1.5 0 0 1 3,10.5 Z M12,10.5 H15 A1.5,1.5 0 0 1 16.5,12 V15 A1.5,1.5 0 0 1 15,16.5 H12 A1.5,1.5 0 0 1 10.5,15 V12 A1.5,1.5 0 0 1 12,10.5 Z"/>
                         </Button>
-                        <Border Width="1" Height="22" VerticalAlignment="Center" Background="{DynamicResource Brush.Border}" IsHitTestVisible="False"/>
                         <Button x:Name="ListButton" Command="{Binding SetListLayoutCommand}" ToolTip="List view" AutomationProperties.Name="List view">
                             <Button.Style><Style BasedOn="{StaticResource Library.LayoutButton}" TargetType="Button"><Style.Resources><CornerRadius x:Key="Radius.Control">0,10,10,0</CornerRadius></Style.Resources><Style.Triggers><DataTrigger Binding="{Binding IsListLayout}" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.ControlSurface.Selected}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></DataTrigger></Style.Triggers></Style></Button.Style>
-                            <TextBlock Style="{StaticResource Library.CommandIcon}" Text="&#xE8FD;"/>
+                            <Path Width="18" Height="18" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Data="M2,3 H4 V5 H2 Z M8,4 H16 M2,8 H4 V10 H2 Z M8,9 H16 M2,13 H4 V15 H2 Z M8,14 H16"/>
                         </Button>
                       </StackPanel>
                     </Border>
