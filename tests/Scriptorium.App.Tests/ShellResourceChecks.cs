@@ -165,18 +165,18 @@ internal static class ShellResourceChecks
             // The same drag can cross the collapse threshold and then reopen without jumping.
             StartDrag(resizeHandle);
             await DragTo(resizeHandle, 300);
-            Assert.Equal(300, sidebar.ActualWidth);
+            Assert.Equal(232, sidebar.ActualWidth);
             await DragTo(resizeHandle, 600);
-            Assert.Equal(360, sidebar.ActualWidth);
+            Assert.Equal(232, sidebar.ActualWidth);
             await DragTo(resizeHandle, 180);
             Assert.False(sidebar.IsCompact);
             Assert.Equal(180, sidebar.ActualWidth);
             await DragTo(resizeHandle, 179);
             Assert.True(sidebar.IsCompact);
             Assert.Equal(72, sidebar.ActualWidth);
-            await DragTo(resizeHandle, 280);
+            await DragTo(resizeHandle, 210);
             Assert.False(sidebar.IsCompact);
-            Assert.Equal(280, sidebar.ActualWidth);
+            Assert.Equal(210, sidebar.ActualWidth);
             FinishDrag(resizeHandle);
 
             var layoutProbe = new PageLayoutProbe();
@@ -187,7 +187,7 @@ internal static class ShellResourceChecks
             if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
             {
                 Assert.True(window.HasAnimatedProperties);
-                Assert.Equal(280.0, sidebar.ActualWidth);
+                Assert.Equal(210.0, sidebar.ActualWidth);
                 Assert.Equal(72.0, window.GetAnimationBaseValue(sidebarWidthProperty));
                 Assert.Equal(host.ActualWidth, host.Width);
                 Assert.Equal(HorizontalAlignment.Left, host.HorizontalAlignment);
@@ -196,7 +196,7 @@ internal static class ShellResourceChecks
                 window.BeginAnimation(sidebarWidthProperty, null);
                 window.UpdateLayout();
                 var measureCount = layoutProbe.MeasureCount;
-                foreach (var frameWidth in new[] { 250.0, 210.0, 170.0, 120.0, 72.0 })
+                foreach (var frameWidth in new[] { 200.0, 190.0, 170.0, 120.0, 72.0 })
                 {
                     window.SetValue(sidebarWidthProperty, frameWidth);
                     window.UpdateLayout();
@@ -210,7 +210,7 @@ internal static class ShellResourceChecks
             {
                 Assert.True(window.HasAnimatedProperties);
                 Assert.Equal(72.0, sidebar.ActualWidth);
-                Assert.Equal(280.0, window.GetAnimationBaseValue(sidebarWidthProperty));
+                Assert.Equal(210.0, window.GetAnimationBaseValue(sidebarWidthProperty));
                 // Starting a drag interrupts the transition at its current rendered width.
                 StartDrag(resizeHandle);
                 Assert.False(window.HasAnimatedProperties);
@@ -229,7 +229,7 @@ internal static class ShellResourceChecks
             // A manually chosen width survives window resizing; the logo restores that width.
             window.Width = 800;
             await DrainSidebarAsync();
-            Assert.Equal(280, sidebar.ActualWidth);
+            Assert.Equal(210, sidebar.ActualWidth);
             logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await DrainSidebarAsync();
             Assert.True(sidebar.IsCompact);
@@ -237,7 +237,7 @@ internal static class ShellResourceChecks
             Assert.Equal(Visibility.Visible, leftEdge.Visibility);
             logo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await DrainSidebarAsync();
-            Assert.Equal(280, sidebar.ActualWidth);
+            Assert.Equal(210, sidebar.ActualWidth);
             Assert.Equal("Collapse sidebar", AutomationProperties.GetName(logo));
             Assert.Equal(Visibility.Collapsed, leftEdge.Visibility);
 
@@ -247,19 +247,19 @@ internal static class ShellResourceChecks
             await DragTo(leftEdge, 180);
             Assert.Equal(180, sidebar.ActualWidth);
             await DragTo(leftEdge, 260);
-            Assert.Equal(260, sidebar.ActualWidth);
+            Assert.Equal(232, sidebar.ActualWidth);
             FinishDrag(leftEdge, canceled: true);
             await DrainSidebarAsync();
             Assert.True(sidebar.IsCompact);
             Assert.Equal(72, sidebar.ActualWidth);
             StartDrag(leftEdge);
-            await DragTo(leftEdge, 320);
+            await DragTo(leftEdge, 220);
             FinishDrag(leftEdge);
             Assert.False(sidebar.IsCompact);
-            Assert.Equal(320, sidebar.ActualWidth);
+            Assert.Equal(220, sidebar.ActualWidth);
             window.Width = 1200;
             await DrainSidebarAsync();
-            Assert.Equal(320, sidebar.ActualWidth);
+            Assert.Equal(220, sidebar.ActualWidth);
 
             var theme = services.GetRequiredService<IThemeService>();
             theme.Apply("Light");

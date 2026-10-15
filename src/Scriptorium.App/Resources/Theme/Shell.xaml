@@ -10,7 +10,7 @@
     <!-- Shell tokens share the graphite palette with toolbar and card surfaces. -->
     <sys:Double x:Key="Shell.Sidebar.Width">232</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.MinWidth">180</sys:Double>
-    <sys:Double x:Key="Shell.Sidebar.MaxWidth">360</sys:Double>
+    <sys:Double x:Key="Shell.Sidebar.MaxWidth">232</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.ResizeHitWidth">8</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.CompactWidth">72</sys:Double>
     <sys:Double x:Key="Shell.Sidebar.CompactThreshold">1000</sys:Double>

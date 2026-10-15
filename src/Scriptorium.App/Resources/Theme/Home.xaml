@@ -15,7 +15,6 @@
     <sys:Double x:Key="Home.Hero.Height">332</sys:Double>
     <sys:Double x:Key="Home.Hero.TextWidth">440</sys:Double>
     <sys:Double x:Key="Home.Hero.ProgressWidth">267</sys:Double>
-    <sys:Double x:Key="Home.Shelf.Height">244</sys:Double>
     <sys:Double x:Key="Home.Shelf.ScrollFraction">0.8</sys:Double>
     <sys:Double x:Key="Home.Shelf.EdgeFadeWidth">72</sys:Double>
     <SolidColorBrush x:Key="Home.Hero.TextSecondary" Color="#C0C0C6" />

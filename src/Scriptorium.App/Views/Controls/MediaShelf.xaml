@@ -9,7 +9,7 @@
         </Grid>
         <Grid>
             <ListBox x:Name="Items" ItemsSource="{Binding ItemsSource, ElementName=Root}"
-                Height="{StaticResource Home.Shelf.Height}" Padding="{StaticResource Home.Shelf.Padding}"
+                Padding="{StaticResource Home.Shelf.Padding}"
                 Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                 ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.CanContentScroll="True"
                 VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
@@ -19,7 +19,7 @@
                 <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem">
                     <Setter Property="Padding" Value="0" /><Setter Property="Focusable" Value="False" />
                     <Setter Property="VerticalContentAlignment" Value="Top" />
-                    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter /></ControlTemplate></Setter.Value></Setter>
+                    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}" /></ControlTemplate></Setter.Value></Setter>
                 </Style></ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate><DataTemplate>
                     <controls:MediaCard CardWidth="{StaticResource MediaCard.Width}" Margin="{StaticResource Home.Shelf.CardMargin}" IsListLayout="False"
