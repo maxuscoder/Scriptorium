@@ -21,9 +21,12 @@ internal static class ThumbnailContentCrop
         bool IsBorderPixel(int x, int y)
         {
             var offset = y * stride + x * 4;
-            // Tolerate compression noise in black bars and transparent image padding.
+            var darkest = Math.Min(pixels[offset], Math.Min(pixels[offset + 1], pixels[offset + 2]));
+            var brightest = Math.Max(pixels[offset], Math.Max(pixels[offset + 1], pixels[offset + 2]));
+            // Video black levels and compression can lift neutral bars above pure black.
+            // Keep dark, colored scene details while accepting transparent image padding.
             return pixels[offset + 3] <= 8 ||
-                pixels[offset] <= 12 && pixels[offset + 1] <= 12 && pixels[offset + 2] <= 12;
+                brightest <= 12 || brightest <= 24 && brightest - darkest <= 8;
         }
 
         bool IsBorderRow(int y)
@@ -43,7 +46,7 @@ internal static class ThumbnailContentCrop
 
         // Paired, similar borders distinguish letterboxing from dark areas of the scene.
         static bool IsPair(int first, int second, int dimension) =>
-            first >= 2 && second >= 2 && first < dimension / 3 && second < dimension / 3 &&
+            first >= 1 && second >= 1 && first < dimension / 3 && second < dimension / 3 &&
             Math.Abs(first - second) <= Math.Max(2, Math.Min(first, second) / 4);
 
         var top = CountBorder(height / 3, IsBorderRow);

@@ -232,7 +232,7 @@ internal static class ThumbnailCache
 
     private static string GetCachePath(ThumbnailCacheKey key, string sourceToken)
     {
-        var variant = $"{key.LastWriteTicks:x}_{key.SourceLength:x}_{MaximumThumbnailWidth}x{MaximumThumbnailHeight}_fill-v2";
+        var variant = $"{key.LastWriteTicks:x}_{key.SourceLength:x}_{MaximumThumbnailWidth}x{MaximumThumbnailHeight}_fill-v3";
         return Path.Combine(key.CacheDirectory, $"{sourceToken}_{variant}.png");
     }
 
@@ -251,7 +251,8 @@ internal static class ThumbnailCache
                 return null;
             }
 
-            BitmapSource thumbnail = frame;
+            // Trim at source resolution so resizing cannot blend bars into the picture edges.
+            BitmapSource thumbnail = resize ? ThumbnailContentCrop.TrimBorders(frame) : frame;
             if (resize && (thumbnail.PixelWidth > MaximumThumbnailWidth || thumbnail.PixelHeight > MaximumThumbnailHeight))
             {
                 var scale = Math.Min(
@@ -260,7 +261,6 @@ internal static class ThumbnailCache
                 thumbnail = new TransformedBitmap(thumbnail, new ScaleTransform(scale, scale));
             }
 
-            if (resize) thumbnail = ThumbnailContentCrop.TrimBorders(thumbnail);
             thumbnail.Freeze();
             return thumbnail;
         }

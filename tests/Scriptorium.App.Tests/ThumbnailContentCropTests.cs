@@ -12,6 +12,7 @@ public sealed class ThumbnailContentCropTests
     [InlineData(480, 270, 0, 30)] // Letterboxed widescreen video.
     [InlineData(480, 270, 48, 30)] // Borders on all four sides.
     [InlineData(240, 360, 0, 40)] // Portrait artwork.
+    [InlineData(480, 270, 1, 1)] // Thin padding must not survive at card edges.
     public void RemovesPairedBordersAndPreservesThePicture(int width, int height, int side, int top)
     {
         var source = CreateImage(width, height, (x, y) =>
@@ -29,6 +30,29 @@ public sealed class ThumbnailContentCropTests
         Assert.Equal(new byte[] { 40, 95, 150, 255 }, pixel);
         Assert.Equal(width, source.PixelWidth);
         Assert.Equal(height, source.PixelHeight);
+    }
+
+    [Theory]
+    [InlineData(16, 16, 16)] // Limited-range video black.
+    [InlineData(20, 22, 24)] // Compression noise in lifted black bars.
+    public void RemovesBordersWithLiftedVideoBlackLevels(byte red, byte green, byte blue)
+    {
+        var source = CreateImage(480, 270, (x, _) =>
+            x < 48 || x >= 432 ? Color.FromRgb(red, green, blue) : Colors.Coral);
+
+        var cropped = ThumbnailContentCrop.TrimBorders(source);
+
+        Assert.Equal(384, cropped.PixelWidth);
+        Assert.Equal(270, cropped.PixelHeight);
+    }
+
+    [Fact]
+    public void PreservesDarkColoredSceneEdges()
+    {
+        var source = CreateImage(480, 270, (x, _) =>
+            x < 48 || x >= 432 ? Color.FromRgb(24, 8, 8) : Colors.Coral);
+
+        Assert.Same(source, ThumbnailContentCrop.TrimBorders(source));
     }
 
     [Theory]

@@ -5,6 +5,7 @@
     <sys:Double x:Key="MediaCard.Width">260</sys:Double>
     <sys:Double x:Key="MediaCard.ListArtworkWidth">160</sys:Double>
     <sys:Double x:Key="MediaCard.ArtworkRatio">2.14</sys:Double>
+    <sys:Double x:Key="MediaCard.Artwork.Zoom">1.04</sys:Double>
     <sys:Double x:Key="MediaCard.Artwork.RestOpacity">0.94</sys:Double>
     <sys:Double x:Key="MediaCard.Progress.Height">4</sys:Double>
     <Duration x:Key="MediaCard.Motion.Duration">0:0:0.18</Duration>

@@ -47,7 +47,11 @@
             <Grid x:Name="Artwork" SizeChanged="OnArtworkSizeChanged" ClipToBounds="True">
                 <Border Background="{StaticResource MediaCard.Brush.Fallback}" />
                 <Image x:Name="ArtworkImage" Stretch="UniformToFill" Source="{Binding ThumbnailSource, ElementName=Root}" ImageFailed="OnThumbnailImageFailed"
-                    Opacity="{StaticResource MediaCard.Artwork.RestOpacity}" />
+                    Opacity="{StaticResource MediaCard.Artwork.RestOpacity}" RenderTransformOrigin="0.5,0.5">
+                    <Image.RenderTransform>
+                        <ScaleTransform ScaleX="{StaticResource MediaCard.Artwork.Zoom}" ScaleY="{StaticResource MediaCard.Artwork.Zoom}" />
+                    </Image.RenderTransform>
+                </Image>
                 <TextBlock Text="&#xE714;" FontFamily="{StaticResource MediaCard.FontFamily.Icons}"
                     FontSize="{StaticResource Icon.Size.Feature}" Foreground="{StaticResource MediaCard.Brush.FallbackIcon}"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
