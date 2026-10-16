@@ -47,7 +47,7 @@
         <converters:MediaPlayActionConverter x:Key="MediaPlayActionConverter" />
     </UserControl.Resources>
     <controls:MediaDetailsPage BackCommand="{Binding BackCommand}" EditCommand="{Binding EditCommand}" IsEditing="{Binding IsEditing}"
-                               Title="{Binding Title}" HeaderProgressText="{Binding CourseProgressText}" SidebarTitle="Course content">
+                               IsVideoLayout="True" Title="{Binding Title}" HeaderProgressText="{Binding CourseProgressText}">
         <controls:MediaDetailsPage.ActionsMenu>
             <ContextMenu>
                 <MenuItem Header="{Binding ContinueLearningText}" Command="{Binding ContinueLearningCommand}" />
@@ -56,12 +56,14 @@
                 <MenuItem Header="{Binding CompletionActionText}" Command="{Binding ToggleLessonCompletionCommand}" />
             </ContextMenu>
         </controls:MediaDetailsPage.ActionsMenu>
+        <controls:MediaDetailsPage.VideoContent>
+            <Grid SizeChanged="OnPreviewSizeChanged">
+                <controls:VideoPlayer Player="{Binding Player}" BackCommand="{Binding BackCommand}" IsEdgeToEdge="True" />
+            </Grid>
+        </controls:MediaDetailsPage.VideoContent>
         <controls:MediaDetailsPage.MainDetailsContent>
             <StackPanel>
-                <Grid SizeChanged="OnPreviewSizeChanged">
-                    <controls:VideoPlayer Player="{Binding Player}" />
-                </Grid>
-                <StackPanel Margin="8,20,8,0">
+                <StackPanel>
                     <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedLessonPositionText}" />
                     <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.SubsectionTitle}" Text="{Binding SelectedLesson.Title}"
                                TextWrapping="Wrap" ToolTip="{Binding SelectedLesson.FilePath}" />
@@ -114,63 +116,62 @@
                         </Style></TextBlock.Style>
                     </TextBlock>
                 </StackPanel>
+                <StackPanel Margin="0,24,0,0">
+                    <TextBlock Margin="4,0,4,16" Style="{StaticResource Text.SubsectionTitle}" Text="Course content" />
+                    <TextBlock Margin="4,0,4,6" Style="{StaticResource Text.Metadata}" Text="{Binding CourseProgressText}" />
+                    <ProgressBar Height="3" Margin="4,0,4,14" Minimum="0" Maximum="100"
+                                 Background="{DynamicResource Brush.Border}" Foreground="{DynamicResource Brush.Accent}"
+                                 Value="{Binding CourseProgressPercentage, Mode=OneWay}" Template="{StaticResource Course.ProgressTemplate}"
+                                 AutomationProperties.Name="Course progress" />
+                    <TextBlock Text="{Binding OrderStatus}" AutomationProperties.LiveSetting="Polite" Margin="4,0,4,8" Style="{StaticResource Text.Metadata}" TextWrapping="Wrap" />
+                    <ItemsControl ItemsSource="{Binding Lessons}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                    <Button Style="{StaticResource Course.Row}"
+                                            Command="{Binding DataContext.SelectLessonCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}"
+                                            CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
+                                        <Button.ToolTip><StackPanel MaxWidth="480">
+                                            <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,6,0,0" Text="{Binding FilePath}" TextWrapping="Wrap" />
+                                            <TextBlock Margin="0,6,0,0" Text="{Binding Availability}" />
+                                        </StackPanel></Button.ToolTip>
+                                        <StackPanel>
+                                            <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                <TextBlock.Text><MultiBinding StringFormat="{}{0} &#xB7; {1}"><Binding Path="NumberText" /><Binding Path="Title" /></MultiBinding></TextBlock.Text>
+                                                <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                                                    <Style.Triggers><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers>
+                                                </Style></TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Margin="0,4,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
+                                                <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+                                                    <Setter Property="Text" Value="{Binding CompletionStatus}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Success}" /></DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsMissing}" Value="True"><Setter Property="Text" Value="File unavailable" /><Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" /></DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style></TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Button>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0,0,0">
+                                        <Button Style="{StaticResource Course.Reorder}" Width="24" Height="24" MinHeight="24" Content="&#x2191;" ToolTip="Move lesson up" AutomationProperties.Name="Move lesson up"
+                                                Command="{Binding DataContext.MoveLessonUpCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}" CommandParameter="{Binding}" />
+                                        <Button Style="{StaticResource Course.Reorder}" Width="24" Height="24" MinHeight="24" Content="&#x2193;" ToolTip="Move lesson down" AutomationProperties.Name="Move lesson down"
+                                                Command="{Binding DataContext.MoveLessonDownCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}" CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Margin="4,16,4,4" Style="{StaticResource Text.Metadata}" TextWrapping="Wrap">
+                        <TextBlock.Text><MultiBinding StringFormat="{}{0} total &#xB7; {1} remaining"><Binding Path="TotalDurationText" /><Binding Path="RemainingDurationText" /></MultiBinding></TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
             </StackPanel>
         </controls:MediaDetailsPage.MainDetailsContent>
-        <controls:MediaDetailsPage.SidebarContent>
-            <StackPanel>
-                <TextBlock Margin="4,0,4,6" Style="{StaticResource Text.Metadata}" Text="{Binding CourseProgressText}" />
-                <ProgressBar Height="3" Margin="4,0,4,14" Minimum="0" Maximum="100"
-                             Background="{DynamicResource Brush.Border}" Foreground="{DynamicResource Brush.Accent}"
-                             Value="{Binding CourseProgressPercentage, Mode=OneWay}" Template="{StaticResource Course.ProgressTemplate}"
-                             AutomationProperties.Name="Course progress" />
-                <TextBlock Text="{Binding OrderStatus}" AutomationProperties.LiveSetting="Polite" Margin="4,0,4,8" Style="{StaticResource Text.Metadata}" TextWrapping="Wrap" />
-                <ItemsControl ItemsSource="{Binding Lessons}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,0,0,4">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <Button Style="{StaticResource Course.Row}"
-                                        Command="{Binding DataContext.SelectLessonCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}"
-                                        CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
-                                    <Button.ToolTip><StackPanel MaxWidth="480">
-                                        <TextBlock Text="{Binding Title}" TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,6,0,0" Text="{Binding FilePath}" TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,6,0,0" Text="{Binding Availability}" />
-                                    </StackPanel></Button.ToolTip>
-                                    <StackPanel>
-                                        <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
-                                            <TextBlock.Text><MultiBinding StringFormat="{}{0} &#xB7; {1}"><Binding Path="NumberText" /><Binding Path="Title" /></MultiBinding></TextBlock.Text>
-                                            <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
-                                                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-                                                <Style.Triggers><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers>
-                                            </Style></TextBlock.Style>
-                                        </TextBlock>
-                                        <TextBlock Margin="0,4,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
-                                            <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
-                                                <Setter Property="Text" Value="{Binding CompletionStatus}" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Success}" /></DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsMissing}" Value="True"><Setter Property="Text" Value="File unavailable" /><Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" /></DataTrigger>
-                                                </Style.Triggers>
-                                            </Style></TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Button>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0,0,0">
-                                    <Button Style="{StaticResource Course.Reorder}" Width="24" Height="24" MinHeight="24" Content="&#x2191;" ToolTip="Move lesson up" AutomationProperties.Name="Move lesson up"
-                                            Command="{Binding DataContext.MoveLessonUpCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}" CommandParameter="{Binding}" />
-                                    <Button Style="{StaticResource Course.Reorder}" Width="24" Height="24" MinHeight="24" Content="&#x2193;" ToolTip="Move lesson down" AutomationProperties.Name="Move lesson down"
-                                            Command="{Binding DataContext.MoveLessonDownCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}" CommandParameter="{Binding}" />
-                                </StackPanel>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <TextBlock Margin="4,16,4,4" Style="{StaticResource Text.Metadata}" TextWrapping="Wrap">
-                    <TextBlock.Text><MultiBinding StringFormat="{}{0} total &#xB7; {1} remaining"><Binding Path="TotalDurationText" /><Binding Path="RemainingDurationText" /></MultiBinding></TextBlock.Text>
-                </TextBlock>
-            </StackPanel>
-        </controls:MediaDetailsPage.SidebarContent>
         <controls:MediaDetailsPage.EditorContent>
             <Grid>
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>

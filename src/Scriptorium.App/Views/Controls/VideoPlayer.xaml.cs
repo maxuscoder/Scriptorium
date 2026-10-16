@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -17,6 +18,12 @@ public partial class VideoPlayer : UserControl
     public static readonly DependencyProperty IsFullscreenProperty = DependencyProperty.Register(
         nameof(IsFullscreen), typeof(bool), typeof(VideoPlayer), new PropertyMetadata(false));
 
+    public static readonly DependencyProperty BackCommandProperty = DependencyProperty.Register(
+        nameof(BackCommand), typeof(ICommand), typeof(VideoPlayer));
+
+    public static readonly DependencyProperty IsEdgeToEdgeProperty = DependencyProperty.Register(
+        nameof(IsEdgeToEdge), typeof(bool), typeof(VideoPlayer), new PropertyMetadata(false));
+
     private Window? _fullscreenWindow;
     private Window? _ownerWindow;
     private object? _inlinePlayerContent;
@@ -26,6 +33,8 @@ public partial class VideoPlayer : UserControl
     public VideoPlayer()
     {
         InitializeComponent();
+        // VideoView hosts its overlay in a separate window and namescope.
+        VideoBackButton.SetBinding(Button.CommandProperty, new Binding(nameof(BackCommand)) { Source = this });
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -41,6 +50,8 @@ public partial class VideoPlayer : UserControl
 
     public VideoPlayerViewModel? Player { get => (VideoPlayerViewModel?)GetValue(PlayerProperty); set => SetValue(PlayerProperty, value); }
     public bool IsFullscreen { get => (bool)GetValue(IsFullscreenProperty); set => SetValue(IsFullscreenProperty, value); }
+    public ICommand? BackCommand { get => (ICommand?)GetValue(BackCommandProperty); set => SetValue(BackCommandProperty, value); }
+    public bool IsEdgeToEdge { get => (bool)GetValue(IsEdgeToEdgeProperty); set => SetValue(IsEdgeToEdgeProperty, value); }
 
     private static void OnPlayerChanged(DependencyObject target, DependencyPropertyChangedEventArgs args)
     {

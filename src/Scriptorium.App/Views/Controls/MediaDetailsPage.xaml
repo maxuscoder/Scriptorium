@@ -5,6 +5,21 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors">
     <UserControl.Resources>
+        <ControlTemplate x:Key="Details.VideoScrollTemplate" TargetType="ScrollViewer">
+            <Grid Background="{TemplateBinding Background}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="{StaticResource ScrollBar.Gutter}" />
+                </Grid.ColumnDefinitions>
+                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Grid.ColumnSpan="2" Margin="{TemplateBinding Padding}"
+                                        Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                        ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                        CanContentScroll="{TemplateBinding CanContentScroll}" />
+                <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical"
+                           Minimum="0" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}"
+                           Value="{TemplateBinding VerticalOffset}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" />
+            </Grid>
+        </ControlTemplate>
         <Style x:Key="Details.Secondary" BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="14,7" />
@@ -34,25 +49,80 @@
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <!-- Opacity masks cannot composite the player's native HWND and foreground window. -->
-        <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" x:Name="MainContent" behaviors:VerticalScrollFade.Height="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="OnContentSizeChanged">
-            <Grid Margin="24,14,24,32">
+        <ScrollViewer x:Name="MainContent" behaviors:VerticalScrollFade.Height="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" SizeChanged="OnContentSizeChanged">
+            <ScrollViewer.Style>
+                <Style TargetType="ScrollViewer" BasedOn="{StaticResource ScrollViewer.MainContent}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
+                            <Setter Property="Template" Value="{StaticResource Details.VideoScrollTemplate}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ScrollViewer.Style>
+            <Grid>
+                <Grid.Style>
+                    <Style TargetType="Grid">
+                        <Setter Property="Margin" Value="24,14,24,32" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
+                                <Setter Property="Margin" Value="0,0,0,32" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Grid.Style>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Border Style="{StaticResource Surface}" Padding="10,8" Margin="0,0,0,14">
+                <ContentPresenter Content="{Binding VideoContent, ElementName=Root}" />
+                <Border x:Name="DetailsActions" Grid.Row="1">
+                    <Border.Style>
+                        <Style TargetType="Border" BasedOn="{StaticResource Surface}">
+                            <Setter Property="Padding" Value="10,8" />
+                            <Setter Property="Margin" Value="0,0,0,14" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="BorderThickness" Value="0" />
+                                    <Setter Property="CornerRadius" Value="0" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="24,16,24,12" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Button Command="{Binding BackCommand, ElementName=Root}" Content="&#x2190; Library"
-                                Style="{StaticResource Button.Text}" Padding="8,4" BorderThickness="0"
-                                AutomationProperties.Name="Back to Library" />
+                                Padding="8,4" BorderThickness="0" AutomationProperties.Name="Back to Library">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <TextBlock Grid.Column="1" Margin="4,0,12,0" VerticalAlignment="Center"
-                                   Style="{StaticResource Text.Body}" Foreground="{DynamicResource Brush.TextPrimary}"
-                                   Text="{Binding Title, ElementName=Root, StringFormat=/ {0}}"
-                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Title, ElementName=Root}" />
+                                   Foreground="{DynamicResource Brush.TextPrimary}"
+                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" ToolTip="{Binding Title, ElementName=Root}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                                    <Setter Property="Text" Value="{Binding Title, ElementName=Root, StringFormat=/ {0}}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
+                                            <Setter Property="Text" Value="{Binding Title, ElementName=Root}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBlock x:Name="HeaderProgress" Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center"
                                    Style="{StaticResource Text.Metadata}" Text="{Binding HeaderProgressText, ElementName=Root}" />
                         <StackPanel Grid.Column="3" Orientation="Horizontal">
@@ -79,7 +149,16 @@
                         </StackPanel>
                     </Grid>
                 </Border>
-                <Grid Grid.Row="1">
+                <Grid Grid.Row="2">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
+                                    <Setter Property="Margin" Value="24,0,24,0" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
                     <Grid.ColumnDefinitions><ColumnDefinition x:Name="ContentColumn" Width="*" /><ColumnDefinition x:Name="SidebarColumn" Width="0" /></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <Grid>

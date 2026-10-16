@@ -23,6 +23,13 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty PreviewContentProperty =
         DependencyProperty.Register(nameof(PreviewContent), typeof(object), typeof(MediaDetailsPage));
 
+    public static readonly DependencyProperty VideoContentProperty =
+        DependencyProperty.Register(nameof(VideoContent), typeof(object), typeof(MediaDetailsPage));
+
+    public static readonly DependencyProperty IsVideoLayoutProperty =
+        DependencyProperty.Register(nameof(IsVideoLayout), typeof(bool), typeof(MediaDetailsPage),
+            new PropertyMetadata(false, (owner, _) => ((MediaDetailsPage)owner).UpdateLayoutWidths()));
+
     public static readonly DependencyProperty ThumbnailPathProperty =
         DependencyProperty.Register(nameof(ThumbnailPath), typeof(string), typeof(MediaDetailsPage), new PropertyMetadata(null, OnThumbnailPathChanged));
 
@@ -130,6 +137,9 @@ public partial class MediaDetailsPage : UserControl
 
     public object? PreviewContent { get => GetValue(PreviewContentProperty); set => SetValue(PreviewContentProperty, value); }
 
+    public object? VideoContent { get => GetValue(VideoContentProperty); set => SetValue(VideoContentProperty, value); }
+    public bool IsVideoLayout { get => (bool)GetValue(IsVideoLayoutProperty); set => SetValue(IsVideoLayoutProperty, value); }
+
     public string? ThumbnailPath { get => (string?)GetValue(ThumbnailPathProperty); set => SetValue(ThumbnailPathProperty, value); }
 
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
@@ -205,7 +215,7 @@ public partial class MediaDetailsPage : UserControl
         var previewHeight = Math.Clamp((MainContent.ActualWidth - 48 - 310) * 9 / 16, 220, 520);
         SidebarPanel.Height = stacked ? double.NaN : Math.Max(320, Math.Min(MainContent.ActualHeight - 122, previewHeight + 160));
         SidebarScroll.VerticalScrollBarVisibility = stacked ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
-        HeaderProgress.Visibility = MainContent.ActualWidth < 700 ? Visibility.Collapsed : Visibility.Visible;
+        HeaderProgress.Visibility = !IsVideoLayout && MainContent.ActualWidth < 700 ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void OnToggleSidebar(object sender, RoutedEventArgs args) => SetCurrentValue(IsSidebarOpenProperty, !IsSidebarOpen);

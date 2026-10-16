@@ -6,9 +6,20 @@
     xmlns:local="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:vlc="clr-namespace:LibVLCSharp.WPF;assembly=LibVLCSharp.WPF"
     Focusable="True">
-    <Border Background="{DynamicResource Brush.Background}"
-            BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
-            CornerRadius="{StaticResource CornerRadius.M}">
+    <Border Background="{DynamicResource Brush.Background}">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsEdgeToEdge, ElementName=Root}" Value="True">
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="CornerRadius" Value="0" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
         <Grid DataContext="{Binding Player, ElementName=Root}" ClipToBounds="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
@@ -24,6 +35,21 @@
                       Cursor="Hand"
                       ToolTip="Click to play or pause"
                       AutomationProperties.Name="Video preview">
+                    <Button x:Name="VideoBackButton"
+                            Content="&#x2190; Library" Margin="16" Padding="12,8"
+                            HorizontalAlignment="Left" VerticalAlignment="Top"
+                            Background="#B3000000" Foreground="White" BorderThickness="0"
+                            Cursor="Arrow" ToolTip="Back to Library" AutomationProperties.Name="Back to Library">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Command, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                     <Border x:Name="ActionFeedback" Width="72" Height="72"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             Background="{DynamicResource Brush.PlaybackFeedback}" CornerRadius="36" Visibility="Collapsed"
