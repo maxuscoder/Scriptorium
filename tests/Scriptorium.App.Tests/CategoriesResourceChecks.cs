@@ -103,7 +103,7 @@ internal static class CategoriesResourceChecks
             VerifyLayout(page, viewModel);
             window.Width = 420;
             await StaTest.DrainDispatcherAsync();
-            Assert.Equal(1, Grid.GetRow((StackPanel)page.FindName("HeaderActions")));
+            Assert.Equal(2, Grid.GetRow((StackPanel)page.FindName("HeaderActions")));
             VerifyLayout(page, viewModel);
             await RenderAsync(page, "categories-compact.png");
             window.Width = 300;
@@ -176,6 +176,17 @@ internal static class CategoriesResourceChecks
                 window.Width = size.Width;
                 window.Height = size.Height;
                 await StaTest.DrainDispatcherAsync();
+                content.Children.Remove(favoritesPage);
+                content.Children.Add(page);
+                await StaTest.DrainDispatcherAsync();
+                var categoryTitlePosition = Descendants<TextBlock>(page).Single(text => text.Text == "Categories").TranslatePoint(new Point(), page);
+                var categoryRefreshPosition = Descendants<Button>(page).Single(button => Equals(button.ToolTip, "Refresh categories")).TranslatePoint(new Point(), page);
+                await RenderAsync(page, $"categories-empty-{(size.Width > 600 ? "wide" : "narrow")}.png");
+                content.Children.Remove(page);
+                content.Children.Add(favoritesPage);
+                await StaTest.DrainDispatcherAsync();
+                Assert.Equal(categoryTitlePosition, Descendants<TextBlock>(favoritesPage).Single(text => text.Text == "Favorites").TranslatePoint(new Point(), favoritesPage));
+                Assert.Equal(categoryRefreshPosition, Descendants<Button>(favoritesPage).Single(button => Equals(button.ToolTip, "Refresh favorites")).TranslatePoint(new Point(), favoritesPage));
                 var viewport = (ScrollViewer)favoritesPage.FindName("FavoritesViewport");
                 Assert.InRange(viewport.ScrollableHeight, 0, 1);
                 Assert.InRange(viewport.ScrollableWidth, 0, 1);

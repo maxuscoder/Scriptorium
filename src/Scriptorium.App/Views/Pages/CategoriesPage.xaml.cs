@@ -36,7 +36,7 @@ public partial class CategoriesPage : UserControl
         // Both grids share the Library card dimensions. Only presentation responds to width.
         var columns = Math.Max(1, (int)((e.NewSize.Width + gap) / (minimum + gap)));
         BrowserCardWidth = Math.Max(1, Math.Min(preferred, (e.NewSize.Width + gap) / columns - gap));
-        HeaderActions.SetValue(Grid.RowProperty, e.NewSize.Width < 440 ? 1 : 0);
+        HeaderActions.SetValue(Grid.RowProperty, e.NewSize.Width < 440 ? 2 : 0);
         HeaderActions.SetValue(Grid.ColumnProperty, e.NewSize.Width < 440 ? 0 : 1);
         HeaderActions.Margin = e.NewSize.Width < 440 ? new Thickness(0, 12, 0, 0) : new Thickness(0);
     }

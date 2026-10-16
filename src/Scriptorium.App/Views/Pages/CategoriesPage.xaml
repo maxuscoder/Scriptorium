@@ -15,19 +15,22 @@
         </Style>
     </UserControl.Resources>
     <ScrollViewer x:Name="CategoryViewport" Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid x:Name="CategoryContent" Margin="{StaticResource Categories.ContentInset}" MaxWidth="1400" SizeChanged="OnContentSizeChanged"
-              MinHeight="{Binding ViewportHeight, ElementName=CategoryViewport, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Categories.ContentInset}}">
+        <Grid x:Name="CategoryContent" Margin="{StaticResource Padding.Page}" MaxWidth="1400" SizeChanged="OnContentSizeChanged"
+              MinHeight="{Binding ViewportHeight, ElementName=CategoryViewport, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Padding.Page}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid>
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <StackPanel VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource Text.PageTitle}" Text="Categories" />
-                    <TextBlock Margin="0,4,0,0" Style="{StaticResource Text.Metadata}" Text="{Binding CategoryCountText}" />
+                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
+                        <TextBlock Style="{StaticResource Text.Badge}" Foreground="{DynamicResource Brush.TextPrimary}" Text="{Binding CategoryCountText}" />
+                    </Border>
                 </StackPanel>
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="Related media, brought together in one place." />
                 <StackPanel x:Name="HeaderActions" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
                     <Button Margin="0,0,8,0" Command="{Binding RefreshCommand}" Style="{StaticResource Button.Icon}" BorderThickness="0" ToolTip="Refresh categories" AutomationProperties.Name="Refresh categories">
                         <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE72C;" />
@@ -123,7 +126,7 @@
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="400" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="400" Margin="0,12" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />

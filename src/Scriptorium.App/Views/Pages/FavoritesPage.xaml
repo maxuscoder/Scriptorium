@@ -9,7 +9,7 @@
         <converters:ViewportContentHeightConverter x:Key="ViewportContentHeightConverter" />
     </UserControl.Resources>
     <ScrollViewer x:Name="FavoritesViewport" Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="{StaticResource Padding.Page}"
+        <Grid Margin="{StaticResource Padding.Page}" MaxWidth="1400" SizeChanged="OnContentSizeChanged"
               MinHeight="{Binding ViewportHeight, ElementName=FavoritesViewport, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Padding.Page}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -19,23 +19,24 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource Text.PageTitle}" Text="Favorites" />
-                        <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
-                            <TextBlock Style="{StaticResource Text.Badge}" Foreground="{DynamicResource Brush.TextPrimary}" Text="{Binding FavoriteCountText}" />
-                        </Border>
-                    </StackPanel>
-                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="The media you want to find quickly, all in one place." />
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource Text.PageTitle}" Text="Favorites" />
+                    <Border Margin="12,0,0,0" VerticalAlignment="Center" Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.S}" Padding="9,3">
+                        <TextBlock Style="{StaticResource Text.Badge}" Foreground="{DynamicResource Brush.TextPrimary}" Text="{Binding FavoriteCountText}" />
+                    </Border>
                 </StackPanel>
-                <Button Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0" Command="{Binding RefreshCommand}"
-                        Style="{StaticResource Button.Icon}" BorderThickness="0" ToolTip="Refresh favorites" AutomationProperties.Name="Refresh favorites">
-                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE72C;" />
-                </Button>
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="The media you want to find quickly, all in one place." />
+                <StackPanel x:Name="HeaderActions" Grid.Column="1" HorizontalAlignment="Left" VerticalAlignment="Center" Orientation="Horizontal">
+                    <Button Margin="0,0,8,0" Command="{Binding RefreshCommand}"
+                            Style="{StaticResource Button.Icon}" BorderThickness="0" ToolTip="Refresh favorites" AutomationProperties.Name="Refresh favorites">
+                        <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE72C;" />
+                    </Button>
+                </StackPanel>
             </Grid>
 
             <controls:LoadingIndicator Grid.Row="1" Margin="0,20,0,0" Message="Loading favorites…" Detail="Updating your saved media."
@@ -74,7 +75,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <StackPanel x:Name="FavoritesEmptyState" Grid.Row="4" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400">
+            <StackPanel x:Name="FavoritesEmptyState" Grid.Row="4" Margin="0,12" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
