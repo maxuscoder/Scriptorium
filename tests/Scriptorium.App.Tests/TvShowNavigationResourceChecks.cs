@@ -54,9 +54,16 @@ internal static class TvShowNavigationResourceChecks
             Assert.False(first.Disposed);
             Assert.Empty(progress.Saved);
 
-            // A quick return opens a new session; late callbacks/cleanup from the old one cannot clear it.
+            // A quick return keeps navigation responsive while the previous decoder releases the surface.
             window.Content = page;
             await StaTest.DrainDispatcherAsync();
+            Assert.Single(factory.Instances);
+            Assert.False(player.IsReady);
+            Assert.Null(player.VideoOutput);
+            cleanupGate.Set();
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (factory.Instances.Count < 2 && DateTime.UtcNow < deadline) await Task.Delay(10);
+            Assert.Equal(2, factory.Instances.Count);
             var second = factory.Instances[1];
             second.RaiseOpened();
             first.RaiseFailure();
@@ -65,7 +72,6 @@ internal static class TvShowNavigationResourceChecks
             Assert.Same(second.VideoOutput, player.VideoOutput);
             Assert.Equal(0, first.SubscriberCount);
 
-            cleanupGate.Set();
             saveGate.Set();
             window.Content = tab;
             await StaTest.DrainDispatcherAsync();

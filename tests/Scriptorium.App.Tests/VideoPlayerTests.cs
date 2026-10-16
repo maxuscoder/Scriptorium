@@ -10,6 +10,71 @@ namespace Scriptorium.App.Tests;
 public sealed class VideoPlayerTests
 {
     [Fact]
+    public Task RapidEpisodeSwitchesWaitForCleanupAndOpenOnlyTheLatestSelection() => StaTest.Run(async () =>
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var factory = new FakeFactory { ReleaseTask = release.Task };
+        using var player = new VideoPlayerViewModel(factory);
+        try
+        {
+            player.SetMedia(new MediaPlaybackRequest("first.mp4", 0));
+            player.Activate();
+            var first = Assert.Single(factory.Instances);
+            first.RaiseOpened();
+            player.SetMedia(new MediaPlaybackRequest("second.mp4", 0));
+            player.SetMedia(new MediaPlaybackRequest("third.mp4", 0));
+            await StaTest.DrainDispatcherAsync();
+            Assert.Single(factory.Instances);
+            Assert.False(first.Disposed);
+            Assert.False(player.IsReady);
+            Assert.Null(player.VideoOutput);
+
+            release.SetResult();
+            await WaitUntilAsync(() => factory.Instances.Count == 2);
+            Assert.True(first.Disposed);
+            Assert.Equal("third.mp4", factory.Instances[1].OpenedPath);
+            factory.Instances[1].RaiseOpened();
+            first.RaiseFailed();
+            Assert.True(player.IsReady);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await player.DeactivateAsync();
+        }
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task LeavingOrSelectingUnavailableMediaCancelsAnOpenWaitingForCleanup(bool unavailable) => StaTest.Run(async () =>
+    {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var factory = new FakeFactory { ReleaseTask = release.Task };
+        using var player = new VideoPlayerViewModel(factory);
+        try
+        {
+            player.SetMedia(new MediaPlaybackRequest("first.mp4", 0));
+            player.Activate();
+            player.SetMedia(new MediaPlaybackRequest("next.mp4", 0));
+            if (unavailable) player.SetUnavailable("Missing episode.");
+            else player.Deactivate();
+            release.SetResult();
+            await WaitUntilAsync(() => factory.Instances[0].Disposed);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Single(factory.Instances);
+            Assert.Null(player.VideoOutput);
+            Assert.False(player.IsReady);
+            if (unavailable) Assert.Equal("Missing episode.", player.Status);
+        }
+        finally
+        {
+            release.TrySetResult();
+            await player.DeactivateAsync();
+        }
+    });
+
+    [Fact]
     public Task SavesTheLatestPositionWhenPlaybackIsDeactivated() => StaTest.Run(async () =>
     {
         var factory = new FakeFactory();
@@ -396,9 +461,10 @@ public sealed class VideoPlayerTests
     {
         public List<FakePlayback> Instances { get; } = [];
         public Exception? OpenException { get; set; }
+        public Task ReleaseTask { get; init; } = Task.CompletedTask;
         public IVideoPlayback Create()
         {
-            var playback = new FakePlayback { OpenException = OpenException };
+            var playback = new FakePlayback { OpenException = OpenException, ReleaseTask = ReleaseTask };
             Instances.Add(playback);
             return playback;
         }
@@ -411,7 +477,7 @@ public sealed class VideoPlayerTests
         Assert.True(predicate(), "Playback progress was not saved periodically.");
     }
 
-    internal sealed class FakePlayback : IVideoPlayback
+    internal sealed class FakePlayback : IVideoPlayback, IAsyncDisposable
     {
         public event EventHandler? Opened;
         public event EventHandler? Ended;
@@ -424,11 +490,14 @@ public sealed class VideoPlayerTests
         public double PlaybackSpeed { get; set; } = 1;
         public bool Disposed { get; private set; }
         public Exception? OpenException { get; init; }
+        public Task ReleaseTask { get; init; } = Task.CompletedTask;
+        public string? OpenedPath { get; private set; }
         public List<string> Calls { get; } = [];
         public int SubscriberCount => (Opened?.GetInvocationList().Length ?? 0)
             + (Ended?.GetInvocationList().Length ?? 0) + (Failed?.GetInvocationList().Length ?? 0);
         public void Open(string filePath)
         {
+            OpenedPath = filePath;
             if (OpenException is not null) throw OpenException;
             Pause();
         }
@@ -449,6 +518,11 @@ public sealed class VideoPlayerTests
             Calls.Add("Stop");
         }
         public void Dispose() => Disposed = true;
+        public async ValueTask DisposeAsync()
+        {
+            await ReleaseTask.ConfigureAwait(false);
+            Dispose();
+        }
         public void RaiseOpened() => Opened?.Invoke(this, EventArgs.Empty);
         public void RaiseEnded() => Ended?.Invoke(this, EventArgs.Empty);
         public void RaiseFailed(Exception? exception = null) =>

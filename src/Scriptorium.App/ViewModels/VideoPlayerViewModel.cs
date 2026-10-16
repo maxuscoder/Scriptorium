@@ -23,6 +23,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly object _preferenceSaveGate = new();
     private Task _progressSaveTask = Task.CompletedTask;
     private Task _playbackReleaseTask = Task.CompletedTask;
+    private int _playbackGeneration;
     private IVideoPlayback? _playback;
     private MediaPlaybackRequest? _request;
     private bool _active;
@@ -176,7 +177,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         NotifyPositionChanged();
         OnPropertyChanged(nameof(DurationSeconds));
         OnPropertyChanged(nameof(DurationText));
-        if (_active) OpenPlayback();
+        if (_active) _ = OpenPlaybackAsync();
     }
 
     /// <summary>Clears the current media without opening a playback session and shows why it is unavailable.</summary>
@@ -224,7 +225,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     {
         if (_active) return;
         _active = true;
-        OpenPlayback();
+        _ = OpenPlaybackAsync();
     }
 
     public void Deactivate()
@@ -262,13 +263,18 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         await Task.WhenAll(progressSaveTask, _playbackReleaseTask).ConfigureAwait(true);
     }
 
-    private void OpenPlayback()
+    private async Task OpenPlaybackAsync()
     {
         if (_request is null) return;
-        SynchronizePlaybackPreferences();
-        Status = "Loading video...";
+        var generation = ++_playbackGeneration;
         try
         {
+            // Reusing the render HWND before native teardown finishes can open a standalone VLC window.
+            // Await without blocking navigation; only the latest selection may open after cleanup.
+            await _playbackReleaseTask;
+            if (!_active || generation != _playbackGeneration) return;
+            SynchronizePlaybackPreferences();
+            Status = "Loading video...";
             _playback = _factory.Create();
             _playback.Opened += OnOpened;
             _playback.Ended += OnEnded;
@@ -279,7 +285,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         }
         catch (Exception exception)
         {
-            Fail(exception);
+            if (_active && generation == _playbackGeneration) Fail(exception);
         }
     }
 
@@ -564,6 +570,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     private void ReleasePlayback()
     {
+        _playbackGeneration++;
         _timer.Stop();
         if (_playback is { } playback)
         {
