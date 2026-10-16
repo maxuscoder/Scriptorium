@@ -32,7 +32,8 @@
                     <Button Margin="0,0,8,0" Command="{Binding RefreshCommand}" Style="{StaticResource Button.Icon}" BorderThickness="0" ToolTip="Refresh categories" AutomationProperties.Name="Refresh categories">
                         <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE72C;" />
                     </Button>
-                    <Button Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />
+                    <Button Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}"
+                            Visibility="{Binding HasCategories, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </StackPanel>
             </Grid>
 
@@ -122,17 +123,18 @@
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="520" Margin="{StaticResource EmptyState.Margin}" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="400" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding HasCategories}" Value="False" /><Condition Binding="{Binding IsRefreshing}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock HorizontalAlignment="Center" Margin="{StaticResource EmptyState.IconMargin}" FontFamily="{StaticResource Shell.FontFamily.Icons}" FontSize="{StaticResource Icon.Size.Feature}" Foreground="{DynamicResource Brush.TextSecondary}" Text="&#xE8B7;" AutomationProperties.Name="Collections" />
-                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.EmptyStateTitle}" Text="No categories yet" />
-                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body.Center}" Text="Create a collection to bring related movies, shows, and tutorials together." />
-                <Button Margin="0,18,0,0" HorizontalAlignment="Center" Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />
+                <controls:CollectionEmptyArtwork IsCategory="True" Margin="0,0,0,24" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource Text.EmptyStateTitle}" Text="No categories yet" />
+                <TextBlock Margin="12,12,12,0" Style="{StaticResource Text.Body.Center}" Text="Give your library a little order. Bring related movies, shows, and tutorials together in a collection." LineHeight="22" />
+                <Button Margin="0,24,0,0" MinWidth="176" MinHeight="42" HorizontalAlignment="Center" Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />
+                <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Metadata}" TextAlignment="Center" Text="A weekend watchlist. A new skill. A little of everything." TextWrapping="Wrap" />
             </StackPanel>
         </Grid>
     </ScrollViewer>

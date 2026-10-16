@@ -146,6 +146,8 @@ internal static class CategoriesResourceChecks
             await StaTest.DrainDispatcherAsync();
             Assert.Empty(CollectionButtons(page));
             Assert.Contains(Descendants<TextBlock>(page), text => text.IsVisible && text.Text == "No categories yet");
+            Assert.Same(viewModel.CreateCategoryCommand, Assert.Single(Descendants<Button>(page),
+                button => button.IsVisible && Equals(button.Content, "Create category")).Command);
             foreach (var height in new[] { 1000d, 600d })
             {
                 window.Height = height;
@@ -158,6 +160,31 @@ internal static class CategoriesResourceChecks
                 Assert.InRange(viewport.ScrollableWidth, 0, 1);
             }
             await RenderAsync(page, "categories-empty.png");
+
+            // Exercise the companion empty state and its Window-level navigation binding.
+            var favoriteService = new FavoriteService(media);
+            foreach (var favorite in await favoriteService.GetAllAsync()) await favoriteService.RemoveAsync(favorite.Id);
+            using var favoritesModel = new FavoritesPageViewModel(favoriteService, navigation);
+            var favoritesPage = new FavoritesPage { DataContext = favoritesModel };
+            var browsedLibrary = false;
+            window.DataContext = new { BrowseLibraryCommand = new RelayCommand(() => browsedLibrary = true) };
+            content.Children.Remove(page);
+            content.Children.Add(favoritesPage);
+            await favoritesModel.RefreshAsync();
+            foreach (var size in new[] { new Size(1260, 800), new Size(540, 600) })
+            {
+                window.Width = size.Width;
+                window.Height = size.Height;
+                await StaTest.DrainDispatcherAsync();
+                var viewport = (ScrollViewer)favoritesPage.FindName("FavoritesViewport");
+                Assert.InRange(viewport.ScrollableHeight, 0, 1);
+                Assert.InRange(viewport.ScrollableWidth, 0, 1);
+                var browse = Assert.Single(Descendants<Button>(favoritesPage), button => Equals(button.Content, "Browse library"));
+                Assert.True(browse.IsVisible);
+                typeof(Button).GetMethod("OnClick", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(browse, null);
+                Assert.True(browsedLibrary);
+                await RenderAsync(favoritesPage, $"favorites-empty-{(size.Width > 600 ? "wide" : "narrow")}.png");
+            }
             Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
         finally

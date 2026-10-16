@@ -63,6 +63,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         ];
 
         NavigateCommand = new RelayCommand(Navigate);
+        BrowseLibraryCommand = new RelayCommand(() => _navigationService.NavigateTo(_libraryPage));
         SearchQuery = _settingsService.Settings.LastSearchQuery;
         _navigationService.NavigateTo(ResolveStartupPage(
             _settingsService.Settings.StartupPage,
@@ -84,6 +85,8 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     public IEnumerable<NavigationItem> NavigationItems => PrimaryNavigationItems.Concat(SecondaryNavigationItems);
 
     public ICommand NavigateCommand { get; }
+
+    public ICommand BrowseLibraryCommand { get; }
 
     public INotificationService Notifications { get; }
 

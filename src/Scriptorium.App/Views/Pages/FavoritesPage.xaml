@@ -3,9 +3,21 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    xmlns:converters="clr-namespace:Scriptorium.App.Converters"
     Loaded="OnLoaded">
-    <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="32,28,32,48">
+    <UserControl.Resources>
+        <converters:ViewportContentHeightConverter x:Key="ViewportContentHeightConverter" />
+    </UserControl.Resources>
+    <ScrollViewer x:Name="FavoritesViewport" Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="{StaticResource Padding.Page}"
+              MinHeight="{Binding ViewportHeight, ElementName=FavoritesViewport, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Padding.Page}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -20,25 +32,20 @@
                     </StackPanel>
                     <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="The media you want to find quickly, all in one place." />
                 </StackPanel>
-                <Button Grid.Column="1" VerticalAlignment="Center" Command="{Binding RefreshCommand}">
-                    <Button.Style>
-                        <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
-                            <Setter Property="Content" Value="Refresh" />
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsRefreshing}" Value="True">
-                                    <Setter Property="Content" Value="Refreshing…" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
+                <Button Grid.Column="1" VerticalAlignment="Center" Margin="0,0,8,0" Command="{Binding RefreshCommand}"
+                        Style="{StaticResource Button.Icon}" BorderThickness="0" ToolTip="Refresh favorites" AutomationProperties.Name="Refresh favorites">
+                    <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Text="&#xE72C;" />
                 </Button>
             </Grid>
 
-            <controls:LoadingIndicator Margin="0,20,0,0" Message="Loading favorites…" Detail="Updating your saved media."
+            <controls:LoadingIndicator Grid.Row="1" Margin="0,20,0,0" Message="Loading favorites…" Detail="Updating your saved media."
                 Visibility="{Binding IsRefreshing, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-            <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource Brush.Warning}" Text="{Binding StatusMessage}" TextWrapping="Wrap" />
-            <ItemsControl Margin="0,28,0,0" ItemsSource="{Binding MediaItems}" Style="{StaticResource Library.MediaItems}">
+            <TextBlock Grid.Row="2" Margin="0,16,0,0" Foreground="{DynamicResource Brush.Warning}" Text="{Binding StatusMessage}" TextWrapping="Wrap">
+                <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><DataTrigger Binding="{Binding StatusMessage}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger><DataTrigger Binding="{Binding StatusMessage}" Value=""><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+            </TextBlock>
+            <ItemsControl Grid.Row="3" Margin="0,28,0,0" ItemsSource="{Binding MediaItems}">
+                <ItemsControl.Style><Style TargetType="ItemsControl" BasedOn="{StaticResource Library.MediaItems}"><Style.Triggers><DataTrigger Binding="{Binding HasFavorites}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></ItemsControl.Style>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <controls:MediaCard
@@ -67,7 +74,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <StackPanel Margin="0,52,0,0" HorizontalAlignment="Center" MaxWidth="440">
+            <StackPanel x:Name="FavoritesEmptyState" Grid.Row="4" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="400">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
@@ -82,10 +89,15 @@
                         </Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.Display}" Text="No favorites yet" />
-                <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center" Style="{StaticResource Text.Body.Center}" Text="Use the star on any media card to keep it close at hand." />
+                <controls:CollectionEmptyArtwork Margin="0,0,0,24" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource Text.EmptyStateTitle}" Text="No favorites yet" />
+                <TextBlock Margin="12,12,12,0" Style="{StaticResource Text.Body.Center}" Text="Found something worth coming back to? Star any movie, show, or tutorial to save it here." LineHeight="22" />
+                <Button Margin="0,24,0,0" MinWidth="176" MinHeight="42" HorizontalAlignment="Center"
+                        Command="{Binding DataContext.BrowseLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        Content="Browse library" Style="{StaticResource Button.Primary}" />
+                <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Metadata}" TextAlignment="Center" Text="Your favorites, always a click away." TextWrapping="Wrap" />
             </StackPanel>
-        </StackPanel>
+        </Grid>
     </ScrollViewer>
 </UserControl>
 

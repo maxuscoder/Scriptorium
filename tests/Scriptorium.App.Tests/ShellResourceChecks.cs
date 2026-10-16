@@ -127,6 +127,8 @@ internal static class ShellResourceChecks
                     encoder.Save(output);
                 }
             }
+            shell.BrowseLibraryCommand.Execute(null);
+            Assert.Same(shell.PrimaryNavigationItems.Single(item => item.Label == "Library").Destination, shell.CurrentPage);
             Assert.False(window.AllowsTransparency);
             Assert.Equal(WindowStyle.SingleBorderWindow, window.WindowStyle);
             var nativeStyle = GetWindowLong(new WindowInteropHelper(window).Handle, -16);
