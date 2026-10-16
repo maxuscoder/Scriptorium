@@ -3,8 +3,12 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    xmlns:converters="clr-namespace:Scriptorium.App.Converters"
     xmlns:pages="clr-namespace:Scriptorium.App.ViewModels.Pages"
     Loaded="OnLoaded">
+    <UserControl.Resources>
+        <converters:ViewportContentHeightConverter x:Key="ViewportContentHeightConverter" />
+    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <StackPanel Margin="{StaticResource Library.StatusInset}">
@@ -68,34 +72,40 @@
                     </ItemsControl>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserEmptyRow}">
-                    <StackPanel Margin="0,40,0,40" HorizontalAlignment="Center" MaxWidth="420">
-                        <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.SectionTitle}" Text="{Binding Title}" />
-                        <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding Description}" />
-                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding ClearFiltersCommand}" Content="Clear search and filters">
-                            <Button.Style>
-                                <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
-                                    <Setter Property="Visibility" Value="Collapsed" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasActiveFilters}" Value="True">
-                                            <Setter Property="Visibility" Value="Visible" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                        <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" Content="Add folder">
-                            <Button.Style>
-                                <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
-                                    <Setter Property="Visibility" Value="Visible" />
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding HasIndexedMedia}" Value="True">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                    </StackPanel>
+                    <Grid MinHeight="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Library.BrowserInset}}">
+                        <StackPanel x:Name="LibraryEmptyState" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="620">
+                            <controls:MediaEmptyArtwork IsLibrary="True" Margin="0,0,0,28" HorizontalAlignment="Center" />
+                            <TextBlock Style="{StaticResource Text.EmptyStateTitle}" FontSize="{StaticResource FontSize.PageTitle}" Text="{Binding Title}" />
+                            <TextBlock Margin="12,12,12,0" Style="{StaticResource Text.Body.Center}" FontSize="18" LineHeight="26" Text="{Binding Description}" />
+                            <Button Margin="0,22,0,0" HorizontalAlignment="Center" Command="{Binding ClearFiltersCommand}" Content="Clear search and filters">
+                                <Button.Style>
+                                    <Style BasedOn="{StaticResource Button.Secondary}" TargetType="Button">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasActiveFilters}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <Button Margin="0,28,0,0" MinWidth="188" MinHeight="50" FontSize="18" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" Content="Add folder">
+                                <Button.ContentTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding}" FontSize="18" FontWeight="Medium" /></DataTemplate>
+                                </Button.ContentTemplate>
+                                <Button.Style>
+                                    <Style BasedOn="{StaticResource Button.Primary}" TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasIndexedMedia}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type pages:LibraryBrowserLoadingRow}"><controls:LoadingIndicator Margin="0,18,0,18" HorizontalAlignment="Center" ProgressWidth="110" Message="Loading more items…" /></DataTemplate>
             </ListBox.Resources>

@@ -2,7 +2,11 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+    xmlns:converters="clr-namespace:Scriptorium.App.Converters"
     xmlns:pages="clr-namespace:Scriptorium.App.Views.Pages" Loaded="OnLoaded" Background="Transparent">
+    <UserControl.Resources>
+        <converters:ViewportContentHeightConverter x:Key="ViewportContentHeightConverter" />
+    </UserControl.Resources>
     <Grid>
         <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" x:Name="HomeScroll" SizeChanged="OnHomeLayoutSizeChanged" ScrollChanged="OnHomeScrollChanged" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PanningMode="VerticalOnly">
             <StackPanel Margin="{StaticResource Home.Page.Padding}">
@@ -22,12 +26,21 @@
                             FavoriteCommand="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType={x:Type pages:HomePage}}}" />
                     </DataTemplate></ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Border x:Name="EmptyState" Style="{StaticResource Surface}" Padding="{StaticResource Spacing.2XL}"
+                <Border x:Name="EmptyState"
+                    MinHeight="{Binding ViewportHeight, ElementName=HomeScroll, Converter={StaticResource ViewportContentHeightConverter}, ConverterParameter={StaticResource Home.Page.Padding}}"
                     Visibility="{Binding ShowEmpty, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <StackPanel>
-                        <TextBlock Text="Your next watch starts here" Style="{StaticResource Text.PageTitle}" TextWrapping="Wrap" />
+                    <StackPanel Margin="0,24" MaxWidth="620" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <controls:MediaEmptyArtwork Margin="0,0,0,28" HorizontalAlignment="Center" />
+                        <TextBlock Text="Your next watch starts here" Style="{StaticResource Text.EmptyStateTitle}" FontSize="{StaticResource FontSize.PageTitle}" />
                         <TextBlock Text="Add your local media in Library. Your latest additions, favorites and viewing history will appear here."
-                            Style="{StaticResource Text.Secondary}" Margin="{StaticResource Home.Copy.Gap}" TextWrapping="Wrap" />
+                            Style="{StaticResource Text.Body.Center}" FontSize="18" LineHeight="26" Margin="12,12,12,0" />
+                        <Button Margin="0,28,0,0" MinWidth="208" MinHeight="50" FontSize="18" HorizontalAlignment="Center"
+                            Command="{Binding DataContext.BrowseLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            Content="Open library" Style="{StaticResource Button.Primary}">
+                            <Button.ContentTemplate>
+                                <DataTemplate><TextBlock Text="{Binding}" FontSize="18" FontWeight="Medium" /></DataTemplate>
+                            </Button.ContentTemplate>
+                        </Button>
                     </StackPanel>
                 </Border>
             </StackPanel>
