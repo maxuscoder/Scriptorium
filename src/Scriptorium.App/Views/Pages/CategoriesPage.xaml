@@ -118,26 +118,29 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <StackPanel HorizontalAlignment="Center" MaxWidth="440" Margin="0,28,0,24">
+                <StackPanel HorizontalAlignment="Center" MaxWidth="620" Margin="0,28,0,24">
                     <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasMediaItems}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-                    <TextBlock HorizontalAlignment="Center" Margin="0,0,0,12" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="32" Foreground="{DynamicResource Brush.TextMuted}" Text="&#xE8B7;" />
-                    <TextBlock HorizontalAlignment="Center" Style="{StaticResource Text.EmptyStateTitle}" Text="{Binding SelectedCategoryEmptyTitle}" />
-                    <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.Body.Center}" Text="{Binding SelectedCategoryEmptyDescription}" />
+                    <controls:MediaEmptyArtwork IsLibrary="True" Margin="0,0,0,28" HorizontalAlignment="Center" />
+                    <TextBlock Style="{StaticResource Text.EmptyStateTitle}" FontSize="{StaticResource FontSize.PageTitle}" Text="{Binding SelectedCategoryEmptyTitle}" />
+                    <TextBlock Margin="12,12,12,0" Style="{StaticResource Text.Body.Center}" FontSize="18" LineHeight="26" Text="{Binding SelectedCategoryEmptyDescription}" />
                 </StackPanel>
             </StackPanel>
 
-            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="400" Margin="0,12" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <StackPanel x:Name="CategoriesEmptyState" Grid.Row="5" MaxWidth="620" Margin="0,24" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel.Style>
                     <Style TargetType="StackPanel">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions><Condition Binding="{Binding HasCategories}" Value="False" /><Condition Binding="{Binding IsRefreshing}" Value="False" /></MultiDataTrigger.Conditions><Setter Property="Visibility" Value="Visible" /></MultiDataTrigger></Style.Triggers>
                     </Style>
                 </StackPanel.Style>
-                <controls:CollectionEmptyArtwork IsCategory="True" Margin="0,0,0,24" HorizontalAlignment="Center" />
-                <TextBlock Style="{StaticResource Text.EmptyStateTitle}" Text="No categories yet" />
-                <TextBlock Margin="12,12,12,0" Style="{StaticResource Text.Body.Center}" Text="Give your library a little order. Bring related movies, shows, and tutorials together in a collection." LineHeight="22" />
-                <Button Margin="0,24,0,0" MinWidth="176" MinHeight="42" HorizontalAlignment="Center" Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}" />
-                <TextBlock Margin="0,14,0,0" Style="{StaticResource Text.Metadata}" TextAlignment="Center" Text="A weekend watchlist. A new skill. A little of everything." TextWrapping="Wrap" />
+                <controls:MediaEmptyArtwork IsLibrary="True" Margin="0,0,0,28" HorizontalAlignment="Center" />
+                <TextBlock Style="{StaticResource Text.EmptyStateTitle}" FontSize="{StaticResource FontSize.PageTitle}" Text="No categories yet" />
+                <TextBlock Margin="12,12,12,0" Style="{StaticResource Text.Body.Center}" FontSize="18" Text="Give your library a little order. Bring related movies, shows, and tutorials together in a collection." LineHeight="26" />
+                <Button Margin="0,28,0,0" MinWidth="208" MinHeight="50" FontSize="18" HorizontalAlignment="Center" Command="{Binding CreateCategoryCommand}" Content="Create category" Style="{StaticResource Button.Primary}">
+                    <Button.ContentTemplate>
+                        <DataTemplate><TextBlock Text="{Binding}" FontSize="18" FontWeight="Medium" /></DataTemplate>
+                    </Button.ContentTemplate>
+                </Button>
             </StackPanel>
         </Grid>
     </ScrollViewer>

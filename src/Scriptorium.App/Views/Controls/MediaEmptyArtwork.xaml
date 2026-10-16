@@ -21,6 +21,16 @@
             <Path.Style>
                 <Style TargetType="Path"><Style.Triggers>
                     <DataTrigger Binding="{Binding IsLibrary, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                    <DataTrigger Binding="{Binding IsFavorite, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger>
+                </Style.Triggers></Style>
+            </Path.Style>
+        </Path>
+        <Path Width="48" Height="48" Stretch="Uniform"
+              Data="M24,3 L30.5,16.2 45,18.3 34.5,28.5 37,43 24,36.2 11,43 13.5,28.5 3,18.3 17.5,16.2 Z"
+              Stroke="{DynamicResource Brush.TextPrimary}" StrokeThickness="3" StrokeLineJoin="Round">
+            <Path.Style>
+                <Style TargetType="Path"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers>
+                    <DataTrigger Binding="{Binding IsFavorite, ElementName=Root}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger>
                 </Style.Triggers></Style>
             </Path.Style>
         </Path>
