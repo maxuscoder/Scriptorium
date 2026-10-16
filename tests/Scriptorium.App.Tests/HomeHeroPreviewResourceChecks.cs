@@ -24,11 +24,12 @@ internal static class HomeHeroPreviewResourceChecks
     {
         using var runtime = new LibVlcRuntime();
         using var preview = new HomeHeroPreviewViewModel(new LibVlcVideoPlaybackFactory(runtime));
-        var media = new MediaItem { Title = "Preview fixture", Path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"),
+        var media = new MediaItem { Title = "How good are Joshua Weissman's burgers 🍔 #joshuaweissman #burger #burgers #burgerrecipe #recipe - burgerfection (1080p, h264)", Path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"),
             MediaType = MediaType.Movie, RuntimeSeconds = 120, PlaybackPositionSeconds = 42 };
         var item = new LibraryMediaItemViewModel(media);
         var favorite = new RelayCommand(() => item.SetFavorite(!item.IsFavorite));
-        var hero = new HomeHero { Media = item, Preview = preview, FavoriteCommand = favorite };
+        var hero = new HomeHero { Media = item, Preview = preview, FavoriteCommand = favorite,
+            HeroMetadata = "Course · 34m total · 12m remaining" };
         var panel = new StackPanel();
         panel.Children.Add(hero);
         panel.Children.Add(new Border { Height = 1200 });
@@ -65,6 +66,15 @@ internal static class HomeHeroPreviewResourceChecks
             Assert.Equal(Visibility.Collapsed, thumbnail.Visibility);
             var surface = Descendants<VideoView>(hero).Single();
             Assert.NotEqual(IntPtr.Zero, surface.MediaPlayer!.Hwnd);
+            foreach (var width in new[] { 1200d, 820d, 620d })
+            {
+                window.Width = width;
+                await StaTest.DrainDispatcherAsync();
+                AssertTitleFits(hero);
+                RenderOverlay(hero, $"home-preview-long-title-{width:0}.png");
+            }
+            window.Width = 960;
+            await StaTest.DrainDispatcherAsync();
             AssertRoundedCorners(surface, hero);
             window.Width = 820;
             await StaTest.DrainDispatcherAsync();
@@ -103,7 +113,12 @@ internal static class HomeHeroPreviewResourceChecks
             NativeVideoWindowChecks.AssertNoStandaloneOutput();
             Assert.True(preview.IsMuted);
             Assert.Equal("Pause preview", pause.ToolTip);
+            var playingHeight = hero.ActualHeight;
+            AssertTitleFits(hero);
             await WaitUntil(() => !preview.HasPreview);
+            AssertTitleFits(hero);
+            Assert.Equal(playingHeight, hero.ActualHeight, precision: 1);
+            RenderOverlay(hero, "home-preview-long-title-finished.png");
             Assert.Null(preview.VideoOutput);
             Assert.Empty(Descendants<VideoView>(hero));
             Assert.False(pause.IsEnabled);
@@ -120,6 +135,38 @@ internal static class HomeHeroPreviewResourceChecks
             source.Listeners.Remove(trace);
             source.Switch.Level = originalLevel;
         }
+    }
+
+    private static void AssertTitleFits(HomeHero hero)
+    {
+        var overlay = (FrameworkElement)hero.FindName("Overlay");
+        var title = Descendants<TextBlock>(overlay).Single(block => block.Text == hero.HeroTitle);
+        var topLeft = title.TranslatePoint(new Point(), overlay);
+        var padding = (Thickness)hero.FindResource("Home.Hero.Padding");
+        var copy = (FrameworkElement)title.Parent;
+        var copyTop = copy.TranslatePoint(new Point(), overlay).Y;
+        Assert.True(copyTop >= padding.Top - 1, "Hero copy extends above the card's top padding.");
+        Assert.True(copyTop + copy.ActualHeight <= overlay.ActualHeight - padding.Bottom + 1,
+            "Hero actions extend below the card's bottom padding.");
+        Assert.True(topLeft.Y >= padding.Top - 1,
+            $"Title starts at {topLeft.Y:0.0} instead of within the {padding.Top:0.0} DIP top padding.");
+        Assert.True(topLeft.Y + title.ActualHeight <= overlay.ActualHeight - padding.Bottom + 1);
+        Assert.True(topLeft.X >= padding.Left - 1);
+        Assert.True(topLeft.X + title.ActualWidth <= overlay.ActualWidth - padding.Right + 1);
+        Assert.True(hero.ActualHeight > 332, "Long titles must contribute to the hero's height.");
+    }
+
+    private static void RenderOverlay(HomeHero hero, string fileName)
+    {
+        var overlay = (FrameworkElement)hero.FindName("Overlay");
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            (int)Math.Ceiling(overlay.ActualWidth), (int)Math.Ceiling(overlay.ActualHeight),
+            96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(overlay);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+        using var output = File.Create(Path.Combine(AppContext.BaseDirectory, fileName));
+        encoder.Save(output);
     }
 
     private static async Task WaitUntil(Func<bool> condition)

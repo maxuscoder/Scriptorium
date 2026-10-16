@@ -20,11 +20,11 @@ public partial class HomeHero : UserControl
     public static readonly DependencyProperty ArtworkProperty = ArtworkPropertyKey.DependencyProperty;
     private static readonly DependencyPropertyKey HasArtworkPropertyKey = DependencyProperty.RegisterReadOnly(nameof(HasArtwork), typeof(bool), typeof(HomeHero), new PropertyMetadata(false, (owner, _) => ((HomeHero)owner).UpdateBackdrop()));
     public static readonly DependencyProperty HasArtworkProperty = HasArtworkPropertyKey.DependencyProperty;
-    public static readonly DependencyProperty HeroTitleProperty = DependencyProperty.Register(nameof(HeroTitle), typeof(string), typeof(HomeHero));
+    public static readonly DependencyProperty HeroTitleProperty = DependencyProperty.Register(nameof(HeroTitle), typeof(string), typeof(HomeHero), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsMeasure));
     public static readonly DependencyProperty EyebrowProperty = DependencyProperty.Register(nameof(Eyebrow), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty PositionTextProperty = DependencyProperty.Register(nameof(PositionText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty DurationTextProperty = DependencyProperty.Register(nameof(DurationText), typeof(string), typeof(HomeHero));
-    public static readonly DependencyProperty HeroMetadataProperty = DependencyProperty.Register(nameof(HeroMetadata), typeof(string), typeof(HomeHero));
+    public static readonly DependencyProperty HeroMetadataProperty = DependencyProperty.Register(nameof(HeroMetadata), typeof(string), typeof(HomeHero), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsMeasure));
     public static readonly DependencyProperty ActionTextProperty = DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty FavoriteTextProperty = DependencyProperty.Register(nameof(FavoriteText), typeof(string), typeof(HomeHero));
     public static readonly DependencyProperty PreviewProperty = DependencyProperty.Register(nameof(Preview), typeof(HomeHeroPreviewViewModel), typeof(HomeHero), new PropertyMetadata(null, OnPreviewChanged));
@@ -115,6 +115,18 @@ public partial class HomeHero : UserControl
 
     private void UpdateBackdrop() => SetValue(HasBackdropPropertyKey, HasArtwork || Preview?.VideoOutput is not null);
 
+    protected override Size MeasureOverride(Size constraint)
+    {
+        var desired = base.MeasureOverride(constraint);
+        if (_videoSurface is null) return desired;
+
+        // VLC hosts the overlay in a separate window, outside Frame's layout tree.
+        // Keep measuring its copy so wrapping titles still determine the card's height.
+        Overlay.Measure(constraint);
+        return new Size(Math.Max(desired.Width, Overlay.DesiredSize.Width),
+            Math.Max(desired.Height, Overlay.DesiredSize.Height));
+    }
+
     private void UpdateVideoSurface()
     {
         if (Preview?.VideoOutput is { } output)
@@ -159,6 +171,7 @@ public partial class HomeHero : UserControl
         DurationText = resumable && duration > TimeSpan.Zero
             ? "/ " + duration.ToString(duration.TotalHours >= 1 ? @"h\:mm\:ss" : @"m\:ss") : "";
         FavoriteText = Media?.IsFavorite == true ? "Remove from favorites" : "Add to favorites";
+        InvalidateMeasure();
     }
     private async Task LoadArtworkAsync()
     {
