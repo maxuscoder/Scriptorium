@@ -190,6 +190,14 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
 
     public ObservableCollection<TvShowSeasonViewModel> Seasons { get; } = [];
 
+    private TvShowSeasonViewModel? _selectedSeason;
+
+    public TvShowSeasonViewModel? SelectedSeason
+    {
+        get => _selectedSeason;
+        set => SetProperty(ref _selectedSeason, value);
+    }
+
     public string SeasonCountText => $"{Seasons.Count} season{(Seasons.Count == 1 ? string.Empty : "s")}";
 
     public string EpisodeCountText =>
@@ -246,6 +254,9 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
             {
                 episode.IsSelected = ReferenceEquals(episode, value);
             }
+
+            SelectedSeason = Seasons.FirstOrDefault(season => season.Episodes.Contains(value!))
+                ?? Seasons.FirstOrDefault();
 
             OnPropertyChanged(nameof(SelectedEpisodePositionText));
             OnPropertyChanged(nameof(HasManualMetadata));
@@ -501,6 +512,8 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
         SelectedEpisode = EpisodesInOrder().FirstOrDefault(episode => episode.MediaItemId == selectedEpisodeMediaItemId)
             ?? EpisodesInOrder().FirstOrDefault(episode => !episode.IsCompleted)
             ?? EpisodesInOrder().FirstOrDefault();
+        SelectedSeason = Seasons.FirstOrDefault(season => season.Episodes.Contains(SelectedEpisode!))
+            ?? Seasons.FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         NotifyShowStateChanged();
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
@@ -1366,6 +1379,8 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string Position => episode.EpisodeNumber is { } number ? $"Episode {number}" : $"Episode {episode.SortOrder + 1}";
 
+    public string NumberText => (episode.EpisodeNumber ?? (episode.SortOrder + 1)).ToString("00");
+
     public string SeasonAndPosition => $"Season {seasonNumber}, {Position}";
 
     public string Runtime => MediaRuntimeFormatter.Format(episode.MediaItem.RuntimeSeconds);
@@ -1373,6 +1388,8 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
     public long RuntimeSeconds => episode.MediaItem.RuntimeSeconds.GetValueOrDefault();
 
     public long PlaybackPositionSeconds => episode.MediaItem.PlaybackPositionSeconds;
+
+    public string PlayActionText => IsCompleted ? "Replay" : PlaybackPositionSeconds > 0 ? "Resume" : "Play";
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(episode.MediaItem);
 
@@ -1534,6 +1551,7 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         OnPropertyChanged(nameof(EpisodeNumber));
         OnPropertyChanged(nameof(SeasonAndPosition));
         OnPropertyChanged(nameof(Position));
+        OnPropertyChanged(nameof(NumberText));
         OnPropertyChanged(nameof(MediaType));
         OnPropertyChanged(nameof(ThumbnailPath));
         OnPropertyChanged(nameof(HasManualMetadata));
@@ -1556,6 +1574,7 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         OnPropertyChanged(nameof(EpisodeDetailsText));
         OnPropertyChanged(nameof(RuntimeSeconds));
         OnPropertyChanged(nameof(PlaybackPositionSeconds));
+        OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(HasPlaybackProgress));
         OnPropertyChanged(nameof(PlaybackProgressPercentage));
         OnPropertyChanged(nameof(PlaybackProgressText));

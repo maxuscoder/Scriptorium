@@ -82,6 +82,23 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty MainDetailsContentProperty =
         DependencyProperty.Register(nameof(MainDetailsContent), typeof(object), typeof(MediaDetailsPage));
 
+    public static readonly DependencyProperty SidebarContentProperty =
+        DependencyProperty.Register(nameof(SidebarContent), typeof(object), typeof(MediaDetailsPage),
+            new PropertyMetadata(null, (owner, _) => ((MediaDetailsPage)owner).UpdateLayoutWidths()));
+
+    public static readonly DependencyProperty SidebarTitleProperty =
+        DependencyProperty.Register(nameof(SidebarTitle), typeof(string), typeof(MediaDetailsPage), new PropertyMetadata("Contents"));
+
+    public static readonly DependencyProperty HeaderProgressTextProperty =
+        DependencyProperty.Register(nameof(HeaderProgressText), typeof(string), typeof(MediaDetailsPage), new PropertyMetadata(string.Empty));
+
+    public static readonly DependencyProperty ActionsMenuProperty =
+        DependencyProperty.Register(nameof(ActionsMenu), typeof(ContextMenu), typeof(MediaDetailsPage));
+
+    public static readonly DependencyProperty IsSidebarOpenProperty =
+        DependencyProperty.Register(nameof(IsSidebarOpen), typeof(bool), typeof(MediaDetailsPage),
+            new PropertyMetadata(true, (owner, _) => ((MediaDetailsPage)owner).UpdateLayoutWidths()));
+
     public static readonly DependencyProperty FileMetadataItemsProperty =
         DependencyProperty.Register(nameof(FileMetadataItems), typeof(IEnumerable), typeof(MediaDetailsPage));
 
@@ -148,6 +165,11 @@ public partial class MediaDetailsPage : UserControl
     public object? ProgressContent { get => GetValue(ProgressContentProperty); set => SetValue(ProgressContentProperty, value); }
     public object? EditorContent { get => GetValue(EditorContentProperty); set => SetValue(EditorContentProperty, value); }
     public object? MainDetailsContent { get => GetValue(MainDetailsContentProperty); set => SetValue(MainDetailsContentProperty, value); }
+    public object? SidebarContent { get => GetValue(SidebarContentProperty); set => SetValue(SidebarContentProperty, value); }
+    public string SidebarTitle { get => (string)GetValue(SidebarTitleProperty); set => SetValue(SidebarTitleProperty, value); }
+    public string HeaderProgressText { get => (string)GetValue(HeaderProgressTextProperty); set => SetValue(HeaderProgressTextProperty, value); }
+    public ContextMenu? ActionsMenu { get => (ContextMenu?)GetValue(ActionsMenuProperty); set => SetValue(ActionsMenuProperty, value); }
+    public bool IsSidebarOpen { get => (bool)GetValue(IsSidebarOpenProperty); set => SetValue(IsSidebarOpenProperty, value); }
     public IEnumerable? FileMetadataItems { get => (IEnumerable?)GetValue(FileMetadataItemsProperty); set => SetValue(FileMetadataItemsProperty, value); }
     public ICommand? EditCommand { get => (ICommand?)GetValue(EditCommandProperty); set => SetValue(EditCommandProperty, value); }
     public bool IsEditing { get => (bool)GetValue(IsEditingProperty); set => SetValue(IsEditingProperty, value); }
@@ -162,6 +184,38 @@ public partial class MediaDetailsPage : UserControl
         MainColumn.Width = narrow ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
         // Keep the VideoPlayer mounted while editing, including on narrow windows.
         MainContent.Visibility = narrow ? Visibility.Hidden : Visibility.Visible;
+        UpdateSidebarLayout();
+    }
+
+    private void OnContentSizeChanged(object sender, SizeChangedEventArgs args) => UpdateSidebarLayout();
+
+    private void UpdateSidebarLayout()
+    {
+        if (SidebarPanel is null || ContentColumn is null) return;
+        var hasSidebar = SidebarContent is not null;
+        var showSidebar = hasSidebar && IsSidebarOpen;
+        var stacked = MainContent.ActualWidth < 900;
+        SidebarPanel.Visibility = showSidebar ? Visibility.Visible : Visibility.Collapsed;
+        ShowSidebarButton.Visibility = hasSidebar && !IsSidebarOpen ? Visibility.Visible : Visibility.Collapsed;
+        SidebarColumn.Width = showSidebar && !stacked ? new GridLength(310) : new GridLength(0);
+        Grid.SetColumn(SidebarPanel, stacked ? 0 : 1);
+        Grid.SetRow(SidebarPanel, stacked ? 1 : 0);
+        SidebarPanel.Margin = stacked ? new Thickness(0, 20, 0, 0) : new Thickness(18, 0, 0, 0);
+        // A bounded, independently scrolling queue on desktop; one page scroll on small windows.
+        var previewHeight = Math.Clamp((MainContent.ActualWidth - 48 - 310) * 9 / 16, 220, 520);
+        SidebarPanel.Height = stacked ? double.NaN : Math.Max(320, Math.Min(MainContent.ActualHeight - 122, previewHeight + 160));
+        SidebarScroll.VerticalScrollBarVisibility = stacked ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
+        HeaderProgress.Visibility = MainContent.ActualWidth < 700 ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void OnToggleSidebar(object sender, RoutedEventArgs args) => SetCurrentValue(IsSidebarOpenProperty, !IsSidebarOpen);
+
+    private void OnMoreActions(object sender, RoutedEventArgs args)
+    {
+        if (ActionsMenu is not { } menu) return;
+        menu.DataContext = DataContext;
+        menu.PlacementTarget = (Button)sender;
+        menu.IsOpen = true;
     }
 
     private void OnPreviewSizeChanged(object sender, SizeChangedEventArgs args)
@@ -209,6 +263,7 @@ public partial class MediaDetailsPage : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        if (ActionsMenu is { } menu) menu.IsOpen = false;
         Interlocked.Increment(ref _thumbnailLoadVersion);
         SetValue(ThumbnailSourcePropertyKey, null);
         SetValue(HasUsableThumbnailPropertyKey, false);

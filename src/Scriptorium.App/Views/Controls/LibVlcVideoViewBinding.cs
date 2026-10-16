@@ -71,7 +71,9 @@ public static class LibVlcVideoViewBinding
             // Intersect with the viewport without rounding the edge exposed by scrolling.
             if (viewport == IntPtr.Zero || CombineRgn(region, region, viewport, 1 /* RGN_AND */) == 0) return;
             // Windows owns the region on success; on failure it remains ours.
-            if (SetWindowRgn(handle, region, true) != 0) region = IntPtr.Zero;
+            // A region change is a compositor clip, not new video content. Asking Windows
+            // to erase/repaint here clears a paused Direct3D frame on every scroll step.
+            if (SetWindowRgn(handle, region, false) != 0) region = IntPtr.Zero;
         }
         finally
         {
@@ -110,6 +112,7 @@ public static class LibVlcVideoViewBinding
     {
         private readonly VideoView _view;
         private readonly LibVlcVideoOutput _output;
+        private HwndHost? _host;
 
         internal OutputAttachment(VideoView view, LibVlcVideoOutput output)
         {
@@ -136,6 +139,12 @@ public static class LibVlcVideoViewBinding
             _view.ApplyTemplate();
             if (_view.Template?.FindName("PART_PlayerHost", _view) is not HwndHost host || host.Handle == IntPtr.Zero)
                 return;
+            if (!ReferenceEquals(_host, host))
+            {
+                if (_host is not null) _host.MessageHook -= PreserveVideoFrame;
+                _host = host;
+                _host.MessageHook += PreserveVideoFrame;
+            }
             // Reattach explicitly: VideoView may have applied its template while Handle was still zero.
             _output.MediaPlayer.Hwnd = host.Handle;
             _view.LayoutUpdated -= OnLayoutUpdated;
@@ -144,8 +153,56 @@ public static class LibVlcVideoViewBinding
 
         internal void Detach()
         {
+            if (_host is not null) _host.MessageHook -= PreserveVideoFrame;
+            _host = null;
             _view.Loaded -= OnLoaded;
             _view.LayoutUpdated -= OnLayoutUpdated;
         }
+
+        // HwndHost rounds the two screen-space edges independently. At fractional
+        // DPI, scrolling can alternate the resulting height by one pixel even though
+        // RenderSize has not changed. Size the swap chain from its local extent.
+        private IntPtr PreserveVideoFrame(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+        {
+            if (message == 0x0046 /* WM_WINDOWPOSCHANGING */ && lParam != IntPtr.Zero &&
+                _host is not null && PresentationSource.FromVisual(_host)?.CompositionTarget is { } target &&
+                GetClientRect(hwnd, out var bounds))
+            {
+                var size = Rect.Transform(new Rect(_host.RenderSize), target.TransformToDevice).Size;
+                var position = Marshal.PtrToStructure<WindowPosition>(lParam);
+                position.Width = (int)Math.Round(size.Width);
+                position.Height = (int)Math.Round(size.Height);
+                if (position.Width == bounds.Right - bounds.Left && position.Height == bounds.Bottom - bounds.Top)
+                {
+                    position.Flags = (position.Flags & ~0x0100u /* SWP_NOCOPYBITS */) | 0x0001u /* SWP_NOSIZE */;
+                }
+                Marshal.StructureToPtr(position, lParam, false);
+            }
+            else if (message == 0x0014 /* WM_ERASEBKGND */)
+            {
+                // The STATIC host's default brush must not clear VLC's retained frame.
+                handled = true;
+                return new IntPtr(1);
+            }
+            return IntPtr.Zero;
+        }
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowPosition
+    {
+        public IntPtr Window, InsertAfter;
+        public int X, Y, Width, Height;
+        public uint Flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left, Top, Right, Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetClientRect(IntPtr hwnd, out NativeRect bounds);
 }

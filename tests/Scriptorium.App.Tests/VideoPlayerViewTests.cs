@@ -93,6 +93,12 @@ public sealed class VideoPlayerViewTests
             var engine = Assert.Single(factory.Instances);
             var position = engine.Position;
             var details = Descendants<MediaDetailsPage>(page).Single();
+            // Exercise native HWND clipping while paused so position remains stable.
+            player.TogglePlaybackCommand.Execute(null);
+            await Task.Delay(100);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, inlineView);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, inlineView, closeContents: true);
+            player.TogglePlaybackCommand.Execute(null);
             details.SetCurrentValue(MediaDetailsPage.IsEditingProperty, true);
             window.Width = 620;
             await StaTest.DrainDispatcherAsync();

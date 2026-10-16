@@ -77,6 +77,15 @@ public sealed partial class TvShowDetailsPageViewModelTests
         Assert.Equal("2 seasons", viewModel.SeasonCountText);
         Assert.Equal("3 episodes", viewModel.EpisodeCountText);
         Assert.Equal("Episode 2", viewModel.SelectedEpisode!.Position);
+        Assert.Same(viewModel.Seasons[0], viewModel.SelectedSeason);
+        viewModel.SelectedSeason = viewModel.Seasons[1];
+        Assert.Equal("Episode 2", viewModel.SelectedEpisode.Position);
+        viewModel.NextEpisodeCommand.Execute(null);
+        Assert.Same(viewModel.Seasons[1], viewModel.SelectedSeason);
+        Assert.Same(viewModel.Seasons[1].Episodes[0], viewModel.SelectedEpisode);
+        viewModel.PreviousEpisodeCommand.Execute(null);
+        Assert.Same(viewModel.Seasons[0], viewModel.SelectedSeason);
+        Assert.Same(viewModel.Seasons[0].Episodes[1], viewModel.SelectedEpisode);
         Assert.Equal("1 of 3 episodes watched", viewModel.ShowProgressText);
         Assert.Equal(100d / 3d, viewModel.ShowProgressPercentage, 5);
         Assert.Equal(1, viewModel.Seasons[0].CompletedEpisodeCount);

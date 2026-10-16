@@ -32,11 +32,38 @@ internal static class TvShowDetailsResourceChecks
             var drawer = (Border)details.FindName("EditorPanel");
             Assert.Equal(Visibility.Collapsed, drawer.Visibility);
             Assert.Same(viewModel.Player, player.Player);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, player);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, player, closeContents: true);
             var rows = Descendants<Button>(page).Where(button => ReferenceEquals(button.Command, viewModel.SelectEpisodeCommand)).ToArray();
             Assert.Equal(3, rows.Length);
             Assert.All(rows, row => Assert.InRange(row.ActualHeight, 54, 90));
             Assert.DoesNotContain(Descendants<TextBlock>(page), text => text.Text.StartsWith(@"C:\Shows\"));
             Assert.Contains(Descendants<TextBlock>(page), text => text.Text == "The Garden Party");
+            var sidebar = (Border)details.FindName("SidebarPanel");
+            var sidebarScroll = (ScrollViewer)details.FindName("SidebarScroll");
+            Assert.Equal(Visibility.Visible, sidebar.Visibility);
+            Assert.Equal(1, Grid.GetColumn(sidebar));
+            Assert.Equal(ScrollBarVisibility.Auto, sidebarScroll.VerticalScrollBarVisibility);
+            Assert.True(sidebar.TransformToAncestor(details).Transform(new Point()).X > player.ActualWidth);
+            var initialPlayerWidth = player.ActualWidth;
+            Descendants<Button>(sidebar).Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "Hide contents")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            Assert.False(details.IsSidebarOpen);
+            Assert.Equal(Visibility.Collapsed, sidebar.Visibility);
+            Assert.True(player.ActualWidth > initialPlayerWidth);
+            ((Button)details.FindName("ShowSidebarButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            Assert.True(details.IsSidebarOpen);
+            Assert.Same(player, Descendants<VideoPlayer>(page).Single());
+            Descendants<Button>(details).Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "More actions")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            Assert.True(details.ActionsMenu!.IsOpen);
+            Assert.Same(viewModel, details.ActionsMenu.DataContext);
+            Assert.All(details.ActionsMenu.Items.OfType<MenuItem>(), menuItem => Assert.NotNull(menuItem.Command));
+            details.ActionsMenu.IsOpen = false;
+            await StaTest.DrainDispatcherAsync();
             Render(page, "tv-show-details-wide.png");
 
             var rowCommand = (Button)rows[2];
@@ -71,6 +98,10 @@ internal static class TvShowDetailsResourceChecks
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(Visibility.Visible, ((ScrollViewer)details.FindName("MainContent")).Visibility);
             Assert.InRange(player.ActualHeight, 220, 400);
+            Assert.Equal(0, Grid.GetColumn(sidebar));
+            Assert.Equal(1, Grid.GetRow(sidebar));
+            Assert.Equal(ScrollBarVisibility.Disabled, sidebarScroll.VerticalScrollBarVisibility);
+            Assert.True(sidebar.TransformToAncestor(details).Transform(new Point()).Y > player.ActualHeight);
             Render(page, "tv-show-details-narrow.png");
             ((ScrollViewer)details.FindName("MainContent")).ScrollToEnd();
             await StaTest.DrainDispatcherAsync();

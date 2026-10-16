@@ -29,6 +29,8 @@ public partial class VideoPlayer : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         PreviewKeyDown += OnPreviewKeyDown;
+        PreviewMouseWheel += OnPlayerPreviewMouseWheel;
+        VideoSurface.LayoutUpdated += OnVideoLayoutUpdated;
         _actionFeedbackTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _actionFeedbackTimer.Tick += (_, _) =>
         {
@@ -97,6 +99,39 @@ public partial class VideoPlayer : UserControl
     }
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
+
+    private void OnPlayerPreviewMouseWheel(object sender, MouseWheelEventArgs args)
+    {
+        // VideoView's overlay lives in another Window, so its input route never reaches the page.
+        // Use the inline control's ancestors for both the overlay and playback toolbar.
+        if (IsFullscreen || args.Handled) return;
+        for (var parent = VisualTreeHelper.GetParent(this); parent is not null; parent = VisualTreeHelper.GetParent(parent))
+        {
+            if (parent is not ScrollViewer viewer || viewer.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled) continue;
+            args.Handled = true;
+            viewer.RaiseEvent(new MouseWheelEventArgs(args.MouseDevice, args.Timestamp, args.Delta)
+            {
+                RoutedEvent = Mouse.MouseWheelEvent,
+                Source = viewer
+            });
+            return;
+        }
+    }
+
+    private void OnVideoLayoutUpdated(object? sender, EventArgs args)
+    {
+        if (!VideoSurface.IsLoaded) return;
+        var visible = VideoSurface.IsVisible ? new Rect(VideoSurface.RenderSize) : Rect.Empty;
+        for (var parent = VisualTreeHelper.GetParent(VideoSurface); parent is not null; parent = VisualTreeHelper.GetParent(parent))
+        {
+            if (parent is not FrameworkElement viewport || (!viewport.ClipToBounds && viewport is not ScrollContentPresenter)) continue;
+            var transform = VideoSurface.TransformToAncestor(viewport).Inverse;
+            if (transform is not null) visible.Intersect(transform.TransformBounds(new Rect(viewport.RenderSize)));
+        }
+        // WPF clipping does not constrain the separate overlay HWND. Clip both native windows
+        // without hiding, unloading, or replacing the playback surface while scrolling.
+        LibVlcVideoViewBinding.ClipBackdrop(VideoSurface, VideoOverlay, visible, 0);
+    }
 
     private void OnVideoPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs args)
     {

@@ -1132,6 +1132,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
     public string Position => lesson.LessonNumber is { } number ? $"Lesson {number}" : $"Lesson {lesson.SortOrder + 1}";
 
+    public string NumberText => (lesson.LessonNumber ?? (lesson.SortOrder + 1)).ToString("00");
+
     public string Runtime => MediaRuntimeFormatter.Format(lesson.MediaItem.RuntimeSeconds);
 
     /// <summary>Gets the known duration in seconds, or zero when it is unavailable.</summary>
@@ -1139,6 +1141,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
     /// <summary>Gets the saved playback position in seconds.</summary>
     public long PlaybackPositionSeconds => lesson.MediaItem.PlaybackPositionSeconds;
+
+    public string PlayActionText => IsCompleted ? "Replay" : PlaybackPositionSeconds > 0 ? "Resume" : "Play";
 
     public string FilePath => lesson.FilePath;
 
@@ -1194,6 +1198,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.LastPlayed = DateTimeOffset.UtcNow;
         OnPropertyChanged(nameof(IsCompleted));
         OnPropertyChanged(nameof(CompletionStatus));
+        OnPropertyChanged(nameof(PlaybackPositionSeconds));
+        OnPropertyChanged(nameof(PlayActionText));
     }
 
     internal void SetPlaybackProgress(PlaybackProgressSavedEventArgs args)
@@ -1207,6 +1213,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         lesson.MediaItem.LastPlayed = args.LastWatched;
         OnPropertyChanged(nameof(PlaybackPositionSeconds));
         OnPropertyChanged(nameof(RuntimeSeconds));
+        OnPropertyChanged(nameof(Runtime));
+        OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(IsCompleted));
         OnPropertyChanged(nameof(CompletionStatus));
     }
@@ -1220,6 +1228,7 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
         lesson.SortOrder = sortOrder;
         OnPropertyChanged(nameof(Position));
+        OnPropertyChanged(nameof(NumberText));
     }
 
     internal void SetTitleOverride(string? title)

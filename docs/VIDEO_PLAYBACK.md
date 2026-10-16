@@ -6,6 +6,12 @@ Home's featured card autoplays a 20-second sample starting at 10% of the media's
 
 Movie details now show a paused video preview above the title. Play/Pause resumes the current session, Replay restarts a finished video, and Fullscreen opens the same session in a borderless window. Use the exit button or Escape to return; F11 toggles fullscreen while the player has keyboard focus. A brief centered icon confirms playback, seek, volume, and mute actions.
 
+Tutorial and TV details use a compact Library breadcrumb with progress, metadata editing, and an action menu. The player leads the page, with Play/Resume/Pause/Replay, Next, and Favorite beneath it. Course content and episodes appear in a collapsible side panel with their own scroll area on wide windows, and stack below the player on narrower windows. The TV season selector browses seasons without interrupting the current episode; sequential navigation and automatic continuation reveal the playing episode's season. Previous, completion, continue-learning/watching, and TV progress-reset actions remain available in the header menu. Editing, resizing, and hiding the content panel keep the same player mounted.
+
+Scrolling over the inline video or its controls scrolls the details page. Media details disable the viewport opacity fade around native video, and clip both the video and its foreground overlay to the visible scroll area while keeping the same playback surface mounted. Fullscreen wheel input stays within the fullscreen player.
+
+Native video dimensions are rounded from the local player size, independently of its screen position. This prevents fractional display scaling from changing the render height by one pixel on each scroll. Pure moves preserve the retained video frame, skip redundant native resize notifications, and update clipping without erasing the paused frame.
+
 ## Keyboard shortcuts
 
 When the player has focus, these shortcuts are available. They do not run while focus is in a text-entry control.

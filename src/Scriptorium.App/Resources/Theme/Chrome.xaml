@@ -132,6 +132,7 @@
          PART names, offsets and CanContentScroll preserve native input and virtualization. -->
     <Style x:Key="ScrollViewer.MainContent" TargetType="ScrollViewer">
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="behaviors:VerticalScrollFade.Height" Value="48" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ScrollViewer">
@@ -142,7 +143,7 @@
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                         <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" Margin="{TemplateBinding Padding}"
-                                                behaviors:VerticalScrollFade.Height="48"
+                                                behaviors:VerticalScrollFade.Height="{Binding Path=(behaviors:VerticalScrollFade.Height), RelativeSource={RelativeSource TemplatedParent}}"
                                                 Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
                                                 ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                                                 CanContentScroll="{TemplateBinding CanContentScroll}" />

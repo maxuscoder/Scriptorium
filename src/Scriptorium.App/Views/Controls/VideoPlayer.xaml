@@ -17,7 +17,9 @@
             <vlc:VideoView x:Name="VideoSurface"
                            local:LibVlcVideoViewBinding.Output="{Binding VideoOutput}">
                 <!-- VideoView content is rendered in its foreground window, avoiding WPF airspace issues. -->
-                <Grid Background="Transparent"
+                <!-- A zero-alpha layered window passes native mouse input through to VLC. -->
+                <Grid x:Name="VideoOverlay" Background="#01000000"
+                      PreviewMouseWheel="OnPlayerPreviewMouseWheel"
                       MouseLeftButtonUp="OnVideoPreviewMouseLeftButtonUp"
                       Cursor="Hand"
                       ToolTip="Click to play or pause"
