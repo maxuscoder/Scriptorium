@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -34,7 +33,7 @@ public partial class VideoPlayer : UserControl
     {
         InitializeComponent();
         // VideoView hosts its overlay in a separate window and namescope.
-        VideoBackButton.SetBinding(Button.CommandProperty, new Binding(nameof(BackCommand)) { Source = this });
+        VideoBackButton.DataContext = this;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         PreviewKeyDown += OnPreviewKeyDown;

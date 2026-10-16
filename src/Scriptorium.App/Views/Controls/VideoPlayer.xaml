@@ -35,14 +35,32 @@
                       Cursor="Hand"
                       ToolTip="Click to play or pause"
                       AutomationProperties.Name="Video preview">
-                    <Button x:Name="VideoBackButton"
-                            Content="&#x2190; Library" Margin="16" Padding="12,8"
+                    <Button x:Name="VideoBackButton" Command="{Binding BackCommand}"
+                            Content="&#x2190; Library" Margin="16" Padding="0"
                             HorizontalAlignment="Left" VerticalAlignment="Top"
-                            Background="#B3000000" Foreground="White" BorderThickness="0"
-                            Cursor="Arrow" ToolTip="Back to Library" AutomationProperties.Name="Back to Library">
+                            Background="Transparent" Foreground="White" BorderThickness="0"
+                            Cursor="Hand" ToolTip="Back to Library" AutomationProperties.Name="Back to Library">
                         <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+                            <Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
+                                <Setter Property="Visibility" Value="Hidden" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                  RecognizesAccessKey="True" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
                                 <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMouseOver}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
                                     <DataTrigger Binding="{Binding Command, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
                                         <Setter Property="Visibility" Value="Collapsed" />
                                     </DataTrigger>
