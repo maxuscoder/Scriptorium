@@ -1,8 +1,11 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Scriptorium.App.ViewModels;
 
@@ -27,13 +30,34 @@ public partial class VideoPlayer : UserControl
     private Window? _ownerWindow;
     private object? _inlinePlayerContent;
     private readonly DispatcherTimer _actionFeedbackTimer;
+    private readonly DispatcherTimer _controlsIdleTimer;
     private bool _isSeeking;
+    private bool _controlsVisible = true;
+    private Point? _lastPointerPosition;
+    private bool _fullscreenClosing;
+    private bool _fullscreenCloseReady;
 
     public VideoPlayer()
     {
         InitializeComponent();
-        // VideoView hosts its overlay in a separate window and namescope.
-        VideoBackButton.DataContext = this;
+        // The content moves into another window for fullscreen, and VideoView hosts its
+        // overlay in a separate namescope. Neither binding may depend on that ancestry.
+        PlayerLayout.SetBinding(DataContextProperty, new Binding(nameof(Player)) { Source = this });
+        VideoBackButton.SetBinding(Button.CommandProperty, new Binding(nameof(BackCommand)) { Source = this });
+        _controlsIdleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _controlsIdleTimer.Tick += OnControlsIdle;
+        foreach (var surface in new UIElement[] { PlayerLayout, VideoOverlay })
+        {
+            surface.AddHandler(Mouse.PreviewMouseMoveEvent, new MouseEventHandler(OnControlsPointerMoved), true);
+            surface.AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(OnControlsPointerButton), true);
+            surface.AddHandler(Mouse.PreviewMouseUpEvent, new MouseButtonEventHandler(OnControlsPointerButton), true);
+            surface.AddHandler(Mouse.PreviewMouseWheelEvent, new MouseWheelEventHandler(OnControlsPointerWheel), true);
+            surface.AddHandler(Keyboard.PreviewKeyDownEvent, new KeyEventHandler(OnControlsKeyDown), true);
+            surface.AddHandler(Keyboard.PreviewKeyUpEvent, new KeyEventHandler(OnControlsKeyDown), true);
+        }
+        VideoOverlay.PreviewKeyDown += OnPreviewKeyDown;
+        PlaybackSpeedSelector.DropDownOpened += OnPlaybackSpeedDropDownChanged;
+        PlaybackSpeedSelector.DropDownClosed += OnPlaybackSpeedDropDownChanged;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -70,10 +94,12 @@ public partial class VideoPlayer : UserControl
         view.CloseFullscreen();
         (args.OldValue as VideoPlayerViewModel)?.Deactivate();
         view.Player?.Activate();
+        view.ShowControls();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs args)
     {
+        ShowControls();
         if (Player is { } player)
         {
             player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
@@ -95,6 +121,7 @@ public partial class VideoPlayer : UserControl
             player.PlaybackStarted -= OnPlaybackStarted;
         }
         _actionFeedbackTimer.Stop();
+        _controlsIdleTimer.Stop();
         CloseFullscreen();
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
         _ownerWindow = null;
@@ -104,12 +131,81 @@ public partial class VideoPlayer : UserControl
     private async void OnOwnerClosed(object? sender, EventArgs args)
     {
         CloseFullscreen();
+        _controlsIdleTimer.Stop();
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
         _ownerWindow = null;
         if (Player is { } playerToDeactivate) await playerToDeactivate.DeactivateAsync();
     }
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
+
+    private void OnControlsPointerMoved(object sender, MouseEventArgs args)
+    {
+        var surface = (UIElement)sender;
+        if (PresentationSource.FromVisual(surface) is null) return;
+        var position = surface.PointToScreen(args.GetPosition(surface));
+        // WPF can synthesize MouseMove after layout or window changes while the pointer is still.
+        if (_lastPointerPosition == position) return;
+        _lastPointerPosition = position;
+        ShowControls();
+    }
+
+    private void OnControlsPointerButton(object sender, MouseButtonEventArgs args) => ShowControls();
+
+    private void OnControlsPointerWheel(object sender, MouseWheelEventArgs args) => ShowControls();
+
+    private void OnControlsKeyDown(object sender, KeyEventArgs args) => ShowControls();
+
+    private void OnPlaybackSpeedDropDownChanged(object? sender, EventArgs args) => ShowControls();
+
+    private void ShowControls()
+    {
+        SetControlsVisible(true);
+        _controlsIdleTimer.Stop();
+        if (IsLoaded) _controlsIdleTimer.Start();
+    }
+
+    private void OnControlsIdle(object? sender, EventArgs args)
+    {
+        if (_isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
+            PlaybackSpeedSelector.IsDropDownOpen)
+            return;
+
+        _controlsIdleTimer.Stop();
+        SetControlsVisible(false);
+    }
+
+    private void SetControlsVisible(bool visible)
+    {
+        if (_controlsVisible == visible) return;
+        _controlsVisible = visible;
+        foreach (var element in new FrameworkElement[] { BackButtonChrome, ControlPanel })
+        {
+            var from = element.Opacity;
+            element.BeginAnimation(OpacityProperty, null);
+            element.Opacity = visible ? 1 : 0;
+            element.IsHitTestVisible = visible;
+            if (visible) element.Visibility = Visibility.Visible;
+            if (!SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast)
+            {
+                element.Visibility = visible ? Visibility.Visible : Visibility.Hidden;
+                continue;
+            }
+
+            var animation = new DoubleAnimation(from, visible ? 1 : 0,
+                TimeSpan.FromMilliseconds(visible ? 180 : 240))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+                FillBehavior = FillBehavior.Stop
+            };
+            animation.Completed += (_, _) =>
+            {
+                if (!_controlsVisible) element.Visibility = Visibility.Hidden;
+            };
+            element.BeginAnimation(OpacityProperty, animation);
+        }
+        // Hidden preserves the toolbar's footprint, avoiding a resize of the native video surface.
+    }
 
     private void OnSkipBackwardClick(object sender, RoutedEventArgs args) => Player?.SeekBy(-5);
 
@@ -224,6 +320,7 @@ public partial class VideoPlayer : UserControl
 
     private void OnPreviewKeyDown(object sender, KeyEventArgs args)
     {
+        ShowControls();
         if (IsTextInput(args.OriginalSource as DependencyObject)) return;
 
         if (args.Key == Key.Escape && _fullscreenWindow is not null)
@@ -341,18 +438,23 @@ public partial class VideoPlayer : UserControl
         fullscreenWindow.SetResourceReference(Window.FontFamilyProperty, "FontFamily.Application");
         fullscreenWindow.SetResourceReference(Window.BackgroundProperty, "Brush.Background");
         _fullscreenWindow = fullscreenWindow;
+        _fullscreenClosing = false;
+        _fullscreenCloseReady = false;
         IsFullscreen = true;
         fullscreenWindow.PreviewKeyDown += OnPreviewKeyDown;
+        fullscreenWindow.Closing += OnFullscreenClosing;
         fullscreenWindow.Closed += OnFullscreenClosed;
         try
         {
             fullscreenWindow.Show();
             fullscreenWindow.WindowState = WindowState.Maximized;
             fullscreenWindow.Focus();
+            ShowControls();
         }
         catch
         {
             fullscreenWindow.PreviewKeyDown -= OnPreviewKeyDown;
+            fullscreenWindow.Closing -= OnFullscreenClosing;
             fullscreenWindow.Closed -= OnFullscreenClosed;
             fullscreenWindow.Content = null;
             _fullscreenWindow = null;
@@ -363,11 +465,37 @@ public partial class VideoPlayer : UserControl
         }
     }
 
+    private async void OnFullscreenClosing(object? sender, CancelEventArgs args)
+    {
+        if (_fullscreenCloseReady || sender is not Window fullscreenWindow) return;
+        args.Cancel = true;
+        if (_fullscreenClosing) return;
+        _fullscreenClosing = true;
+
+        // VLC closes its foreground overlay in the host's Closing event. Cancel this
+        // close until Unloaded has detached that handler and Loaded has moved the
+        // overlay to its inline owner. Keep the native surface and media session intact.
+        fullscreenWindow.Content = null;
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+        if (!ReferenceEquals(_fullscreenWindow, fullscreenWindow)) return;
+        if (Window.GetWindow(VideoOverlay) is { } overlayWindow && overlayWindow.Owner == fullscreenWindow)
+            overlayWindow.Owner = fullscreenWindow.Owner;
+        IsFullscreen = false;
+        if (Content is null && _inlinePlayerContent is not null)
+            Content = _inlinePlayerContent;
+        _inlinePlayerContent = null;
+        await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ContextIdle);
+        if (!ReferenceEquals(_fullscreenWindow, fullscreenWindow)) return;
+        _fullscreenCloseReady = true;
+        fullscreenWindow.Close();
+    }
+
     private void OnFullscreenClosed(object? sender, EventArgs args)
     {
         if (sender is Window fullscreenWindow)
         {
             fullscreenWindow.PreviewKeyDown -= OnPreviewKeyDown;
+            fullscreenWindow.Closing -= OnFullscreenClosing;
             fullscreenWindow.Closed -= OnFullscreenClosed;
             fullscreenWindow.Content = null;
         }
@@ -382,6 +510,7 @@ public partial class VideoPlayer : UserControl
 
         if (IsLoaded)
         {
+            ShowControls();
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => Focus()));
         }
     }

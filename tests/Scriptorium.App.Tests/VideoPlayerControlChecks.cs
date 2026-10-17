@@ -2,8 +2,10 @@ using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.Views.Controls;
@@ -83,8 +85,67 @@ internal static class VideoPlayerControlChecks
             Assert.All(player.PlaybackSpeedOptions, rate =>
                 Assert.IsType<ComboBoxItem>(speed.ItemContainerGenerator.ContainerFromItem(rate)));
             speed.IsDropDownOpen = false;
+            await VerifyAutoHideAsync(view, panel, speed);
         }
         finally { window.Close(); }
+    }
+
+    private static async Task VerifyAutoHideAsync(VideoPlayer view, Border panel, ComboBox speed)
+    {
+        var back = (Button)view.FindName("VideoBackButton");
+        var backChrome = (Border)view.FindName("BackButtonChrome");
+        var command = new RelayCommand(() => { });
+        view.BackCommand = command;
+        Assert.Same(command, back.Command);
+        Assert.Equal(Visibility.Visible, back.Visibility);
+        var height = panel.ActualHeight;
+
+        speed.IsDropDownOpen = true;
+        await Task.Delay(3500);
+        Assert.Equal(Visibility.Visible, panel.Visibility);
+        Assert.Equal(1, panel.Opacity);
+        speed.IsDropDownOpen = false;
+        // Record the pointer without relying on actual desktop mouse position or focus.
+        panel.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
+        {
+            RoutedEvent = Mouse.PreviewMouseMoveEvent
+        });
+        await WaitUntilAsync(() => panel.Visibility == Visibility.Hidden && backChrome.Visibility == Visibility.Hidden,
+            TimeSpan.FromSeconds(6));
+        Assert.Equal(Visibility.Hidden, panel.Visibility);
+        Assert.Equal(Visibility.Hidden, backChrome.Visibility);
+        Assert.Equal(0, panel.Opacity);
+        Assert.Equal(0, backChrome.Opacity);
+        Assert.False(panel.IsHitTestVisible);
+        Assert.Equal(height, panel.ActualHeight);
+
+        // A synthetic MouseMove at the same screen position must not defeat auto-hide.
+        panel.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
+        {
+            RoutedEvent = Mouse.PreviewMouseMoveEvent
+        });
+        Assert.Equal(Visibility.Hidden, panel.Visibility);
+        // The VLC overlay has its own input route and must reveal both controls too.
+        var overlay = (Grid)view.FindName("VideoOverlay");
+        overlay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(overlay), 0, Key.F2)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent
+        });
+        Assert.Equal(Visibility.Visible, panel.Visibility);
+        Assert.Equal(Visibility.Visible, backChrome.Visibility);
+        Assert.True(panel.IsHitTestVisible);
+        if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
+            Assert.True(panel.HasAnimatedProperties);
+        await WaitUntilAsync(() => panel.Opacity == 1 && backChrome.Opacity == 1, TimeSpan.FromSeconds(2));
+        Assert.Equal(1, panel.Opacity);
+        Assert.Equal(1, backChrome.Opacity);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(25);
+        Assert.True(condition(), "Playback controls did not reach the expected visibility state.");
     }
 
     private static void Render(FrameworkElement element, string filename)

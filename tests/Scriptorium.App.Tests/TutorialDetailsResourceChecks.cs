@@ -108,7 +108,9 @@ internal static class TutorialDetailsResourceChecks
         Assert.All(rows, row => Assert.True(row.TransformToAncestor(details).Transform(new Point()).Y > player.ActualHeight));
         var back = (Button)player.FindName("VideoBackButton");
         var overlay = (Grid)player.FindName("VideoOverlay");
-        Assert.Equal(player.IsMouseOver || overlay.IsMouseOver, back.IsVisible);
+        Assert.Equal(Visibility.Visible, back.Visibility);
+        Assert.Equal(((Border)player.FindName("BackButtonChrome")).Visibility,
+            ((Border)player.FindName("ControlPanel")).Visibility);
         Assert.Same(details.BackCommand, back.Command);
         var backOrigin = back.TransformToAncestor(overlay).Transform(new Point());
         Assert.InRange(backOrigin.X, 0, 20);

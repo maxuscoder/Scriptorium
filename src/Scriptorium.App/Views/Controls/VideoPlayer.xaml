@@ -27,7 +27,7 @@
                 </Style.Triggers>
             </Style>
         </Border.Style>
-        <Grid DataContext="{Binding Player, ElementName=Root}" ClipToBounds="True">
+        <Grid x:Name="PlayerLayout" Background="Transparent" ClipToBounds="True" Focusable="True">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
@@ -44,39 +44,33 @@
                       AutomationProperties.Name="Video preview">
                     <Path x:Name="LetterboxMatte" Fill="Black" Stretch="Fill" IsHitTestVisible="False"
                           RenderOptions.EdgeMode="Aliased" />
-                    <Button x:Name="VideoBackButton" Command="{Binding BackCommand}"
-                            Content="&#x2190; Library" Margin="16" Padding="0"
-                            HorizontalAlignment="Left" VerticalAlignment="Top"
-                            Background="Transparent" Foreground="White" BorderThickness="0"
-                            Cursor="Hand" ToolTip="Back to Library" AutomationProperties.Name="Back to Library">
-                        <Button.Style>
-                            <Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
-                                <Setter Property="Visibility" Value="Hidden" />
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="Transparent" Padding="{TemplateBinding Padding}">
-                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                                  RecognizesAccessKey="True" />
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsMouseOver}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                    <DataTrigger Binding="{Binding Command, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
-                                        <Setter Property="Visibility" Value="Collapsed" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Button.Style>
-                    </Button>
+                    <Border x:Name="BackButtonChrome" Margin="16" HorizontalAlignment="Left" VerticalAlignment="Top">
+                        <Button x:Name="VideoBackButton"
+                                Content="&#x2190; Library" Padding="0"
+                                Background="Transparent" Foreground="White" BorderThickness="0"
+                                Cursor="Hand" ToolTip="Back to Library" AutomationProperties.Name="Back to Library">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                                      RecognizesAccessKey="True" />
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Command, RelativeSource={RelativeSource Self}}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Border>
                     <Border x:Name="ActionFeedback" Width="72" Height="72"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             Background="{DynamicResource Brush.PlaybackFeedback}" CornerRadius="36" Visibility="Collapsed"
