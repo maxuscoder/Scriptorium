@@ -60,6 +60,8 @@ public partial class VideoPlayer : UserControl
         VideoOverlay.PreviewKeyDown += OnPreviewKeyDown;
         PlaybackSpeedSelector.DropDownOpened += OnPlaybackSpeedDropDownChanged;
         PlaybackSpeedSelector.DropDownClosed += OnPlaybackSpeedDropDownChanged;
+        ControlPanel.MouseEnter += OnControlPanelMouseEnter;
+        ControlPanel.MouseLeave += OnControlPanelMouseLeave;
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         PreviewKeyDown += OnPreviewKeyDown;
@@ -160,16 +162,24 @@ public partial class VideoPlayer : UserControl
 
     private void OnPlaybackSpeedDropDownChanged(object? sender, EventArgs args) => ShowControls();
 
+    private void OnControlPanelMouseEnter(object sender, MouseEventArgs args)
+    {
+        ShowControls();
+        _controlsIdleTimer.Stop();
+    }
+
+    private void OnControlPanelMouseLeave(object sender, MouseEventArgs args) => ShowControls();
+
     private void ShowControls()
     {
         SetControlsVisible(true);
         _controlsIdleTimer.Stop();
-        if (IsLoaded) _controlsIdleTimer.Start();
+        if (IsLoaded && !ControlPanel.IsMouseOver) _controlsIdleTimer.Start();
     }
 
     private void OnControlsIdle(object? sender, EventArgs args)
     {
-        if (_isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
+        if (ControlPanel.IsMouseOver || _isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
             PlaybackSpeedSelector.IsDropDownOpen)
             return;
 
