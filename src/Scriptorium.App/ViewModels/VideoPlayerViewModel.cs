@@ -119,8 +119,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string PlayActionText => IsPlaying ? "Pause" : _hasEnded ? "Replay" : "Play";
     public string PositionText => $"{FormatTime(_position)} / {FormatTime(_duration)}";
-    public string CurrentPositionText => FormatTime(_position);
-    public string DurationText => FormatTime(_duration);
+    public string CurrentPositionText => FormatControlTime(_position);
+    public string DurationText => FormatControlTime(_duration);
     public double PositionSeconds => Math.Clamp(_position.TotalSeconds, 0, DurationSeconds);
     public double DurationSeconds => Math.Max(0, _duration.TotalSeconds);
     public bool CanSeek => IsReady && DurationSeconds > 0;
@@ -887,6 +887,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     }
 
     private static string FormatTime(TimeSpan time) => $"{(long)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
+
+    private static string FormatControlTime(TimeSpan time) => time.TotalHours >= 1
+        ? FormatTime(time)
+        : $"{time.Minutes:00}:{time.Seconds:00}";
 }
 
 /// <summary>Describes a persisted playback snapshot and the moment the media was last viewed.</summary>

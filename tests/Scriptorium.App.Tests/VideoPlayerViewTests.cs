@@ -41,6 +41,7 @@ public sealed class VideoPlayerViewTests
         {
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }
         });
+        await VideoPlayerControlChecks.VerifyAsync();
         await DialogResourceChecks.VerifyAsync(application.Resources);
         await MediaDetailsResourceChecks.VerifyAsync();
         await TutorialDetailsResourceChecks.VerifyAsync();

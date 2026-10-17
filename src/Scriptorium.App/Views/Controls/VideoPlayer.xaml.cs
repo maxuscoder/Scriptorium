@@ -111,6 +111,10 @@ public partial class VideoPlayer : UserControl
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
 
+    private void OnSkipBackwardClick(object sender, RoutedEventArgs args) => Player?.SeekBy(-5);
+
+    private void OnSkipForwardClick(object sender, RoutedEventArgs args) => Player?.SeekBy(5);
+
     private void OnPlayerPreviewMouseWheel(object sender, MouseWheelEventArgs args)
     {
         // VideoView's overlay lives in another Window, so its input route never reaches the page.
