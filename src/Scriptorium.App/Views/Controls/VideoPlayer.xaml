@@ -35,6 +35,8 @@
                       Cursor="Hand"
                       ToolTip="Click to play or pause"
                       AutomationProperties.Name="Video preview">
+                    <Path x:Name="LetterboxMatte" Fill="Black" Stretch="Fill" IsHitTestVisible="False"
+                          RenderOptions.EdgeMode="Aliased" />
                     <Button x:Name="VideoBackButton" Command="{Binding BackCommand}"
                             Content="&#x2190; Library" Margin="16" Padding="0"
                             HorizontalAlignment="Left" VerticalAlignment="Top"

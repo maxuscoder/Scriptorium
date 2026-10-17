@@ -12,6 +12,8 @@ Scrolling over the inline video or its controls scrolls the details page. Media 
 
 Native video dimensions are rounded from the local player size, independently of its screen position. This prevents fractional display scaling from changing the render height by one pixel on each scroll. Pure moves preserve the retained video frame, skip redundant native resize notifications, and update clipping without erasing the paused frame.
 
+The foreground overlay paints opaque black bars using the display aspect ratio of VLC's native picture window, including sample aspect ratio and rotation. This keeps pillarbox and letterbox areas black on initial entry, return navigation, scrolling, and resizing, without repainting the paused Direct3D frame. The adapter briefly follows native output creation and resizing while VLC settles its picture bounds; it does not poll continuously while paused.
+
 ## Keyboard shortcuts
 
 When the player has focus, these shortcuts are available. They do not run while focus is in a text-entry control.

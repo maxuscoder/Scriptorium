@@ -39,6 +39,7 @@ public partial class VideoPlayer : UserControl
         PreviewKeyDown += OnPreviewKeyDown;
         PreviewMouseWheel += OnPlayerPreviewMouseWheel;
         VideoSurface.LayoutUpdated += OnVideoLayoutUpdated;
+        LibVlcVideoViewBinding.UpdateLetterbox(VideoSurface, LetterboxMatte);
         _actionFeedbackTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _actionFeedbackTimer.Tick += (_, _) =>
         {
@@ -131,6 +132,7 @@ public partial class VideoPlayer : UserControl
     private void OnVideoLayoutUpdated(object? sender, EventArgs args)
     {
         if (!VideoSurface.IsLoaded) return;
+        LibVlcVideoViewBinding.UpdateLetterbox(VideoSurface, LetterboxMatte);
         var visible = VideoSurface.IsVisible ? new Rect(VideoSurface.RenderSize) : Rect.Empty;
         for (var parent = VisualTreeHelper.GetParent(VideoSurface); parent is not null; parent = VisualTreeHelper.GetParent(parent))
         {

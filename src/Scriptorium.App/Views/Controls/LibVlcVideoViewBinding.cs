@@ -1,8 +1,13 @@
 using System.Windows;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Threading;
+using LibVLCSharp.Shared;
 using LibVLCSharp.WPF;
 using Scriptorium.App.Services;
+using ShapePath = System.Windows.Shapes.Path;
 
 namespace Scriptorium.App.Views.Controls;
 
@@ -20,6 +25,52 @@ public static class LibVlcVideoViewBinding
 
     public static void SetOutput(DependencyObject target, IVideoOutput? value) =>
         target.SetValue(OutputProperty, value);
+
+    private static readonly DependencyProperty LetterboxProperty = DependencyProperty.RegisterAttached(
+        "Letterbox", typeof(ShapePath), typeof(LibVlcVideoViewBinding));
+    private static readonly DependencyProperty LetterboxBoundsProperty = DependencyProperty.RegisterAttached(
+        "LetterboxBounds", typeof(LetterboxBounds), typeof(LibVlcVideoViewBinding));
+    private sealed record LetterboxBounds(Rect Surface, Rect Picture);
+
+    /// <summary>Paints opaque black bars in the foreground window around VLC's actual picture.</summary>
+    public static void UpdateLetterbox(VideoView view, ShapePath matte)
+    {
+        view.SetValue(LetterboxProperty, matte);
+        var surface = new Rect(view.RenderSize);
+        var picture = Rect.Empty;
+        var host = view.MediaPlayer?.Hwnd ?? IntPtr.Zero;
+        if (host != IntPtr.Zero && PresentationSource.FromVisual(view)?.CompositionTarget is { } target)
+        {
+            var background = FindWindowEx(host, IntPtr.Zero, null, null);
+            var video = background == IntPtr.Zero ? IntPtr.Zero : FindWindowEx(background, IntPtr.Zero, null, null);
+            var className = new StringBuilder(128);
+            if (video != IntPtr.Zero &&
+                GetClassName(video, className, className.Capacity) > 0 &&
+                className.ToString().StartsWith("VLC video output", StringComparison.Ordinal) &&
+                GetWindowRect(video, out var bounds) && bounds.Right > bounds.Left && bounds.Bottom > bounds.Top)
+            {
+                // Use the native picture's display aspect (including SAR/rotation). Its
+                // position may still describe the old viewport during a paused resize.
+                var aspect = (double)(bounds.Right - bounds.Left) / (bounds.Bottom - bounds.Top);
+                var height = Math.Min(surface.Height, surface.Width / aspect);
+                var width = height * aspect;
+                picture = new Rect((surface.Width - width) / 2, (surface.Height - height) / 2, width, height);
+                // Match physical pixel edges in the layered foreground window.
+                var pixels = Rect.Transform(picture, target.TransformToDevice);
+                pixels = new Rect(Math.Round(pixels.Left), Math.Round(pixels.Top),
+                    Math.Round(pixels.Right) - Math.Round(pixels.Left), Math.Round(pixels.Bottom) - Math.Round(pixels.Top));
+                picture = Rect.Transform(pixels, target.TransformFromDevice);
+            }
+        }
+        var layout = new LetterboxBounds(surface, picture);
+        if (Equals(view.GetValue(LetterboxBoundsProperty), layout)) return;
+        view.SetValue(LetterboxBoundsProperty, layout);
+        var geometry = new GeometryGroup { FillRule = FillRule.EvenOdd };
+        geometry.Children.Add(new RectangleGeometry(surface));
+        if (!picture.IsEmpty) geometry.Children.Add(new RectangleGeometry(picture));
+        geometry.Freeze();
+        matte.Data = geometry;
+    }
 
     /// <summary>Crops the backdrop to fill its card while preserving the video's proportions.</summary>
     public static void FillToBounds(VideoView view)
@@ -102,6 +153,7 @@ public static class LibVlcVideoViewBinding
             videoView.SetValue(AttachmentProperty, args.NewValue is LibVlcVideoOutput output
                 ? new OutputAttachment(videoView, output) : null);
             if (args.NewValue is not LibVlcVideoOutput) videoView.MediaPlayer = null;
+            if (videoView.GetValue(LetterboxProperty) is ShapePath matte) UpdateLetterbox(videoView, matte);
         }
     }
 
@@ -113,14 +165,25 @@ public static class LibVlcVideoViewBinding
         private readonly VideoView _view;
         private readonly LibVlcVideoOutput _output;
         private HwndHost? _host;
+        private bool _detached;
+        private readonly DispatcherTimer _letterboxTimer;
+        private int _letterboxRefreshes;
 
         internal OutputAttachment(VideoView view, LibVlcVideoOutput output)
         {
             _view = view;
             _output = output;
+            _letterboxTimer = new DispatcherTimer(DispatcherPriority.Render, view.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(50)
+            };
+            _letterboxTimer.Tick += OnLetterboxTick;
             view.MediaPlayer = output.MediaPlayer;
             view.Loaded += OnLoaded;
             view.LayoutUpdated += OnLayoutUpdated;
+            view.SizeChanged += OnSizeChanged;
+            output.MediaPlayer.Vout += OnVideoOutputCreated;
+            output.MediaPlayer.Paused += OnPaused;
             TryAttach();
         }
 
@@ -149,14 +212,48 @@ public static class LibVlcVideoViewBinding
             _output.MediaPlayer.Hwnd = host.Handle;
             _view.LayoutUpdated -= OnLayoutUpdated;
             _output.NotifyAttached();
+            QueueLetterboxRefresh();
+        }
+
+        private void OnSizeChanged(object sender, SizeChangedEventArgs args) => QueueLetterboxRefresh();
+        private void OnVideoOutputCreated(object? sender, MediaPlayerVoutEventArgs args)
+        {
+            QueueLetterboxRefresh();
+        }
+        private void OnPaused(object? sender, EventArgs args) => QueueLetterboxRefresh();
+
+        private void QueueLetterboxRefresh()
+        {
+            if (_view.Dispatcher.HasShutdownStarted) return;
+            _view.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (_detached || !_view.IsLoaded || _view.GetValue(LetterboxProperty) is not ShapePath matte) return;
+                UpdateLetterbox(_view, matte);
+                // VLC positions/shows its picture asynchronously after Vout and resizing.
+                // Follow that short settling period, then stop polling while paused.
+                _letterboxRefreshes = 20;
+                _letterboxTimer.Start();
+            }));
+        }
+
+        private void OnLetterboxTick(object? sender, EventArgs args)
+        {
+            if (_view.GetValue(LetterboxProperty) is ShapePath matte) UpdateLetterbox(_view, matte);
+            if (--_letterboxRefreshes <= 0) _letterboxTimer.Stop();
         }
 
         internal void Detach()
         {
+            _detached = true;
+            _letterboxTimer.Stop();
+            _letterboxTimer.Tick -= OnLetterboxTick;
+            _output.MediaPlayer.Vout -= OnVideoOutputCreated;
+            _output.MediaPlayer.Paused -= OnPaused;
             if (_host is not null) _host.MessageHook -= PreserveVideoFrame;
             _host = null;
             _view.Loaded -= OnLoaded;
             _view.LayoutUpdated -= OnLayoutUpdated;
+            _view.SizeChanged -= OnSizeChanged;
         }
 
         // HwndHost rounds the two screen-space edges independently. At fractional
@@ -205,4 +302,12 @@ public static class LibVlcVideoViewBinding
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetClientRect(IntPtr hwnd, out NativeRect bounds);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? className, string? title);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, StringBuilder className, int capacity);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hwnd, out NativeRect bounds);
 }
