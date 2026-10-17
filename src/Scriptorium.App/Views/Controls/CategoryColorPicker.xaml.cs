@@ -49,7 +49,7 @@ public partial class CategoryColorPicker : UserControl, INotifyPropertyChanged
     {
         if (sender is Button { Tag: string color })
         {
-            SelectedColor = color;
+            SetCurrentValue(SelectedColorProperty, color);
         }
     }
 

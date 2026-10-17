@@ -10,15 +10,16 @@
             Padding="4"
             Click="OnOpenPicker"
             Style="{StaticResource Button.Secondary}"
+            AutomationProperties.Name="Choose category color"
             ToolTip="Choose category color">
-            <Border Background="{Binding PreviewBrush, ElementName=Root}" CornerRadius="15" />
+            <Border Width="28" Height="28" Background="{Binding PreviewBrush, ElementName=Root}" CornerRadius="14" />
         </Button>
         <Popup
             x:Name="PickerPopup"
             AllowsTransparency="True"
             Placement="Bottom"
             PlacementTarget="{Binding ElementName=Root}"
-            StaysOpen="True">
+            StaysOpen="False">
             <Border
                 Width="280"
                 Margin="0,6,0,0"
