@@ -28,10 +28,6 @@
             </Style>
         </Border.Style>
         <Grid x:Name="PlayerLayout" Background="Transparent" ClipToBounds="True" Focusable="True">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
             <vlc:VideoView x:Name="VideoSurface"
                            local:LibVlcVideoViewBinding.Output="{Binding VideoOutput}">
                 <!-- VideoView content is rendered in its foreground window, avoiding WPF airspace issues. -->
@@ -93,159 +89,159 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
+                    <Border x:Name="ControlPanel" VerticalAlignment="Bottom" Background="{StaticResource Player.Panel}"
+                            CornerRadius="22" Margin="12,10,12,12" Padding="14,18,14,14">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="24" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid Margin="0,0,0,10">
+                                <TextBlock Text="{Binding CurrentPositionText}" Style="{StaticResource Player.Time}"
+                                           AutomationProperties.Name="Elapsed time" />
+                                <TextBlock Text="{Binding DurationText}" Style="{StaticResource Player.Time}"
+                                           HorizontalAlignment="Right" AutomationProperties.Name="Video duration" />
+                            </Grid>
+                            <Slider x:Name="SeekSlider" Grid.Row="1" Style="{StaticResource Player.Slider}"
+                                    Minimum="0" Maximum="{Binding DurationSeconds}"
+                                    Value="{Binding PositionSeconds, Mode=OneWay}" IsEnabled="{Binding CanSeek}"
+                                    ValueChanged="OnSeekSliderValueChanged"
+                                    PreviewMouseLeftButtonDown="OnSeekSliderMouseLeftButtonDown"
+                                    PreviewMouseLeftButtonUp="OnSeekSliderMouseLeftButtonUp"
+                                    PreviewKeyDown="OnSeekSliderPreviewKeyDown"
+                                    PreviewKeyUp="OnSeekSliderPreviewKeyUp"
+                                    LostKeyboardFocus="OnSeekSliderLostKeyboardFocus"
+                                    AutomationProperties.Name="Video playback position" ToolTip="Drag to seek" />
+                            <Viewbox x:Name="ControlActionsViewport" Grid.Row="2" Margin="0,6,0,0" Stretch="Uniform" StretchDirection="DownOnly">
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="400">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Command="{Binding TogglePlaybackCommand}" Style="{StaticResource Player.Play}"
+                                                ToolTip="Play or pause video (Space)" AutomationProperties.Name="{Binding PlayActionText}">
+                                            <Grid Width="20" Height="20">
+                                                <Ellipse Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                         StrokeThickness="1.8" />
+                                                <Path x:Name="PlayIcon" Data="M8,5.5 L14,10 L8,14.5 Z"
+                                                      Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <Path x:Name="PauseIcon" Data="M7.5,6.5 V13.5 M12.5,6.5 V13.5"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Grid>
+                                        </Button>
+                                        <Button Click="OnSkipBackwardClick" IsEnabled="{Binding CanSeek}"
+                                                Style="{StaticResource Player.Icon}" Margin="10,0,2,0"
+                                                ToolTip="Back 5 seconds (Left arrow)" AutomationProperties.Name="Back 5 seconds">
+                                            <Path Width="20" Height="20" Data="M5,7 A7,7 0 1 1 4,13 M5,2 V7 H10"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                        </Button>
+                                        <Button Click="OnSkipForwardClick" IsEnabled="{Binding CanSeek}"
+                                                Style="{StaticResource Player.Icon}" ToolTip="Forward 5 seconds (Right arrow)"
+                                                AutomationProperties.Name="Forward 5 seconds">
+                                            <Path Width="20" Height="20" Data="M15,7 A7,7 0 1 0 16,13 M15,2 V7 H10"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                        </Button>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Command="{Binding ToggleMuteCommand}" Style="{StaticResource Player.Icon}" Width="32"
+                                                ToolTip="{Binding MuteActionText}" AutomationProperties.Name="{Binding MuteActionText}">
+                                            <Grid Width="20" Height="20">
+                                                <Path Data="M2,7 H6 L11,3 V17 L6,13 H2 Z" Fill="Transparent"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.6" StrokeLineJoin="Round" />
+                                                <Path Data="M14,7 C16,8.5 16,11.5 14,13 M17,4.5 C20,7.5 20,12.5 17,15.5"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                      StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMutedIconVisible}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                                <Path Data="M2,2 L18,18" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                                                    <Path.Style>
+                                                        <Style TargetType="Path">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsMutedIconVisible}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Path.Style>
+                                                </Path>
+                                            </Grid>
+                                        </Button>
+                                        <Slider x:Name="VolumeSlider" Width="66" Margin="10,0,16,0" VerticalAlignment="Center"
+                                                Style="{StaticResource Player.Slider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1"
+                                                Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                IsEnabled="{Binding IsReady}" PreviewMouseLeftButtonDown="OnVolumeSliderMouseLeftButtonDown"
+                                                AutomationProperties.Name="Volume" ToolTip="Volume" />
+                                        <ComboBox x:Name="PlaybackSpeedSelector" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                  Style="{StaticResource Player.Speed}" AutomationProperties.Name="Playback speed" ToolTip="Playback speed"
+                                                  IsEnabled="{Binding IsReady}" ItemsSource="{Binding PlaybackSpeedOptions}"
+                                                  SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding StringFormat={}{0:0.##}×}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Button x:Name="FullscreenButton" Click="OnFullscreenClick" ToolTip="Toggle fullscreen (F11); exit with Esc"
+                                                AutomationProperties.Name="Toggle fullscreen">
+                                            <Path Width="20" Height="20" Data="M3,8 V3 H8 M12,3 H17 V8 M17,12 V17 H12 M8,17 H3 V12"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource Player.Icon}">
+                                                    <Setter Property="Width" Value="32" />
+                                                    <Setter Property="IsEnabled" Value="{Binding Player.IsReady}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsFullscreen}" Value="True">
+                                                            <Setter Property="IsEnabled" Value="True" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </Viewbox>
+                        </Grid>
+                    </Border>
                 </Grid>
             </vlc:VideoView>
-            <Border x:Name="ControlPanel" Grid.Row="1" Background="{StaticResource Player.Panel}"
-                    CornerRadius="22" Margin="12,10,12,12" Padding="14,18,14,14">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="24" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid Margin="0,0,0,10">
-                        <TextBlock Text="{Binding CurrentPositionText}" Style="{StaticResource Player.Time}"
-                                   AutomationProperties.Name="Elapsed time" />
-                        <TextBlock Text="{Binding DurationText}" Style="{StaticResource Player.Time}"
-                                   HorizontalAlignment="Right" AutomationProperties.Name="Video duration" />
-                    </Grid>
-                    <Slider x:Name="SeekSlider" Grid.Row="1" Style="{StaticResource Player.Slider}"
-                            Minimum="0" Maximum="{Binding DurationSeconds}"
-                            Value="{Binding PositionSeconds, Mode=OneWay}" IsEnabled="{Binding CanSeek}"
-                            ValueChanged="OnSeekSliderValueChanged"
-                            PreviewMouseLeftButtonDown="OnSeekSliderMouseLeftButtonDown"
-                            PreviewMouseLeftButtonUp="OnSeekSliderMouseLeftButtonUp"
-                            PreviewKeyDown="OnSeekSliderPreviewKeyDown"
-                            PreviewKeyUp="OnSeekSliderPreviewKeyUp"
-                            LostKeyboardFocus="OnSeekSliderLostKeyboardFocus"
-                            AutomationProperties.Name="Video playback position" ToolTip="Drag to seek" />
-                    <Viewbox x:Name="ControlActionsViewport" Grid.Row="2" Margin="0,6,0,0" Stretch="Uniform" StretchDirection="DownOnly">
-                        <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="400">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Command="{Binding TogglePlaybackCommand}" Style="{StaticResource Player.Play}"
-                                        ToolTip="Play or pause video (Space)" AutomationProperties.Name="{Binding PlayActionText}">
-                                    <Grid Width="20" Height="20">
-                                        <Ellipse Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                                 StrokeThickness="1.8" />
-                                        <Path x:Name="PlayIcon" Data="M8,5.5 L14,10 L8,14.5 Z"
-                                              Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
-                                            <Path.Style>
-                                                <Style TargetType="Path">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Path.Style>
-                                        </Path>
-                                        <Path x:Name="PauseIcon" Data="M7.5,6.5 V13.5 M12.5,6.5 V13.5"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2">
-                                            <Path.Style>
-                                                <Style TargetType="Path">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Path.Style>
-                                        </Path>
-                                    </Grid>
-                                </Button>
-                                <Button Click="OnSkipBackwardClick" IsEnabled="{Binding CanSeek}"
-                                        Style="{StaticResource Player.Icon}" Margin="10,0,2,0"
-                                        ToolTip="Back 5 seconds (Left arrow)" AutomationProperties.Name="Back 5 seconds">
-                                    <Path Width="20" Height="20" Data="M5,7 A7,7 0 1 1 4,13 M5,2 V7 H10"
-                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
-                                </Button>
-                                <Button Click="OnSkipForwardClick" IsEnabled="{Binding CanSeek}"
-                                        Style="{StaticResource Player.Icon}" ToolTip="Forward 5 seconds (Right arrow)"
-                                        AutomationProperties.Name="Forward 5 seconds">
-                                    <Path Width="20" Height="20" Data="M15,7 A7,7 0 1 0 16,13 M15,2 V7 H10"
-                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                          StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
-                                </Button>
-                            </StackPanel>
-                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Command="{Binding ToggleMuteCommand}" Style="{StaticResource Player.Icon}" Width="32"
-                                        ToolTip="{Binding MuteActionText}" AutomationProperties.Name="{Binding MuteActionText}">
-                                    <Grid Width="20" Height="20">
-                                        <Path Data="M2,7 H6 L11,3 V17 L6,13 H2 Z" Fill="Transparent"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="1.6" StrokeLineJoin="Round" />
-                                        <Path Data="M14,7 C16,8.5 16,11.5 14,13 M17,4.5 C20,7.5 20,12.5 17,15.5"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
-                                            <Path.Style>
-                                                <Style TargetType="Path">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsMutedIconVisible}" Value="True">
-                                                            <Setter Property="Visibility" Value="Collapsed" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Path.Style>
-                                        </Path>
-                                        <Path Data="M2,2 L18,18" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
-                                            <Path.Style>
-                                                <Style TargetType="Path">
-                                                    <Setter Property="Visibility" Value="Collapsed" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsMutedIconVisible}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Path.Style>
-                                        </Path>
-                                    </Grid>
-                                </Button>
-                                <Slider x:Name="VolumeSlider" Width="66" Margin="10,0,16,0" VerticalAlignment="Center"
-                                        Style="{StaticResource Player.Slider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1"
-                                        Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                        IsEnabled="{Binding IsReady}" PreviewMouseLeftButtonDown="OnVolumeSliderMouseLeftButtonDown"
-                                        AutomationProperties.Name="Volume" ToolTip="Volume" />
-                                <ComboBox x:Name="PlaybackSpeedSelector" Margin="0,0,12,0" VerticalAlignment="Center"
-                                          Style="{StaticResource Player.Speed}" AutomationProperties.Name="Playback speed" ToolTip="Playback speed"
-                                          IsEnabled="{Binding IsReady}" ItemsSource="{Binding PlaybackSpeedOptions}"
-                                          SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="{Binding StringFormat={}{0:0.##}×}" />
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                                <Button Click="OnFullscreenClick" ToolTip="Toggle fullscreen (F11); exit with Esc"
-                                        AutomationProperties.Name="Toggle fullscreen">
-                                    <Path Width="20" Height="20" Data="M3,8 V3 H8 M12,3 H17 V8 M17,12 V17 H12 M8,17 H3 V12"
-                                          Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                          StrokeThickness="1.7" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
-                                    <Button.Style>
-                                        <Style TargetType="Button" BasedOn="{StaticResource Player.Icon}">
-                                            <Setter Property="Width" Value="32" />
-                                            <Setter Property="IsEnabled" Value="{Binding IsReady}" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsFullscreen, ElementName=Root}" Value="True">
-                                                    <Setter Property="IsEnabled" Value="True" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Button.Style>
-                                </Button>
-                            </StackPanel>
-                        </Grid>
-                    </Viewbox>
-                </Grid>
-            </Border>
         </Grid>
     </Border>
 </UserControl>

@@ -116,12 +116,13 @@ public sealed class VideoPlayerViewTests
             window.Width = 1000;
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(inlineHandle, inlineSurface.MediaPlayer!.Hwnd);
-            var fullscreenButton = Descendants<Button>(inlineView).Single(button =>
-                AutomationProperties.GetName(button) == "Toggle fullscreen");
+            Assert.Equal(((Grid)inlineView.FindName("PlayerLayout")).RenderSize, inlineSurface.RenderSize);
+            var fullscreenButton = (Button)inlineView.FindName("FullscreenButton");
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await Task.Delay(200);
             var fullscreen = Assert.Single(FullscreenWindows(window));
             Assert.Equal(WindowState.Maximized, fullscreen.WindowState);
+            Assert.Equal(((Grid)inlineView.FindName("PlayerLayout")).RenderSize, inlineSurface.RenderSize);
             Assert.Same(backCommand, backButton.Command);
             Assert.True(backButton.IsVisible);
             var fullscreenSurface = Descendants<VideoView>(fullscreen).Single();

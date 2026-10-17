@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using LibVLCSharp.WPF;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
@@ -48,6 +49,21 @@ internal static class VideoPlayerControlChecks
             var volume = (Slider)view.FindName("VolumeSlider");
             volume.Value = 0.7;
             Assert.Equal(0.7, engine.Volume, 3);
+            var overlay = (Grid)view.FindName("VideoOverlay");
+            // A control's mouse-up must not also trigger the video surface's play/pause action.
+            overlay.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.MouseLeftButtonUpEvent, Source = volume
+            });
+            Assert.False(player.IsPlaying);
+            foreach (var playing in new[] { true, false })
+            {
+                overlay.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonUpEvent
+                });
+                Assert.Equal(playing, player.IsPlaying);
+            }
             Action("Mute").Command.Execute(null);
             Assert.True(player.IsMutedIconVisible);
             Assert.Equal(0, engine.Volume);
@@ -58,6 +74,8 @@ internal static class VideoPlayerControlChecks
             foreach (var width in new[] { 960, 560, 390 })
             {
                 window.Width = width;
+                await StaTest.DrainDispatcherAsync();
+                AssertOverlayLayout(view, panel);
                 foreach (var rate in player.PlaybackSpeedOptions)
                 {
                     speed.SelectedItem = rate;
@@ -123,6 +141,7 @@ internal static class VideoPlayerControlChecks
         Assert.Same(Cursors.None, layout.Cursor);
         Assert.Same(Cursors.None, overlay.Cursor);
         Assert.Equal(height, panel.ActualHeight);
+        AssertOverlayLayout(view, panel);
 
         // A synthetic MouseMove at the same screen position must not defeat auto-hide.
         panel.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, Environment.TickCount)
@@ -152,6 +171,19 @@ internal static class VideoPlayerControlChecks
         var deadline = DateTime.UtcNow + timeout;
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(25);
         Assert.True(condition(), "Playback controls did not reach the expected visibility state.");
+    }
+
+    private static void AssertOverlayLayout(VideoPlayer view, Border panel)
+    {
+        var surface = (VideoView)view.FindName("VideoSurface");
+        var layout = (Grid)view.FindName("PlayerLayout");
+        var overlay = (Grid)view.FindName("VideoOverlay");
+        Assert.Equal(layout.RenderSize, surface.RenderSize);
+        Assert.Same(Window.GetWindow(overlay), Window.GetWindow(panel));
+        Assert.NotSame(Window.GetWindow(view), Window.GetWindow(panel));
+        var bounds = panel.TransformToAncestor(overlay).TransformBounds(new Rect(panel.RenderSize));
+        Assert.Equal(overlay.ActualHeight - 12, bounds.Bottom, 2);
+        Assert.True(bounds.Top >= 0);
     }
 
     private static void Render(FrameworkElement element, string filename)

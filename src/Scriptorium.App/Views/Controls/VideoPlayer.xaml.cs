@@ -43,7 +43,9 @@ public partial class VideoPlayer : UserControl
         // The content moves into another window for fullscreen, and VideoView hosts its
         // overlay in a separate namescope. Neither binding may depend on that ancestry.
         PlayerLayout.SetBinding(DataContextProperty, new Binding(nameof(Player)) { Source = this });
+        VideoOverlay.SetBinding(DataContextProperty, new Binding(nameof(Player)) { Source = this });
         VideoBackButton.SetBinding(Button.CommandProperty, new Binding(nameof(BackCommand)) { Source = this });
+        FullscreenButton.SetBinding(DataContextProperty, new Binding { Source = this });
         _controlsIdleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _controlsIdleTimer.Tick += OnControlsIdle;
         foreach (var surface in new UIElement[] { PlayerLayout, VideoOverlay })
@@ -208,7 +210,7 @@ public partial class VideoPlayer : UserControl
             };
             element.BeginAnimation(OpacityProperty, animation);
         }
-        // Hidden preserves the toolbar's footprint, avoiding a resize of the native video surface.
+        // Both controls overlay the full video surface; hiding them never changes its size.
     }
 
     private void OnSkipBackwardClick(object sender, RoutedEventArgs args) => Player?.SeekBy(-5);
@@ -251,6 +253,8 @@ public partial class VideoPlayer : UserControl
 
     private void OnVideoPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs args)
     {
+        if (IsWithin(args.OriginalSource as DependencyObject, ControlPanel) ||
+            IsWithin(args.OriginalSource as DependencyObject, BackButtonChrome)) return;
         if (Player?.TogglePlaybackCommand.CanExecute(null) != true) return;
         Focus();
         Player.TogglePlaybackCommand.Execute(null);
@@ -295,6 +299,16 @@ public partial class VideoPlayer : UserControl
         if (!_isSeeking) return;
         _isSeeking = false;
         Player?.CommitSeek(SeekSlider.Value);
+    }
+
+    private static bool IsWithin(DependencyObject? element, DependencyObject ancestor)
+    {
+        while (element is not null)
+        {
+            if (ReferenceEquals(element, ancestor)) return true;
+            element = element is Visual ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);
+        }
+        return false;
     }
 
     private static bool IsInsideThumb(DependencyObject? element)
