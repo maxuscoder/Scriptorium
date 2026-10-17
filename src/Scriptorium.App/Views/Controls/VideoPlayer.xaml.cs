@@ -179,6 +179,10 @@ public partial class VideoPlayer : UserControl
     {
         if (_controlsVisible == visible) return;
         _controlsVisible = visible;
+        // The video overlay has a separate window, so update both input surfaces.
+        PlayerLayout.Cursor = visible ? null : Cursors.None;
+        VideoOverlay.Cursor = visible ? Cursors.Hand : Cursors.None;
+        PlayerLayout.ForceCursor = VideoOverlay.ForceCursor = !visible;
         foreach (var element in new FrameworkElement[] { BackButtonChrome, ControlPanel })
         {
             var from = element.Opacity;

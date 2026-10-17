@@ -94,6 +94,9 @@ internal static class VideoPlayerControlChecks
     {
         var back = (Button)view.FindName("VideoBackButton");
         var backChrome = (Border)view.FindName("BackButtonChrome");
+        var layout = (Grid)view.FindName("PlayerLayout");
+        var overlay = (Grid)view.FindName("VideoOverlay");
+        Assert.Null(overlay.ToolTip);
         var command = new RelayCommand(() => { });
         view.BackCommand = command;
         Assert.Same(command, back.Command);
@@ -117,6 +120,8 @@ internal static class VideoPlayerControlChecks
         Assert.Equal(0, panel.Opacity);
         Assert.Equal(0, backChrome.Opacity);
         Assert.False(panel.IsHitTestVisible);
+        Assert.Same(Cursors.None, layout.Cursor);
+        Assert.Same(Cursors.None, overlay.Cursor);
         Assert.Equal(height, panel.ActualHeight);
 
         // A synthetic MouseMove at the same screen position must not defeat auto-hide.
@@ -126,7 +131,6 @@ internal static class VideoPlayerControlChecks
         });
         Assert.Equal(Visibility.Hidden, panel.Visibility);
         // The VLC overlay has its own input route and must reveal both controls too.
-        var overlay = (Grid)view.FindName("VideoOverlay");
         overlay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(overlay), 0, Key.F2)
         {
             RoutedEvent = Keyboard.PreviewKeyDownEvent
@@ -134,6 +138,8 @@ internal static class VideoPlayerControlChecks
         Assert.Equal(Visibility.Visible, panel.Visibility);
         Assert.Equal(Visibility.Visible, backChrome.Visibility);
         Assert.True(panel.IsHitTestVisible);
+        Assert.NotSame(Cursors.None, layout.Cursor);
+        Assert.Same(Cursors.Hand, overlay.Cursor);
         if (SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast)
             Assert.True(panel.HasAnimatedProperties);
         await WaitUntilAsync(() => panel.Opacity == 1 && backChrome.Opacity == 1, TimeSpan.FromSeconds(2));
