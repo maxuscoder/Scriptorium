@@ -15,5 +15,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <None Update="Fixtures\preview.mp4" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures\fragmented-seek.mp4" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -100,6 +100,11 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         _media?.Dispose();
         _filePath = Path.GetFullPath(filePath);
         _media = new Media(_libVlc, new Uri(_filePath, UriKind.Absolute));
+        // VLC 3's native MP4 demuxer can seek into dependent H.264 frames,
+        // leaving corrupted pictures until the next keyframe. FFmpeg's demuxer
+        // supplies the reference frames needed to decode the requested position.
+        if (Path.GetExtension(_filePath).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov")
+            _media.AddOption(":demux=avformat");
         _player.Media = _media;
         _opening = true;
         _waitingForOutput = true;
