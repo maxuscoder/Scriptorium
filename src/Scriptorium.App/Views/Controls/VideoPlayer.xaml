@@ -52,7 +52,12 @@
                                                 <Border Background="Transparent" Padding="{TemplateBinding Padding}">
                                                     <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                                                       VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                                      RecognizesAccessKey="True" />
+                                                                      RecognizesAccessKey="True">
+                                                        <ContentPresenter.Effect>
+                                                            <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="1"
+                                                                              Opacity="1" RenderingBias="Quality" />
+                                                        </ContentPresenter.Effect>
+                                                    </ContentPresenter>
                                                 </Border>
                                             </ControlTemplate>
                                         </Setter.Value>
