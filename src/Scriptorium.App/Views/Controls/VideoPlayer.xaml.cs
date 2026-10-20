@@ -342,7 +342,8 @@ public partial class VideoPlayer : UserControl
 
         var fraction = Math.Clamp(args.GetPosition(track).X / track.ActualWidth, 0, 1);
         if (track.IsDirectionReversed) fraction = 1 - fraction;
-        slider.Value = slider.Minimum + ((slider.Maximum - slider.Minimum) * fraction);
+        // Preserve the playback-position (or volume) binding after a track click.
+        slider.SetCurrentValue(Slider.ValueProperty, slider.Minimum + ((slider.Maximum - slider.Minimum) * fraction));
         return true;
     }
 
