@@ -114,7 +114,11 @@ public static class LibVlcVideoViewBinding
     private static void SetRegion(IntPtr handle, BackdropClip clip)
     {
         if (handle == IntPtr.Zero) return;
-        var region = CreateRoundRectRgn(0, 0, clip.Width, clip.Height, clip.DiameterX, clip.DiameterY);
+        // A zero-radius round region still excludes the last row/column, exposing
+        // the black playback backing along the inline player's bottom edge.
+        var region = clip.DiameterX == 0 && clip.DiameterY == 0
+            ? CreateRectRgn(0, 0, clip.Width, clip.Height)
+            : CreateRoundRectRgn(0, 0, clip.Width, clip.Height, clip.DiameterX, clip.DiameterY);
         if (region == IntPtr.Zero) return;
         var viewport = CreateRectRgn(clip.Left, clip.Top, Math.Max(clip.Left, clip.Right), Math.Max(clip.Top, clip.Bottom));
         try

@@ -16,7 +16,7 @@
     <Border Background="{DynamicResource Brush.PlaybackSurface}">
         <Border.Style>
             <Style TargetType="Border">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
                 <Setter Property="BorderThickness" Value="1" />
                 <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
                 <Style.Triggers>
@@ -89,8 +89,8 @@
                             </Style>
                         </TextBlock.Style>
                     </TextBlock>
-                    <Border x:Name="ControlPanel" VerticalAlignment="Bottom" Background="{StaticResource Player.Panel}"
-                            CornerRadius="0,0,8,8" Padding="14,8,14,6">
+                    <Border x:Name="ControlPanel" Margin="0" VerticalAlignment="Bottom" Background="{StaticResource Player.Panel}"
+                            CornerRadius="0" Padding="14,16,14,6">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="24" />

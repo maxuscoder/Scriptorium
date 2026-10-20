@@ -6,6 +6,19 @@ namespace Scriptorium.App.Tests;
 
 internal static class NativeVideoWindowChecks
 {
+    internal static void AssertClientEdgesAreVisible(IntPtr handle)
+    {
+        var region = CreateRectRgn(0, 0, 0, 0);
+        try
+        {
+            Assert.NotEqual(0, GetWindowRgn(handle, region));
+            Assert.True(GetClientRect(handle, out var bounds));
+            Assert.True(PtInRegion(region, bounds.Right / 2, bounds.Bottom - 1), "Video clip drops the bottom pixel row.");
+            Assert.True(PtInRegion(region, bounds.Right - 1, bounds.Bottom / 2), "Video clip drops the right pixel column.");
+        }
+        finally { DeleteObject(region); }
+    }
+
     internal static void AssertNoStandaloneOutput()
     {
         var standalone = new List<IntPtr>();
@@ -34,4 +47,17 @@ internal static class NativeVideoWindowChecks
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowVisible(IntPtr handle);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll")]
+    private static extern bool GetClientRect(IntPtr handle, out NativeRect bounds);
+    [DllImport("user32.dll")]
+    private static extern int GetWindowRgn(IntPtr handle, IntPtr region);
+    [DllImport("gdi32.dll")]
+    private static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+    [DllImport("gdi32.dll")]
+    private static extern bool PtInRegion(IntPtr region, int x, int y);
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(IntPtr region);
 }
