@@ -97,8 +97,8 @@
         </Style>
         <Style x:Key="Hero.ActionSecondary" TargetType="Button" BasedOn="{StaticResource Button.Base}">
             <Setter Property="Width" Value="96" />
-            <Setter Property="Height" Value="37" />
-            <Setter Property="MinHeight" Value="37" />
+            <Setter Property="Height" Value="39" />
+            <Setter Property="MinHeight" Value="39" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="Medium" />

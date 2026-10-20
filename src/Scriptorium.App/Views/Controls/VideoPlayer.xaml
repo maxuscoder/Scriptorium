@@ -90,20 +90,21 @@
                         </TextBlock.Style>
                     </TextBlock>
                     <Border x:Name="ControlPanel" VerticalAlignment="Bottom" Background="{StaticResource Player.Panel}"
-                            CornerRadius="22" Margin="12,10,12,12" Padding="14,18,14,14">
+                            CornerRadius="0,0,8,8" Padding="14,8,14,6">
                         <Grid>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="24" />
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
-                            <Grid Margin="0,0,0,10">
-                                <TextBlock Text="{Binding CurrentPositionText}" Style="{StaticResource Player.Time}"
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding CurrentPositionText}" Style="{StaticResource Player.Time}" VerticalAlignment="Center" Margin="0,0,12,0"
                                            AutomationProperties.Name="Elapsed time" />
-                                <TextBlock Text="{Binding DurationText}" Style="{StaticResource Player.Time}"
-                                           HorizontalAlignment="Right" AutomationProperties.Name="Video duration" />
-                            </Grid>
-                            <Slider x:Name="SeekSlider" Grid.Row="1" Style="{StaticResource Player.Slider}"
+                                <Slider x:Name="SeekSlider" Grid.Column="1" Style="{StaticResource Player.Slider}"
                                     Minimum="0" Maximum="{Binding DurationSeconds}"
                                     Value="{Binding PositionSeconds, Mode=OneWay}" IsEnabled="{Binding CanSeek}"
                                     ValueChanged="OnSeekSliderValueChanged"
@@ -113,8 +114,11 @@
                                     PreviewKeyUp="OnSeekSliderPreviewKeyUp"
                                     LostKeyboardFocus="OnSeekSliderLostKeyboardFocus"
                                     AutomationProperties.Name="Video playback position" ToolTip="Drag to seek" />
-                            <Viewbox x:Name="ControlActionsViewport" Grid.Row="2" Margin="0,6,0,0" Stretch="Uniform" StretchDirection="DownOnly">
-                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="400">
+                                <TextBlock Grid.Column="2" Text="{Binding DurationText}" Style="{StaticResource Player.Time}"
+                                           VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Video duration" />
+                            </Grid>
+                            <Viewbox x:Name="ControlActionsViewport" Grid.Row="1" Margin="0,2,0,0" Stretch="Uniform" StretchDirection="DownOnly">
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="320">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -154,7 +158,7 @@
                                             </Grid>
                                         </Button>
                                         <Button Click="OnSkipBackwardClick" IsEnabled="{Binding CanSeek}"
-                                                Style="{StaticResource Player.Icon}" Margin="10,0,2,0"
+                                                Style="{StaticResource Player.Icon}" Margin="2,0,0,0"
                                                 ToolTip="Back 5 seconds (Left arrow)" AutomationProperties.Name="Back 5 seconds">
                                             <Path Width="20" Height="20" Data="M5,7 A7,7 0 1 1 4,13 M5,2 V7 H10"
                                                   Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
@@ -203,12 +207,12 @@
                                                 </Path>
                                             </Grid>
                                         </Button>
-                                        <Slider x:Name="VolumeSlider" Width="66" Margin="10,0,16,0" VerticalAlignment="Center"
+                                        <Slider x:Name="VolumeSlider" Width="56" Margin="6,0,10,0" VerticalAlignment="Center"
                                                 Style="{StaticResource Player.Slider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1"
                                                 Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 IsEnabled="{Binding IsReady}" PreviewMouseLeftButtonDown="OnVolumeSliderMouseLeftButtonDown"
                                                 AutomationProperties.Name="Volume" ToolTip="Volume" />
-                                        <ComboBox x:Name="PlaybackSpeedSelector" Margin="0,0,12,0" VerticalAlignment="Center"
+                                        <ComboBox x:Name="PlaybackSpeedSelector" Margin="0,0,6,0" VerticalAlignment="Center"
                                                   Style="{StaticResource Player.Speed}" AutomationProperties.Name="Playback speed" ToolTip="Playback speed"
                                                   IsEnabled="{Binding IsReady}" ItemsSource="{Binding PlaybackSpeedOptions}"
                                                   SelectedItem="{Binding PlaybackSpeed, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">

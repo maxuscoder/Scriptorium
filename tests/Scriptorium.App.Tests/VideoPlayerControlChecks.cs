@@ -182,7 +182,10 @@ internal static class VideoPlayerControlChecks
         Assert.Same(Window.GetWindow(overlay), Window.GetWindow(panel));
         Assert.NotSame(Window.GetWindow(view), Window.GetWindow(panel));
         var bounds = panel.TransformToAncestor(overlay).TransformBounds(new Rect(panel.RenderSize));
-        Assert.Equal(overlay.ActualHeight - 12, bounds.Bottom, 2);
+        Assert.Equal(overlay.ActualHeight, bounds.Bottom, 2);
+        Assert.Equal(0, bounds.Left, 2);
+        Assert.Equal(overlay.ActualWidth, bounds.Right, 2);
+        Assert.InRange(panel.ActualHeight, 64, 78);
         Assert.True(bounds.Top >= 0);
     }
 

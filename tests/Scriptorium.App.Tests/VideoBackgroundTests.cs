@@ -1,4 +1,6 @@
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -52,12 +54,48 @@ public sealed class VideoBackgroundTests
                     await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
                     // Match the details ViewModel's seek to a saved preview position.
                     playback.Position = TimeSpan.FromSeconds(1);
+                    IntPtr PictureWindow()
+                    {
+                        var background = FindWindowEx(surface.MediaPlayer!.Hwnd, IntPtr.Zero, null, null);
+                        return background == IntPtr.Zero ? IntPtr.Zero : FindWindowEx(background, IntPtr.Zero, null, null);
+                    }
+                    await WaitUntil(() => PictureWindow() != IntPtr.Zero);
+                    var nativePicture = PictureWindow();
+                    var name = new StringBuilder(128);
+                    GetClassName(nativePicture, name, name.Capacity);
+                    Assert.StartsWith("VLC video output", name.ToString());
+                    // This deliberately invisible test window can be occluded before the first
+                    // Direct3D presentation. Drive its native visibility explicitly to test the mask.
+                    if (!IsWindowVisible(nativePicture))
+                    {
+                        await WaitUntil(() => matte.Data.FillContains(center));
+                        AssertBlackPixel(matte, center);
+                        ShowWindowAsync(nativePicture, 4 /* SW_SHOWNOACTIVATE */);
+                    }
                     await WaitUntil(() => !matte.Data.FillContains(center),
-                        () => $"center={center}; surface={surface.RenderSize}; geometry={string.Join(';', ((GeometryGroup)matte.Data).Children.Select(g=>g.Bounds))}");
+                        () => $"center={center}; surface={surface.RenderSize}; geometry={string.Join(';', ((GeometryGroup)matte.Data).Children.Select(g=>g.Bounds))}; {DescribeNativeWindows(surface)}");
                     Assert.False(playback.IsPlaying);
                     AssertBlackPixel(matte, new Point(2, 2));
                     AssertTransparentPixel(matte, center);
                     Assert.True(matte.Data.FillContains(new Point(2, center.Y)), "Wide layout needs side bars.");
+
+                    if (visit == 0)
+                    {
+                        // A native output may hide/reappear after the initial settling timer.
+                        // Without any WPF resize or scroll, its gray parent must stay covered.
+                        await Task.Delay(1500);
+                        try
+                        {
+                            ShowWindowAsync(nativePicture, 0 /* SW_HIDE */);
+                            await WaitUntil(() => matte.Data.FillContains(center),
+                                () => "Hidden native video still exposes its gray parent before scrolling.");
+                            AssertBlackPixel(matte, center);
+                        }
+                        finally { ShowWindowAsync(nativePicture, 4 /* SW_SHOWNOACTIVATE */); }
+                        await WaitUntil(() => !matte.Data.FillContains(center));
+                        AssertTransparentPixel(matte, center);
+                        Assert.False(playback.IsPlaying);
+                    }
 
                     // Native picture dimensions settle asynchronously after a resize while paused.
                     window.Width = 400;
@@ -91,6 +129,36 @@ public sealed class VideoBackgroundTests
 
     private static void AssertBlackPixel(ShapePath matte, Point point) =>
         Assert.Equal(new byte[] { 0, 0, 0, 255 }, Pixel(matte, point));
+
+    private static string DescribeNativeWindows(VideoView surface)
+    {
+        var windows = new List<string>();
+        void Describe(IntPtr hwnd)
+        {
+            var name = new StringBuilder(128);
+            GetClassName(hwnd, name, name.Capacity);
+            windows.Add($"{hwnd}:{name}:visible={IsWindowVisible(hwnd)}");
+        }
+        var host = surface.MediaPlayer!.Hwnd;
+        Describe(host);
+        EnumChildWindows(host, (hwnd, _) => { Describe(hwnd); return true; }, IntPtr.Zero);
+        return $"loaded={surface.IsLoaded}, visible={surface.IsVisible}, windows={string.Join(';', windows)}";
+    }
+
+    private delegate bool EnumWindowCallback(IntPtr hwnd, IntPtr parameter);
+    [DllImport("user32.dll")]
+    private static extern bool EnumChildWindows(IntPtr parent, EnumWindowCallback callback, IntPtr parameter);
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? className, string? title);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int capacity);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindowAsync(IntPtr hwnd, int command);
 
     private static void AssertTransparentPixel(ShapePath matte, Point point) =>
         Assert.Equal(new byte[] { 0, 0, 0, 0 }, Pixel(matte, point));

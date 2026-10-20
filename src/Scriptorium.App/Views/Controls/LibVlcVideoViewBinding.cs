@@ -44,7 +44,7 @@ public static class LibVlcVideoViewBinding
             var background = FindWindowEx(host, IntPtr.Zero, null, null);
             var video = background == IntPtr.Zero ? IntPtr.Zero : FindWindowEx(background, IntPtr.Zero, null, null);
             var className = new StringBuilder(128);
-            if (video != IntPtr.Zero &&
+            if (video != IntPtr.Zero && IsWindowVisible(video) &&
                 GetClassName(video, className, className.Capacity) > 0 &&
                 className.ToString().StartsWith("VLC video output", StringComparison.Ordinal) &&
                 GetWindowRect(video, out var bounds) && bounds.Right > bounds.Left && bounds.Bottom > bounds.Top)
@@ -167,12 +167,21 @@ public static class LibVlcVideoViewBinding
         private HwndHost? _host;
         private bool _detached;
         private readonly DispatcherTimer _letterboxTimer;
+        private readonly WinEventCallback _nativeWindowChanged;
+        private readonly IntPtr _nativeEventHook;
+        private readonly HashSet<IntPtr> _nativeWindows = [];
         private int _letterboxRefreshes;
 
         internal OutputAttachment(VideoView view, LibVlcVideoOutput output)
         {
             _view = view;
             _output = output;
+            // VLC owns its picture windows on another thread. Native changes after the
+            // initial settling period do not raise WPF LayoutUpdated until the page scrolls.
+            _nativeWindowChanged = OnNativeWindowChanged;
+            _nativeEventHook = SetWinEventHook(0x8000 /* EVENT_OBJECT_CREATE */,
+                0x800B /* EVENT_OBJECT_LOCATIONCHANGE */, IntPtr.Zero, _nativeWindowChanged,
+                (uint)Environment.ProcessId, 0, 0 /* WINEVENT_OUTOFCONTEXT */);
             _letterboxTimer = new DispatcherTimer(DispatcherPriority.Render, view.Dispatcher)
             {
                 Interval = TimeSpan.FromMilliseconds(50)
@@ -222,6 +231,19 @@ public static class LibVlcVideoViewBinding
         }
         private void OnPaused(object? sender, EventArgs args) => QueueLetterboxRefresh();
 
+        private void OnNativeWindowChanged(IntPtr hook, uint eventType, IntPtr hwnd,
+            int objectId, int childId, uint threadId, uint timestamp)
+        {
+            if (_detached || _host is null || hwnd == IntPtr.Zero || objectId != 0 || childId != 0 ||
+                eventType is not (0x8000 or 0x8001 or 0x8002 or 0x8003 or 0x800B)) return;
+            var host = _host.Handle;
+            if (hwnd != host && !IsChild(host, hwnd) && !_nativeWindows.Contains(hwnd)) return;
+            // Remember children so their destroy event remains identifiable after unlinking.
+            if (eventType == 0x8001 /* EVENT_OBJECT_DESTROY */) _nativeWindows.Remove(hwnd);
+            else if (hwnd != host) _nativeWindows.Add(hwnd);
+            QueueLetterboxRefresh();
+        }
+
         private void QueueLetterboxRefresh()
         {
             if (_view.Dispatcher.HasShutdownStarted) return;
@@ -245,6 +267,8 @@ public static class LibVlcVideoViewBinding
         internal void Detach()
         {
             _detached = true;
+            if (_nativeEventHook != IntPtr.Zero) UnhookWinEvent(_nativeEventHook);
+            _nativeWindows.Clear();
             _letterboxTimer.Stop();
             _letterboxTimer.Tick -= OnLetterboxTick;
             _output.MediaPlayer.Vout -= OnVideoOutputCreated;
@@ -302,6 +326,22 @@ public static class LibVlcVideoViewBinding
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetClientRect(IntPtr hwnd, out NativeRect bounds);
+
+    private delegate void WinEventCallback(IntPtr hook, uint eventType, IntPtr hwnd,
+        int objectId, int childId, uint threadId, uint timestamp);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SetWinEventHook(uint eventMin, uint eventMax, IntPtr module,
+        WinEventCallback callback, uint processId, uint threadId, uint flags);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWinEvent(IntPtr hook);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsChild(IntPtr parent, IntPtr child);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string? className, string? title);
