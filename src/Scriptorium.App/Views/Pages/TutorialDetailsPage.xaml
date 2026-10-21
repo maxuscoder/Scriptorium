@@ -5,49 +5,43 @@
     xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
     xmlns:converters="clr-namespace:Scriptorium.App.Converters">
     <UserControl.Resources>
-        <Style x:Key="Course.Secondary" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="14,7" />
-        </Style>
-        <Style x:Key="Course.Reorder" TargetType="Button" BasedOn="{StaticResource Button.Text}">
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Width" Value="28" />
-            <Setter Property="MinHeight" Value="28" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="FontSize" Value="14" />
-        </Style>
-        <ControlTemplate x:Key="Course.ProgressTemplate" TargetType="ProgressBar">
-            <Grid>
-                <Border x:Name="PART_Track" Background="{TemplateBinding Background}" CornerRadius="2" />
-                <Grid x:Name="PART_Indicator" HorizontalAlignment="Left">
-                    <Border Background="{TemplateBinding Foreground}" CornerRadius="2" />
-                    <Ellipse Width="8" Height="8" Margin="0,-2,-4,-2" HorizontalAlignment="Right" Fill="{TemplateBinding Foreground}" />
-                </Grid>
-            </Grid>
-        </ControlTemplate>
-        <Style x:Key="Course.Row" TargetType="Button" BasedOn="{StaticResource Button.Base}">
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="12,10" />
-            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-            <Setter Property="FontWeight" Value="Normal" />
-            <Setter Property="MinHeight" Value="64" />
-            <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
-                </Trigger>
-                <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
-                    <Setter Property="BorderThickness" Value="2,0,0,0" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <converters:MediaPlayActionConverter x:Key="MediaPlayActionConverter" />
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="../../Resources/Theme/CollectionDetails.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <Style x:Key="Course.StatusCircle" TargetType="Border">
+                <Setter Property="Width" Value="21" /><Setter Property="Height" Value="21" />
+                <Setter Property="CornerRadius" Value="11" /><Setter Property="BorderThickness" Value="1" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasPlaybackProgress}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSurface}" />
+                        <Setter Property="BorderBrush" Value="Transparent" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style x:Key="Course.StatusGlyph" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="HorizontalAlignment" Value="Center" /><Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Text" Value="" />
+                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentStrong}" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasPlaybackProgress}" Value="True"><Setter Property="Text" Value="&#x25B6;" /></DataTrigger>
+                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                        <Setter Property="Text" Value="&#x2713;" /><Setter Property="Foreground" Value="{DynamicResource Brush.Success}" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+            <converters:MediaPlayActionConverter x:Key="MediaPlayActionConverter" />
+        </ResourceDictionary>
     </UserControl.Resources>
     <controls:MediaDetailsPage BackCommand="{Binding BackCommand}" EditCommand="{Binding EditCommand}" IsEditing="{Binding IsEditing}"
-                               IsVideoLayout="True" Title="{Binding Title}" HeaderProgressText="{Binding CourseProgressText}">
+                               IsVideoLayout="True" Title="{Binding Title}" HeaderProgressText="{Binding CompletionSummaryText}">
         <controls:MediaDetailsPage.ActionsMenu>
             <ContextMenu>
                 <MenuItem Header="{Binding ContinueLearningText}" Command="{Binding ContinueLearningCommand}" />
@@ -63,73 +57,104 @@
         </controls:MediaDetailsPage.VideoContent>
         <controls:MediaDetailsPage.MainDetailsContent>
             <StackPanel>
-                <StackPanel>
-                    <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedLessonPositionText}" />
-                    <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.SubsectionTitle}" Text="{Binding SelectedLesson.Title}"
-                               TextWrapping="Wrap" ToolTip="{Binding SelectedLesson.FilePath}" />
-                    <WrapPanel Margin="0,8,0,0">
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding SelectedLesson.Runtime}" />
-                        <TextBlock Margin="8,0" Style="{StaticResource Text.Metadata}" Text="&#x2022;" VerticalAlignment="Center" />
-                        <TextBlock Style="{StaticResource Text.Body}" Text="{Binding SelectedLesson.CompletionStatus}" />
-                    </WrapPanel>
-                    <WrapPanel Margin="0,14,0,0">
-                        <Button Margin="0,0,8,8" Command="{Binding Player.TogglePlaybackCommand}" Style="{StaticResource Button.Primary}">
-                            <Button.Content>
-                                <MultiBinding Converter="{StaticResource MediaPlayActionConverter}">
-                                    <Binding Path="Player.PlayActionText" /><Binding Path="SelectedLesson.PlayActionText" />
-                                </MultiBinding>
-                            </Button.Content>
-                        </Button>
-                        <Button Margin="0,0,8,8" Command="{Binding NextLessonCommand}" Content="Next &#x23ED;"
-                                Style="{StaticResource Course.Secondary}" AutomationProperties.Name="Next lesson" />
-                        <Button Margin="0,0,0,8" Command="{Binding ToggleFavoriteCommand}" ToolTip="{Binding FavoriteActionText}"
-                                AutomationProperties.Name="{Binding FavoriteActionText}">
-                            <Button.ContentTemplate><DataTemplate><TextBlock FontFamily="Segoe MDL2 Assets" FontSize="17" Text="{Binding}" /></DataTemplate></Button.ContentTemplate>
-                            <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
-                                    <Setter Property="Content" Value="&#xEB51;" />
-                                    <Style.Triggers><DataTrigger Binding="{Binding SelectedLesson.IsFavorite}" Value="True">
-                                        <Setter Property="Content" Value="&#xEB52;" /><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
-                                    </DataTrigger></Style.Triggers>
-                                </Style>
-                            </Button.Style>
-                        </Button>
-                    </WrapPanel>
-                    <TextBlock Margin="0,8,0,0" Text="{Binding SelectedLesson.Description}">
-                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
-                            <Setter Property="TextWrapping" Value="Wrap" />
-                            <Style.Triggers>
-                                <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger>
-                            </Style.Triggers>
-                        </Style></TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Margin="0,8,0,0" Text="File unavailable" Foreground="{DynamicResource Brush.Warning}">
-                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers><DataTrigger Binding="{Binding SelectedLesson.IsMissing}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-                        </Style></TextBlock.Style>
-                    </TextBlock>
-                    <TextBlock Margin="0,16,0,0" Text="No lessons have been found in this course yet.">
-                        <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
-                            <Setter Property="Visibility" Value="Collapsed" />
-                            <Style.Triggers><DataTrigger Binding="{Binding HasLessons}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
-                        </Style></TextBlock.Style>
-                    </TextBlock>
-                </StackPanel>
-                <StackPanel Margin="0,24,0,0">
-                    <TextBlock Margin="4,0,4,16" Style="{StaticResource Text.SubsectionTitle}" Text="Course content" />
-                    <TextBlock Margin="4,0,4,6" Style="{StaticResource Text.Metadata}" Text="{Binding CourseProgressText}" />
-                    <ProgressBar Height="3" Margin="4,0,4,14" Minimum="0" Maximum="100"
-                                 Background="{DynamicResource Brush.Border}" Foreground="{DynamicResource Brush.Accent}"
-                                 Value="{Binding CourseProgressPercentage, Mode=OneWay}" Template="{StaticResource Course.ProgressTemplate}"
-                                 AutomationProperties.Name="Course progress" />
-                    <TextBlock Text="{Binding OrderStatus}" AutomationProperties.LiveSetting="Polite" Margin="4,0,4,8" Style="{StaticResource Text.Metadata}" TextWrapping="Wrap" />
-                    <ItemsControl ItemsSource="{Binding Lessons}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,0,0,4">
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <Button Style="{StaticResource Course.Row}"
+                <Border Style="{StaticResource Collection.ContinueCard}" MinHeight="114" Visibility="{Binding HasLessons, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid>
+                        <Grid Margin="18,18,18,20">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <Border Width="45" Height="45" CornerRadius="11" Background="{DynamicResource Brush.AccentMuted}"
+                                    BorderBrush="{DynamicResource Brush.AccentBorder}" BorderThickness="1" VerticalAlignment="Center" Margin="0,0,18,0">
+                                <Path Data="M 0,0 L 0,16 L 14,8 Z" Fill="{DynamicResource Brush.AccentStrong}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                <TextBlock Style="{StaticResource Collection.Eyebrow}" TextTrimming="CharacterEllipsis">
+                                    <TextBlock.Text><Binding Path="SelectedLesson.NumberText" StringFormat="CONTINUE WATCHING &#xB7; LESSON {0}" /></TextBlock.Text>
+                                </TextBlock>
+                                <TextBlock Margin="0,8,0,0" Style="{StaticResource Text.CardTitle}" Text="{Binding SelectedLesson.Title}"
+                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding SelectedLesson.Title}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedLesson.Runtime}" />
+                                    <TextBlock Style="{StaticResource Text.Metadata}" Margin="9,0" Text="&#xB7;" />
+                                    <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding SelectedLesson.CompletionStatus}" />
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Command="{Binding Player.TogglePlaybackCommand}" Style="{StaticResource Button.Primary}" MinHeight="46" Padding="18,10" Margin="0,0,10,0">
+                                    <Button.Content><MultiBinding Converter="{StaticResource MediaPlayActionConverter}">
+                                        <Binding Path="Player.PlayActionText" /><Binding Path="SelectedLesson.PlayActionText" />
+                                    </MultiBinding></Button.Content>
+                                </Button>
+                                <Button Command="{Binding NextLessonCommand}" Content="Next &#x23ED;" Style="{StaticResource Collection.Next}" AutomationProperties.Name="Next lesson" />
+                                <Button Margin="8,0,0,0" Command="{Binding ToggleFavoriteCommand}" ToolTip="{Binding FavoriteActionText}" AutomationProperties.Name="{Binding FavoriteActionText}">
+                                    <Button.ContentTemplate><DataTemplate><TextBlock FontFamily="Segoe MDL2 Assets" FontSize="17" Text="{Binding}" /></DataTemplate></Button.ContentTemplate>
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+                                            <Setter Property="Content" Value="&#xEB51;" />
+                                            <Style.Triggers><DataTrigger Binding="{Binding SelectedLesson.IsFavorite}" Value="True">
+                                                <Setter Property="Content" Value="&#xEB52;" /><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                                            </DataTrigger></Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </StackPanel>
+                        </Grid>
+                        <ProgressBar Height="3" VerticalAlignment="Bottom" Style="{StaticResource Collection.Progress}" Background="Transparent"
+                                     Value="{Binding SelectedLesson.PlaybackProgressPercentage, Mode=OneWay}" AutomationProperties.Name="Lesson playback progress" />
+                    </Grid>
+                </Border>
+                <TextBlock Margin="0,12,0,0" Text="No lessons have been found in this course yet.">
+                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers><DataTrigger Binding="{Binding HasLessons}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                    </Style></TextBlock.Style>
+                </TextBlock>
+                <Border Margin="0,28,0,4" Padding="0,0,0,14" BorderBrush="{DynamicResource Brush.BorderStrong}" BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.PanelTitle}" Text="Course content" />
+                            <TextBlock Margin="14,0,0,0" VerticalAlignment="Center" Style="{StaticResource Text.Metadata}" Text="{Binding LessonCountText}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource Text.Metadata}" Text="{Binding CourseProgressPercentage, StringFormat={}{0:0}%}" Margin="0,0,10,0" />
+                            <ProgressBar Width="104" VerticalAlignment="Center" Style="{StaticResource Collection.Progress}"
+                                         Value="{Binding CourseProgressPercentage, Mode=OneWay}" AutomationProperties.Name="Course progress" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <TextBlock Text="{Binding OrderStatus}" AutomationProperties.LiveSetting="Polite">
+                    <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+                        <Setter Property="Margin" Value="4,0,4,8" />
+                        <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed" /></Trigger></Style.Triggers>
+                    </Style></TextBlock.Style>
+                </TextBlock>
+                <ItemsControl ItemsSource="{Binding VisibleLessons}" AlternationCount="2">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border CornerRadius="8" BorderThickness="1">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="Background" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Path=(ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}" Value="0">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.NavigationSelected}" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="40" /></Grid.ColumnDefinitions>
+                                    <Border Width="4" Height="44" CornerRadius="2" HorizontalAlignment="Left" Background="{DynamicResource Brush.Accent}">
+                                        <Border.Style><Style TargetType="Border">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                        </Style></Border.Style>
+                                    </Border>
+                                    <Button Style="{StaticResource Collection.Row}" Height="60" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" Padding="20,0,18,0"
                                             Command="{Binding DataContext.SelectLessonCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}"
                                             CommandParameter="{Binding}" AutomationProperties.Name="{Binding Title}">
                                         <Button.ToolTip><StackPanel MaxWidth="480">
@@ -137,39 +162,53 @@
                                             <TextBlock Margin="0,6,0,0" Text="{Binding FilePath}" TextWrapping="Wrap" />
                                             <TextBlock Margin="0,6,0,0" Text="{Binding Availability}" />
                                         </StackPanel></Button.ToolTip>
-                                        <StackPanel>
-                                            <TextBlock TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
-                                                <TextBlock.Text><MultiBinding StringFormat="{}{0} &#xB7; {1}"><Binding Path="NumberText" /><Binding Path="Title" /></MultiBinding></TextBlock.Text>
-                                                <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Body}">
-                                                    <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-                                                    <Style.Triggers><DataTrigger Binding="{Binding IsSelected}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers>
-                                                </Style></TextBlock.Style>
-                                            </TextBlock>
-                                            <TextBlock Margin="0,4,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap">
-                                                <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
-                                                    <Setter Property="Text" Value="{Binding CompletionStatus}" />
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.Success}" /></DataTrigger>
-                                                        <DataTrigger Binding="{Binding IsMissing}" Value="True"><Setter Property="Text" Value="File unavailable" /><Setter Property="Foreground" Value="{DynamicResource Brush.Warning}" /></DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style></TextBlock.Style>
-                                            </TextBlock>
-                                        </StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="38" /><ColumnDefinition Width="36" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource Collection.Number}" />
+                                            <Border Grid.Column="1" Style="{StaticResource Course.StatusCircle}" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource Course.StatusGlyph}" />
+                                            </Border>
+                                            <TextBlock Grid.Column="2" Style="{StaticResource Text.CardTitle}" FontSize="14" Text="{Binding Title}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                            <TextBlock Grid.Column="3" Style="{StaticResource Collection.Status}" VerticalAlignment="Center" />
+                                        </Grid>
                                     </Button>
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="2,0,0,0">
-                                        <Button Style="{StaticResource Course.Reorder}" Width="24" Height="24" MinHeight="24" Content="&#x2191;" ToolTip="Move lesson up" AutomationProperties.Name="Move lesson up"
-                                                Command="{Binding DataContext.MoveLessonUpCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}" CommandParameter="{Binding}" />
-                                        <Button Style="{StaticResource Course.Reorder}" Width="24" Height="24" MinHeight="24" Content="&#x2193;" ToolTip="Move lesson down" AutomationProperties.Name="Move lesson down"
-                                                Command="{Binding DataContext.MoveLessonDownCommand, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}" CommandParameter="{Binding}" />
-                                    </StackPanel>
+                                    <Button Grid.Column="1" Margin="0,0,6,0" Style="{StaticResource Button.Icon}" Click="OnLessonActions"
+                                            ToolTip="Reorder lesson" AutomationProperties.Name="Reorder lesson"
+                                            Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=controls:MediaDetailsPage}}">
+                                        <UniformGrid Rows="3" Columns="2" Width="10" Height="16">
+                                            <Ellipse Width="3" Height="3" Fill="{DynamicResource Brush.TextMuted}" />
+                                            <Ellipse Width="3" Height="3" Fill="{DynamicResource Brush.TextMuted}" />
+                                            <Ellipse Width="3" Height="3" Fill="{DynamicResource Brush.TextMuted}" />
+                                            <Ellipse Width="3" Height="3" Fill="{DynamicResource Brush.TextMuted}" />
+                                            <Ellipse Width="3" Height="3" Fill="{DynamicResource Brush.TextMuted}" />
+                                            <Ellipse Width="3" Height="3" Fill="{DynamicResource Brush.TextMuted}" />
+                                        </UniformGrid>
+                                        <Button.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="Move lesson up" Command="{Binding MoveLessonUpCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                <MenuItem Header="Move lesson down" Command="{Binding MoveLessonDownCommand}"
+                                                          CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                    </Button>
                                 </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Margin="4,16,4,4" Style="{StaticResource Text.Metadata}" TextWrapping="Wrap">
-                        <TextBlock.Text><MultiBinding StringFormat="{}{0} total &#xB7; {1} remaining"><Binding Path="TotalDurationText" /><Binding Path="RemainingDurationText" /></MultiBinding></TextBlock.Text>
-                    </TextBlock>
-                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Command="{Binding ShowAllLessonsCommand}" Content="{Binding AdditionalLessonsText}"
+                        Margin="0,6,0,0" Padding="0,14" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Brush.BorderStrong}">
+                    <Button.Style><Style TargetType="Button" BasedOn="{StaticResource Button.Text}">
+                        <Setter Property="FontSize" Value="12" />
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.TextMuted}" />
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers><DataTrigger Binding="{Binding HasAdditionalLessons}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                    </Style></Button.Style>
+                </Button>
             </StackPanel>
         </controls:MediaDetailsPage.MainDetailsContent>
         <controls:MediaDetailsPage.EditorContent>

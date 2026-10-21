@@ -22,7 +22,7 @@ internal static class TvShowDetailsResourceChecks
         source.Switch.Level = SourceLevels.Error;
         source.Listeners.Add(trace);
         var page = new TvShowDetailsPage { DataContext = viewModel };
-        var window = new Window { Width = 1100, Height = 1400, Content = page, ShowActivated = false, ShowInTaskbar = false };
+        var window = new Window { Width = 1100, Height = 1400, Content = new Grid { Children = { new ContentAtmosphereBackground(), page } }, ShowActivated = false, ShowInTaskbar = false };
         try
         {
             window.Show();
@@ -37,6 +37,13 @@ internal static class TvShowDetailsResourceChecks
             var rows = Descendants<Button>(page).Where(button => ReferenceEquals(button.Command, viewModel.SelectEpisodeCommand)).ToArray();
             Assert.Equal(3, rows.Length);
             Assert.All(rows, row => Assert.InRange(row.ActualHeight, 54, 90));
+            var first = rows[0].TransformToAncestor(details).Transform(new Point());
+            var second = rows[1].TransformToAncestor(details).Transform(new Point());
+            var third = rows[2].TransformToAncestor(details).Transform(new Point());
+            Assert.Equal(first.X, second.X, 2);
+            Assert.True(second.Y > first.Y);
+            Assert.True(third.X > first.X);
+            Assert.Equal(first.Y, third.Y, 2);
             Assert.DoesNotContain(Descendants<TextBlock>(page), text => text.Text.StartsWith(@"C:\Shows\"));
             Assert.Contains(Descendants<TextBlock>(page), text => text.Text == "The Garden Party");
             VerifyVideoLayout(details, player, rows);
@@ -84,6 +91,9 @@ internal static class TvShowDetailsResourceChecks
             Assert.InRange(player.ActualHeight, 220, 400);
             VerifyVideoLayout(details, player, rows);
             Render(page, "tv-show-details-narrow.png");
+            Assert.All(rows, row => Assert.Equal(rows[0].ActualWidth, row.ActualWidth, 2));
+            Assert.All(rows, row => Assert.Equal(rows[0].TransformToAncestor(details).Transform(new Point()).X,
+                row.TransformToAncestor(details).Transform(new Point()).X, 2));
             ((ScrollViewer)details.FindName("MainContent")).ScrollToEnd();
             await StaTest.DrainDispatcherAsync();
             Render(page, "tv-show-details-content-narrow.png");
@@ -132,7 +142,7 @@ internal static class TvShowDetailsResourceChecks
     private static void Render(FrameworkElement page, string filename)
     {
         var bitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(page);
+        bitmap.Render((FrameworkElement)page.Parent);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var output = File.Create(Path.Combine(AppContext.BaseDirectory, filename));

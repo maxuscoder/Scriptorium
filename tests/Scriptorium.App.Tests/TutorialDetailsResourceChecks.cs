@@ -22,7 +22,7 @@ internal static class TutorialDetailsResourceChecks
         source.Switch.Level = SourceLevels.Error;
         source.Listeners.Add(trace);
         var page = new TutorialDetailsPage { DataContext = viewModel };
-        var window = new Window { Width = 1100, Height = 1400, Content = page, ShowActivated = false, ShowInTaskbar = false };
+        var window = new Window { Width = 1100, Height = 1400, Content = new Grid { Children = { new ContentAtmosphereBackground(), page } }, ShowActivated = false, ShowInTaskbar = false };
         try
         {
             window.Show();
@@ -52,9 +52,14 @@ internal static class TutorialDetailsResourceChecks
             var rowCommand = (Button)rows[2];
             rowCommand.Command.Execute(rowCommand.CommandParameter);
             Assert.Same(viewModel.Lessons[2], viewModel.SelectedLesson);
-            var move = Descendants<Button>(page).Single(button => ReferenceEquals(button.Command, viewModel.MoveLessonUpCommand)
-                && ReferenceEquals(button.CommandParameter, viewModel.SelectedLesson));
+            var reorder = Descendants<Button>(page).Single(button => ReferenceEquals(button.DataContext, viewModel.SelectedLesson)
+                && System.Windows.Automation.AutomationProperties.GetName(button) == "Reorder lesson");
+            reorder.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            var move = reorder.ContextMenu.Items.OfType<MenuItem>().Single(item => ReferenceEquals(item.Command, viewModel.MoveLessonUpCommand));
+            Assert.Same(viewModel.SelectedLesson, move.CommandParameter);
             await ((AsyncRelayCommand)move.Command).ExecuteAsync(move.CommandParameter);
+            reorder.ContextMenu.IsOpen = false;
             Assert.Same(viewModel.SelectedLesson, viewModel.Lessons[1]);
             viewModel.EditCommand.Execute(null);
             await StaTest.DrainDispatcherAsync();
@@ -77,6 +82,7 @@ internal static class TutorialDetailsResourceChecks
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(Visibility.Visible, ((ScrollViewer)details.FindName("MainContent")).Visibility);
             Assert.InRange(player.ActualHeight, 220, 400);
+            rows = Descendants<Button>(page).Where(button => ReferenceEquals(button.Command, viewModel.SelectLessonCommand)).ToArray();
             VerifyVideoLayout(details, player, rows);
             Render(page, "tutorial-details-narrow.png");
             ((ScrollViewer)details.FindName("MainContent")).ScrollToEnd();
@@ -127,7 +133,7 @@ internal static class TutorialDetailsResourceChecks
     private static void Render(FrameworkElement page, string filename)
     {
         var bitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(page);
+        bitmap.Render((FrameworkElement)page.Parent);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var output = File.Create(Path.Combine(AppContext.BaseDirectory, filename));

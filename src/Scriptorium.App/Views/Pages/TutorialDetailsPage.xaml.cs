@@ -10,6 +10,13 @@ public partial class TutorialDetailsPage : UserControl
         InitializeComponent();
     }
 
+    private void OnLessonActions(object sender, RoutedEventArgs args)
+    {
+        var button = (Button)sender;
+        button.ContextMenu.PlacementTarget = button;
+        button.ContextMenu.IsOpen = true;
+    }
+
     private void OnPreviewSizeChanged(object sender, SizeChangedEventArgs args)
     {
         if (args.WidthChanged && args.NewSize.Width > 0)

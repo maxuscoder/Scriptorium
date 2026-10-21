@@ -259,6 +259,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
                 ?? Seasons.FirstOrDefault();
 
             OnPropertyChanged(nameof(SelectedEpisodePositionText));
+            OnPropertyChanged(nameof(SelectedEpisodeSummaryText));
             OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
@@ -299,6 +300,10 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
     public string SelectedEpisodePositionText => SelectedEpisode is null
         ? "No episodes available"
         : $"Episode {EpisodesInOrder().ToList().IndexOf(SelectedEpisode) + 1} of {EpisodesInOrder().Count()}";
+
+    public string SelectedEpisodeSummaryText => SelectedEpisode is null
+        ? "No episodes available"
+        : $"S{SelectedEpisode.SeasonNumber} E{SelectedEpisode.NumberText} · {SelectedEpisode.DisplayTitle}";
 
     public string CompletionActionText => SelectedEpisode?.IsCompleted == true
         ? "Mark episode unwatched"
@@ -1270,6 +1275,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
 
     private void NotifyShowStateChanged()
     {
+        OnPropertyChanged(nameof(SelectedEpisodeSummaryText));
         OnPropertyChanged(nameof(SeasonCountText));
         OnPropertyChanged(nameof(EpisodeCountText));
         OnPropertyChanged(nameof(HasEpisodes));
@@ -1341,6 +1347,7 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
         OnPropertyChanged(nameof(ProgressPercentage));
         OnPropertyChanged(nameof(ProgressPercentageText));
         OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(CompletionSummaryText));
     }
 
     public string EpisodeCountText =>
@@ -1357,6 +1364,8 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
     public string ProgressText => Episodes.Count == 0
         ? "No episodes"
         : $"{CompletedEpisodeCount} of {Episodes.Count} watched";
+
+    public string CompletionSummaryText => $"{CompletedEpisodeCount} / {Episodes.Count} completed";
 }
 
 /// <summary>Displays one TV-show episode and its resumable playback state.</summary>

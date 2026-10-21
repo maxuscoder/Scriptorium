@@ -87,7 +87,7 @@
                                     <Setter Property="BorderThickness" Value="0" />
                                     <Setter Property="CornerRadius" Value="0" />
                                     <Setter Property="Padding" Value="0" />
-                                    <Setter Property="Margin" Value="24,16,24,12" />
+                                    <Setter Property="Margin" Value="24,24,24,20" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -118,14 +118,21 @@
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True">
                                             <Setter Property="Text" Value="{Binding Title, ElementName=Root}" />
+                                            <Setter Property="FontSize" Value="26" />
+                                            <Setter Property="FontWeight" Value="Bold" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
                         <TextBlock x:Name="HeaderProgress" Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center"
-                                   Style="{StaticResource Text.Metadata}" Text="{Binding HeaderProgressText, ElementName=Root}" />
+                                   Text="{Binding HeaderProgressText, ElementName=Root}">
+                            <TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
+                                <Style.Triggers><DataTrigger Binding="{Binding IsVideoLayout, ElementName=Root}" Value="True"><Setter Property="FontSize" Value="16" /></DataTrigger></Style.Triggers>
+                            </Style></TextBlock.Style>
+                        </TextBlock>
                         <StackPanel Grid.Column="3" Orientation="Horizontal">
+                            <ContentPresenter VerticalAlignment="Center" Content="{Binding HeaderActionsContent, ElementName=Root}" />
                             <Button x:Name="ShowSidebarButton" Style="{StaticResource Button.Icon}"
                                     Click="OnToggleSidebar" Visibility="Collapsed" ToolTip="Show contents" AutomationProperties.Name="Show contents"><TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE8FD;" /></Button>
                             <Button Command="{Binding EditCommand, ElementName=Root}"

@@ -59,6 +59,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
     private string _mediaTypeStatus = string.Empty;
     private string _orderStatus = string.Empty;
     private bool _isReordering;
+    private bool _isLessonListExpanded;
     private bool _disposed;
 
     public TutorialDetailsPageViewModel(
@@ -106,6 +107,8 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         ContinueLearningCommand = new RelayCommand(ContinueLearning, CanContinueLearning);
         MoveLessonUpCommand = new AsyncRelayCommand(MoveLessonUpAsync, CanMoveLessonUp);
         MoveLessonDownCommand = new AsyncRelayCommand(MoveLessonDownAsync, CanMoveLessonDown);
+        ShowAllLessonsCommand = new RelayCommand(() => IsLessonListExpanded = true);
+        Lessons.CollectionChanged += (_, _) => NotifyLessonListChanged();
         PreviousLessonCommand = new RelayCommand(SelectPreviousLesson, CanSelectPreviousLesson);
         NextLessonCommand = new RelayCommand(SelectNextLesson, CanSelectNextLesson);
         ToggleLessonCompletionCommand = new AsyncRelayCommand(ToggleLessonCompletionAsync, () => SelectedLesson is not null);
@@ -160,6 +163,31 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
 
     public ObservableCollection<TutorialLessonViewModel> Lessons { get; } = [];
 
+    public IEnumerable<TutorialLessonViewModel> VisibleLessons => IsLessonListExpanded ? Lessons : Lessons.Take(6);
+
+    public bool HasAdditionalLessons => !IsLessonListExpanded && Lessons.Count > 6;
+
+    public string AdditionalLessonsText => $"{Math.Max(0, Lessons.Count - 6)} additional lesson{(Lessons.Count == 7 ? string.Empty : "s")} below";
+
+    public ICommand ShowAllLessonsCommand { get; }
+
+    private bool IsLessonListExpanded
+    {
+        get => _isLessonListExpanded;
+        set
+        {
+            if (SetProperty(ref _isLessonListExpanded, value)) NotifyLessonListChanged();
+        }
+    }
+
+    private void NotifyLessonListChanged()
+    {
+        if (SelectedLesson is not null && Lessons.IndexOf(SelectedLesson) >= 6) _isLessonListExpanded = true;
+        OnPropertyChanged(nameof(VisibleLessons));
+        OnPropertyChanged(nameof(HasAdditionalLessons));
+        OnPropertyChanged(nameof(AdditionalLessonsText));
+    }
+
     public string LessonCountText => $"{Lessons.Count} lesson{(Lessons.Count == 1 ? string.Empty : "s")}";
 
     /// <summary>Gets whether the course contains lessons to select.</summary>
@@ -202,6 +230,8 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         ? "No lessons available"
         : $"{CompletedLessonCount} of {Lessons.Count} lessons completed";
 
+    public string CompletionSummaryText => $"{CompletedLessonCount} of {Lessons.Count} completed";
+
     /// <summary>Gets whether every lesson in the course has been completed.</summary>
     public bool IsCourseCompleted => Lessons.Count > 0 && CompletedLessonCount == Lessons.Count;
 
@@ -230,6 +260,8 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
             {
                 lesson.IsSelected = ReferenceEquals(lesson, value);
             }
+
+            if (value is not null && Lessons.IndexOf(value) >= 6) IsLessonListExpanded = true;
 
             OnSelectedLessonChanged(previousMediaItemId != value?.MediaItemId);
             OnPropertyChanged(nameof(SelectedLessonPositionText));
@@ -430,6 +462,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         }
 
         _returnPage = returnPage;
+        if (_courseId != course.Id) _isLessonListExpanded = false;
         _courseId = course.Id;
         await PopulateCourseAsync(course, selectedLessonMediaItemId: null);
         return true;
@@ -729,6 +762,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         OnPropertyChanged(nameof(CompletedLessonCount));
         OnPropertyChanged(nameof(CourseProgressPercentage));
         OnPropertyChanged(nameof(CourseProgressText));
+        OnPropertyChanged(nameof(CompletionSummaryText));
         OnPropertyChanged(nameof(RemainingDurationText));
         OnPropertyChanged(nameof(IsCourseCompleted));
         OnPropertyChanged(nameof(HasIncompleteLessons));
@@ -1144,6 +1178,10 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
 
     public string PlayActionText => IsCompleted ? "Replay" : PlaybackPositionSeconds > 0 ? "Resume" : "Play";
 
+    public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(lesson.MediaItem);
+
+    public double PlaybackProgressPercentage => MediaPlaybackProgress.ProgressPercentage(lesson.MediaItem);
+
     public string FilePath => lesson.FilePath;
 
     public Guid MediaItemId => lesson.MediaItemId;
@@ -1199,6 +1237,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(IsCompleted));
         OnPropertyChanged(nameof(CompletionStatus));
         OnPropertyChanged(nameof(PlaybackPositionSeconds));
+        OnPropertyChanged(nameof(HasPlaybackProgress));
+        OnPropertyChanged(nameof(PlaybackProgressPercentage));
         OnPropertyChanged(nameof(PlayActionText));
     }
 
@@ -1217,6 +1257,8 @@ public sealed class TutorialLessonViewModel(Lesson lesson) : ViewModelBase, IMed
         OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(IsCompleted));
         OnPropertyChanged(nameof(CompletionStatus));
+        OnPropertyChanged(nameof(HasPlaybackProgress));
+        OnPropertyChanged(nameof(PlaybackProgressPercentage));
     }
 
     internal void SetSortOrder(int sortOrder)
