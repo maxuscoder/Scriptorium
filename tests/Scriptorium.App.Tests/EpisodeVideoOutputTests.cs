@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Native WPF UI")]
 public sealed class EpisodeVideoOutputTests
 {
     [Fact]

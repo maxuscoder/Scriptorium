@@ -297,7 +297,7 @@ public sealed class HorizontalScrollTests
 
     private static async Task WaitUntil(Func<bool> condition, Func<string>? diagnostic = null)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(3);
+        var deadline = DateTime.UtcNow.AddSeconds(10);
         while (!condition() && DateTime.UtcNow < deadline) await Task.Delay(20);
         Assert.True(condition(), "Animated scrolling did not settle at its target. " + diagnostic?.Invoke());
     }

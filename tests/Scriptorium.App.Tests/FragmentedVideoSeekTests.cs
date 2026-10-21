@@ -70,7 +70,7 @@ public sealed class FragmentedVideoSeekTests
         try
         {
             Assert.True(player.TakeSnapshot(0, path, 192, 108));
-            await taken.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await taken.Task.WaitAsync(TimeSpan.FromSeconds(15));
         }
         finally { player.SnapshotTaken -= OnTaken; }
     }

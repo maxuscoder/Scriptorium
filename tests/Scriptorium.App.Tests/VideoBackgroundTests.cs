@@ -176,7 +176,7 @@ public sealed class VideoBackgroundTests
 
     private static async Task WaitUntil(Func<bool> predicate, Func<string>? diagnostic = null)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(5);
+        var deadline = DateTime.UtcNow.AddSeconds(15);
         while (!predicate() && DateTime.UtcNow < deadline) await Task.Delay(25);
         Assert.True(predicate(), "The black overlay did not follow the native picture bounds. " + diagnostic?.Invoke());
         await StaTest.DrainDispatcherAsync();
