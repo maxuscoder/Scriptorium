@@ -42,7 +42,7 @@ public sealed class VideoPlayerViewTests
         {
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }
         });
-        await SmoothScrollTests.VerifySharedViewportStyleAsync(application.Resources);
+        await VerticalScrollTests.VerifySharedViewportStyleAsync(application.Resources);
         await VideoPlayerControlChecks.VerifyAsync();
         await DialogResourceChecks.VerifyAsync(application.Resources);
         await MediaDetailsResourceChecks.VerifyAsync();

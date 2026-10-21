@@ -320,7 +320,7 @@ internal static class HomeResourceChecks
                 var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
                 using var output = File.Create(Path.Combine(AppContext.BaseDirectory, $"home-{width:0}.png")); encoder.Save(output);
             }
-            // Wheel input over a shelf must smoothly reach the same distance as page scrolling.
+            // Wheel input over a shelf must immediately reach the same distance as page scrolling.
             outerScroll.RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(
                 System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, -120)
                 { RoutedEvent = UIElement.MouseWheelEvent });
@@ -332,7 +332,7 @@ internal static class HomeResourceChecks
             Descendants<MediaShelf>(page).First().RaiseEvent(new System.Windows.Input.MouseWheelEventArgs(
                 System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, -120)
                 { RoutedEvent = UIElement.PreviewMouseWheelEvent });
-            await SmoothScrollTests.WaitForOffsetAsync(outerScroll, nativeWheelOffset);
+            await VerticalScrollTests.WaitForOffsetAsync(outerScroll, nativeWheelOffset);
             await Task.Delay(150);
             Assert.Equal(nativeWheelOffset, outerScroll.VerticalOffset);
             outerScroll.ScrollToTop();
