@@ -10,6 +10,53 @@ namespace Scriptorium.App.Tests;
 public sealed class HorizontalScrollTests
 {
     [Theory]
+    [InlineData(240)]
+    [InlineData(1200)]
+    [InlineData(2400)]
+    public void PageSizedMovesKeepTheSameGentleCurveAsASingleWheelStep(double distance)
+    {
+        var wheel = new ScrollSpring();
+        var page = new ScrollSpring();
+        wheel.MoveBy(0, 120, 10000);
+        page.MoveBy(0, distance, 10000, responseDistance: distance);
+        double position = 0;
+        for (var frame = 0; frame < 12; frame++)
+        {
+            position = page.Advance(1.0 / 60, 10000);
+            Assert.Equal(wheel.Advance(1.0 / 60, 10000) / 120, position / distance, 8);
+        }
+        Assert.InRange(position / distance, 0.8, 0.95);
+        // Repeated clicks accumulate; a reversal immediately cancels pending travel.
+        page.MoveBy(position, distance, 10000, responseDistance: distance);
+        Assert.Equal(distance * 2, page.Target);
+        page.MoveBy(position, -distance, 10000, responseDistance: distance);
+        Assert.True(page.Advance(1.0 / 60, 10000) < position);
+    }
+
+    [Fact]
+    public Task HorizontalWheelHonorsScrollSettingsAndPartialDeltas() => StaTest.Run(async () =>
+    {
+        var viewer = new ScrollViewer { Content = new Border { Width = 4000, Height = 100 },
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden };
+        var window = new Window { Content = viewer, Width = 600, Height = 240,
+            ShowActivated = false, ShowInTaskbar = false };
+        try
+        {
+            window.Show();
+            await StaTest.DrainDispatcherAsync();
+            var step = SystemParameters.WheelScrollLines < 0 ? viewer.ViewportWidth : SystemParameters.WheelScrollLines * 16;
+            HorizontalScrollBehavior.ScrollWheel(viewer, 30);
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - step / 4) < 0.005);
+            HorizontalScrollBehavior.ScrollWheel(viewer, 90);
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - step) < 0.005);
+            HorizontalScrollBehavior.ScrollWheel(viewer, -120);
+            await WaitUntil(() => viewer.HorizontalOffset == 0);
+            Assert.Equal(0, viewer.VerticalOffset);
+        }
+        finally { window.Close(); }
+    });
+
+    [Theory]
     [InlineData(1)]
     [InlineData(120)]
     public void SmallAndNormalInputsMoveGraduallyAndSettleWithoutOvershoot(double delta)
@@ -222,6 +269,13 @@ public sealed class HorizontalScrollTests
             await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - 4040) < 0.005 &&
                 ReferenceEquals(originalTransform, panel.RenderTransform));
             Assert.Null(edgeFailure);
+
+            var pageTarget = viewer.HorizontalOffset + viewer.ViewportWidth * 0.8;
+            HorizontalScrollBehavior.ScrollPage(viewer, 0.8);
+            await WaitUntil(() => Math.Abs(viewer.HorizontalOffset - pageTarget) < 0.005 &&
+                ReferenceEquals(originalTransform, panel.RenderTransform));
+            Assert.Null(edgeFailure);
+            Assert.InRange(Descendants<ListBoxItem>(list).Count(), 1, 100);
         }
         finally
         {

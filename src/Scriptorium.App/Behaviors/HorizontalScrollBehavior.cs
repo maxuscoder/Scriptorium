@@ -14,6 +14,23 @@ internal static class HorizontalScrollBehavior
     internal static void ScrollBy(ScrollViewer viewer, double delta, bool animate = true) =>
         Motions.GetValue(viewer, static value => new ScrollMotion(value)).MoveBy(delta, animate);
 
+    internal static void ScrollPage(ScrollViewer viewer, double fraction)
+    {
+        var distance = viewer.ViewportWidth * fraction;
+        // Treat an arrow click as one gesture, regardless of viewport width.
+        // Otherwise a large page move accelerates like many rapid wheel notches.
+        Motions.GetValue(viewer, static value => new ScrollMotion(value))
+            .MoveBy(distance, animate: true, responseDistance: Math.Max(120, Math.Abs(distance)));
+    }
+
+    internal static void ScrollWheel(ScrollViewer viewer, int delta)
+    {
+        var lines = SystemParameters.WheelScrollLines;
+        if (lines == 0 || delta == 0) return;
+        if (lines < 0) ScrollPage(viewer, delta / 120.0);
+        else ScrollBy(viewer, delta / 120.0 * lines * 16.0);
+    }
+
     internal static void Stop(ScrollViewer viewer)
     {
         if (Motions.TryGetValue(viewer, out var motion)) motion.Stop();
@@ -42,7 +59,7 @@ internal static class HorizontalScrollBehavior
             viewer.ScrollChanged += OnScrollChanged;
         }
 
-        public void MoveBy(double delta, bool animate)
+        public void MoveBy(double delta, bool animate, double responseDistance = 120)
         {
             var current = _viewer.HorizontalOffset - (_translation?.X ?? 0);
             var maximum = _viewer.ScrollableWidth;
@@ -53,7 +70,7 @@ internal static class HorizontalScrollBehavior
                 return;
             }
 
-            _horizontal.MoveBy(current, delta, maximum);
+            _horizontal.MoveBy(current, delta, maximum, responseDistance);
             if (_running || !_horizontal.IsActive) return;
             _expectedHorizontal = _viewer.HorizontalOffset;
             _visibleHorizontal = _viewer.HorizontalOffset;
@@ -172,14 +189,13 @@ internal sealed class ScrollSpring
 {
     private const double BaseFrequency = 20;
     private const double MaximumFrequency = 80;
-    private const double WheelStep = 120;
     private double _frequency = BaseFrequency;
     private double _position;
     private double _velocity;
     public double Target { get; private set; }
     public bool IsActive { get; private set; }
 
-    public void MoveBy(double current, double delta, double maximum)
+    public void MoveBy(double current, double delta, double maximum, double responseDistance = 120)
     {
         if (!IsActive)
         {
@@ -199,7 +215,7 @@ internal sealed class ScrollSpring
         // pending travel. Preserve velocity and retain the faster response until the
         // gesture settles so releasing the wheel does not leave a long, slow tail.
         _frequency = Math.Max(_frequency, Math.Clamp(
-            BaseFrequency * Math.Abs(Target - _position) / WheelStep, BaseFrequency, MaximumFrequency));
+            BaseFrequency * Math.Abs(Target - _position) / Math.Max(1, responseDistance), BaseFrequency, MaximumFrequency));
         IsActive = Math.Abs(Target - _position) > 0.001;
     }
 

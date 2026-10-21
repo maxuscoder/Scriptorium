@@ -122,11 +122,13 @@ public partial class MediaShelf : UserControl
     private void OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e) => RestoreArrowFocusability();
     private void OnPrevious(object sender, RoutedEventArgs e)
     {
-        MoveBy(-(_scroll?.ViewportWidth ?? 0) * (double)FindResource("Home.Shelf.ScrollFraction"), true);
+        if (_scroll is not null)
+            HorizontalScrollBehavior.ScrollPage(_scroll, -(double)FindResource("Home.Shelf.ScrollFraction"));
     }
     private void OnNext(object sender, RoutedEventArgs e)
     {
-        MoveBy((_scroll?.ViewportWidth ?? 0) * (double)FindResource("Home.Shelf.ScrollFraction"), true);
+        if (_scroll is not null)
+            HorizontalScrollBehavior.ScrollPage(_scroll, (double)FindResource("Home.Shelf.ScrollFraction"));
     }
     private void RestoreArrowFocusability()
     {
@@ -141,9 +143,9 @@ public partial class MediaShelf : UserControl
     }
     private void OnWheel(object sender, MouseWheelEventArgs e)
     {
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && HasOverflow)
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && HasOverflow && _scroll is not null)
         {
-            MoveBy(-e.Delta, true);
+            HorizontalScrollBehavior.ScrollWheel(_scroll, -e.Delta);
             e.Handled = true;
             return;
         }
@@ -167,10 +169,10 @@ public partial class MediaShelf : UserControl
     }
     private IntPtr WindowProcedure(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        // WM_MOUSEHWHEEL: horizontal wheels and precision trackpads retain their pixel deltas.
-        if (!handled && message == 0x020E && IsMouseOver && HasOverflow)
+        // WM_MOUSEHWHEEL: preserve partial wheel deltas from high-resolution devices.
+        if (!handled && message == 0x020E && IsMouseOver && HasOverflow && _scroll is not null)
         {
-            MoveBy((short)((wParam.ToInt64() >> 16) & 0xffff), true);
+            HorizontalScrollBehavior.ScrollWheel(_scroll, (short)((wParam.ToInt64() >> 16) & 0xffff));
             handled = true;
         }
         return IntPtr.Zero;
