@@ -20,6 +20,10 @@ jobs:
         with:
           dotnet-version: 9.0.x
 
+      - name: Prepare Satoshi fonts
+        shell: pwsh
+        run: ./scripts/Prepare-Satoshi.ps1
+
       - name: Restore dependencies
         run: dotnet restore Scriptorium.sln
 
