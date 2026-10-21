@@ -37,16 +37,17 @@ internal static class VideoPlayerScrollChecks
             // Overlay input is in a separate presentation source from the owning page.
             Assert.NotSame(PresentationSource.FromVisual(player), PresentationSource.FromVisual(overlay));
             Wheel(overlay, -120);
-            await StaTest.DrainDispatcherAsync();
+            var wheelStep = SystemParameters.WheelScrollLines < 0 ? viewer.ViewportHeight : SystemParameters.WheelScrollLines * 16;
+            await SmoothScrollTests.WaitForOffsetAsync(viewer, Math.Min(wheelStep, viewer.ScrollableHeight));
             Assert.True(viewer.VerticalOffset > 0);
             Wheel(overlay, 120);
-            await StaTest.DrainDispatcherAsync();
+            await SmoothScrollTests.WaitForOffsetAsync(viewer, 0);
             Assert.Equal(0, viewer.VerticalOffset);
 
             foreach (var name in new[] { "SeekSlider", "VolumeSlider" })
             {
                 Wheel((Slider)player.FindName(name), -120);
-                await StaTest.DrainDispatcherAsync();
+                await SmoothScrollTests.WaitForOffsetAsync(viewer, Math.Min(wheelStep, viewer.ScrollableHeight));
                 Assert.True(viewer.VerticalOffset > 0);
                 viewer.ScrollToTop();
                 await StaTest.DrainDispatcherAsync();

@@ -236,6 +236,7 @@ public partial class VideoPlayer : UserControl
         {
             if (parent is not ScrollViewer viewer || viewer.VerticalScrollBarVisibility == ScrollBarVisibility.Disabled) continue;
             args.Handled = true;
+            if (Scriptorium.App.Behaviors.SmoothScrollBehavior.HandleWheel(viewer, args.Delta)) return;
             viewer.RaiseEvent(new MouseWheelEventArgs(args.MouseDevice, args.Timestamp, args.Delta)
             {
                 RoutedEvent = Mouse.MouseWheelEvent,

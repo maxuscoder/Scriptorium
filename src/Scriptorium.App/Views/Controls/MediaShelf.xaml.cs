@@ -151,6 +151,11 @@ public partial class MediaShelf : UserControl
         for (DependencyObject? ancestor = VisualTreeHelper.GetParent(this); ancestor is not null; ancestor = VisualTreeHelper.GetParent(ancestor))
             if (ancestor is ScrollViewer outer)
             {
+                if (SmoothScrollBehavior.HandleWheel(outer, e.Delta))
+                {
+                    e.Handled = true;
+                    break;
+                }
                 outer.RaiseEvent(new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
                 {
                     RoutedEvent = MouseWheelEvent,

@@ -6,7 +6,7 @@ using System.Windows.Media;
 
 namespace Scriptorium.App.Behaviors;
 
-/// <summary>Animated horizontal shelf navigation; vertical scrolling uses native WPF behavior.</summary>
+/// <summary>Animated horizontal shelf navigation with cached, virtualized content.</summary>
 internal static class HorizontalScrollBehavior
 {
     private static readonly ConditionalWeakTable<ScrollViewer, ScrollMotion> Motions = new();

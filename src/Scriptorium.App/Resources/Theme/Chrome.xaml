@@ -128,9 +128,13 @@
     </Style>
     <Style TargetType="ScrollBar" BasedOn="{StaticResource ScrollBar.Premium}" />
 
+    <Style TargetType="ScrollViewer">
+        <Setter Property="behaviors:SmoothScrollBehavior.IsEnabled" Value="True" />
+    </Style>
+
     <!-- Main viewports reserve the rail even when Auto collapses the scrollbar.
          PART names, offsets and CanContentScroll preserve native input and virtualization. -->
-    <Style x:Key="ScrollViewer.MainContent" TargetType="ScrollViewer">
+    <Style x:Key="ScrollViewer.MainContent" TargetType="ScrollViewer" BasedOn="{StaticResource {x:Type ScrollViewer}}">
         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
         <Setter Property="behaviors:VerticalScrollFade.Height" Value="48" />
         <Setter Property="Template">
