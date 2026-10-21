@@ -18,7 +18,6 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     private readonly LibVlcRuntime _runtime;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
-    private readonly LibVLC _libVlc;
     private readonly MediaPlayer _player;
     private readonly LibVlcVideoOutput _output;
     private Media? _media;
@@ -33,8 +32,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         ArgumentNullException.ThrowIfNull(runtime);
         _runtime = runtime;
         _dispatcher = Dispatcher.CurrentDispatcher;
-        _libVlc = runtime.Instance;
-        _player = new MediaPlayer(_libVlc);
+        _player = new MediaPlayer(runtime.Instance);
         _output = new LibVlcVideoOutput(_player, OnOutputAttached);
         VideoOutput = _output;
         _player.Playing += OnPlaying;
@@ -99,12 +97,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         Stop();
         _media?.Dispose();
         _filePath = Path.GetFullPath(filePath);
-        _media = new Media(_libVlc, new Uri(_filePath, UriKind.Absolute));
-        // VLC 3's native MP4 demuxer can seek into dependent H.264 frames,
-        // leaving corrupted pictures until the next keyframe. FFmpeg's demuxer
-        // supplies the reference frames needed to decode the requested position.
-        if (Path.GetExtension(_filePath).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov")
-            _media.AddOption(":demux=avformat");
+        _media = _runtime.CreateMedia(_filePath);
         _player.Media = _media;
         _opening = true;
         _waitingForOutput = true;

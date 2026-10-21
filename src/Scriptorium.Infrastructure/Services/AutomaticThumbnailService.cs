@@ -18,6 +18,7 @@ public sealed class AutomaticThumbnailService(
     ILogger<AutomaticThumbnailService>? logger = null,
     string? cacheDirectory = null) : IAutomaticThumbnailService, IDisposable
 {
+    private const string PreviewSuffix = "_decode-v2.jpg";
     private readonly string _cacheDirectory = cacheDirectory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Scriptorium", "GeneratedThumbnails", "v1");
@@ -182,7 +183,12 @@ public sealed class AutomaticThumbnailService(
             await DrainAsync(_priority, token).ConfigureAwait(false);
             await using var context = await contextFactory.CreateDbContextAsync(token);
             var query = context.MediaItems.AsNoTracking().Where(item => !item.IsMissing && item.ThumbnailOverride == null);
-            if (!includeExisting) query = query.Where(item => item.ThumbnailPath == null || item.DetectedThumbnailPath == null);
+            if (!includeExisting)
+            {
+                var generatedPrefix = Path.TrimEndingDirectorySeparator(_cacheDirectory) + Path.DirectorySeparatorChar;
+                query = query.Where(item => item.ThumbnailPath == null || item.DetectedThumbnailPath == null ||
+                    (item.DetectedThumbnailPath.StartsWith(generatedPrefix) && !item.DetectedThumbnailPath.EndsWith(PreviewSuffix)));
+            }
             if (afterPath is not null) query = query.Where(item => item.Path.CompareTo(afterPath) > 0);
             var page = await query.OrderBy(item => item.Path).Select(item => new { item.Id, item.Path })
                 .Take(128).ToListAsync(token).ConfigureAwait(false);
@@ -249,7 +255,7 @@ public sealed class AutomaticThumbnailService(
                 Directory.CreateDirectory(_cacheDirectory);
                 var sourceKey = generatedSourceKey = Hash(item.Path.ToUpperInvariant());
                 var fingerprint = Hash($"{sourceLength}:{sourceTicks}");
-                var output = Path.Combine(_cacheDirectory, $"{sourceKey}_{fingerprint}.jpg");
+                var output = Path.Combine(_cacheDirectory, $"{sourceKey}_{fingerprint}{PreviewSuffix}");
                 if (regenerate || !File.Exists(output))
                 {
                     if (!regenerate && _failures.TryGetValue(item.Id, out var failure) &&

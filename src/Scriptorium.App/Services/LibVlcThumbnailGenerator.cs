@@ -32,9 +32,10 @@ public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThu
         var samples = 0;
         var bestScore = double.MinValue;
         byte[]? best = null;
-        using var media = new Media(runtime().Instance, new Uri(Path.GetFullPath(sourcePath)),
-            ":no-audio", ":no-spu", ":avcodec-hw=none", ":avcodec-threads=2");
-        var player = new LibVLCSharp.Shared.MediaPlayer(runtime().Instance);
+        var decoder = runtime();
+        using var media = decoder.CreateMedia(sourcePath,
+            ":no-audio", ":no-spu", ":avcodec-hw=none", ":avcodec-threads=2", ":no-avcodec-corrupted");
+        var player = new LibVLCSharp.Shared.MediaPlayer(decoder.Instance);
         player.Playing += (_, _) => playing.TrySetResult();
         player.EncounteredError += (_, _) => { playing.TrySetException(new IOException("Video decoding failed.")); frameReady.TrySetResult(); };
         player.EndReached += (_, _) => frameReady.TrySetResult();

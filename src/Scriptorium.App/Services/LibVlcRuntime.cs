@@ -26,6 +26,17 @@ public sealed class LibVlcRuntime : IDisposable
 
     internal LibVLC Instance { get; }
 
+    internal Media CreateMedia(string sourcePath, params string[] options)
+    {
+        var path = Path.GetFullPath(sourcePath);
+        var media = new Media(Instance, new Uri(path, UriKind.Absolute), options);
+        // Keep playback and thumbnail extraction on the same reference-safe path.
+        // VLC 3's native MP4 demuxer can omit H.264 references in fragmented files.
+        if (Path.GetExtension(path).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov")
+            media.AddOption(":demux=avformat");
+        return media;
+    }
+
     private static void InitializeNativeLibrary(string nativeDirectory)
     {
         lock (InitializationGate)

@@ -266,6 +266,26 @@ public sealed class AutomaticThumbnailServiceTests
     }
 
     [Fact]
+    public async Task StartupRebuildsLegacyGeneratedPreviewsWithoutAScan()
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        await fixture.Automatic.RefreshAsync(fixture.Item.Id);
+        var current = (await fixture.StoredAsync()).DetectedThumbnailPath!;
+        var legacy = current.Replace("_decode-v2.jpg", ".jpg", StringComparison.Ordinal);
+        File.Move(current, legacy);
+        await fixture.Repository.UpdateDetectedThumbnailAsync(await fixture.StoredAsync(), legacy);
+        var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Manual.ThumbnailChanged += _ => completed.TrySetResult();
+        fixture.Automatic.Start();
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await fixture.Automatic.StopAsync();
+        Assert.Equal(2, fixture.Generator.Count);
+        Assert.Equal(current, (await fixture.StoredAsync()).ThumbnailPath);
+        Assert.True(File.Exists(current));
+        Assert.False(File.Exists(legacy));
+    }
+
+    [Fact]
     public async Task StartupSkipsCompletedPreviewsWhileVisibleRequestsStillCheckChangedSources()
     {
         await using var fixture = await Fixture.CreateAsync();
