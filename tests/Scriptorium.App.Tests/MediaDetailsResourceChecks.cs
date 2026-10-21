@@ -1,6 +1,9 @@
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Scriptorium.App.Commands;
@@ -14,6 +17,11 @@ internal static class MediaDetailsResourceChecks
 {
     internal static Task VerifyAsync() => MovieDetailsPageViewModelTests.WithEditableMovieOnDispatcher(async (viewModel, _) =>
     {
+        var trace = new BindingTrace();
+        var source = PresentationTraceSources.DataBindingSource;
+        var originalLevel = source.Switch.Level;
+        source.Switch.Level = SourceLevels.Error;
+        source.Listeners.Add(trace);
         var page = new MovieDetailsPage { DataContext = viewModel };
         var window = new Window { Width = 1100, Height = 1100, Content = page, ShowActivated = false, ShowInTaskbar = false };
         try
@@ -25,6 +33,22 @@ internal static class MediaDetailsResourceChecks
             var drawer = (Border)details.FindName("EditorPanel");
             Assert.Equal(Visibility.Collapsed, drawer.Visibility);
             Assert.Contains(Descendants<Button>(page), button => ReferenceEquals(button.Command, viewModel.Player.TogglePlaybackCommand));
+            Assert.True(details.IsVideoLayout);
+            Assert.False(details.ShowHeader);
+            var metadata = Descendants<UniformGrid>(page).Single();
+            Assert.Equal(4, metadata.Columns);
+            var file = Descendants<Expander>(page).Single();
+            Assert.False(file.IsExpanded);
+            var toggle = Descendants<ToggleButton>(file).Single();
+            toggle.SetCurrentValue(ToggleButton.IsCheckedProperty, true);
+            await StaTest.DrainDispatcherAsync();
+            Assert.True(file.IsExpanded);
+            Assert.Contains(Descendants<TextBlock>(file), text => text.IsVisible && text.Text == @"C:\Movies\movie.mp4");
+            Render(page, "media-details-file-expanded.png");
+            toggle.SetCurrentValue(ToggleButton.IsCheckedProperty, false);
+            await StaTest.DrainDispatcherAsync();
+            Assert.False(file.IsExpanded);
+            Assert.DoesNotContain(Descendants<TextBlock>(file), text => text.IsVisible && text.Text == @"C:\Movies\movie.mp4");
             Render(page, "media-details-wide.png");
 
             viewModel.EditCommand.Execute(null);
@@ -46,11 +70,25 @@ internal static class MediaDetailsResourceChecks
             viewModel.CancelEditCommand.Execute(null);
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(Visibility.Visible, ((ScrollViewer)details.FindName("MainContent")).Visibility);
-            Assert.True(((Grid)details.FindName("PreviewHost")).ActualHeight < 400);
+            Assert.InRange(player.ActualHeight, 220, 400);
+            Assert.Equal(2, metadata.Columns);
             Render(page, "media-details-narrow.png");
+            Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
         }
-        finally { window.Close(); }
+        finally
+        {
+            window.Close();
+            source.Listeners.Remove(trace);
+            source.Switch.Level = originalLevel;
+        }
     });
+
+    private sealed class BindingTrace : TraceListener
+    {
+        public StringBuilder Messages { get; } = new();
+        public override void Write(string? message) => Messages.Append(message);
+        public override void WriteLine(string? message) => Messages.AppendLine(message);
+    }
 
     private static void Render(FrameworkElement page, string filename)
     {

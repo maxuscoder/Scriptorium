@@ -123,6 +123,7 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         _movie = null;
         _selectedCategory = null;
         MetadataItems.Clear();
+        SummaryMetadataItems.Clear();
         FileMetadataItems.Clear();
         CategoryOptions.Clear();
     }
@@ -142,7 +143,10 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
     public string Description
     {
         get => _description;
-        private set => SetProperty(ref _description, value);
+        private set
+        {
+            if (SetProperty(ref _description, value)) OnPropertyChanged(nameof(HasDescription));
+        }
     }
 
     public string Availability
@@ -231,6 +235,30 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
 
     /// <summary>Gets the metadata rendered by the shared details page.</summary>
     public ObservableCollection<MediaDetailsMetadataItem> MetadataItems { get; } = [];
+
+    public ObservableCollection<MediaDetailsMetadataItem> SummaryMetadataItems { get; } = [];
+
+    public string RuntimeText => MediaRuntimeFormatter.Format(_movie?.RuntimeSeconds) is { Length: > 0 } runtime ? runtime.Replace("m", " min") : "Runtime unavailable";
+
+    public string CategoryText => _movie is null ? "Uncategorized" : MediaCategoryDisplay.Name(_movie);
+
+    public string ViewingStatus => _movie is null ? "Not started" : PlaybackText(_movie);
+
+    public bool IsCompleted => _movie?.IsCompleted == true;
+
+    public bool IsFavorite => _movie?.IsFavorite == true;
+
+    public bool HasPlaybackProgress => _movie is not null && MediaPlaybackProgress.HasPartialProgress(_movie);
+
+    public bool HasDescription => !string.IsNullOrWhiteSpace(_movie?.DisplayDescription);
+
+    public string FileName => _movie is null ? string.Empty : System.IO.Path.GetFileName(_movie.Path);
+
+    public string FileSizeText => _movie?.FileSize is { } size ? FormatFileSize(size) : "Size unavailable";
+
+    public string FavoriteButtonText => IsFavorite ? "Favorited" : "Favorite";
+
+    public string CompletionButtonText => IsCompleted ? "Watched" : "Mark watched";
 
     public ObservableCollection<MediaCategoryOptionViewModel> CategoryOptions { get; } = [];
 
@@ -446,6 +474,8 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
 
         movie.IsFavorite = !movie.IsFavorite;
         OnPropertyChanged(nameof(FavoriteActionText));
+        OnPropertyChanged(nameof(IsFavorite));
+        OnPropertyChanged(nameof(FavoriteButtonText));
     }
 
     private async Task<bool> SaveCategoryAsync()
@@ -916,6 +946,12 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
 
     private void PopulateMetadata(MediaItem movie)
     {
+        OnPropertyChanged(nameof(CategoryText));
+        SummaryMetadataItems.Clear();
+        SummaryMetadataItems.Add(new("Library", movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies"));
+        SummaryMetadataItems.Add(new("Release year", movie.EffectiveReleaseYear?.ToString() ?? "Not specified"));
+        SummaryMetadataItems.Add(new("Date added", FormatDate(movie.DateAdded)));
+        SummaryMetadataItems.Add(new("Last watched", movie.LastPlayed is { } watched ? FormatDate(watched) : "Never"));
         MetadataItems.Clear();
         AddMetadata("Library", movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies");
         AddMetadata("Category", MediaCategoryDisplay.Name(movie));
@@ -930,12 +966,24 @@ public sealed partial class MovieDetailsPageViewModel : PageViewModel, IDisposab
         FileMetadataItems.Add(new("Filename", System.IO.Path.GetFileName(movie.Path)));
         FileMetadataItems.Add(new("Location", movie.Path));
         FileMetadataItems.Add(new("Size", movie.FileSize is { } size ? FormatFileSize(size) : "Unknown"));
+        FileMetadataItems.Add(new("Format", System.IO.Path.GetExtension(movie.Path).TrimStart('.').ToUpperInvariant()));
     }
 
     private void AddMetadata(string label, string value) => MetadataItems.Add(new MediaDetailsMetadataItem(label, value));
 
     private void NotifyStateChanged()
     {
+        OnPropertyChanged(nameof(RuntimeText));
+        OnPropertyChanged(nameof(CategoryText));
+        OnPropertyChanged(nameof(ViewingStatus));
+        OnPropertyChanged(nameof(IsCompleted));
+        OnPropertyChanged(nameof(IsFavorite));
+        OnPropertyChanged(nameof(HasPlaybackProgress));
+        OnPropertyChanged(nameof(HasDescription));
+        OnPropertyChanged(nameof(FileName));
+        OnPropertyChanged(nameof(FileSizeText));
+        OnPropertyChanged(nameof(FavoriteButtonText));
+        OnPropertyChanged(nameof(CompletionButtonText));
         OnPropertyChanged(nameof(Title));
         OnPropertyChanged(nameof(MediaTypeLabel));
         OnPropertyChanged(nameof(CompletionActionText));

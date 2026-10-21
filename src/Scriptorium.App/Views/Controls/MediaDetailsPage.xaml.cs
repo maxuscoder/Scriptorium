@@ -102,6 +102,9 @@ public partial class MediaDetailsPage : UserControl
     public static readonly DependencyProperty HeaderActionsContentProperty =
         DependencyProperty.Register(nameof(HeaderActionsContent), typeof(object), typeof(MediaDetailsPage));
 
+    public static readonly DependencyProperty ShowHeaderProperty =
+        DependencyProperty.Register(nameof(ShowHeader), typeof(bool), typeof(MediaDetailsPage), new PropertyMetadata(true));
+
     public static readonly DependencyProperty ActionsMenuProperty =
         DependencyProperty.Register(nameof(ActionsMenu), typeof(ContextMenu), typeof(MediaDetailsPage));
 
@@ -148,6 +151,8 @@ public partial class MediaDetailsPage : UserControl
     public string Title { get => (string)GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
 
     public object? HeaderActionsContent { get => GetValue(HeaderActionsContentProperty); set => SetValue(HeaderActionsContentProperty, value); }
+
+    public bool ShowHeader { get => (bool)GetValue(ShowHeaderProperty); set => SetValue(ShowHeaderProperty, value); }
 
     public string TypeLabel { get => (string)GetValue(TypeLabelProperty); set => SetValue(TypeLabelProperty, value); }
 

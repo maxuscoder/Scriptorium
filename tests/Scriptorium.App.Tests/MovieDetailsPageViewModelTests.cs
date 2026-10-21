@@ -17,6 +17,27 @@ namespace Scriptorium.App.Tests;
 public sealed class MovieDetailsPageViewModelTests
 {
     [Fact]
+    public Task Movie_summary_updates_favorite_state_and_keeps_technical_details_separate() => WithEditableMovie(async (viewModel, _) =>
+    {
+        Assert.Equal(new[] { "Library", "Release year", "Date added", "Last watched" }, viewModel.SummaryMetadataItems.Select(item => item.Label));
+        Assert.Contains(viewModel.SummaryMetadataItems, item => item.Label == "Release year" && item.Value == "Not specified");
+        Assert.Equal("movie.mp4", viewModel.FileName);
+        Assert.Equal("65% watched", viewModel.ViewingStatus);
+        Assert.True(viewModel.HasPlaybackProgress);
+        Assert.False(viewModel.HasDescription);
+        Assert.Contains(viewModel.FileMetadataItems, item => item.Label == "Format" && item.Value == "MP4");
+        Assert.True(viewModel.IsFavorite);
+        Assert.Equal("Favorited", viewModel.FavoriteButtonText);
+        var notifications = new List<string?>();
+        viewModel.PropertyChanged += (_, args) => notifications.Add(args.PropertyName);
+        await ((AsyncRelayCommand)viewModel.ToggleFavoriteCommand).ExecuteAsync();
+        Assert.False(viewModel.IsFavorite);
+        Assert.Equal("Favorite", viewModel.FavoriteButtonText);
+        Assert.Contains(nameof(viewModel.IsFavorite), notifications);
+        Assert.Contains(nameof(viewModel.FavoriteButtonText), notifications);
+    });
+
+    [Fact]
     public Task Save_changes_persists_the_draft_and_preserves_playback_and_favorites() => WithEditableMovie(async (viewModel, repository) =>
     {
         var imagePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"scriptorium-edit-{Guid.NewGuid()}.png");
