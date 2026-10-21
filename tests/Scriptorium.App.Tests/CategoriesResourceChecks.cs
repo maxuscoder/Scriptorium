@@ -215,7 +215,8 @@ internal static class CategoriesResourceChecks
         Assert.Equal(((SolidColorBrush)page.FindResource("Brush.AccentBorder")).Color, ((SolidColorBrush)selected.BorderBrush).Color);
         Assert.Single(viewModel.Categories, category => category.IsSelected);
         foreach (var tile in tiles.Where(tile => !ReferenceEquals(tile, selected)))
-            Assert.Equal(Colors.Transparent, ((SolidColorBrush)tile.BorderBrush).Color);
+            Assert.Equal(tile.IsMouseOver ? ((SolidColorBrush)page.FindResource("Brush.BorderStrong")).Color : Colors.Transparent,
+                ((SolidColorBrush)tile.BorderBrush).Color);
         var title = (TextBlock)page.FindName("SelectedCollectionTitle");
         var lastBottom = tiles.Max(tile => tile.TranslatePoint(new Point(0, tile.ActualHeight), page).Y);
         Assert.InRange(title.TranslatePoint(new Point(), page).Y - lastBottom, 8, 28);

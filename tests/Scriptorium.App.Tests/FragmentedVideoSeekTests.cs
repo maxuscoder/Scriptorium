@@ -22,12 +22,15 @@ public sealed class FragmentedVideoSeekTests
         Directory.CreateDirectory(directory);
         try
         {
-            using var runtime = new LibVlcRuntime();
-            using var player = new LibVlcVideoPlayback(runtime);
+            // Keep the native parent alive until the player has stopped and disposed.
             using var host = new HwndSource(new HwndSourceParameters("Fragmented seek test")
             {
                 Width = 192, Height = 108, WindowStyle = unchecked((int)0x80000000)
             });
+            // Snapshot/color assertions must work without a GPU or a visible swap chain.
+            // Other playback tests exercise the application's default Direct3D output.
+            using var runtime = new LibVlcRuntime(["--avcodec-hw=none", "--vout=wingdi"]);
+            using var player = new LibVlcVideoPlayback(runtime);
             var output = (LibVlcVideoOutput)player.VideoOutput;
             output.MediaPlayer.Hwnd = host.Handle;
             var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

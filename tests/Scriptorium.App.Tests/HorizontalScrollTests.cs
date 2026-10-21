@@ -137,6 +137,31 @@ public sealed class HorizontalScrollTests
     }
 
     [Fact]
+    public Task ImmediateScrollRequestsAccumulateBeforeLayout() => StaTest.Run(async () =>
+    {
+        var viewer = new ScrollViewer { Content = new Border { Width = 2400, Height = 100 },
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden };
+        var window = new Window { Content = viewer, Width = 320, Height = 240,
+            ShowActivated = false, ShowInTaskbar = false };
+        try
+        {
+            window.Show();
+            await StaTest.DrainDispatcherAsync();
+            HorizontalScrollBehavior.ScrollBy(viewer, 120, animate: false);
+            HorizontalScrollBehavior.ScrollBy(viewer, 120, animate: false);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(240, viewer.HorizontalOffset);
+
+            viewer.ScrollToHorizontalOffset(600);
+            await StaTest.DrainDispatcherAsync();
+            HorizontalScrollBehavior.ScrollBy(viewer, -120, animate: false);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(480, viewer.HorizontalOffset);
+        }
+        finally { window.Close(); }
+    });
+
+    [Fact]
     public Task HorizontalAnimationYieldsToManualScrollingAndStopsOnUnload() => StaTest.Run(async () =>
     {
         var viewer = new ScrollViewer { Content = new Border { Height = 2400, Width = 2400 },

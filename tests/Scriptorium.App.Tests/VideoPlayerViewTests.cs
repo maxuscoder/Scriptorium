@@ -43,14 +43,6 @@ public sealed class VideoPlayerViewTests
         {
             Setters = { new Setter(UIElement.OpacityProperty, 0.0) }
         });
-        await VerticalScrollTests.VerifySharedViewportStyleAsync(application.Resources);
-        await VideoPlayerControlChecks.VerifyAsync();
-        await DialogResourceChecks.VerifyAsync(application.Resources);
-        await MediaDetailsResourceChecks.VerifyAsync();
-        await TutorialDetailsResourceChecks.VerifyAsync();
-        await TvShowDetailsResourceChecks.VerifyAsync();
-        await TvShowNavigationResourceChecks.VerifyAsync();
-        await CategoriesResourceChecks.VerifyAsync();
         using var runtime = new LibVlcRuntime();
         var factory = new RecordingFactory(runtime);
         var player = new VideoPlayerViewModel(factory);
@@ -75,6 +67,14 @@ public sealed class VideoPlayerViewTests
         var window = new Window { Width = 1000, Height = 900, Content = page, ShowActivated = false, ShowInTaskbar = false };
         try
         {
+            await VerticalScrollTests.VerifySharedViewportStyleAsync(application.Resources);
+            await VideoPlayerControlChecks.VerifyAsync();
+            await DialogResourceChecks.VerifyAsync(application.Resources);
+            await MediaDetailsResourceChecks.VerifyAsync();
+            await TutorialDetailsResourceChecks.VerifyAsync();
+            await TvShowDetailsResourceChecks.VerifyAsync();
+            await TvShowNavigationResourceChecks.VerifyAsync();
+            await CategoriesResourceChecks.VerifyAsync();
             // A details page can activate before VideoView has built its native render target.
             player.Activate();
             await Task.Delay(250);

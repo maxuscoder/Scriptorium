@@ -19,7 +19,9 @@ public sealed class VideoBackgroundTests
     [Fact]
     public Task OpeningAndReopeningPausedVideoPaintsBlackBarsBeforeScrolling() => StaTest.Run(async () =>
     {
-        using var runtime = new LibVlcRuntime();
+        // Direct3D may repeatedly hide an occluded picture on hosted runners. GDI
+        // keeps native visibility under this test's control while paused.
+        using var runtime = new LibVlcRuntime(["--avcodec-hw=none", "--vout=wingdi"]);
         var window = new Window
         {
             Width = 800, Height = 400,

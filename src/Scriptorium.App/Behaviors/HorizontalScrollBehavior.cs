@@ -49,6 +49,7 @@ internal static class HorizontalScrollBehavior
         private Transform? _originalTransform;
         private TranslateTransform? _translation;
         private double _visibleHorizontal;
+        private double? _immediateTarget;
 
         public ScrollMotion(ScrollViewer viewer)
         {
@@ -68,12 +69,15 @@ internal static class HorizontalScrollBehavior
 
         public void MoveBy(double delta, bool animate, double responseDistance = 120)
         {
-            var current = _viewer.HorizontalOffset - (_translation?.X ?? 0);
+            var current = _immediateTarget ?? (_viewer.HorizontalOffset - (_translation?.X ?? 0));
             var maximum = _viewer.ScrollableWidth;
             if (!animate || !_viewer.IsLoaded || !SystemParameters.ClientAreaAnimation || SystemParameters.HighContrast)
             {
                 Stop();
-                Apply(Math.Clamp(current + delta, 0, maximum));
+                // ScrollViewer applies requests during layout. Accumulate input that
+                // arrives before that pass even when system animations are disabled.
+                _immediateTarget = Math.Clamp(current + delta, 0, maximum);
+                Apply(_immediateTarget.Value);
                 return;
             }
 
@@ -163,6 +167,7 @@ internal static class HorizontalScrollBehavior
 
         private void OnScrollChanged(object sender, ScrollChangedEventArgs args)
         {
+            _immediateTarget = null;
             if (!_running) return;
             // Scrollbar, keyboard, focus navigation and programmatic jumps take over immediately.
             if (args.ExtentHeightChange == 0 && args.ViewportHeightChange == 0 &&
@@ -178,6 +183,7 @@ internal static class HorizontalScrollBehavior
         public void Stop(bool commitVisiblePosition = false)
         {
             _frameTimer.Stop();
+            _immediateTarget = null;
             if (commitVisiblePosition && _translation is not null)
                 Apply(_visibleHorizontal);
             if (_renderPanel is not null)
