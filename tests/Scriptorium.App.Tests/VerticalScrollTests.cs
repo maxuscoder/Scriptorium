@@ -6,6 +6,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Native WPF UI")]
 public sealed class VerticalScrollTests
 {
     internal static async Task VerifySharedViewportStyleAsync(ResourceDictionary resources)

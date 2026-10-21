@@ -95,7 +95,7 @@
                         </TextBlock.Style>
                     </TextBlock>
                     <Border x:Name="ControlPanel" Margin="0" VerticalAlignment="Bottom" Background="{StaticResource Player.Panel}"
-                            CornerRadius="0" Padding="14,16,14,6">
+                            CornerRadius="0" Padding="14,14,14,6">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="24" />

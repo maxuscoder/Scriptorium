@@ -7,6 +7,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Native WPF UI")]
 public sealed class HorizontalScrollTests
 {
     [Theory]

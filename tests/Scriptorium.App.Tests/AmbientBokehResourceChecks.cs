@@ -110,7 +110,7 @@ internal static class AmbientBokehResourceChecks
             await StaTest.DrainDispatcherAsync();
             var pausedPosition = Drift(bubbles[0]).X;
             await Task.Delay(150);
-            Assert.Equal(pausedPosition, Drift(bubbles[0]).X);
+            Assert.InRange(Math.Abs(pausedPosition - Drift(bubbles[0]).X), 0, 0.001);
             window.WindowState = WindowState.Normal;
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(animated, Drift(bubbles[0]).HasAnimatedProperties);

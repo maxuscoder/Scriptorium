@@ -13,6 +13,7 @@ using ShapePath = System.Windows.Shapes.Path;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Native WPF UI")]
 public sealed class VideoBackgroundTests
 {
     [Fact]

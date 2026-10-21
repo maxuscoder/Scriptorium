@@ -10,6 +10,7 @@ using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Native WPF UI")]
 public sealed class FragmentedVideoSeekTests
 {
     [Theory]

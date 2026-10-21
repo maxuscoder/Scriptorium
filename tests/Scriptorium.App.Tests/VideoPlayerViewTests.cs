@@ -14,6 +14,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Z App lifetime")]
 public sealed class VideoPlayerViewTests
 {
     [Fact]
