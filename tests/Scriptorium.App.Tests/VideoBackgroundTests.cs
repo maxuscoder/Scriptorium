@@ -23,7 +23,7 @@ public sealed class VideoBackgroundTests
         var window = new Window
         {
             Width = 800, Height = 400,
-            ShowActivated = false, ShowInTaskbar = false, Opacity = 0
+            ShowActivated = false, ShowInTaskbar = false
         };
         window.Show();
         try

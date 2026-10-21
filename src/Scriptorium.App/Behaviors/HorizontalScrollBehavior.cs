@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace Scriptorium.App.Behaviors;
 
@@ -40,6 +41,7 @@ internal static class HorizontalScrollBehavior
     {
         private readonly ScrollViewer _viewer;
         private readonly ScrollSpring _horizontal = new();
+        private readonly DispatcherTimer _frameTimer;
         private long _lastFrame;
         private bool _running;
         private double _expectedHorizontal;
@@ -51,6 +53,11 @@ internal static class HorizontalScrollBehavior
         public ScrollMotion(ScrollViewer viewer)
         {
             _viewer = viewer;
+            _frameTimer = new DispatcherTimer(DispatcherPriority.Input, viewer.Dispatcher)
+            {
+                Interval = TimeSpan.FromMilliseconds(16)
+            };
+            _frameTimer.Tick += OnRendering;
             viewer.Unloaded += (_, _) => Stop();
             viewer.IsVisibleChanged += (_, args) => { if (args.NewValue is false) Stop(); };
             viewer.PreviewMouseDown += (_, _) => Stop(commitVisiblePosition: true);
@@ -77,7 +84,7 @@ internal static class HorizontalScrollBehavior
             AttachRenderPanel();
             _lastFrame = Stopwatch.GetTimestamp();
             _running = true;
-            CompositionTarget.Rendering += OnRendering;
+            _frameTimer.Start();
         }
 
         private void OnRendering(object? sender, EventArgs args)
@@ -156,11 +163,11 @@ internal static class HorizontalScrollBehavior
 
         private void OnScrollChanged(object sender, ScrollChangedEventArgs args)
         {
-            if (!_running || args.OriginalSource != _viewer) return;
+            if (!_running) return;
             // Scrollbar, keyboard, focus navigation and programmatic jumps take over immediately.
             if (args.ExtentHeightChange == 0 && args.ViewportHeightChange == 0 &&
                 args.ExtentWidthChange == 0 && args.ViewportWidthChange == 0 &&
-                args.HorizontalChange != 0 && Math.Abs(_viewer.HorizontalOffset - _expectedHorizontal) > 1)
+                args.HorizontalChange != 0 && Math.Abs(args.HorizontalOffset - _expectedHorizontal) > 1)
             {
                 Stop();
                 return;
@@ -170,7 +177,7 @@ internal static class HorizontalScrollBehavior
 
         public void Stop(bool commitVisiblePosition = false)
         {
-            if (_running) CompositionTarget.Rendering -= OnRendering;
+            _frameTimer.Stop();
             if (commitVisiblePosition && _translation is not null)
                 Apply(_visibleHorizontal);
             if (_renderPanel is not null)

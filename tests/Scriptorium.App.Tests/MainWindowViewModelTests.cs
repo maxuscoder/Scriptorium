@@ -300,9 +300,25 @@ public sealed class MainWindowViewModelTests
             tutorialDetails?.Dispose();
             tvShowDetails?.Dispose();
             movieDetails?.Dispose();
-            File.Delete(databasePath);
+            await DeleteDatabaseWhenReleasedAsync(databasePath);
         }
     });
+
+    private static async Task DeleteDatabaseWhenReleasedAsync(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Delete(path);
+                return;
+            }
+            catch (IOException) when (attempt < 20)
+            {
+                await Task.Delay(50);
+            }
+        }
+    }
 
     private static Task OpenAsync(MainWindowViewModel viewModel, MediaItem mediaItem) =>
         ((AsyncRelayCommand)viewModel.OpenMediaCommand).ExecuteAsync(new LibraryMediaItemViewModel(mediaItem));
