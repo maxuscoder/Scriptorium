@@ -1,3 +1,5 @@
+using System.Windows.Input;
+
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>A section label in the unified, virtualized library browser.</summary>
@@ -9,32 +11,39 @@ public sealed class LibraryBrowserCardsRow
     private readonly IReadOnlyList<object> _sourceItems;
     private readonly int _startIndex;
     private readonly Func<object, object>? _createCardViewModel;
+    private object[]? _cards;
 
     public LibraryBrowserCardsRow(
         IReadOnlyList<object> sourceItems,
         int startIndex,
         int count,
-        Func<object, object>? createCardViewModel = null)
+        Func<object, object>? createCardViewModel = null,
+        bool isListLayout = false)
     {
         _sourceItems = sourceItems;
         _startIndex = startIndex;
         Count = count;
         _createCardViewModel = createCardViewModel;
+        IsListLayout = isListLayout;
     }
 
     public int Count { get; }
 
-    /// <summary>Enumerates only this row's items when WPF realizes the row.</summary>
-    public IEnumerable<object> Cards
+    public bool IsListLayout { get; }
+
+    /// <summary>Already-created cards, without realizing offscreen rows.</summary>
+    public IReadOnlyList<object> RealizedCards => _cards ?? [];
+
+    /// <summary>Creates this row's cards once, when WPF first realizes the row.</summary>
+    public IEnumerable<object> Cards => _cards ??= CreateCards().ToArray();
+
+    private IEnumerable<object> CreateCards()
     {
-        get
-        {
             for (var index = _startIndex; index < _startIndex + Count; index++)
             {
                 var sourceItem = _sourceItems[index];
                 yield return _createCardViewModel is null ? sourceItem : _createCardViewModel(sourceItem);
             }
-        }
     }
 }
 
@@ -44,8 +53,14 @@ public sealed class LibraryBrowserFoldersRow;
 /// <summary>Marker row for manual TV-show group management.</summary>
 public sealed class LibraryBrowserTvShowGroupsRow;
 
-/// <summary>Marker row for the library's empty state.</summary>
-public sealed class LibraryBrowserEmptyRow;
+/// <summary>Library empty-state copy and the existing commands used by its actions.</summary>
+public sealed record LibraryBrowserEmptyRow(
+    string Title,
+    string Description,
+    bool HasActiveFilters,
+    bool HasIndexedMedia,
+    ICommand ClearFiltersCommand,
+    ICommand AddFolderCommand);
 
 /// <summary>Marker row shown while the browser fetches another page.</summary>
 public sealed class LibraryBrowserLoadingRow;

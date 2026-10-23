@@ -1,0 +1,10 @@
+<UserControl
+    x:Class="Scriptorium.App.Views.Controls.CategoryArtworkPreview"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Loaded="OnLoaded"
+    Unloaded="OnUnloaded">
+    <Border Background="{DynamicResource Brush.SurfaceOverlay}" CornerRadius="{StaticResource CornerRadius.M}" ClipToBounds="True">
+        <Image x:Name="ArtworkImage" Stretch="UniformToFill" SizeChanged="OnArtworkSizeChanged" />
+    </Border>
+</UserControl>

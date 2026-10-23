@@ -3,6 +3,7 @@ using Scriptorium.App.Services;
 using Scriptorium.App.Commands;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
@@ -15,6 +16,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     private readonly IConfirmationDialog _confirmationDialog;
     private readonly IApplicationInfoService _applicationInfo;
     private readonly DatabaseLocation _databaseLocation;
+    private readonly IApplicationResetService _applicationResetService;
     private long _thumbnailCacheSizeBytes;
     private bool _isClearingThumbnailCache;
     private string _libraryLayout;
@@ -23,6 +25,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     private bool _automaticLibraryScanningEnabled;
     private int _libraryScanFrequencyMinutes;
     private bool _scanLibraryOnStartup;
+    private bool _automaticThumbnailsEnabled;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
     private double _playbackVolume;
     private double _playbackSpeed;
     private bool _startFullscreenOnPlayback;
@@ -39,8 +43,13 @@ public sealed class SettingsPageViewModel : PageViewModel
         IConfirmationDialog confirmationDialog,
         IApplicationInfoService applicationInfo,
         DatabaseLocation databaseLocation,
-        INotificationService? notifications = null)
+        IApplicationResetService applicationResetService,
+        IMediaFormatService mediaFormatService,
+        INotificationService? notifications = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
+        _automaticThumbnails = automaticThumbnails;
+        _automaticThumbnailsEnabled = settingsService.Settings.AutomaticThumbnailsEnabled;
         _settingsService = settingsService;
         _themeService = themeService;
         _libraryPage = libraryPage;
@@ -48,6 +57,8 @@ public sealed class SettingsPageViewModel : PageViewModel
         _confirmationDialog = confirmationDialog;
         _applicationInfo = applicationInfo;
         _databaseLocation = databaseLocation;
+        _applicationResetService = applicationResetService;
+        SupportedMediaFileTypes = string.Join(", ", mediaFormatService.SupportedExtensions.OrderBy(extension => extension, StringComparer.Ordinal));
         _libraryLayout = settingsService.Settings.LibraryLayout;
         _librarySortOrder = Enum.TryParse<LibrarySortOrder>(settingsService.Settings.LibrarySortOrder, out var sortOrder)
             ? sortOrder
@@ -69,6 +80,7 @@ public sealed class SettingsPageViewModel : PageViewModel
             ClearThumbnailCacheAsync,
             () => !IsClearingThumbnailCache);
         ResetSettingsCommand = new AsyncRelayCommand(ResetSettingsAsync);
+        ClearAllDataCommand = new AsyncRelayCommand(ClearAllDataAsync);
     }
 
     public override string Title => "Settings";
@@ -83,9 +95,12 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     public string BuildInformation => _applicationInfo.BuildInformation;
 
+    public string SupportedMediaFileTypes { get; }
+
     public string DatabaseLocation => _databaseLocation.FilePath;
 
-    public string ThumbnailCacheLocation => ThumbnailCache.CacheDirectory;
+    public string ThumbnailCacheLocation => _automaticThumbnails is null ? ThumbnailCache.CacheDirectory :
+        $"{ThumbnailCache.CacheDirectory}\n{_automaticThumbnails.CacheDirectory}";
 
     public Task EnsureLibraryStatisticsLoadedAsync() => _libraryPage.EnsureLibraryDataLoadedAsync();
 
@@ -94,6 +109,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     public AsyncRelayCommand ClearThumbnailCacheCommand { get; }
 
     public AsyncRelayCommand ResetSettingsCommand { get; }
+
+    public AsyncRelayCommand ClearAllDataCommand { get; }
 
     public long ThumbnailCacheSizeBytes
     {
@@ -118,7 +135,8 @@ public sealed class SettingsPageViewModel : PageViewModel
     }
 
     public async Task RefreshThumbnailCacheSizeAsync() =>
-        ThumbnailCacheSizeBytes = await ThumbnailCache.GetDiskCacheSizeAsync();
+        ThumbnailCacheSizeBytes = await ThumbnailCache.GetDiskCacheSizeAsync() +
+            (_automaticThumbnails is null ? 0 : await _automaticThumbnails.GetCacheSizeAsync());
 
     public IReadOnlyList<LibrarySortOption> SortOrderOptions => _libraryPage.SortOrders;
 
@@ -129,6 +147,18 @@ public sealed class SettingsPageViewModel : PageViewModel
     public IReadOnlyList<LibraryScanFrequencyOption> LibraryScanFrequencyOptions => LibraryScanFrequency.Options;
 
     public IReadOnlyList<PlaybackCompletionThresholdOption> PlaybackCompletionThresholdOptions => PlaybackCompletionThreshold.Options;
+
+    public bool AutomaticThumbnailsEnabled
+    {
+        get => _automaticThumbnailsEnabled;
+        set
+        {
+            if (!SetProperty(ref _automaticThumbnailsEnabled, value)) return;
+            _settingsService.Settings.AutomaticThumbnailsEnabled = value;
+            if (_automaticThumbnails is not null) _automaticThumbnails.Enabled = value;
+            SaveChanges();
+        }
+    }
 
     public bool AutomaticLibraryScanningEnabled
     {
@@ -354,6 +384,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         IsClearingThumbnailCache = true;
         try
         {
+            if (_automaticThumbnails is not null) await _automaticThumbnails.ClearCacheAsync();
             await ThumbnailCache.ClearDiskCacheAsync();
             await RefreshThumbnailCacheSizeAsync();
             _notifications?.Show("The thumbnail cache was cleared. Previews will regenerate when needed.");
@@ -366,6 +397,25 @@ public sealed class SettingsPageViewModel : PageViewModel
         finally
         {
             IsClearingThumbnailCache = false;
+        }
+    }
+
+    private async Task ClearAllDataAsync()
+    {
+        if (!_confirmationDialog.Confirm(
+                "Permanently clear all Scriptorium app data? This removes indexed folders, your library, categories, favorites, playback history, settings and cached thumbnails. Your original media files will not be deleted. Scriptorium will restart with an empty library and default settings. This cannot be undone.",
+                "Clear all app data"))
+        {
+            return;
+        }
+
+        try
+        {
+            await _applicationResetService.ResetAndRestartAsync();
+        }
+        catch (Exception exception)
+        {
+            _notifications?.Report(exception, "App data could not be cleared. Try again.", NotificationSeverity.Warning);
         }
     }
 
@@ -412,6 +462,7 @@ public sealed class SettingsPageViewModel : PageViewModel
             LibrarySortOrder = sortOrder;
         }
         FavoritesFirst = settings.LibraryFavoritesFirst;
+        AutomaticThumbnailsEnabled = settings.AutomaticThumbnailsEnabled;
         AutomaticLibraryScanningEnabled = settings.AutomaticLibraryScanningEnabled;
         LibraryScanFrequencyMinutes = settings.LibraryScanFrequencyMinutes;
         ScanLibraryOnStartup = settings.ScanLibraryOnStartup;

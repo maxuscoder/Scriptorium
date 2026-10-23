@@ -14,7 +14,7 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Displays the seasons, episodes, playback state, and navigation actions belonging to one TV show.
 /// </summary>
-public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
+public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 {
     private static readonly MediaCategoryOptionViewModel UncategorizedOption = new(null, "Uncategorized");
     private readonly ITvShowRepository _tvShowRepository;
@@ -25,6 +25,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     private readonly IMediaTypeService? _mediaTypeService;
     private readonly IMediaGroupingService? _mediaGroupingService;
     private readonly IMediaThumbnailService? _mediaThumbnailService;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private readonly IMediaItemRepository? _thumbnailRepository;
     private readonly IMediaDescriptionService? _mediaDescriptionService;
     private readonly IMediaReleaseYearService? _mediaReleaseYearService;
     private readonly IMediaMetadataResetService? _mediaMetadataResetService;
@@ -77,7 +79,9 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         IMediaThumbnailService? mediaThumbnailService = null,
         IMediaMetadataResetService? mediaMetadataResetService = null,
         IMediaDescriptionService? mediaDescriptionService = null,
-        IMediaReleaseYearService? mediaReleaseYearService = null)
+        IMediaReleaseYearService? mediaReleaseYearService = null,
+        IAutomaticThumbnailService? automaticThumbnails = null,
+        IMediaItemRepository? thumbnailRepository = null)
     {
         _tvShowRepository = tvShowRepository;
         _navigationService = navigationService;
@@ -88,6 +92,9 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         _mediaTypeService = mediaTypeService;
         _mediaGroupingService = mediaGroupingService;
         _mediaThumbnailService = mediaThumbnailService;
+        _automaticThumbnails = automaticThumbnails;
+        _thumbnailRepository = thumbnailRepository;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged += OnThumbnailChanged;
         _mediaMetadataResetService = mediaMetadataResetService;
         _mediaDescriptionService = mediaDescriptionService;
         _mediaReleaseYearService = mediaReleaseYearService;
@@ -116,11 +123,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         RestoreTitleCommand = new AsyncRelayCommand(RestoreTitleAsync, () => SelectedEpisode is not null);
         RestoreDescriptionCommand = new AsyncRelayCommand(RestoreDescriptionAsync, () => SelectedEpisode is not null);
         RestoreReleaseYearCommand = new AsyncRelayCommand(RestoreReleaseYearAsync, () => SelectedEpisode is not null);
+        RegenerateThumbnailCommand = new AsyncRelayCommand(RegenerateThumbnailAsync, () => _automaticThumbnails is not null);
         RestoreThumbnailCommand = new AsyncRelayCommand(RestoreThumbnailAsync, () => SelectedEpisode is not null);
         RestoreMediaTypeCommand = new AsyncRelayCommand(RestoreMediaTypeAsync, () => SelectedEpisode is not null);
         RestoreSeasonNumberCommand = new AsyncRelayCommand(RestoreSeasonNumberAsync, () => SelectedEpisode is not null);
         RestoreEpisodeNumberCommand = new AsyncRelayCommand(RestoreEpisodeNumberAsync, () => SelectedEpisode is not null);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, () => SelectedEpisode is not null);
+        InitializeEditingCommands();
         if (_player is not null)
         {
             _player.PlaybackProgressPersisted += OnPlaybackProgressPersisted;
@@ -154,6 +163,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         }
 
         _disposed = true;
+        if (_mediaThumbnailService is not null) _mediaThumbnailService.ThumbnailChanged -= OnThumbnailChanged;
         if (_player is not null)
         {
             _player.PlaybackProgressPersisted -= OnPlaybackProgressPersisted;
@@ -179,6 +189,14 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     }
 
     public ObservableCollection<TvShowSeasonViewModel> Seasons { get; } = [];
+
+    private TvShowSeasonViewModel? _selectedSeason;
+
+    public TvShowSeasonViewModel? SelectedSeason
+    {
+        get => _selectedSeason;
+        set => SetProperty(ref _selectedSeason, value);
+    }
 
     public string SeasonCountText => $"{Seasons.Count} season{(Seasons.Count == 1 ? string.Empty : "s")}";
 
@@ -226,6 +244,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         get => _selectedEpisode;
         private set
         {
+            var previousId = _selectedEpisode?.MediaItemId;
             if (!SetProperty(ref _selectedEpisode, value))
             {
                 return;
@@ -236,27 +255,36 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
                 episode.IsSelected = ReferenceEquals(episode, value);
             }
 
+            SelectedSeason = Seasons.FirstOrDefault(season => season.Episodes.Contains(value!))
+                ?? Seasons.FirstOrDefault();
+
             OnPropertyChanged(nameof(SelectedEpisodePositionText));
+            OnPropertyChanged(nameof(SelectedEpisodeSummaryText));
             OnPropertyChanged(nameof(HasManualMetadata));
             OnPropertyChanged(nameof(FavoriteActionText));
             OnPropertyChanged(nameof(CompletionActionText));
+            if (value is not null) _automaticThumbnails?.Enqueue([value.MediaItemId], prioritize: true);
             OpenSelectedEpisode();
-            SelectCategory(value?.CategoryId);
-            EditableTitle = value?.Title ?? string.Empty;
-            TitleStatus = string.Empty;
-            EditableDescription = value?.Description ?? string.Empty;
-            DescriptionStatus = string.Empty;
-            EditableReleaseYear = value?.ReleaseYear?.ToString() ?? string.Empty;
-            ReleaseYearStatus = string.Empty;
-            SelectedMediaType = value?.MediaType;
-            MediaTypeStatus = string.Empty;
-            EditableSeasonNumber = value?.SeasonNumber.ToString() ?? string.Empty;
-            SeasonNumberStatus = string.Empty;
-            EditableEpisodeNumber = value?.EpisodeNumber.ToString() ?? string.Empty;
-            EpisodeNumberStatus = string.Empty;
-            EditableThumbnailPath = value?.ThumbnailPath ?? string.Empty;
-            ThumbnailStatus = string.Empty;
-            MetadataResetStatus = string.Empty;
+            if (!IsSavingChanges || _saveSelectionChanged || value?.MediaItemId != _savingEpisodeId)
+            {
+                SelectCategory(value?.CategoryId);
+                EditableTitle = value?.Title ?? string.Empty;
+                TitleStatus = string.Empty;
+                EditableDescription = value?.Description ?? string.Empty;
+                DescriptionStatus = string.Empty;
+                EditableReleaseYear = value?.ReleaseYear?.ToString() ?? string.Empty;
+                ReleaseYearStatus = string.Empty;
+                SelectedMediaType = value?.MediaType;
+                MediaTypeStatus = string.Empty;
+                EditableSeasonNumber = value?.SeasonNumber.ToString() ?? string.Empty;
+                SeasonNumberStatus = string.Empty;
+                EditableEpisodeNumber = value?.EpisodeNumber.ToString() ?? string.Empty;
+                EpisodeNumberStatus = string.Empty;
+                EditableThumbnailPath = value?.ThumbnailPath ?? string.Empty;
+                ThumbnailStatus = string.Empty;
+                MetadataResetStatus = string.Empty;
+            }
+            OnSelectedEpisodeChanged(previousId != value?.MediaItemId);
             ((RelayCommand)PreviousEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)NextEpisodeCommand).NotifyCanExecuteChanged();
             ((RelayCommand)ContinueWatchingCommand).NotifyCanExecuteChanged();
@@ -272,6 +300,10 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public string SelectedEpisodePositionText => SelectedEpisode is null
         ? "No episodes available"
         : $"Episode {EpisodesInOrder().ToList().IndexOf(SelectedEpisode) + 1} of {EpisodesInOrder().Count()}";
+
+    public string SelectedEpisodeSummaryText => SelectedEpisode is null
+        ? "No episodes available"
+        : $"S{SelectedEpisode.SeasonNumber} E{SelectedEpisode.NumberText} · {SelectedEpisode.DisplayTitle}";
 
     public string CompletionActionText => SelectedEpisode?.IsCompleted == true
         ? "Mark episode unwatched"
@@ -424,6 +456,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
     public ICommand RestoreTitleCommand { get; }
     public ICommand RestoreDescriptionCommand { get; }
     public ICommand RestoreReleaseYearCommand { get; }
+    public ICommand RegenerateThumbnailCommand { get; }
     public ICommand RestoreThumbnailCommand { get; }
     public ICommand RestoreMediaTypeCommand { get; }
     public ICommand RestoreSeasonNumberCommand { get; }
@@ -484,6 +517,8 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         SelectedEpisode = EpisodesInOrder().FirstOrDefault(episode => episode.MediaItemId == selectedEpisodeMediaItemId)
             ?? EpisodesInOrder().FirstOrDefault(episode => !episode.IsCompleted)
             ?? EpisodesInOrder().FirstOrDefault();
+        SelectedSeason = Seasons.FirstOrDefault(season => season.Episodes.Contains(SelectedEpisode!))
+            ?? Seasons.FirstOrDefault();
         OnPropertyChanged(nameof(Title));
         NotifyShowStateChanged();
         ((RelayCommand)BackCommand).NotifyCanExecuteChanged();
@@ -664,31 +699,16 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
     private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)
     {
-        var update = () =>
-        {
-            var episode = EpisodesInOrder().FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
-            if (episode is null)
-            {
-                return;
-            }
-
-            episode.SetPlaybackProgress(
-                args.PositionSeconds,
-                args.DurationSeconds,
-                isCompleted: false,
-                lastWatched: args.LastWatched,
-                completionThreshold: args.CompletionThreshold);
-            NotifyShowStateChanged();
-        };
-
-        var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            _ = dispatcher.InvokeAsync(update);
-            return;
-        }
-
-        update();
+        // VideoPlayerViewModel publishes saved snapshots on its owning UI dispatcher.
+        var episode = EpisodesInOrder().FirstOrDefault(candidate => candidate.MediaItemId == args.MediaItemId);
+        if (episode is null) return;
+        episode.SetPlaybackProgress(
+            args.PositionSeconds,
+            args.DurationSeconds,
+            isCompleted: false,
+            lastWatched: args.LastWatched,
+            completionThreshold: args.CompletionThreshold);
+        NotifyShowStateChanged();
     }
 
     private async void OnPlaybackCompleted(object? sender, PlaybackCompletedEventArgs args)
@@ -775,40 +795,41 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         }
     }
 
-    private async Task SaveCategoryAsync()
+    private async Task<bool> SaveCategoryAsync()
     {
         var episode = SelectedEpisode;
         var category = SelectedCategory;
         if (episode is null || category is null)
         {
-            return;
+            return false;
         }
 
         if (episode.CategoryId == category.Id)
         {
             CategoryStatus = "No category changes to save.";
-            return;
+            return true;
         }
 
         if (!await _categoryService.AssignToMediaAsync(episode.MediaItemId, category.Id))
         {
             CategoryStatus = "The category assignment could not be saved.";
-            return;
+            return false;
         }
 
         episode.SetCategory(category);
         CategoryStatus = category.Id is null
             ? "Category assignment removed."
             : $"Category '{category.Name}' assigned.";
+        return true;
     }
 
-    private async Task SaveTitleAsync()
+    private async Task<bool> SaveTitleAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || _mediaTitleService is null)
         {
             TitleStatus = "The title could not be saved.";
-            return;
+            return false;
         }
 
         string normalizedTitle;
@@ -819,54 +840,56 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             TitleStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaTitleService.SaveAsync(episode.MediaItemId, normalizedTitle))
         {
             TitleStatus = "The title could not be saved.";
-            return;
+            return false;
         }
 
         episode.SetTitleOverride(normalizedTitle);
         EditableTitle = episode.Title;
         TitleStatus = "Custom title saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
-    private async Task SaveMediaTypeAsync()
+    private async Task<bool> SaveMediaTypeAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || SelectedMediaType is not { } mediaType || _mediaTypeService is null)
         {
             MediaTypeStatus = "The media type could not be saved.";
-            return;
+            return false;
         }
 
         if (episode.MediaType == mediaType)
         {
             MediaTypeStatus = "No media type changes to save.";
-            return;
+            return true;
         }
 
         if (!await _mediaTypeService.SaveAsync(episode.MediaItemId, mediaType))
         {
             MediaTypeStatus = "The media type could not be saved.";
-            return;
+            return false;
         }
 
         episode.SetMediaType(mediaType);
         MediaTypeStatus = $"Media type changed to {MediaTypeOptions.SingularName(mediaType)}.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
-    private async Task SaveSeasonNumberAsync()
+    private async Task<bool> SaveSeasonNumberAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || _mediaGroupingService is null)
         {
             SeasonNumberStatus = "The season number could not be saved.";
-            return;
+            return false;
         }
 
         int seasonNumber;
@@ -877,13 +900,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             SeasonNumberStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (episode.SeasonNumber == seasonNumber)
         {
             SeasonNumberStatus = "No season number changes to save.";
-            return;
+            return true;
         }
 
         try
@@ -893,27 +916,28 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             SeasonNumberStatus = exception.Message;
-            return;
+            return false;
         }
         catch (InvalidOperationException exception)
         {
             SeasonNumberStatus = exception.Message;
-            return;
+            return false;
         }
 
         await RefreshLoadedShowAsync();
         EditableSeasonNumber = seasonNumber.ToString();
         SeasonNumberStatus = $"Season number changed to {seasonNumber}.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
-    private async Task SaveEpisodeNumberAsync()
+    private async Task<bool> SaveEpisodeNumberAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || _mediaGroupingService is null)
         {
             EpisodeNumberStatus = "The episode number could not be saved.";
-            return;
+            return false;
         }
 
         int episodeNumber;
@@ -924,13 +948,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             EpisodeNumberStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (episode.EpisodeNumber == episodeNumber)
         {
             EpisodeNumberStatus = "No episode number changes to save.";
-            return;
+            return true;
         }
 
         try
@@ -940,18 +964,19 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             EpisodeNumberStatus = exception.Message;
-            return;
+            return false;
         }
         catch (InvalidOperationException exception)
         {
             EpisodeNumberStatus = exception.Message;
-            return;
+            return false;
         }
 
         await RefreshLoadedShowAsync();
         EditableEpisodeNumber = episodeNumber.ToString();
         EpisodeNumberStatus = $"Episode number changed to {episodeNumber}.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
     private void ChooseThumbnail()
@@ -971,13 +996,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         ThumbnailStatus = string.Empty;
     }
 
-    private async Task SaveThumbnailAsync()
+    private async Task<bool> SaveThumbnailAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || _mediaThumbnailService is null)
         {
             ThumbnailStatus = "The thumbnail could not be saved.";
-            return;
+            return false;
         }
 
         string normalizedPath;
@@ -988,19 +1013,20 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             ThumbnailStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaThumbnailService.SaveAsync(episode.MediaItemId, normalizedPath))
         {
             ThumbnailStatus = "The thumbnail could not be saved.";
-            return;
+            return false;
         }
 
         episode.SetThumbnailPath(normalizedPath);
         EditableThumbnailPath = normalizedPath;
         ThumbnailStatus = "Custom thumbnail saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
     private async Task ResetMetadataAsync()
@@ -1031,13 +1057,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         MetadataResetStatus = "Detected metadata restored.";
     }
 
-    private async Task SaveDescriptionAsync()
+    private async Task<bool> SaveDescriptionAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || _mediaDescriptionService is null)
         {
             DescriptionStatus = "The description could not be saved.";
-            return;
+            return false;
         }
 
         string? normalizedDescription;
@@ -1048,13 +1074,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             DescriptionStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaDescriptionService.SaveAsync(episode.MediaItemId, normalizedDescription))
         {
             DescriptionStatus = "The description could not be saved.";
-            return;
+            return false;
         }
 
         episode.SetDescriptionOverride(normalizedDescription);
@@ -1063,15 +1089,16 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             ? "Custom description cleared."
             : "Custom description saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
-    private async Task SaveReleaseYearAsync()
+    private async Task<bool> SaveReleaseYearAsync()
     {
         var episode = SelectedEpisode;
         if (episode is null || _mediaReleaseYearService is null)
         {
             ReleaseYearStatus = "The release year could not be saved.";
-            return;
+            return false;
         }
 
         int? normalizedReleaseYear;
@@ -1082,13 +1109,13 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
         catch (ArgumentException exception)
         {
             ReleaseYearStatus = exception.Message;
-            return;
+            return false;
         }
 
         if (!await _mediaReleaseYearService.SaveAsync(episode.MediaItemId, normalizedReleaseYear))
         {
             ReleaseYearStatus = "The release year could not be saved.";
-            return;
+            return false;
         }
 
         episode.SetReleaseYearOverride(normalizedReleaseYear);
@@ -1097,6 +1124,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
             ? "Custom release year cleared."
             : "Custom release year saved.";
         OnPropertyChanged(nameof(HasManualMetadata));
+        return true;
     }
 
     private async Task RestoreTitleAsync()
@@ -1247,6 +1275,7 @@ public sealed class TvShowDetailsPageViewModel : PageViewModel, IDisposable
 
     private void NotifyShowStateChanged()
     {
+        OnPropertyChanged(nameof(SelectedEpisodeSummaryText));
         OnPropertyChanged(nameof(SeasonCountText));
         OnPropertyChanged(nameof(EpisodeCountText));
         OnPropertyChanged(nameof(HasEpisodes));
@@ -1318,6 +1347,7 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
         OnPropertyChanged(nameof(ProgressPercentage));
         OnPropertyChanged(nameof(ProgressPercentageText));
         OnPropertyChanged(nameof(ProgressText));
+        OnPropertyChanged(nameof(CompletionSummaryText));
     }
 
     public string EpisodeCountText =>
@@ -1334,6 +1364,8 @@ public sealed class TvShowSeasonViewModel : ViewModelBase
     public string ProgressText => Episodes.Count == 0
         ? "No episodes"
         : $"{CompletedEpisodeCount} of {Episodes.Count} watched";
+
+    public string CompletionSummaryText => $"{CompletedEpisodeCount} / {Episodes.Count} completed";
 }
 
 /// <summary>Displays one TV-show episode and its resumable playback state.</summary>
@@ -1345,7 +1377,18 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
 
     public string Title => MediaDisplayText.TitleOrFallback(episode.MediaItem.DisplayTitle, "Untitled episode");
 
+    // Presentation only: retain the original title for editing, detection and persistence.
+    public string DisplayTitle => string.IsNullOrWhiteSpace(episode.MediaItem.TitleOverride)
+        ? TvEpisodeDisplayText.Clean(Title, Position)
+        : Title;
+
+    public string EpisodeDetailsText => string.IsNullOrEmpty(Runtime)
+        ? $"Season {seasonNumber} • {Position}"
+        : $"Season {seasonNumber} • {Position} • {Runtime}";
+
     public string Position => episode.EpisodeNumber is { } number ? $"Episode {number}" : $"Episode {episode.SortOrder + 1}";
+
+    public string NumberText => (episode.EpisodeNumber ?? (episode.SortOrder + 1)).ToString("00");
 
     public string SeasonAndPosition => $"Season {seasonNumber}, {Position}";
 
@@ -1354,6 +1397,8 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
     public long RuntimeSeconds => episode.MediaItem.RuntimeSeconds.GetValueOrDefault();
 
     public long PlaybackPositionSeconds => episode.MediaItem.PlaybackPositionSeconds;
+
+    public string PlayActionText => IsCompleted ? "Replay" : PlaybackPositionSeconds > 0 ? "Resume" : "Play";
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(episode.MediaItem);
 
@@ -1450,6 +1495,7 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.TitleOverride = title;
         episode.Title = episode.MediaItem.DisplayTitle;
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(DisplayTitle));
         OnPropertyChanged(nameof(HasManualMetadata));
     }
 
@@ -1458,6 +1504,13 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.MediaType = mediaType;
         episode.MediaItem.MediaTypeOverride = mediaType;
         OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
+    internal void SynchronizeThumbnail(MediaItem updated)
+    {
+        episode.MediaItem.DetectedThumbnailPath = updated.DetectedThumbnailPath;
+        episode.MediaItem.ThumbnailOverride = updated.ThumbnailOverride;
+        SetThumbnailPath(updated.ThumbnailPath);
     }
 
     internal void SetThumbnailPath(string? thumbnailPath)
@@ -1502,10 +1555,12 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
         episode.MediaItem.EpisodeNumber = episode.MediaItem.DetectedEpisodeNumber;
         episode.Title = episode.MediaItem.DisplayTitle;
         OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(DisplayTitle));
         OnPropertyChanged(nameof(SeasonNumber));
         OnPropertyChanged(nameof(EpisodeNumber));
         OnPropertyChanged(nameof(SeasonAndPosition));
         OnPropertyChanged(nameof(Position));
+        OnPropertyChanged(nameof(NumberText));
         OnPropertyChanged(nameof(MediaType));
         OnPropertyChanged(nameof(ThumbnailPath));
         OnPropertyChanged(nameof(HasManualMetadata));
@@ -1525,8 +1580,10 @@ public sealed class TvShowEpisodeViewModel(Episode episode, int seasonNumber) : 
     private void NotifyPlaybackStateChanged()
     {
         OnPropertyChanged(nameof(Runtime));
+        OnPropertyChanged(nameof(EpisodeDetailsText));
         OnPropertyChanged(nameof(RuntimeSeconds));
         OnPropertyChanged(nameof(PlaybackPositionSeconds));
+        OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(HasPlaybackProgress));
         OnPropertyChanged(nameof(PlaybackProgressPercentage));
         OnPropertyChanged(nameof(PlaybackProgressText));

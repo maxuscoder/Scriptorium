@@ -1,11 +1,12 @@
 using Scriptorium.Core.Models;
+using System.Windows.Input;
 
 namespace Scriptorium.App.ViewModels.Pages;
 
 /// <summary>
 /// Presents an indexed movie in the library browser.
 /// </summary>
-public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem
+public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard, IMediaPlaybackCard
 {
     public MediaItem MediaItem => movie;
 
@@ -19,15 +20,35 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
     public string SourceFolder => movie.LibraryFolder?.DisplayNameOrName ?? "Imported movies";
 
+    public Guid? ThumbnailMediaItemId => MediaItemId;
+
+    public void UpdateThumbnail(MediaThumbnailState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        var pathChanged = ThumbnailPath != state.ThumbnailPath;
+        var overrideChanged = MediaItem.ThumbnailOverride != state.ThumbnailOverride;
+        state.ApplyTo(MediaItem);
+        if (pathChanged) OnPropertyChanged(nameof(ThumbnailPath));
+        if (overrideChanged) OnPropertyChanged(nameof(HasManualMetadata));
+    }
+
     public string? ThumbnailPath => movie.ThumbnailPath;
 
     public string ReleaseYear => movie.EffectiveReleaseYear?.ToString() ?? "Year unknown";
 
     public string Runtime => MediaRuntimeFormatter.Format(movie.RuntimeSeconds);
+    public string CardMetadata => MediaCardMetadata.For(movie);
+    public string FileName => System.IO.Path.GetFileName(movie.Path);
 
     public string CategoryName => MediaCategoryDisplay.Name(movie);
 
     public string CategoryColor => MediaCategoryDisplay.Color(movie);
+
+    public ICommand? CardActionCommand { get; init; }
+
+    public ICommand? CardFavoriteCommand { get; init; }
+
+    public LibraryCardPresentation CardPresentation { get; init; } = new();
 
     /// <summary>Gets whether this movie is marked as a favorite.</summary>
     public bool IsFavorite => movie.IsFavorite;
@@ -41,6 +62,17 @@ public sealed class MovieItemViewModel(MediaItem movie) : ViewModelBase, IMediaF
 
         movie.IsFavorite = isFavorite;
         OnPropertyChanged(nameof(IsFavorite));
+    }
+
+    public void UpdatePlayback(MediaPlaybackState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        state.ApplyTo(MediaItem);
+        OnPropertyChanged(nameof(HasPlaybackProgress));
+        OnPropertyChanged(nameof(PlaybackProgressPercentage));
+        OnPropertyChanged(nameof(PlaybackProgressText));
+        OnPropertyChanged(nameof(CardMetadata));
+        OnPropertyChanged(nameof(Runtime));
     }
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(movie);

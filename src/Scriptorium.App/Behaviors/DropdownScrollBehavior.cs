@@ -49,14 +49,13 @@ public static class DropdownScrollBehavior
             return;
         }
 
-        scrollViewer.UpdateLayout();
         if (scrollViewer.ScrollableHeight <= 0)
         {
             return;
         }
 
-        var offset = scrollViewer.VerticalOffset - args.Delta / 3.0;
-        scrollViewer.ScrollToVerticalOffset(Math.Clamp(offset, 0, scrollViewer.ScrollableHeight));
+        if (args.Handled) return;
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - args.Delta / 3.0);
         args.Handled = true;
     }
 }

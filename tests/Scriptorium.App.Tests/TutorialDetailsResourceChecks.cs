@@ -1,0 +1,152 @@
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using Scriptorium.App.Commands;
+using Scriptorium.App.Views.Controls;
+using Scriptorium.App.Views.Pages;
+using Xunit;
+
+namespace Scriptorium.App.Tests;
+
+internal static class TutorialDetailsResourceChecks
+{
+    internal static Task VerifyAsync() => TutorialDetailsPageViewModelTests.WithEditableCourseOnDispatcher(async (viewModel, _) =>
+    {
+        var trace = new BindingTrace();
+        var source = PresentationTraceSources.DataBindingSource;
+        var originalLevel = source.Switch.Level;
+        source.Switch.Level = SourceLevels.Error;
+        source.Listeners.Add(trace);
+        var page = new TutorialDetailsPage { DataContext = viewModel };
+        var window = new Window { Width = 1100, Height = 1400, Content = new Grid { Children = { new ContentAtmosphereBackground(), page } }, ShowActivated = false, ShowInTaskbar = false };
+        try
+        {
+            window.Show();
+            await StaTest.DrainDispatcherAsync();
+            var details = Descendants<MediaDetailsPage>(page).Single();
+            var player = Descendants<VideoPlayer>(page).Single();
+            var drawer = (Border)details.FindName("EditorPanel");
+            Assert.Equal(Visibility.Collapsed, drawer.Visibility);
+            Assert.Same(viewModel.Player, player.Player);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, player);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, player, closeContents: true);
+            var rows = Descendants<Button>(page).Where(button => ReferenceEquals(button.Command, viewModel.SelectLessonCommand)).ToArray();
+            Assert.Equal(3, rows.Length);
+            Assert.All(rows, row => Assert.InRange(row.ActualHeight, 50, 72));
+            Assert.DoesNotContain(Descendants<TextBlock>(page), text => text.Text.StartsWith(@"C:\Course\"));
+            VerifyVideoLayout(details, player, rows);
+            Descendants<Button>(details).Single(button => System.Windows.Automation.AutomationProperties.GetName(button) == "More actions")
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            Assert.True(details.ActionsMenu!.IsOpen);
+            Assert.Same(viewModel, details.ActionsMenu.DataContext);
+            Assert.All(details.ActionsMenu.Items.OfType<MenuItem>(), menuItem => Assert.NotNull(menuItem.Command));
+            details.ActionsMenu.IsOpen = false;
+            await StaTest.DrainDispatcherAsync();
+            Render(page, "tutorial-details-wide.png");
+
+            var rowCommand = (Button)rows[2];
+            rowCommand.Command.Execute(rowCommand.CommandParameter);
+            Assert.Same(viewModel.Lessons[2], viewModel.SelectedLesson);
+            var reorder = Descendants<Button>(page).Single(button => ReferenceEquals(button.DataContext, viewModel.SelectedLesson)
+                && System.Windows.Automation.AutomationProperties.GetName(button) == "Reorder lesson");
+            reorder.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            var move = reorder.ContextMenu.Items.OfType<MenuItem>().Single(item => ReferenceEquals(item.Command, viewModel.MoveLessonUpCommand));
+            Assert.Same(viewModel.SelectedLesson, move.CommandParameter);
+            await ((AsyncRelayCommand)move.Command).ExecuteAsync(move.CommandParameter);
+            reorder.ContextMenu.IsOpen = false;
+            Assert.Same(viewModel.SelectedLesson, viewModel.Lessons[1]);
+            viewModel.EditCommand.Execute(null);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(Visibility.Visible, drawer.Visibility);
+            Assert.True(drawer.ActualWidth <= 420);
+            Assert.Same(player, Descendants<VideoPlayer>(page).Single());
+            var editor = Descendants<MediaDetailsEditor>(page).Single();
+            Assert.Single(Descendants<Button>(editor), button => Equals(button.Content, "Save changes"));
+            Assert.DoesNotContain(Descendants<Button>(editor), button => ReferenceEquals(button.Command, viewModel.SaveTitleCommand));
+            Assert.All(Descendants<TextBox>(editor), box => Assert.NotNull(box.GetBindingExpression(TextBox.TextProperty)));
+            Render(page, "tutorial-details-edit-wide.png");
+
+            window.Width = 620;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(Visibility.Hidden, ((ScrollViewer)details.FindName("MainContent")).Visibility);
+            Assert.True(drawer.ActualWidth > 500);
+            Assert.Same(player, Descendants<VideoPlayer>(page).Single());
+            Render(page, "tutorial-details-edit-narrow.png");
+            viewModel.CancelEditCommand.Execute(null);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(Visibility.Visible, ((ScrollViewer)details.FindName("MainContent")).Visibility);
+            Assert.InRange(player.ActualHeight, 220, 400);
+            rows = Descendants<Button>(page).Where(button => ReferenceEquals(button.Command, viewModel.SelectLessonCommand)).ToArray();
+            VerifyVideoLayout(details, player, rows);
+            Render(page, "tutorial-details-narrow.png");
+            ((ScrollViewer)details.FindName("MainContent")).ScrollToEnd();
+            await StaTest.DrainDispatcherAsync();
+            Render(page, "tutorial-details-content-narrow.png");
+            Assert.True(string.IsNullOrWhiteSpace(trace.Messages.ToString()), trace.Messages.ToString());
+        }
+        finally
+        {
+            window.Close();
+            source.Listeners.Remove(trace);
+            source.Switch.Level = originalLevel;
+        }
+    }, courseTitle: "The Complete Certified in Cybersecurity (CC) course ISC2 '23");
+
+    private static void VerifyVideoLayout(MediaDetailsPage details, VideoPlayer player, Button[] rows)
+    {
+        Assert.True(details.IsVideoLayout);
+        Assert.Null(details.SidebarContent);
+        Assert.Equal(Visibility.Collapsed, ((Border)details.FindName("SidebarPanel")).Visibility);
+        Assert.Equal(Visibility.Collapsed, ((Button)details.FindName("ShowSidebarButton")).Visibility);
+        var origin = player.TransformToAncestor(details).Transform(new Point());
+        Assert.Equal(0, origin.X, 2);
+        Assert.Equal(0, origin.Y, 2);
+        Assert.Equal(details.ActualWidth, player.ActualWidth, 2);
+        var actions = (Border)details.FindName("DetailsActions");
+        Assert.Equal(new Thickness(0), actions.BorderThickness);
+        Assert.True(actions.TransformToAncestor(details).Transform(new Point()).Y >= player.ActualHeight);
+        Assert.All(rows, row => Assert.True(row.TransformToAncestor(details).Transform(new Point()).Y > player.ActualHeight));
+        var back = (Button)player.FindName("VideoBackButton");
+        var overlay = (Grid)player.FindName("VideoOverlay");
+        Assert.Equal(Visibility.Visible, back.Visibility);
+        Assert.Equal(((Border)player.FindName("BackButtonChrome")).Visibility,
+            ((Border)player.FindName("ControlPanel")).Visibility);
+        Assert.Same(details.BackCommand, back.Command);
+        var backOrigin = back.TransformToAncestor(overlay).Transform(new Point());
+        Assert.InRange(backOrigin.X, 0, 20);
+        Assert.InRange(backOrigin.Y, 0, 20);
+    }
+
+    private sealed class BindingTrace : TraceListener
+    {
+        public StringBuilder Messages { get; } = new();
+        public override void Write(string? message) => Messages.Append(message);
+        public override void WriteLine(string? message) => Messages.AppendLine(message);
+    }
+
+    private static void Render(FrameworkElement page, string filename)
+    {
+        var bitmap = new RenderTargetBitmap((int)page.ActualWidth, (int)page.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render((FrameworkElement)page.Parent);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using var output = File.Create(Path.Combine(AppContext.BaseDirectory, filename));
+        encoder.Save(output);
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
+    }
+}

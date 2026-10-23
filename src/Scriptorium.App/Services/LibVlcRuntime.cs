@@ -11,18 +11,35 @@ public sealed class LibVlcRuntime : IDisposable
 {
     private static readonly object InitializationGate = new();
     private static string? _initializedNativeDirectory;
+    private readonly object _releaseGate = new();
+    private readonly List<Task> _pendingReleases = [];
     private bool _disposed;
 
-    public LibVlcRuntime()
+    public LibVlcRuntime() : this([])
+    {
+    }
+
+    internal LibVlcRuntime(string[] options)
     {
         var nativeDirectory = GetNativeDirectory();
         InitializeNativeLibrary(nativeDirectory);
 
         // Scriptorium supplies its own controls. This only suppresses LibVLC's filename overlay.
-        Instance = new LibVLC("--no-video-title-show");
+        Instance = new LibVLC(["--no-video-title-show", .. options]);
     }
 
     internal LibVLC Instance { get; }
+
+    internal Media CreateMedia(string sourcePath, params string[] options)
+    {
+        var path = Path.GetFullPath(sourcePath);
+        var media = new Media(Instance, new Uri(path, UriKind.Absolute), options);
+        // Keep playback and thumbnail extraction on the same reference-safe path.
+        // VLC 3's native MP4 demuxer can omit H.264 references in fragmented files.
+        if (Path.GetExtension(path).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov")
+            media.AddOption(":demux=avformat");
+        return media;
+    }
 
     private static void InitializeNativeLibrary(string nativeDirectory)
     {
@@ -65,10 +82,35 @@ public sealed class LibVlcRuntime : IDisposable
         return directory;
     }
 
+    // Register teardown before it starts so application shutdown cannot dispose LibVLC underneath it.
+    internal Task ReleaseAsync(Action release)
+    {
+        lock (_releaseGate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            _pendingReleases.RemoveAll(task => task.IsCompletedSuccessfully);
+            var task = Task.Run(release);
+            _pendingReleases.Add(task);
+            return task;
+        }
+    }
+
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        Instance.Dispose();
+        Task[] pendingReleases;
+        lock (_releaseGate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            pendingReleases = _pendingReleases.ToArray();
+        }
+        try
+        {
+            Task.WhenAll(pendingReleases).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            Instance.Dispose();
+        }
     }
 }

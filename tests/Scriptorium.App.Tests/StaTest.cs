@@ -4,7 +4,7 @@ namespace Scriptorium.App.Tests;
 
 internal static class StaTest
 {
-    public static Task Run(Func<Task> test)
+    public static Task Run(Func<Task> test, TimeSpan? timeout = null)
     {
         var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var thread = new Thread(() =>
@@ -40,7 +40,7 @@ internal static class StaTest
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        return completion.Task.WaitAsync(TimeSpan.FromSeconds(30));
+        return completion.Task.WaitAsync(timeout ?? TimeSpan.FromSeconds(30));
     }
 
     /// <summary>

@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using LibVLCSharp.WPF;
+using Scriptorium.App.Commands;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.Views.Controls;
@@ -13,6 +14,7 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
+[Collection("Z App lifetime")]
 public sealed class VideoPlayerViewTests
 {
     [Fact]
@@ -20,6 +22,8 @@ public sealed class VideoPlayerViewTests
     {
         // Load only presentation resources, without starting the app or touching the user's database.
         var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        // Shared controls resolve this converter from application resources during initialization.
+        application.Resources["BooleanToVisibilityConverter"] = new Scriptorium.App.Converters.BooleanToVisibilityConverter();
         foreach (var name in new[] { "Colors", "Typography", "Layout", "Elevation", "Motion", "Controls" })
         {
             application.Resources.MergedDictionaries.Add(new ResourceDictionary
@@ -30,6 +34,10 @@ public sealed class VideoPlayerViewTests
         application.Resources.MergedDictionaries.Add(new ResourceDictionary
         {
             Source = new Uri("/Scriptorium.App;component/Resources/Library.xaml", UriKind.Relative)
+        });
+        application.Resources.MergedDictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri("/Scriptorium.App;component/Resources/Theme/Settings.xaml", UriKind.Relative)
         });
         application.Resources.Add(typeof(Window), new Style(typeof(Window))
         {
@@ -59,10 +67,27 @@ public sealed class VideoPlayerViewTests
         var window = new Window { Width = 1000, Height = 900, Content = page, ShowActivated = false, ShowInTaskbar = false };
         try
         {
+            await VerticalScrollTests.VerifySharedViewportStyleAsync(application.Resources);
+            await VideoPlayerControlChecks.VerifyAsync();
+            await DialogResourceChecks.VerifyAsync(application.Resources);
+            await MediaDetailsResourceChecks.VerifyAsync();
+            await TutorialDetailsResourceChecks.VerifyAsync();
+            await TvShowDetailsResourceChecks.VerifyAsync();
+            await TvShowNavigationResourceChecks.VerifyAsync();
+            await CategoriesResourceChecks.VerifyAsync();
+            // A details page can activate before VideoView has built its native render target.
+            player.Activate();
+            await Task.Delay(250);
+            Assert.False(player.IsReady);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             window.Show();
             await WaitUntil(() => player.IsReady);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
             await Task.Delay(500);
             var inlineView = Descendants<VideoPlayer>(page).Single();
+            var backCommand = new RelayCommand(() => { });
+            inlineView.BackCommand = backCommand;
+            var backButton = (Button)inlineView.FindName("VideoBackButton");
             var inlineSurface = Descendants<VideoView>(inlineView).Single();
             Assert.NotNull(inlineSurface.MediaPlayer);
             var mediaPlayer = inlineSurface.MediaPlayer;
@@ -75,12 +100,33 @@ public sealed class VideoPlayerViewTests
             await Task.Delay(500);
             var engine = Assert.Single(factory.Instances);
             var position = engine.Position;
-            var fullscreenButton = Descendants<Button>(inlineView).Single(button =>
-                AutomationProperties.GetName(button) == "Toggle fullscreen");
+            var details = Descendants<MediaDetailsPage>(page).Single();
+            // Exercise native HWND clipping while paused so position remains stable.
+            player.TogglePlaybackCommand.Execute(null);
+            await Task.Delay(100);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, inlineView);
+            await VideoPlayerScrollChecks.VerifyAsync(window, details, inlineView, closeContents: true);
+            player.TogglePlaybackCommand.Execute(null);
+            details.SetCurrentValue(MediaDetailsPage.IsEditingProperty, true);
+            window.Width = 620;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Same(inlineSurface, Descendants<VideoView>(inlineView).Single());
+            Assert.Same(mediaPlayer, inlineSurface.MediaPlayer);
+            Assert.True(player.IsPlaying);
+            Assert.Single(factory.Instances);
+            details.SetCurrentValue(MediaDetailsPage.IsEditingProperty, false);
+            window.Width = 1000;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(inlineHandle, inlineSurface.MediaPlayer!.Hwnd);
+            Assert.Equal(((Grid)inlineView.FindName("PlayerLayout")).RenderSize, inlineSurface.RenderSize);
+            var fullscreenButton = (Button)inlineView.FindName("FullscreenButton");
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await Task.Delay(200);
             var fullscreen = Assert.Single(FullscreenWindows(window));
             Assert.Equal(WindowState.Maximized, fullscreen.WindowState);
+            Assert.Equal(((Grid)inlineView.FindName("PlayerLayout")).RenderSize, inlineSurface.RenderSize);
+            Assert.Same(backCommand, backButton.Command);
+            Assert.True(backButton.IsVisible);
             var fullscreenSurface = Descendants<VideoView>(fullscreen).Single();
             Assert.Same(inlineSurface, fullscreenSurface);
             Assert.Same(mediaPlayer, fullscreenSurface.MediaPlayer);
@@ -102,20 +148,41 @@ public sealed class VideoPlayerViewTests
             Assert.Same(mediaPlayer, inlineSurface.MediaPlayer);
             Assert.NotEqual(IntPtr.Zero, inlineSurface.MediaPlayer!.Hwnd);
             Assert.Equal(inlineHandle, inlineSurface.MediaPlayer.Hwnd);
+            await Task.Delay(250);
+            Assert.Same(backCommand, backButton.Command);
+            Assert.True(backButton.IsVisible);
+            backCommand = new RelayCommand(() => { });
+            inlineView.BackCommand = backCommand;
+            Assert.Same(backCommand, backButton.Command);
             fullscreenButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(250);
+            Assert.Same(backCommand, backButton.Command);
+            Assert.True(backButton.IsVisible);
             window.Content = null;
             await Task.Delay(100);
             Assert.Empty(FullscreenWindows(window));
             Assert.False(player.IsReady);
             Assert.Null(player.VideoOutput);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
+            // Keep native playback assertions independent of the shared theme checks.
+            await DesignSystemResourceChecks.VerifyAsync(application.Resources);
+            await AmbientBokehResourceChecks.VerifyAsync(application.Resources);
+            await ContentAtmosphereResourceChecks.VerifyAsync(application.Resources);
+            await ShellResourceChecks.VerifyAsync(application.Resources);
+            await MediaCardResourceChecks.VerifyAsync(application.Resources);
+            await HomeResourceChecks.VerifyAsync(application.Resources);
+            await HomeHeroPreviewResourceChecks.VerifyAsync();
+            await LibraryResourceChecks.VerifyAsync(application.Resources);
+            await ThumbnailSmoothnessResourceChecks.VerifyAsync(application.Resources);
+            await ScrollBarResourceChecks.VerifyAsync(application.Resources);
         }
         finally
         {
             window.Close();
-            player.Deactivate();
+            await player.DeactivateAsync();
             application.Shutdown();
         }
-    });
+    }, timeout: TimeSpan.FromMinutes(2)); // Includes native playback and all shared presentation resource checks.
 
     private static async Task WaitUntil(Func<bool> predicate)
     {

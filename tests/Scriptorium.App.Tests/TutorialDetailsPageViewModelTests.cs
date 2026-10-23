@@ -14,8 +14,33 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
-public sealed class TutorialDetailsPageViewModelTests
+public sealed partial class TutorialDetailsPageViewModelTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task Longer_courses_reveal_remaining_lessons_and_keep_selection_visible(bool selectLaterLesson) => WithEditableCourse((viewModel, _) =>
+    {
+        var folder = new LibraryFolder { Name = "Course", Path = @"C:\Course", MediaType = MediaType.Tutorial };
+        var course = new Course { Title = "Course", LibraryFolder = folder, LibraryFolderId = folder.Id };
+        while (viewModel.Lessons.Count < 9)
+        {
+            var index = viewModel.Lessons.Count;
+            var media = new MediaItem { Title = $"Lesson {index + 1}", Path = $@"C:\Course\{index + 1:00}.mp4", MediaType = MediaType.Tutorial };
+            viewModel.Lessons.Add(new TutorialLessonViewModel(new Lesson { Course = course, CourseId = course.Id, Title = media.Title, MediaItem = media, MediaItemId = media.Id, SortOrder = index, FilePath = media.Path }));
+        }
+
+        Assert.Equal(6, viewModel.VisibleLessons.Count());
+        Assert.True(viewModel.HasAdditionalLessons);
+        Assert.Equal("3 additional lessons below", viewModel.AdditionalLessonsText);
+        if (selectLaterLesson) viewModel.SelectLessonCommand.Execute(viewModel.Lessons[8]);
+        else viewModel.ShowAllLessonsCommand.Execute(null);
+        Assert.Equal(9, viewModel.VisibleLessons.Count());
+        Assert.False(viewModel.HasAdditionalLessons);
+        if (selectLaterLesson) Assert.Contains(viewModel.SelectedLesson, viewModel.VisibleLessons);
+        return Task.CompletedTask;
+    });
+
     [Fact]
     public Task SelectsTheFirstIncompleteLessonAndRestoresItsPosition() => StaTest.Run(async () =>
     {

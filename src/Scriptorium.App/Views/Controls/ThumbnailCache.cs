@@ -18,9 +18,13 @@ internal static class ThumbnailCache
     private const long MaximumDiskCacheBytes = 512L * 1024 * 1024;
     private static readonly TimeSpan MaximumEntryAge = TimeSpan.FromDays(45);
     private static readonly ConcurrentDictionary<ThumbnailCacheKey, Lazy<Task<BitmapSource?>>> CachedThumbnails = new();
+    private static readonly ConcurrentDictionary<(string Directory, string Source), string> RecentDiskPaths = new();
     private static readonly ConcurrentDictionary<string, long> CleanupScheduledDirectories = new(StringComparer.OrdinalIgnoreCase);
 
     internal static event EventHandler? CacheCleared;
+    internal static event Action<string>? SourceChanged;
+
+    internal static void NotifySourceChanged(string path) => SourceChanged?.Invoke(path);
 
     internal static string CacheDirectory => GetDefaultCacheDirectory();
 
@@ -28,7 +32,11 @@ internal static class ThumbnailCache
     public static Task<BitmapSource?> GetAsync(string? thumbnailPath) =>
         GetAsync(thumbnailPath, GetDefaultCacheDirectory());
 
-    internal static Task<BitmapSource?> GetAsync(string? thumbnailPath, string cacheDirectory)
+    internal static Task<BitmapSource?> GetAsync(string? thumbnailPath, string cacheDirectory) =>
+        string.IsNullOrWhiteSpace(thumbnailPath) ? Task.FromResult<BitmapSource?>(null) :
+            Task.Run(() => GetCoreAsync(thumbnailPath, cacheDirectory));
+
+    private static Task<BitmapSource?> GetCoreAsync(string? thumbnailPath, string cacheDirectory)
     {
         if (string.IsNullOrWhiteSpace(thumbnailPath))
         {
@@ -99,20 +107,22 @@ internal static class ThumbnailCache
         }
     });
 
-    internal static async Task ClearDiskCacheAsync()
+    internal static Task ClearDiskCacheAsync() => ClearDiskCacheAsync(GetDefaultCacheDirectory());
+
+    internal static async Task ClearDiskCacheAsync(string cacheDirectory)
     {
-        var cacheDirectory = GetDefaultCacheDirectory();
+        var fullCacheDirectory = Path.GetFullPath(cacheDirectory);
         await Task.Run(() =>
         {
-            ClearMemoryCache(cacheDirectory);
-            if (!Directory.Exists(cacheDirectory)) return;
+            ClearMemoryCache(fullCacheDirectory);
+            if (!Directory.Exists(fullCacheDirectory)) return;
 
-            foreach (var path in Directory.EnumerateFiles(cacheDirectory, "*", SearchOption.AllDirectories))
+            foreach (var path in Directory.EnumerateFiles(fullCacheDirectory, "*", SearchOption.AllDirectories))
             {
                 File.Delete(path);
             }
 
-            foreach (var directory in Directory.EnumerateDirectories(cacheDirectory, "*", SearchOption.AllDirectories)
+            foreach (var directory in Directory.EnumerateDirectories(fullCacheDirectory, "*", SearchOption.AllDirectories)
                          .OrderByDescending(path => path.Length))
             {
                 Directory.Delete(directory, recursive: false);
@@ -185,6 +195,7 @@ internal static class ThumbnailCache
                 if (cachedThumbnail is not null)
                 {
                     TryTouch(cachePath);
+                    RememberDiskPath(key.CacheDirectory, sourceToken, cachePath);
                     return cachedThumbnail;
                 }
 
@@ -202,8 +213,15 @@ internal static class ThumbnailCache
                 return null;
             }
 
-            SaveBitmapAtomically(generatedThumbnail, cachePath);
-            RemoveOutdatedSourceEntries(key.CacheDirectory, sourceToken, cachePath);
+            try
+            {
+                SaveBitmapAtomically(generatedThumbnail, cachePath);
+                RememberDiskPath(key.CacheDirectory, sourceToken, cachePath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                // A cache write failure must not hide an already decoded preview.
+            }
             return generatedThumbnail;
         }
         catch (Exception) when (key.SourcePath is not null)
@@ -214,7 +232,7 @@ internal static class ThumbnailCache
 
     private static string GetCachePath(ThumbnailCacheKey key, string sourceToken)
     {
-        var variant = $"{key.LastWriteTicks:x}_{key.SourceLength:x}_{MaximumThumbnailWidth}x{MaximumThumbnailHeight}";
+        var variant = $"{key.LastWriteTicks:x}_{key.SourceLength:x}_{MaximumThumbnailWidth}x{MaximumThumbnailHeight}_fill-v3";
         return Path.Combine(key.CacheDirectory, $"{sourceToken}_{variant}.png");
     }
 
@@ -233,13 +251,14 @@ internal static class ThumbnailCache
                 return null;
             }
 
-            BitmapSource thumbnail = frame;
-            if (resize && (frame.PixelWidth > MaximumThumbnailWidth || frame.PixelHeight > MaximumThumbnailHeight))
+            // Trim at source resolution so resizing cannot blend bars into the picture edges.
+            BitmapSource thumbnail = resize ? ThumbnailContentCrop.TrimBorders(frame) : frame;
+            if (resize && (thumbnail.PixelWidth > MaximumThumbnailWidth || thumbnail.PixelHeight > MaximumThumbnailHeight))
             {
                 var scale = Math.Min(
-                    MaximumThumbnailWidth / (double)frame.PixelWidth,
-                    MaximumThumbnailHeight / (double)frame.PixelHeight);
-                thumbnail = new TransformedBitmap(frame, new ScaleTransform(scale, scale));
+                    MaximumThumbnailWidth / (double)thumbnail.PixelWidth,
+                    MaximumThumbnailHeight / (double)thumbnail.PixelHeight);
+                thumbnail = new TransformedBitmap(thumbnail, new ScaleTransform(scale, scale));
             }
 
             thumbnail.Freeze();
@@ -272,24 +291,14 @@ internal static class ThumbnailCache
         }
     }
 
-    private static void RemoveOutdatedSourceEntries(string cacheDirectory, string sourceToken, string currentCachePath)
+    private static void RememberDiskPath(string cacheDirectory, string sourceToken, string cachePath)
     {
-        try
-        {
-            Directory.CreateDirectory(cacheDirectory);
-
-            foreach (var path in Directory.EnumerateFiles(cacheDirectory, $"{sourceToken}_*.png"))
-            {
-                if (!string.Equals(path, currentCachePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    TryDelete(path);
-                }
-            }
-        }
-        catch (Exception) when (cacheDirectory is not null)
-        {
-            // Cache cleanup is best-effort; thumbnail display must not fail because old files remain.
-        }
+        var key = (cacheDirectory, sourceToken);
+        if (RecentDiskPaths.TryGetValue(key, out var previous) && previous != cachePath) TryDelete(previous);
+        RecentDiskPaths[key] = cachePath;
+        if (RecentDiskPaths.Count > 256)
+            foreach (var old in RecentDiskPaths.Keys)
+                if (old != key) { RecentDiskPaths.TryRemove(old, out _); break; }
     }
 
     private static void ScheduleCacheCleanup(string cacheDirectory)

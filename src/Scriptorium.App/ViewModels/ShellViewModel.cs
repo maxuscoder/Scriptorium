@@ -17,6 +17,9 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     private readonly ISearchQueryResetService _searchQueryResetService;
     private readonly ISettingsService _settingsService;
     private readonly LibraryPageViewModel _libraryPage;
+    private readonly MainWindowViewModel _homePage;
+    private readonly FavoritesPageViewModel _favoritesPage;
+    private readonly CategoriesPageViewModel _categoriesPage;
     private NavigationItem? _selectedNavigationItem;
     private string _searchQuery = string.Empty;
     private bool _disposed;
@@ -35,6 +38,9 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     {
         _navigationService = navigationService;
         _libraryPage = libraryPage;
+        _homePage = homePage;
+        _favoritesPage = favoritesPage;
+        _categoriesPage = categoriesPage;
         _searchPage = searchPage;
         _searchQueryResetService = searchQueryResetService;
         _settingsService = settingsService;
@@ -57,6 +63,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         ];
 
         NavigateCommand = new RelayCommand(Navigate);
+        BrowseLibraryCommand = new RelayCommand(() => _navigationService.NavigateTo(_libraryPage));
         SearchQuery = _settingsService.Settings.LastSearchQuery;
         _navigationService.NavigateTo(ResolveStartupPage(
             _settingsService.Settings.StartupPage,
@@ -78,6 +85,8 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     public IEnumerable<NavigationItem> NavigationItems => PrimaryNavigationItems.Concat(SecondaryNavigationItems);
 
     public ICommand NavigateCommand { get; }
+
+    public ICommand BrowseLibraryCommand { get; }
 
     public INotificationService Notifications { get; }
 
@@ -157,6 +166,13 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
 
     private void OnLibraryPagePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(LibraryPageViewModel.IndexedMediaCount))
+        {
+            _homePage.InvalidateHomepageData();
+            _favoritesPage.InvalidatePageData();
+            _categoriesPage.InvalidatePageData();
+        }
+
         if (e.PropertyName == nameof(LibraryPageViewModel.IsListLayout))
         {
             OnPropertyChanged(nameof(IsListLayout));

@@ -46,6 +46,19 @@ Supported media:
 
 ## Documentation
 
+Before the first build, download the Satoshi desktop fonts from Fontshare:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/Prepare-Satoshi.ps1
+dotnet build Scriptorium.sln
+```
+
+The app embeds the fonts and works offline without a system font installation.
+Standalone font binaries are ignored by Git; each checkout obtains its own copy
+from Fontshare under the included ITF Free Font License.
+
 Project architecture, conventions and development guidelines are documented in `WIKI.md`.
 
 Embedded video playback and its verification steps are documented in [Video playback](docs/VIDEO_PLAYBACK.md).
+
+Automatic artwork lookup, video previews, and cache behavior are documented in [Thumbnails](docs/THUMBNAILS.md).

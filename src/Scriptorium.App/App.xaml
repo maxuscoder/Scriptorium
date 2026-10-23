@@ -15,7 +15,8 @@
                 <ResourceDictionary Source="Resources/Theme/Elevation.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Motion.xaml" />
                 <ResourceDictionary Source="Resources/Theme/Controls.xaml" />
-            <ResourceDictionary Source="Resources/Library.xaml" />
+                <ResourceDictionary Source="Resources/Library.xaml" />
+                <ResourceDictionary Source="Resources/Theme/Settings.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <Style TargetType="{x:Type controls:MediaCard}">

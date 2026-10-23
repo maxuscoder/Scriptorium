@@ -55,8 +55,11 @@ public sealed class MainWindowViewModelTests
             {
                 Title = "Episode 1",
                 Path = @"C:\TV\episode-1.mp4",
-                MediaType = MediaType.TvShow
+                MediaType = MediaType.TvShow,
+                ReleaseYear = 2001, SeasonNumber = 1, EpisodeNumber = 1,
+                LastPlayed = DateTimeOffset.UtcNow, RuntimeSeconds = 1800
             };
+            episodeMedia.LastPlayedUnixTimeMilliseconds = episodeMedia.LastPlayed.Value.ToUnixTimeMilliseconds();
 
             await using (var context = new ScriptoriumDbContext(options))
             {
@@ -178,7 +181,12 @@ public sealed class MainWindowViewModelTests
                 mediaRepository,
                 detailsCoordinator,
                 progressService,
-                NullLogger<MainWindowViewModel>.Instance);
+                NullLogger<MainWindowViewModel>.Instance,
+                tvShows: tvShowRepository, courses: courseRepository);
+
+            await viewModel.RefreshAsync();
+            Assert.Equal(episodeMedia.Id, viewModel.Hero!.MediaItemId);
+            Assert.Equal("TV show · 2001 · 1 season · S01 E01", viewModel.HeroMetadata);
 
             await OpenAsync(viewModel, movie);
             Assert.Same(movieDetails, navigationService.CurrentPage);
@@ -292,9 +300,25 @@ public sealed class MainWindowViewModelTests
             tutorialDetails?.Dispose();
             tvShowDetails?.Dispose();
             movieDetails?.Dispose();
-            File.Delete(databasePath);
+            await DeleteDatabaseWhenReleasedAsync(databasePath);
         }
     });
+
+    private static async Task DeleteDatabaseWhenReleasedAsync(string path)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                File.Delete(path);
+                return;
+            }
+            catch (IOException) when (attempt < 20)
+            {
+                await Task.Delay(50);
+            }
+        }
+    }
 
     private static Task OpenAsync(MainWindowViewModel viewModel, MediaItem mediaItem) =>
         ((AsyncRelayCommand)viewModel.OpenMediaCommand).ExecuteAsync(new LibraryMediaItemViewModel(mediaItem));

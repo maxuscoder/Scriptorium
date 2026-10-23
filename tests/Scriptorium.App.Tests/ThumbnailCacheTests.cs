@@ -32,6 +32,27 @@ public sealed class ThumbnailCacheTests
     }
 
     [Fact]
+    public async Task Trims_thin_borders_before_resizing_and_reuses_the_borderless_preview()
+    {
+        using var fixture = new ThumbnailFixture();
+        fixture.WriteSourceImage(1920, 1080, border: 4);
+
+        var first = await ThumbnailCache.GetAsync(fixture.SourcePath, fixture.CacheDirectory);
+        ThumbnailCache.ClearMemoryCache(fixture.CacheDirectory);
+        var cached = await ThumbnailCache.GetAsync(fixture.SourcePath, fixture.CacheDirectory);
+
+        foreach (var thumbnail in new[] { first, cached })
+        {
+            Assert.NotNull(thumbnail);
+            Assert.Equal(480, thumbnail.PixelWidth);
+            Assert.InRange(thumbnail.PixelHeight, 269, 270);
+            var pixel = new byte[4];
+            thumbnail.CopyPixels(new System.Windows.Int32Rect(0, 0, 1, 1), pixel, 4, 0);
+            Assert.Equal(new byte[] { 24, 96, 180, 255 }, pixel);
+        }
+    }
+
+    [Fact]
     public async Task Regenerates_a_missing_disk_thumbnail()
     {
         using var fixture = new ThumbnailFixture();
@@ -47,6 +68,20 @@ public sealed class ThumbnailCacheTests
         Assert.NotNull(regenerated);
         Assert.True(File.Exists(cachedPath));
         Assert.Equal(320, regenerated!.PixelWidth);
+    }
+
+    [Fact]
+    public async Task Clearing_a_cache_directory_removes_cached_files()
+    {
+        using var fixture = new ThumbnailFixture();
+        Directory.CreateDirectory(fixture.CacheDirectory);
+        var cachedFile = Path.Combine(fixture.CacheDirectory, "cached-preview.png");
+        await File.WriteAllBytesAsync(cachedFile, [1, 2, 3]);
+
+        await ThumbnailCache.ClearDiskCacheAsync(fixture.CacheDirectory);
+
+        Assert.False(File.Exists(cachedFile));
+        Assert.Empty(Directory.GetFiles(fixture.CacheDirectory, "*", SearchOption.AllDirectories));
     }
 
     [Fact]
@@ -96,6 +131,19 @@ public sealed class ThumbnailCacheTests
         Assert.NotNull(await ThumbnailCache.GetAsync(fixture.SourcePath, fixture.CacheDirectory));
     }
 
+    [Fact]
+    public async Task CacheWriteFailureStillDisplaysTheDecodedImage()
+    {
+        using var fixture = new ThumbnailFixture();
+        fixture.WriteSourceImage(320, 180);
+        var blockedDirectory = Path.Combine(Path.GetDirectoryName(fixture.SourcePath)!, "not-a-directory");
+        await File.WriteAllTextAsync(blockedDirectory, "file blocks directory creation");
+        var image = await ThumbnailCache.GetAsync(fixture.SourcePath, blockedDirectory);
+        Assert.NotNull(image);
+        Assert.Equal(320, image.PixelWidth);
+        Assert.Equal(180, image.PixelHeight);
+    }
+
     private sealed class ThumbnailFixture : IDisposable
     {
         private readonly string _directory = Path.Combine(Path.GetTempPath(), $"scriptorium-thumbnails-{Guid.NewGuid():N}");
@@ -106,14 +154,17 @@ public sealed class ThumbnailCacheTests
 
         public ThumbnailFixture() => Directory.CreateDirectory(_directory);
 
-        public void WriteSourceImage(int width, int height)
+        public void WriteSourceImage(int width, int height, int border = 0)
         {
             var pixels = new byte[width * height * 4];
             for (var index = 0; index < pixels.Length; index += 4)
             {
-                pixels[index] = 24;
-                pixels[index + 1] = 96;
-                pixels[index + 2] = 180;
+                var x = index / 4 % width;
+                var y = index / 4 / width;
+                var isBorder = x < border || x >= width - border || y < border || y >= height - border;
+                pixels[index] = isBorder ? (byte)16 : (byte)24;
+                pixels[index + 1] = isBorder ? (byte)16 : (byte)96;
+                pixels[index + 2] = isBorder ? (byte)16 : (byte)180;
                 pixels[index + 3] = 255;
             }
 

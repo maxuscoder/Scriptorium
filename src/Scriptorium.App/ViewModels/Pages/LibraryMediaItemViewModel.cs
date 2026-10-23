@@ -1,4 +1,5 @@
 using System.IO;
+using System.Windows.Input;
 using Scriptorium.Core.Models;
 using MediaKind = Scriptorium.Core.Models.MediaType;
 
@@ -7,16 +8,46 @@ namespace Scriptorium.App.ViewModels.Pages;
 /// <summary>
 /// Presents an indexed media item in the main library browser.
 /// </summary>
-public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBase, IMediaFavoriteItem
+public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBase, IMediaFavoriteItem, IMediaThumbnailCard, IMediaPlaybackCard
 {
     /// <summary>Gets the indexed item represented by this card.</summary>
-    public MediaItem MediaItem { get; } = mediaItem;
+    public MediaItem MediaItem { get; private set; } = mediaItem;
+
+    // Retained Home cards keep their bindings and decoded artwork across database refreshes.
+    internal void UpdateMedia(MediaItem item)
+    {
+        if (item.Id != MediaItemId) throw new ArgumentException("The media item must match this card.", nameof(item));
+        var previous = Presentation();
+        MediaItem = item;
+        if (previous != Presentation()) OnPropertyChanged(string.Empty);
+    }
+
+    private (string Title, string Path, string? Thumbnail, bool Manual, string Kind, string Location,
+        string Detail, string Runtime, string Metadata, string Category, string Color, bool Favorite,
+        bool Missing, long Position, long? Duration, bool Completed, string? Show, int? Season,
+        int? Episode, int? Year) Presentation() =>
+        (Title, SourcePath, ThumbnailPath, HasManualMetadata, MediaType, Location, Detail, Runtime,
+            CardMetadata, CategoryName, CategoryColor, IsFavorite, IsMissing,
+            MediaItem.PlaybackPositionSeconds, MediaItem.RuntimeSeconds, MediaItem.IsCompleted,
+            MediaItem.TVShowTitle, MediaItem.SeasonNumber, MediaItem.EpisodeNumber, MediaItem.EffectiveReleaseYear);
 
     public string Title => MediaDisplayText.TitleOrFallback(MediaItem.DisplayTitle, "Untitled media");
 
     public bool HasManualMetadata => MediaItem.HasManualMetadata;
 
     public string SourcePath => MediaItem.Path;
+
+    public Guid? ThumbnailMediaItemId => MediaItemId;
+
+    public void UpdateThumbnail(MediaThumbnailState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        var pathChanged = ThumbnailPath != state.ThumbnailPath;
+        var overrideChanged = MediaItem.ThumbnailOverride != state.ThumbnailOverride;
+        state.ApplyTo(MediaItem);
+        if (pathChanged) OnPropertyChanged(nameof(ThumbnailPath));
+        if (overrideChanged) OnPropertyChanged(nameof(HasManualMetadata));
+    }
 
     public string? ThumbnailPath => MediaItem.ThumbnailPath;
 
@@ -46,10 +77,15 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
         : FileName;
 
     public string Runtime => MediaRuntimeFormatter.Format(MediaItem.RuntimeSeconds);
+    public string CardMetadata => MediaCardMetadata.For(MediaItem);
 
     public string CategoryName => MediaCategoryDisplay.Name(MediaItem);
 
     public string CategoryColor => MediaCategoryDisplay.Color(MediaItem);
+
+    public ICommand? CardFavoriteCommand { get; init; }
+
+    public LibraryCardPresentation CardPresentation { get; init; } = new();
 
     /// <summary>Gets whether this indexed media item is marked as a favorite.</summary>
     public bool IsFavorite => MediaItem.IsFavorite;
@@ -65,6 +101,17 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
 
         MediaItem.IsFavorite = isFavorite;
         OnPropertyChanged(nameof(IsFavorite));
+    }
+
+    public void UpdatePlayback(MediaPlaybackState state)
+    {
+        if (state.MediaItemId != MediaItemId) return;
+        state.ApplyTo(MediaItem);
+        OnPropertyChanged(nameof(HasPlaybackProgress));
+        OnPropertyChanged(nameof(PlaybackProgressPercentage));
+        OnPropertyChanged(nameof(PlaybackProgressText));
+        OnPropertyChanged(nameof(CardMetadata));
+        OnPropertyChanged(nameof(Runtime));
     }
 
     public bool HasPlaybackProgress => MediaPlaybackProgress.HasPartialProgress(MediaItem);

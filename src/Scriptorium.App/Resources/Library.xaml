@@ -1,26 +1,111 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <Style x:Key="Library.SearchField" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
-        <Style.Triggers>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" />
-            </Trigger>
-        </Style.Triggers>
-    </Style>
-    <Style x:Key="Library.ComboBox" BasedOn="{StaticResource Input.ComboBox}" TargetType="ComboBox"><Setter Property="MinHeight" Value="36" /><Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" /><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" /><Setter Property="TextElement.Foreground" Value="{DynamicResource Brush.TextPrimary}" /><Setter Property="ItemContainerStyle"><Setter.Value><Style BasedOn="{StaticResource Input.ComboBoxItem}" TargetType="ComboBoxItem"><Setter Property="Padding" Value="12,8" /><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem"><Border x:Name="ItemSurface" Background="{TemplateBinding Background}" CornerRadius="{StaticResource CornerRadius.S}" Padding="{TemplateBinding Padding}"><TextBlock Text="{Binding Content, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ComboBoxSelectionDisplay}}" TextTrimming="CharacterEllipsis" TextElement.Foreground="{TemplateBinding Foreground}" ToolTip="{Binding Content, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ComboBoxSelectionDisplay}}" /></Border><ControlTemplate.Triggers><Trigger Property="IsHighlighted" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="ItemSurface" Property="Background" Value="{DynamicResource Brush.SelectionSurface}" /><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style></Setter.Value></Setter></Style>
-    <Style x:Key="Library.FilterToggle" BasedOn="{StaticResource Toggle.Filter}" TargetType="ToggleButton"><Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" /><Setter Property="Padding" Value="12,7" /><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToggleButton"><Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CornerRadius.M}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" /></Trigger><Trigger Property="IsChecked" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource Brush.SelectionSurface}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource Brush.Accent}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:sys="clr-namespace:System;assembly=mscorlib"
+    xmlns:behaviors="clr-namespace:Scriptorium.App.Behaviors">
+    <!-- Compatibility aliases: component appearance belongs to Theme, not the Library page. -->
+    <Style x:Key="Library.SearchField" TargetType="Border" BasedOn="{StaticResource Input.SearchField}" />
+    <Style x:Key="Library.ComboBox" TargetType="ComboBox" BasedOn="{StaticResource Input.ComboBox}" />
     <Style x:Key="Library.MediaItems" TargetType="ItemsControl"><Setter Property="ItemContainerStyle"><Setter.Value><Style TargetType="ContentPresenter"><Setter Property="HorizontalAlignment" Value="Stretch" /></Style></Setter.Value></Setter><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></Setter.Value></Setter><Style.Triggers><DataTrigger Binding="{Binding DataContext.IsListLayout, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"><Setter Property="ItemsPanel"><Setter.Value><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter.Value></Setter></DataTrigger></Style.Triggers></Style>
     <Style x:Key="Library.Section" TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding HasActiveFilters}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style>
     <Style x:Key="Library.ManagementCard" BasedOn="{StaticResource Card}" TargetType="Border">
-        <Setter Property="Padding" Value="20" />
+        <Setter Property="Padding" Value="16" />
         <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.L}" />
         <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
     </Style>
+    <Style x:Key="Library.ManagementTabs" TargetType="TabControl">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="ItemContainerStyle" Value="{DynamicResource Library.ManagementTabItem}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <Grid ClipToBounds="False" KeyboardNavigation.TabNavigation="Local">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                        <TabPanel IsItemsHost="True" Margin="0,0,0,12" KeyboardNavigation.TabIndex="1" />
+                        <Border Grid.Row="1" Background="Transparent" KeyboardNavigation.TabIndex="2">
+                            <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Library.ManagementTabItem" TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
+        <Setter Property="FontFamily" Value="{StaticResource FontFamily.Application}" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Body}" />
+        <Setter Property="Padding" Value="14,9" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource Focus.Keyboard}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid>
+                        <Border x:Name="TabSurface" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{StaticResource CornerRadius.S}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+                        </Border>
+                        <Border x:Name="ActiveIndicator" Height="2" Margin="10,0" VerticalAlignment="Bottom" Background="{DynamicResource Brush.Accent}" CornerRadius="1" Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.NavigationHover}" /></Trigger>
+                        <Trigger Property="IsMouseCaptured" Value="True"><Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+                            <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource Brush.NavigationSelected}" />
+                            <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+                            <Setter TargetName="ActiveIndicator" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Category.CollectionTile" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="VerticalContentAlignment" Value="Stretch" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border behaviors:BrushTransition.Target="{Binding Background, RelativeSource={RelativeSource TemplatedParent}}"
+                            behaviors:BrushTransition.Duration="{StaticResource MediaCard.Motion.Duration}"
+                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Card}" SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <!-- Style triggers take precedence over the inherited secondary-button states. -->
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" /><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}" /></Trigger>
+            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
+            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource Brush.SelectionSurface}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
+            </DataTrigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Category.MoreButton" TargetType="Button" BasedOn="{StaticResource Button.Icon}">
+        <Setter Property="Width" Value="{StaticResource Control.Height.Compact}" />
+        <Setter Property="Height" Value="{StaticResource Control.Height.Compact}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="{StaticResource Brush.ArtworkBadge}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" /><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" /></Trigger>
+            <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource Brush.SurfacePressed}" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <sys:Double x:Key="Category.Tile.Width">252</sys:Double>
+    <sys:Double x:Key="Category.Tile.Height">184</sys:Double>
+    <GridLength x:Key="Category.Tile.PreviewHeight">104</GridLength>
+    <Thickness x:Key="Category.Tile.Margin">0,0,14,14</Thickness>
+    <Thickness x:Key="Category.Tile.MoreInset">0,8,8,0</Thickness>
     <Style x:Key="Library.FolderList" TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
@@ -32,7 +117,7 @@
                 <Style TargetType="ListBoxItem">
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Padding" Value="0" />
-                    <Setter Property="Margin" Value="0,0,0,8" />
+                    <Setter Property="Margin" Value="0,0,0,6" />
                     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                     <Setter Property="Template">
                         <Setter.Value>
@@ -50,7 +135,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
-        <Setter Property="Padding" Value="14,12" />
+        <Setter Property="Padding" Value="12,10" />
     </Style>
     <Style x:Key="Library.InfoBanner" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource Brush.SurfaceHeader}" />
@@ -59,44 +144,186 @@
         <Setter Property="CornerRadius" Value="{StaticResource CornerRadius.M}" />
         <Setter Property="Padding" Value="12,10" />
     </Style>
-    <Style x:Key="Library.RowIconToggle" TargetType="ToggleButton">
-        <Setter Property="Width" Value="32" />
-        <Setter Property="Height" Value="32" />
-        <Setter Property="MinHeight" Value="32" />
-        <Setter Property="Padding" Value="0" />
-        <Setter Property="Cursor" Value="Hand" />
+    <Style x:Key="Library.RowIconToggle" TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Filter}">
+        <Setter Property="Width" Value="{StaticResource Control.Height.Compact}" />
+        <Setter Property="Height" Value="{StaticResource Control.Height.Compact}" />
+        <Setter Property="Padding" Value="{StaticResource Spacing.None}" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="ToggleButton">
-                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource CornerRadius.S}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-        <Style.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
-                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-            </Trigger>
-            <Trigger Property="IsChecked" Value="True">
-                <Setter Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" />
-                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
-            </Trigger>
-        </Style.Triggers>
-    </Style>
-    <Style x:Key="Library.InclusionBadge" BasedOn="{StaticResource Badge}" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource Brush.SuccessSurface}" />
-        <Setter Property="Padding" Value="8,3" />
     </Style>
     <Style x:Key="Library.Placeholder" TargetType="TextBlock" BasedOn="{StaticResource Text.Metadata}">
         <Setter Property="IsHitTestVisible" Value="False" />
         <Setter Property="VerticalAlignment" Value="Center" />
         <Setter Property="Margin" Value="12,0,32,0" />
         <Setter Property="Visibility" Value="Collapsed" />
+    </Style>
+    <!-- Library toolbar composition builds on the shared controls and theme palette. -->
+    <Thickness x:Key="Library.PageInset">24,20,24,16</Thickness>
+    <Thickness x:Key="Library.ToolbarInset">24,20,24,0</Thickness>
+    <Thickness x:Key="Library.BrowserMargin">0,0,0,16</Thickness>
+    <Thickness x:Key="Library.StatusInset">24,0,24,0</Thickness>
+    <Thickness x:Key="Library.ToolbarMargin">0,0,0,2</Thickness>
+    <Thickness x:Key="Library.CommandGap">0,0,10,10</Thickness>
+    <Thickness x:Key="Library.ToolbarCommandGap">0,0,10,8</Thickness>
+    <Thickness x:Key="Library.BrowserInset">20,8,8,12</Thickness>
+    <!-- Cancel the last card's trailing margin while preserving gaps between cards. -->
+    <Thickness x:Key="Library.CardRowMargin">0,0,-16,4</Thickness>
+    <Thickness x:Key="Library.SectionMargin">4,12,0,8</Thickness>
+    <sys:Double x:Key="Library.ToolbarControlHeight">40</sys:Double>
+    <sys:Double x:Key="Library.ToolbarMinimumWidth">800</sys:Double>
+    <sys:Double x:Key="Library.SortWidth">196</sys:Double>
+    <sys:Double x:Key="Library.FilterPanelBreakpoint">420</sys:Double>
+    <sys:Double x:Key="Library.FilterPanelMaxHeight">480</sys:Double>
+    <GridLength x:Key="Library.FilterColumnGap">24</GridLength>
+    <Thickness x:Key="Library.FilterStackGap">0,16,0,0</Thickness>
+    <sys:Double x:Key="Library.CardMinimumWidth">250</sys:Double>
+    <Style x:Key="Library.ToolbarSearchField" TargetType="Border" BasedOn="{StaticResource Library.SearchField}">
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
+        <Setter Property="Padding" Value="12,0"/>
+        <Style.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.ComboBox.Focus}"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.SearchTextBox" TargetType="TextBox" BasedOn="{StaticResource Input.SearchTextBox}">
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Control}"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <!-- The enclosing field owns hover and focus, including the icon and placeholder. -->
+        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="Transparent"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Library.SortComboBox" TargetType="ComboBox" BasedOn="{StaticResource Library.ComboBox}">
+        <Style.Resources><CornerRadius x:Key="Radius.Input">10</CornerRadius></Style.Resources>
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
+    </Style>
+    <Style x:Key="Library.CommandIcon" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets"/>
+        <Setter Property="FontSize" Value="{StaticResource Icon.Size.Compact}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style x:Key="Library.ToolbarOverflow" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+        <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
+        <Setter Property="Width" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
+        <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/></Trigger></Style.Triggers>
+    </Style>
+    <Style x:Key="Library.ToolbarToggle" TargetType="ToggleButton" BasedOn="{StaticResource Toggle.Filter}">
+        <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/></Trigger>
+            <Trigger Property="IsChecked" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.BorderStrong}"/><Setter Property="Foreground" Value="{DynamicResource Brush.Accent}"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.LayoutSegment" TargetType="Border" BasedOn="{StaticResource Surface.Elevated}">
+        <Setter Property="Height" Value="{StaticResource Library.ToolbarControlHeight}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource Radius.Card}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.ControlSurface}"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="{StaticResource Library.ToolbarCommandGap}"/>
+    </Style>
+    <Style x:Key="Library.LayoutButton" TargetType="Button" BasedOn="{StaticResource Button.Base}">
+        <Style.Resources><CornerRadius x:Key="Radius.Control">10</CornerRadius></Style.Resources>
+        <Setter Property="Width" Value="48"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <!-- Selected mode has a disabled command; keep its selection visible. -->
+        <Style.Triggers>
+            <MultiTrigger>
+                <MultiTrigger.Conditions><Condition Property="IsMouseOver" Value="True"/><Condition Property="IsEnabled" Value="True"/></MultiTrigger.Conditions>
+                <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}"/>
+            </MultiTrigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="1"/></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.FilterChip" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="MaxWidth" Value="240"/>
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Compact}"/>
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.TextSecondary}"/>
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Metadata}"/>
+    </Style>
+    <Style x:Key="Library.ClearFilters" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+        <Setter Property="Margin" Value="{StaticResource Library.CommandGap}"/>
+        <Setter Property="VerticalAlignment" Value="Top"/>
+    </Style>
+    <Style x:Key="Library.FilterCheckBox" TargetType="CheckBox" BasedOn="{StaticResource Toggle.CheckBox}">
+        <Setter Property="Cursor" Value="Hand" />
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" /></Trigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="Library.FilterComboBox" TargetType="ComboBox" BasedOn="{StaticResource Library.ComboBox}">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+    </Style>
+    <!-- A CheckBox keeps the existing selection binding and keyboard/automation semantics. -->
+    <Style x:Key="Library.CategoryFilterChip" TargetType="CheckBox" BasedOn="{StaticResource Library.FilterCheckBox}">
+        <Setter Property="Margin" Value="0,0,0,6" />
+        <Setter Property="Padding" Value="10,5" />
+        <Setter Property="FontSize" Value="{StaticResource FontSize.Metadata}" />
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+        <Setter Property="BorderThickness" Value="{StaticResource BorderThickness.Hairline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <Border x:Name="ChipSurface" Margin="0,0,6,0" Padding="{TemplateBinding Padding}"
+                            Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{StaticResource Radius.Control}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                            <Grid Width="16" Height="16" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Border x:Name="CategoryIndicator" Width="12" Height="12" CornerRadius="2"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" Background="Transparent"
+                                        BorderBrush="{Binding ColorBrush}" BorderThickness="1" />
+                                <TextBlock x:Name="SelectionMark" Text="&#xE73E;" Opacity="0"
+                                           Style="{StaticResource Library.CommandIcon}" />
+                            </Grid>
+                            <TextBlock Grid.Column="1" Text="{TemplateBinding Content}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ChipSurface" Property="Background" Value="{DynamicResource Brush.SurfaceOverlay}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="CategoryIndicator" Property="Opacity" Value="0" />
+                            <Setter TargetName="SelectionMark" Property="Opacity" Value="1" />
+                            <Setter TargetName="ChipSurface" Property="Background" Value="{DynamicResource Brush.AccentMuted}" />
+                            <Setter TargetName="ChipSurface" Property="BorderBrush" Value="{DynamicResource Brush.AccentBorder}" />
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="{StaticResource Opacity.Disabled}" /></Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+    <Style x:Key="Library.FilterClearAction" TargetType="Button" BasedOn="{StaticResource Button.Text}">
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style x:Key="Library.FilterSecondaryAction" TargetType="Button" BasedOn="{StaticResource Button.Secondary}">
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
+        <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style x:Key="Library.FilterPrimaryAction" TargetType="Button" BasedOn="{StaticResource Button.Primary}">
+        <Setter Property="MinHeight" Value="{StaticResource Control.Height.Input}" />
     </Style>
 </ResourceDictionary>

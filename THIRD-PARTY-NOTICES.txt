@@ -1,8 +1,18 @@
 Scriptorium Third-Party Notices
 ===============================
 
-Scriptorium uses the following third-party components as separate, dynamically
-loaded dependencies. Scriptorium does not modify their source code or binaries.
+Scriptorium uses the following third-party components. Scriptorium does not
+modify their source code or binaries.
+
+Satoshi
+-------
+Author/owner: Indian Type Foundry
+Source: https://www.fontshare.com/fonts/satoshi
+Download: https://api.fontshare.com/v2/fonts/download/satoshi
+License: ITF Free Font License (FFL), included at Assets/Fonts/Satoshi/FFL.txt
+The unmodified desktop font files are embedded in the application for offline
+UI rendering. Standalone font binaries are not redistributed in this repository;
+scripts/Prepare-Satoshi.ps1 obtains them directly from Fontshare before building.
 
 LibVLC
 ------

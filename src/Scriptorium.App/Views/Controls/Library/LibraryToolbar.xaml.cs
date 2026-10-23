@@ -16,6 +16,31 @@ public partial class LibraryToolbar : UserControl
 
     public void CloseFilterPanel() => FiltersButton.IsChecked = false;
 
+    /// <summary>Closes the toolbar's popups without walking the virtualized media-card tree.</summary>
+    public void CloseDropdowns()
+    {
+        CloseFilterPanel();
+        SortBox.IsDropDownOpen = false;
+        MoreActionsButton.ContextMenu.IsOpen = false;
+    }
+
+    private void OnMoreActions(object sender, RoutedEventArgs e)
+    {
+        CloseDropdowns();
+        MoreActionsButton.ContextMenu.PlacementTarget = MoreActionsButton;
+        MoreActionsButton.ContextMenu.IsOpen = true;
+    }
+
+    private void OnManageLibrary(object sender, RoutedEventArgs e)
+    {
+        CloseDropdowns();
+        new LibraryManagementWindow
+        {
+            Owner = Window.GetWindow(this),
+            DataContext = DataContext
+        }.ShowDialog();
+    }
+
     private void OnOpenFilterPanel(object sender, RoutedEventArgs e)
     {
         if (DataContext is not LibraryPageViewModel viewModel)

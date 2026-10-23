@@ -85,7 +85,7 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
 
         if (updatedItems.Count > 0)
         {
-            await mediaItemRepository.UpdateRangeAsync(updatedItems, cancellationToken);
+            await mediaItemRepository.UpdateScanRangeAsync(updatedItems, cancellationToken);
         }
 
         if (addedItems.Count > 0)

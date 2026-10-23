@@ -1,4 +1,5 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using Microsoft.Extensions.Logging;
@@ -12,166 +13,227 @@ using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.ViewModels;
 
+public sealed record HomeShelfViewModel(string Title, IReadOnlyList<LibraryMediaItemViewModel> Items);
+
 public sealed class MainWindowViewModel : PageViewModel, IDisposable
 {
-    private const int RecentlyWatchedMaximumCount = 10;
+    internal const int ShelfLimit = 12;
+    private static readonly TimeSpan HomepageDataFreshness = TimeSpan.FromSeconds(30);
     private readonly ILogger<MainWindowViewModel> _logger;
     private readonly IMediaItemRepository _mediaItemRepository;
     private readonly IMediaDetailsNavigationCoordinator _detailsCoordinator;
     private readonly IPlaybackProgressService _playbackProgressService;
+    private readonly IFavoriteService? _favorites;
     private readonly INotificationService? _notifications;
     private readonly ApplicationSettings _settings;
-    private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
+    private readonly ITvShowRepository? _tvShows;
+    private readonly ICourseRepository? _courses;
+    private Guid? _heroMetadataItemId;
+    private TVShow? _heroShow;
+    private Course? _heroCourse;
     private string? _statusMessage;
     private bool _isRefreshing;
+    private Task? _refreshTask;
+    private bool _refreshAgain;
     private bool _hasLoadedHomepageData;
-    private Task? _initialHomepageLoadTask;
+    private DateTimeOffset _lastSuccessfulRefreshUtc;
     private bool _disposed;
+    private IReadOnlyList<LibraryMediaItemViewModel> _recentlyAdded = [];
+    private IReadOnlyList<LibraryMediaItemViewModel> _favoriteItems = [];
 
-    public MainWindowViewModel(
-        IMediaItemRepository mediaItemRepository,
-        IMediaDetailsNavigationCoordinator detailsCoordinator,
-        IPlaybackProgressService playbackProgressService,
-        ILogger<MainWindowViewModel> logger,
-        INotificationService? notifications = null,
-        ISettingsService? settingsService = null)
+    public MainWindowViewModel(IMediaItemRepository mediaItemRepository,
+        IMediaDetailsNavigationCoordinator detailsCoordinator, IPlaybackProgressService playbackProgressService,
+        ILogger<MainWindowViewModel> logger, INotificationService? notifications = null,
+        ISettingsService? settingsService = null, IFavoriteService? favorites = null,
+        IAutomaticThumbnailService? automaticThumbnails = null,
+        ITvShowRepository? tvShows = null, ICourseRepository? courses = null,
+        IVideoPlaybackFactory? videoPlaybackFactory = null)
     {
         ArgumentNullException.ThrowIfNull(mediaItemRepository);
         ArgumentNullException.ThrowIfNull(detailsCoordinator);
         ArgumentNullException.ThrowIfNull(playbackProgressService);
         ArgumentNullException.ThrowIfNull(logger);
-
-        _logger = logger;
-        _notifications = notifications;
-        _settings = settingsService?.Settings ?? new ApplicationSettings();
         _mediaItemRepository = mediaItemRepository;
         _detailsCoordinator = detailsCoordinator;
         _playbackProgressService = playbackProgressService;
+        _logger = logger;
+        _notifications = notifications;
+        _settings = settingsService?.Settings ?? new ApplicationSettings();
+        _favorites = favorites;
+        _automaticThumbnails = automaticThumbnails;
+        _tvShows = tvShows;
+        _courses = courses;
+        HeroPreview = videoPlaybackFactory is null ? null : new HomeHeroPreviewViewModel(videoPlaybackFactory, logger);
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
-        OpenMediaCommand = new AsyncRelayCommand(
-            OpenMediaAsync,
+        OpenMediaCommand = new AsyncRelayCommand(OpenMediaAsync, parameter => parameter is LibraryMediaItemViewModel);
+        ToggleFavoriteCommand = favorites is null ? null : new AsyncRelayCommand(ToggleFavoriteAsync,
             parameter => parameter is LibraryMediaItemViewModel);
-        _playbackProgressService.PlaybackProgressSaved += OnPlaybackProgressSaved;
+        _playbackProgressService.PlaybackProgressSaved += OnMediaChanged;
+        if (_favorites is not null) _favorites.FavoriteChanged += OnMediaChanged;
+        _settings.PropertyChanged += OnSettingsChanged;
     }
 
     public ObservableCollection<LibraryMediaItemViewModel> IncompleteMedia { get; } = [];
-
     public ObservableCollection<LibraryMediaItemViewModel> RecentlyWatchedMedia { get; } = [];
-
+    public ObservableCollection<HomeShelfViewModel> Shelves { get; } = [];
+    public LibraryMediaItemViewModel? Hero { get; private set; }
+    public HomeHeroPreviewViewModel? HeroPreview { get; }
+    public string HeroMetadata => Hero is { } hero
+        ? HomeHeroMetadata.For(hero.MediaItem,
+            _heroMetadataItemId == hero.MediaItemId ? _heroShow : null,
+            _heroMetadataItemId == hero.MediaItemId ? _heroCourse : null)
+        : "";
     public ApplicationSettings Settings => _settings;
-
     public bool HasIncompleteMedia => IncompleteMedia.Count != 0;
-
-    public string IncompleteMediaCountText => $"{IncompleteMedia.Count} item{(IncompleteMedia.Count == 1 ? string.Empty : "s")}";
-
+    public string IncompleteMediaCountText => $"{IncompleteMedia.Count} item{(IncompleteMedia.Count == 1 ? "" : "s")}";
     public bool HasRecentlyWatchedMedia => RecentlyWatchedMedia.Count != 0;
-
-    public string? StatusMessage { get => _statusMessage; private set => SetProperty(ref _statusMessage, value); }
-
-    public bool IsRefreshing { get => _isRefreshing; private set => SetProperty(ref _isRefreshing, value); }
-
+    public bool HasHero => Hero is not null;
+    public bool HasContent => HasHero || Shelves.Count != 0;
+    public bool ShowEmpty => !IsRefreshing && StatusMessage is null && !HasContent;
+    public bool ShowLoading => IsRefreshing && !HasContent;
+    public bool HasError => !string.IsNullOrWhiteSpace(StatusMessage);
+    public string? StatusMessage
+    {
+        get => _statusMessage;
+        private set { if (SetProperty(ref _statusMessage, value)) NotifyPresentation(); }
+    }
+    public bool IsRefreshing
+    {
+        get => _isRefreshing;
+        private set { if (SetProperty(ref _isRefreshing, value)) NotifyPresentation(); }
+    }
     public ICommand RefreshCommand { get; }
-
     public ICommand OpenMediaCommand { get; }
-
+    public ICommand? ToggleFavoriteCommand { get; }
     public override string Title => "Home";
 
-    public void Dispose()
-    {
-        if (_disposed)
-        {
-            return;
-        }
+    // Keep the in-memory shelves for quick navigation. Explicit refreshes and known library changes
+    // still reload immediately, while the freshness window picks up changes made outside the app.
+    public Task EnsureHomepageDataLoadedAsync() =>
+        _hasLoadedHomepageData && DateTimeOffset.UtcNow - _lastSuccessfulRefreshUtc < HomepageDataFreshness
+            ? Task.CompletedTask
+            : RefreshAsync();
 
-        _disposed = true;
-        _playbackProgressService.PlaybackProgressSaved -= OnPlaybackProgressSaved;
-        IncompleteMedia.Clear();
-        RecentlyWatchedMedia.Clear();
+    public void InvalidateHomepageData() => _lastSuccessfulRefreshUtc = DateTimeOffset.MinValue;
+    public Task RefreshAsync()
+    {
+        if (_disposed) return Task.CompletedTask;
+        if (_refreshTask is { IsCompleted: false }) return _refreshTask;
+        return _refreshTask = RefreshCoreAsync();
     }
 
-    /// <summary>Loads homepage cards once; later navigation reuses the already-rendered data.</summary>
-    public Task EnsureHomepageDataLoadedAsync()
+    private async Task RefreshCoreAsync()
     {
-        if (_hasLoadedHomepageData)
-        {
-            return Task.CompletedTask;
-        }
-
-        if (_initialHomepageLoadTask is { IsCompleted: false } loadTask)
-        {
-            return loadTask;
-        }
-
-        _initialHomepageLoadTask = RefreshAsync();
-        return _initialHomepageLoadTask;
-    }
-
-    /// <summary>Loads the current resumable media list.</summary>
-    public async Task RefreshAsync()
-    {
-        if (_disposed)
-        {
-            return;
-        }
-
-        await _refreshGate.WaitAsync();
+        using var foreground = _automaticThumbnails?.PauseBackgroundWork();
         IsRefreshing = true;
         try
         {
-            var incompleteMediaTask = _mediaItemRepository.GetIncompleteAsync();
-            var recentlyWatchedMediaTask = _mediaItemRepository.GetRecentlyWatchedAsync(RecentlyWatchedMaximumCount);
-            await Task.WhenAll(incompleteMediaTask, recentlyWatchedMediaTask);
-            var incompleteMedia = await incompleteMediaTask;
-            var recentlyWatchedMedia = await recentlyWatchedMediaTask;
-            if (_disposed)
+            do
             {
-                return;
-            }
-
-            IncompleteMedia.Clear();
-            foreach (var mediaItem in incompleteMedia)
-            {
-                IncompleteMedia.Add(new LibraryMediaItemViewModel(mediaItem));
-            }
-
-            RecentlyWatchedMedia.Clear();
-            foreach (var mediaItem in recentlyWatchedMedia)
-            {
-                RecentlyWatchedMedia.Add(new LibraryMediaItemViewModel(mediaItem));
-            }
-
-            StatusMessage = null;
-            _hasLoadedHomepageData = true;
-            OnPropertyChanged(nameof(HasIncompleteMedia));
-            OnPropertyChanged(nameof(IncompleteMediaCountText));
-            OnPropertyChanged(nameof(HasRecentlyWatchedMedia));
+                _refreshAgain = false;
+                var resumeTask = BrowseAsync(new MediaItemBrowseQuery
+                {
+                    PlaybackFilter = MediaItemPlaybackFilter.Watched, CompletionFilter = MediaItemCompletionFilter.Incomplete,
+                    SortOrder = MediaItemBrowseSortOrder.MostRecentlyWatched, PageSize = ShelfLimit * 2
+                });
+                var addedTask = BrowseAsync(new MediaItemBrowseQuery { SortOrder = MediaItemBrowseSortOrder.ImportDateNewest, PageSize = ShelfLimit });
+                var favoritesTask = BrowseAsync(new MediaItemBrowseQuery { FavoritesOnly = true, SortOrder = MediaItemBrowseSortOrder.ImportDateNewest, PageSize = ShelfLimit });
+                var historyTask = Task.Run(() => _mediaItemRepository.GetRecentlyWatchedAsync(10));
+                await Task.WhenAll(resumeTask, addedTask, favoritesTask, historyTask);
+                if (_disposed) return;
+                // Reuse cards across refreshes as well as shelves. Expiring the data cache must
+                // not discard the retained controls, decoded artwork, or shelf scroll positions.
+                var previousCards = IncompleteMedia.Concat(RecentlyWatchedMedia).Concat(_recentlyAdded)
+                    .Concat(_favoriteItems).DistinctBy(card => card.MediaItemId)
+                    .ToDictionary(card => card.MediaItemId);
+                var cards = new Dictionary<Guid, LibraryMediaItemViewModel>();
+                LibraryMediaItemViewModel Card(MediaItem item)
+                {
+                    if (!cards.TryGetValue(item.Id, out var card))
+                    {
+                        if (previousCards.TryGetValue(item.Id, out card)) card.UpdateMedia(item);
+                        else card = new(item);
+                        cards[item.Id] = card;
+                    }
+                    return card;
+                }
+                Synchronize(IncompleteMedia, (await resumeTask).Where(item => !item.IsMissing && !item.IsCompleted && item.PlaybackPositionSeconds > 0)
+                    .Take(ShelfLimit).Select(Card).ToArray());
+                Synchronize(RecentlyWatchedMedia, (await historyTask).Select(Card).ToArray());
+                _recentlyAdded = (await addedTask).Select(Card).ToArray();
+                _favoriteItems = (await favoritesTask).Select(Card).ToArray();
+                var metadataItem = IncompleteMedia.FirstOrDefault() ?? RecentlyWatchedMedia.FirstOrDefault(item => !item.IsMissing);
+                var show = metadataItem?.MediaItem.MediaType == MediaType.TvShow && _tvShows is not null
+                    ? await Task.Run(() => _tvShows.GetByMediaItemIdAsync(metadataItem.MediaItemId)) : null;
+                var course = metadataItem?.MediaItem.MediaType == MediaType.Tutorial && _courses is not null
+                    ? await Task.Run(() => _courses.GetByMediaItemIdAsync(metadataItem.MediaItemId)) : null;
+                if (_disposed) return;
+                _heroMetadataItemId = metadataItem?.MediaItemId;
+                _heroShow = show;
+                _heroCourse = course;
+                StatusMessage = null;
+                RebuildShelves();
+                _hasLoadedHomepageData = true;
+                _lastSuccessfulRefreshUtc = DateTimeOffset.UtcNow;
+            } while (_refreshAgain && !_disposed);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            if (_notifications is not null)
-            {
-                _notifications.Report(exception, "Homepage media could not be loaded. Try refreshing again.");
-            }
-            else
-            {
-                _logger.LogWarning(exception, "Incomplete media could not be loaded.");
-            }
-            StatusMessage = "Homepage media could not be loaded. Try refreshing again.";
+            _logger.LogWarning(exception, "Home media could not be loaded.");
+            StatusMessage = "Your media could not be loaded. Use Refresh to try again.";
+            _notifications?.Report(exception, StatusMessage);
         }
-        finally
+        finally { IsRefreshing = false; }
+    }
+
+    private async Task<IReadOnlyList<MediaItem>> BrowseAsync(MediaItemBrowseQuery query) =>
+        (await Task.Run(() => _mediaItemRepository.GetBrowsePageAsync(query, includeTotalCount: false))).Items;
+
+    private void RebuildShelves()
+    {
+        Hero = _settings.ShowContinueWatching
+            ? IncompleteMedia.FirstOrDefault() ?? RecentlyWatchedMedia.FirstOrDefault(item => !item.IsMissing)
+            : null;
+        var shelves = new List<HomeShelfViewModel>();
+        void Add(string title, IEnumerable<LibraryMediaItemViewModel> items)
         {
-            IsRefreshing = false;
-            _refreshGate.Release();
+            var entries = items.Take(ShelfLimit).ToArray();
+            if (entries.Length == 0) return;
+            var existing = Shelves.FirstOrDefault(shelf => shelf.Title == title);
+            shelves.Add(existing is not null && existing.Items.SequenceEqual(entries)
+                ? existing : new(title, entries));
         }
+        if (_settings.ShowContinueWatching)
+            Add("Continue watching", IncompleteMedia.Where(item => item.MediaItemId != Hero?.MediaItemId));
+        Add("Recently added", _recentlyAdded);
+        Add("Favorites", _favoriteItems);
+        Add("Recently watched", RecentlyWatchedMedia);
+        Synchronize(Shelves, shelves);
+        NotifyPresentation();
+    }
+
+    private static void Synchronize<T>(ObservableCollection<T> collection, IReadOnlyList<T> items)
+    {
+        for (var index = 0; index < items.Count; index++)
+        {
+            if (index < collection.Count && EqualityComparer<T>.Default.Equals(collection[index], items[index])) continue;
+            var existingIndex = collection.IndexOf(items[index]);
+            if (existingIndex >= 0) collection.Move(existingIndex, index);
+            else collection.Insert(index, items[index]);
+        }
+        while (collection.Count > items.Count) collection.RemoveAt(collection.Count - 1);
+    }
+
+    private void NotifyPresentation()
+    {
+        foreach (var name in new[] { nameof(Hero), nameof(HeroMetadata), nameof(HasHero), nameof(HasContent), nameof(ShowEmpty), nameof(ShowLoading), nameof(HasError),
+            nameof(HasIncompleteMedia), nameof(IncompleteMediaCountText), nameof(HasRecentlyWatchedMedia) }) OnPropertyChanged(name);
     }
 
     private async Task OpenMediaAsync(object? parameter)
     {
-        if (parameter is not LibraryMediaItemViewModel item)
-        {
-            return;
-        }
-
+        if (parameter is not LibraryMediaItemViewModel item) return;
         if (!await _detailsCoordinator.OpenMediaAsync(item.MediaItem, this))
         {
             StatusMessage = "This media is no longer available in the library.";
@@ -179,15 +241,44 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
         }
     }
 
-    private void OnPlaybackProgressSaved(Guid mediaItemId)
+    private async Task ToggleFavoriteAsync(object? parameter)
+    {
+        if (_favorites is null || parameter is not LibraryMediaItemViewModel item) return;
+        try
+        {
+            var favorite = !item.IsFavorite;
+            var saved = favorite ? await _favorites.AddAsync(item.MediaItemId) : await _favorites.RemoveAsync(item.MediaItemId);
+            if (saved) item.SetFavorite(favorite);
+        }
+        catch (Exception exception)
+        {
+            _logger.LogWarning(exception, "Favorite could not be changed from Home.");
+            StatusMessage = "The favorite could not be updated. Try again.";
+        }
+    }
+
+    private void OnMediaChanged(Guid mediaItemId)
     {
         var dispatcher = Application.Current?.Dispatcher;
-        if (dispatcher is not null && !dispatcher.CheckAccess())
-        {
-            _ = dispatcher.InvokeAsync(RefreshAsync);
-            return;
-        }
-
+        if (dispatcher is not null && !dispatcher.CheckAccess()) { _ = dispatcher.InvokeAsync(() => OnMediaChanged(mediaItemId)); return; }
+        _refreshAgain = true;
+        InvalidateHomepageData();
         _ = RefreshAsync();
+    }
+    private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ApplicationSettings.ShowContinueWatching)) RebuildShelves();
+    }
+    public void Dispose()
+    {
+        _disposed = true;
+        HeroPreview?.Dispose();
+        _playbackProgressService.PlaybackProgressSaved -= OnMediaChanged;
+        if (_favorites is not null) _favorites.FavoriteChanged -= OnMediaChanged;
+        _settings.PropertyChanged -= OnSettingsChanged;
+        IncompleteMedia.Clear(); RecentlyWatchedMedia.Clear(); Shelves.Clear();
+        _recentlyAdded = []; _favoriteItems = []; Hero = null;
+        _heroMetadataItemId = null; _heroShow = null; _heroCourse = null;
+        _hasLoadedHomepageData = false;
     }
 }

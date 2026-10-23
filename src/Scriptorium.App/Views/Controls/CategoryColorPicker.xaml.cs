@@ -19,7 +19,7 @@ public partial class CategoryColorPicker : UserControl, INotifyPropertyChanged
             nameof(SelectedColor),
             typeof(string),
             typeof(CategoryColorPicker),
-            new FrameworkPropertyMetadata("#CC4B08", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedColorChanged));
+            new FrameworkPropertyMetadata("#FF6508", FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnSelectedColorChanged));
 
     public static readonly DependencyProperty PreviewBrushProperty = PreviewBrushPropertyKey.DependencyProperty;
 
@@ -49,7 +49,7 @@ public partial class CategoryColorPicker : UserControl, INotifyPropertyChanged
     {
         if (sender is Button { Tag: string color })
         {
-            SelectedColor = color;
+            SetCurrentValue(SelectedColorProperty, color);
         }
     }
 

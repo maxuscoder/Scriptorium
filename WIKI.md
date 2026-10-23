@@ -76,6 +76,8 @@ Scriptorium stores its local metadata in SQLite at `%LocalAppData%\Scriptorium\s
 
 At startup, `IDatabaseInitializer` applies EF Core migrations before the main window is shown, creating the database when it does not yet exist, then verifies the connection. Existing databases created before migrations are safely upgraded and baselined once. Data access code should obtain contexts through the registered `IDbContextFactory<ScriptoriumDbContext>` so operations remain short-lived and can run asynchronously.
 
+Settings → **Start fresh → Clear all data** returns Scriptorium to its first-use state. After confirmation, the app restarts and waits for the previous instance to exit before clearing its dedicated `%LocalAppData%\Scriptorium` data directory. This removes the database (including SQLite sidecar files), indexed folders, library metadata, favorites, playback history, categories, preferences, thumbnail caches, and old logs. Original media and artwork in source folders are preserved. The restarted app recreates an empty database and opens Home with default preferences. An interrupted cleanup retains its reset request and retries on the next launch; startup does not load partially reset data. The separate **Reset settings** action only restores preferences.
+
 ### Current schema
 
 The current schema keeps media metadata in the existing `MediaItems` table. `LibraryFolderId` is required and references `LibraryFolders.Id`; deleting a library folder is restricted so indexed media cannot be orphaned. `CategoryId` remains optional and references `Categories.Id`, with category deletion setting the reference to `NULL`.
@@ -186,6 +188,13 @@ search text itself.
 Thresholds are configured in `src/Scriptorium.App/appsettings.json` under the
 `Performance` section. The timing records are written to the same rolling log
 files as the rest of the application telemetry.
+
+Debugger output receives only `Warning` and higher; detailed diagnostics remain
+in the file at the configured logging level. Verbose EF/SQL output can delay
+navigation under F5 because [Windows debugging events suspend the process's
+threads](https://learn.microsoft.com/en-us/windows/win32/debug/debugging-events)
+while the debugger handles them. Compare responsiveness with a Release run when
+investigating a delay specific to debugging.
 
 ---
 

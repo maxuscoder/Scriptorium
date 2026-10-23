@@ -15,15 +15,15 @@ using Xunit;
 
 namespace Scriptorium.App.Tests;
 
-public sealed class TvShowDetailsPageViewModelTests
+public sealed partial class TvShowDetailsPageViewModelTests
 {
     [Fact]
     public Task LoadsProgressAndNavigatesEpisodes() => StaTest.Run(async () =>
     {
-        await using var database = new SqliteConnection("Data Source=:memory:");
+        await using var database = new SqliteConnection($"Data Source=Scriptorium-tv-progress-{Guid.NewGuid():N};Mode=Memory;Cache=Shared;Pooling=False");
         await database.OpenAsync();
         var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
-            .UseSqlite(database)
+            .UseSqlite(database.ConnectionString)
             .Options;
 
         var showId = Guid.NewGuid();
@@ -77,6 +77,15 @@ public sealed class TvShowDetailsPageViewModelTests
         Assert.Equal("2 seasons", viewModel.SeasonCountText);
         Assert.Equal("3 episodes", viewModel.EpisodeCountText);
         Assert.Equal("Episode 2", viewModel.SelectedEpisode!.Position);
+        Assert.Same(viewModel.Seasons[0], viewModel.SelectedSeason);
+        viewModel.SelectedSeason = viewModel.Seasons[1];
+        Assert.Equal("Episode 2", viewModel.SelectedEpisode.Position);
+        viewModel.NextEpisodeCommand.Execute(null);
+        Assert.Same(viewModel.Seasons[1], viewModel.SelectedSeason);
+        Assert.Same(viewModel.Seasons[1].Episodes[0], viewModel.SelectedEpisode);
+        viewModel.PreviousEpisodeCommand.Execute(null);
+        Assert.Same(viewModel.Seasons[0], viewModel.SelectedSeason);
+        Assert.Same(viewModel.Seasons[0].Episodes[1], viewModel.SelectedEpisode);
         Assert.Equal("1 of 3 episodes watched", viewModel.ShowProgressText);
         Assert.Equal(100d / 3d, viewModel.ShowProgressPercentage, 5);
         Assert.Equal(1, viewModel.Seasons[0].CompletedEpisodeCount);
@@ -100,7 +109,10 @@ public sealed class TvShowDetailsPageViewModelTests
         firstPlayback.RaiseEnded();
         await WaitUntilAsync(() => Path.GetFileName(viewModel.SelectedEpisode?.FilePath) == "S02E01.mkv");
         Assert.Equal("S02E01.mkv", Path.GetFileName(viewModel.SelectedEpisode!.FilePath));
+        // Switching episodes must not let a final snapshot undo the completed episode.
+        await viewModel.Player.FlushPendingProgressSaveAsync();
         Assert.Equal(2, viewModel.CompletedEpisodeCount);
+        Assert.True((await mediaRepository.GetByIdAsync(inProgress.Id))!.IsCompleted);
 
         var nextPlayback = playbackFactory.Instances[^1];
         nextPlayback.RaiseOpened();
@@ -113,6 +125,8 @@ public sealed class TvShowDetailsPageViewModelTests
         Assert.Equal(100d, viewModel.Seasons[1].ProgressPercentage);
         Assert.Equal("100%", viewModel.Seasons[1].ProgressPercentageText);
         Assert.Equal("0m", viewModel.RemainingDurationText);
+        await viewModel.Player.DeactivateAsync();
+        viewModel.Dispose();
     });
 
     private static async Task WaitUntilAsync(Func<bool> predicate)

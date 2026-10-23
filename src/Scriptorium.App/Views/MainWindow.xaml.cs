@@ -1,168 +1,187 @@
-using System;
-using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 
 namespace Scriptorium.App.Views;
 
 public partial class MainWindow : Window
 {
-    private const int WmGetMinMaxInfo = 0x0024;
-    private const uint MonitorDefaultToNearest = 0x00000002;
+    // A dynamic-resource DP keeps native chrome in sync with theme changes.
+    public static readonly DependencyProperty ChromeBrushProperty = DependencyProperty.Register(
+        nameof(ChromeBrush), typeof(Brush), typeof(MainWindow),
+        new PropertyMetadata(null, (owner, _) => ((MainWindow)owner)._backdrop?.Refresh()));
+    private static readonly DependencyProperty SidebarWidthProperty = DependencyProperty.Register(
+        "SidebarWidth", typeof(double), typeof(MainWindow), new PropertyMetadata(0.0, (owner, args) =>
+        {
+            var window = (MainWindow)owner;
+            if (window.NavigationColumn is not null)
+                window.NavigationColumn.Width = new GridLength((double)args.NewValue);
+        }));
+    private double _sidebarTargetWidth = double.NaN;
+    private int _sidebarAnimationVersion;
+    private WindowBackdropController? _backdrop;
+    private double? _expandedSidebarWidth;
+    private bool _hasSidebarPreference;
+    private bool _sidebarCompact;
+    private double _dragStartWidth;
+    private double _dragStartHandleX;
+    private double? _savedExpandedWidth;
+    private bool _savedSidebarPreference;
+    private bool _savedSidebarCompact;
+
+    public Brush? ChromeBrush
+    {
+        get => (Brush?)GetValue(ChromeBrushProperty);
+        set => SetValue(ChromeBrushProperty, value);
+    }
 
     public MainWindow(ShellViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
-        SourceInitialized += OnSourceInitialized;
-    }
-
-    private void OnLoaded(object sender, RoutedEventArgs e)
-    {
-        UpdateAdaptiveChrome(ActualWidth);
-        UpdateWindowFrame();
-        UpdateMaximizeRestoreGlyph();
-    }
-
-    private void OnSourceInitialized(object? sender, EventArgs e)
-    {
-        var source = (HwndSource)PresentationSource.FromVisual(this)!;
-        source.AddHook(WindowProcedure);
-    }
-
-    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateAdaptiveChrome(e.NewSize.Width);
-    }
-
-    private void OnMinimizeClicked(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
-    }
-
-    private void OnMaximizeRestoreClicked(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
-
-    private void OnStateChanged(object? sender, EventArgs e)
-    {
-        UpdateWindowFrame();
-        UpdateMaximizeRestoreGlyph();
-    }
-
-    private void UpdateWindowFrame()
-    {
-        var isMaximized = WindowState == WindowState.Maximized;
-        WindowFrame.BorderThickness = isMaximized ? new Thickness(0) : new Thickness(1);
-        WindowFrame.CornerRadius = isMaximized ? new CornerRadius(0) : new CornerRadius(8);
-        UpdateWindowFrameClip();
-    }
-
-    private void OnWindowFrameSizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateWindowFrameClip();
-    }
-
-    private void UpdateWindowFrameClip()
-    {
-        var radius = WindowFrame.CornerRadius.TopLeft;
-        WindowFrame.Clip = radius > 0 && WindowFrame.ActualWidth > 0 && WindowFrame.ActualHeight > 0
-            ? new RectangleGeometry(new Rect(0, 0, WindowFrame.ActualWidth, WindowFrame.ActualHeight), radius, radius)
-            : null;
-    }
-
-    private void OnCloseClicked(object sender, RoutedEventArgs e)
-    {
-        Close();
-    }
-
-    private void UpdateMaximizeRestoreGlyph()
-    {
-        var isMaximized = WindowState == WindowState.Maximized;
-        MaximizeGlyph.Visibility = isMaximized ? Visibility.Collapsed : Visibility.Visible;
-        RestoreGlyph.Visibility = isMaximized ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private void UpdateAdaptiveChrome(double width)
-    {
-        var isCompact = width < 1060;
-        SidebarNavigation.IsCompact = isCompact;
-        NavigationColumn.Width = new GridLength(isCompact ? 76 : 256);
-    }
-
-    private static IntPtr WindowProcedure(
-        IntPtr hwnd,
-        int message,
-        IntPtr wParam,
-        IntPtr lParam,
-        ref bool handled)
-    {
-        if (message == WmGetMinMaxInfo)
+        SetResourceReference(ChromeBrushProperty, "Brush.SurfaceHeader");
+        SourceInitialized += (_, _) =>
         {
-            UpdateMaximizedSize(hwnd, lParam);
+            _backdrop = new WindowBackdropController(this);
+            _backdrop.Refresh();
+        };
+        Closed += (_, _) => _backdrop?.Dispose();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e) => UpdateSidebar(animate: false);
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e) => UpdateSidebar();
+
+    private void UpdateSidebar(bool animate = true)
+    {
+        if (SidebarNavigation is null) return;
+        var compact = _hasSidebarPreference ? _sidebarCompact
+            : ActualWidth < (double)FindResource("Shell.Sidebar.CompactThreshold");
+        SidebarNavigation.IsCompact = compact;
+        var width = compact ? (double)FindResource("Shell.Sidebar.CompactWidth")
+            : _expandedSidebarWidth ?? (double)FindResource("Shell.Sidebar.Width");
+        SetSidebarWidth(width, animate);
+    }
+
+    private void SetSidebarWidth(double width, bool animate)
+    {
+        if (_sidebarTargetWidth == width) return;
+        _sidebarTargetWidth = width;
+        var version = ++_sidebarAnimationVersion;
+        var from = NavigationColumn.ActualWidth;
+        StopSidebarAnimation();
+        var useAnimation = animate && IsLoaded && SystemParameters.ClientAreaAnimation && !SystemParameters.HighContrast
+            && Math.Abs(from - width) >= 0.5;
+        // Keep media cards and cached pages at one width while the sidebar moves. Reflow once
+        // at completion rather than rebuilding responsive rows on every animation frame.
+        if (useAnimation && PageContent.ActualWidth > 0)
+        {
+            PageContent.Width = PageContent.ActualWidth;
+            PageContent.HorizontalAlignment = HorizontalAlignment.Left;
         }
+        SetValue(SidebarWidthProperty, width);
+        if (!useAnimation) return;
 
-        return IntPtr.Zero;
+        var transition = new DoubleAnimation(from, width, (Duration)FindResource("Shell.Motion.Sidebar"))
+        {
+            EasingFunction = (IEasingFunction)FindResource("Motion.Easing.Enter"),
+            FillBehavior = FillBehavior.Stop
+        };
+        transition.Completed += (_, _) =>
+        {
+            if (version == _sidebarAnimationVersion) StopSidebarAnimation();
+        };
+        BeginAnimation(SidebarWidthProperty, transition);
     }
 
-    private static void UpdateMaximizedSize(IntPtr hwnd, IntPtr lParam)
+    private void StopSidebarAnimation()
     {
-        var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
-        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
-        GetMonitorInfo(monitor, ref monitorInfo);
-
-        var minMaxInfo = Marshal.PtrToStructure<MinMaxInfo>(lParam);
-        minMaxInfo.MaxPosition.X = monitorInfo.WorkArea.Left - monitorInfo.MonitorArea.Left;
-        minMaxInfo.MaxPosition.Y = monitorInfo.WorkArea.Top - monitorInfo.MonitorArea.Top;
-        minMaxInfo.MaxSize.X = monitorInfo.WorkArea.Right - monitorInfo.WorkArea.Left;
-        minMaxInfo.MaxSize.Y = monitorInfo.WorkArea.Bottom - monitorInfo.WorkArea.Top;
-        Marshal.StructureToPtr(minMaxInfo, lParam, true);
+        BeginAnimation(SidebarWidthProperty, null);
+        PageContent.ClearValue(WidthProperty);
+        PageContent.ClearValue(HorizontalAlignmentProperty);
     }
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo monitorInfo);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Point
+    private void OnSidebarToggleRequested(object sender, RoutedEventArgs e)
     {
-        public int X;
-        public int Y;
+        _sidebarCompact = !SidebarNavigation.IsCompact;
+        _hasSidebarPreference = true;
+        UpdateSidebar();
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MinMaxInfo
+    private void ResizeSidebar(double requestedWidth)
     {
-        public Point Reserved;
-        public Point MaxSize;
-        public Point MaxPosition;
-        public Point MinTrackSize;
-        public Point MaxTrackSize;
+        var minimum = (double)FindResource("Shell.Sidebar.MinWidth");
+        var maximum = (double)FindResource("Shell.Sidebar.MaxWidth");
+        _hasSidebarPreference = true;
+        _sidebarCompact = requestedWidth < minimum;
+        if (!_sidebarCompact) _expandedSidebarWidth = Math.Clamp(requestedWidth, minimum, maximum);
+        UpdateSidebar(animate: SidebarNavigation.IsCompact != _sidebarCompact);
     }
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct Rectangle
+    private void OnSidebarDragStarted(object sender, DragStartedEventArgs e)
     {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
+        var currentWidth = NavigationColumn.ActualWidth;
+        ++_sidebarAnimationVersion;
+        StopSidebarAnimation();
+        SetValue(SidebarWidthProperty, currentWidth);
+        _sidebarTargetWidth = currentWidth;
+        _dragStartWidth = currentWidth;
+        _dragStartHandleX = ((Thumb)sender).TranslatePoint(new Point(), ShellLayout).X;
+        _savedExpandedWidth = _expandedSidebarWidth;
+        _savedSidebarPreference = _hasSidebarPreference;
+        _savedSidebarCompact = _sidebarCompact;
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
-    private struct MonitorInfo
+    private void OnSidebarDragDelta(object sender, DragDeltaEventArgs e)
     {
-        public int Size;
-        public Rectangle MonitorArea;
-        public Rectangle WorkArea;
-        public uint Flags;
+        // Thumb reports displacement in its own coordinates. Include the handle's movement
+        // to retain the pointer's absolute position when the column resizes or snaps closed.
+        var handleX = ((Thumb)sender).TranslatePoint(new Point(), ShellLayout).X;
+        ResizeSidebar(_dragStartWidth + e.HorizontalChange + handleX - _dragStartHandleX);
+    }
+
+    private void OnSidebarDragCompleted(object sender, DragCompletedEventArgs e)
+    {
+        if (e.Canceled)
+        {
+            _expandedSidebarWidth = _savedExpandedWidth;
+            _hasSidebarPreference = _savedSidebarPreference;
+            _sidebarCompact = _savedSidebarCompact;
+        }
+        // A press and release during a transition should still settle at the intended width.
+        UpdateSidebar();
+    }
+
+    private void OnSidebarResizeKeyDown(object sender, KeyEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case Key.Left:
+                ResizeSidebar(NavigationColumn.ActualWidth - 20);
+                break;
+            case Key.Right:
+                ResizeSidebar(SidebarNavigation.IsCompact
+                    ? (double)FindResource("Shell.Sidebar.MinWidth") : NavigationColumn.ActualWidth + 20);
+                break;
+            case Key.Home:
+                ResizeSidebar(0);
+                break;
+            case Key.End:
+                ResizeSidebar((double)FindResource("Shell.Sidebar.MaxWidth"));
+                break;
+            case Key.Enter:
+            case Key.Space:
+                OnSidebarToggleRequested(sender, e);
+                break;
+            case Key.Escape when sender is Thumb { IsDragging: true } thumb:
+                thumb.CancelDrag();
+                break;
+            default:
+                return;
+        }
+        e.Handled = true;
     }
 }

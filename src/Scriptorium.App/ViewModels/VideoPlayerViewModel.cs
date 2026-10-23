@@ -22,6 +22,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly object _progressSaveGate = new();
     private readonly object _preferenceSaveGate = new();
     private Task _progressSaveTask = Task.CompletedTask;
+    private Task _playbackReleaseTask = Task.CompletedTask;
+    private int _playbackGeneration;
     private IVideoPlayback? _playback;
     private MediaPlaybackRequest? _request;
     private bool _active;
@@ -82,7 +84,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     /// <summary>Raised once when this media session first starts, never for preview loading.</summary>
     public event EventHandler? PlaybackStarted;
 
-    /// <summary>Raised after a playback snapshot, including its viewing timestamp, has been persisted.</summary>
+    /// <summary>Raised on the player dispatcher after a playback snapshot has been persisted.</summary>
     public event EventHandler<PlaybackProgressSavedEventArgs>? PlaybackProgressPersisted;
 
     /// <summary>Raised when the current media reaches its natural end.</summary>
@@ -117,8 +119,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string PlayActionText => IsPlaying ? "Pause" : _hasEnded ? "Replay" : "Play";
     public string PositionText => $"{FormatTime(_position)} / {FormatTime(_duration)}";
-    public string CurrentPositionText => FormatTime(_position);
-    public string DurationText => FormatTime(_duration);
+    public string CurrentPositionText => FormatControlTime(_position);
+    public string DurationText => FormatControlTime(_duration);
     public double PositionSeconds => Math.Clamp(_position.TotalSeconds, 0, DurationSeconds);
     public double DurationSeconds => Math.Max(0, _duration.TotalSeconds);
     public bool CanSeek => IsReady && DurationSeconds > 0;
@@ -175,7 +177,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         NotifyPositionChanged();
         OnPropertyChanged(nameof(DurationSeconds));
         OnPropertyChanged(nameof(DurationText));
-        if (_active) OpenPlayback();
+        if (_active) _ = OpenPlaybackAsync();
     }
 
     /// <summary>Clears the current media without opening a playback session and shows why it is unavailable.</summary>
@@ -223,7 +225,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     {
         if (_active) return;
         _active = true;
-        OpenPlayback();
+        _ = OpenPlaybackAsync();
     }
 
     public void Deactivate()
@@ -258,16 +260,21 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
         Task progressSaveTask;
         lock (_progressSaveGate) progressSaveTask = _progressSaveTask;
-        await progressSaveTask.ConfigureAwait(true);
+        await Task.WhenAll(progressSaveTask, _playbackReleaseTask).ConfigureAwait(true);
     }
 
-    private void OpenPlayback()
+    private async Task OpenPlaybackAsync()
     {
         if (_request is null) return;
-        SynchronizePlaybackPreferences();
-        Status = "Loading video...";
+        var generation = ++_playbackGeneration;
         try
         {
+            // Reusing the render HWND before native teardown finishes can open a standalone VLC window.
+            // Await without blocking navigation; only the latest selection may open after cleanup.
+            await _playbackReleaseTask;
+            if (!_active || generation != _playbackGeneration) return;
+            SynchronizePlaybackPreferences();
+            Status = "Loading video...";
             _playback = _factory.Create();
             _playback.Opened += OnOpened;
             _playback.Ended += OnEnded;
@@ -278,7 +285,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         }
         catch (Exception exception)
         {
-            Fail(exception);
+            if (_active && generation == _playbackGeneration) Fail(exception);
         }
     }
 
@@ -563,16 +570,18 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     private void ReleasePlayback()
     {
+        _playbackGeneration++;
         _timer.Stop();
         if (_playback is { } playback)
         {
             _playback = null;
-            // Detach VideoView before disposing the native MediaPlayer it was rendering.
+            // Withdraw the output before release. The view adapter retains its native
+            // HWND until teardown completes, without blocking navigation.
             OnPropertyChanged(nameof(VideoOutput));
             playback.Opened -= OnOpened;
             playback.Ended -= OnEnded;
             playback.Failed -= OnFailed;
-            playback.Dispose();
+            _playbackReleaseTask = Task.WhenAll(_playbackReleaseTask, DisposePlaybackAsync(playback));
         }
         IsReady = false;
         SetPlaybackState(VideoPlaybackState.Stopped);
@@ -583,10 +592,31 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         NotifyPositionChanged();
     }
 
+    private async Task DisposePlaybackAsync(IVideoPlayback playback)
+    {
+        try
+        {
+            if (playback is IAsyncDisposable asynchronousPlayback)
+                await asynchronousPlayback.DisposeAsync().ConfigureAwait(false);
+            else
+                playback.Dispose();
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Video playback resources could not be released.");
+        }
+    }
+
     private void QueuePlaybackProgressSave(bool force)
     {
         var snapshot = CaptureProgressSnapshot();
         if (snapshot is null || _playbackProgressService is null)
+        {
+            return;
+        }
+
+        // Decide before queuing: switching media clears the override before a queued save runs.
+        if (_completionOverrideMediaItemId == snapshot.MediaItemId && _completionOverride)
         {
             return;
         }
@@ -613,7 +643,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 .ContinueWith(
                     _ => SaveProgressSnapshotAsync(snapshot),
                     CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskContinuationOptions.None,
                     TaskScheduler.Default)
                 .Unwrap();
         }
@@ -647,14 +677,22 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 _lastSavedMediaItemId = snapshot.MediaItemId;
                 _lastSavedPositionSeconds = snapshot.PositionSeconds;
                 _lastSavedDurationSeconds = snapshot.DurationSeconds;
-                PlaybackProgressPersisted?.Invoke(
-                    this,
-                    new PlaybackProgressSavedEventArgs(
-                        snapshot.MediaItemId,
-                        snapshot.PositionSeconds,
-                        snapshot.DurationSeconds,
-                        snapshot.LastWatched,
-                        snapshot.CompletionThreshold));
+                if (!_timer.Dispatcher.HasShutdownStarted)
+                {
+                    // Complete the UI update before FlushPendingProgressSaveAsync resumes completion/reset actions.
+                    await _timer.Dispatcher.InvokeAsync(() =>
+                    {
+                        if (!_disposed)
+                            PlaybackProgressPersisted?.Invoke(
+                                this,
+                                new PlaybackProgressSavedEventArgs(
+                                    snapshot.MediaItemId,
+                                    snapshot.PositionSeconds,
+                                    snapshot.DurationSeconds,
+                                    snapshot.LastWatched,
+                                    snapshot.CompletionThreshold));
+                    }).Task.ConfigureAwait(false);
+                }
             }
         }
         catch (Exception exception)
@@ -850,6 +888,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     }
 
     private static string FormatTime(TimeSpan time) => $"{(long)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}";
+
+    private static string FormatControlTime(TimeSpan time) => time.TotalHours >= 1
+        ? FormatTime(time)
+        : $"{time.Minutes:00}:{time.Seconds:00}";
 }
 
 /// <summary>Describes a persisted playback snapshot and the moment the media was last viewed.</summary>

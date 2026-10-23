@@ -1,3 +1,4 @@
+using System.Windows.Media;
 using Scriptorium.App.ViewModels;
 
 namespace Scriptorium.App.ViewModels.Pages;
@@ -14,6 +15,9 @@ public sealed class LibraryFilterOptionViewModel<T>(T value, string displayName,
 
     /// <summary>Gets the text displayed for this option.</summary>
     public string DisplayName { get; } = displayName;
+
+    /// <summary>Gets the category-color indicator, with a neutral fallback for other options.</summary>
+    public Brush ColorBrush { get; init; } = Brushes.Gray;
 
     /// <summary>Gets or sets whether this filter value is selected.</summary>
     public bool IsSelected

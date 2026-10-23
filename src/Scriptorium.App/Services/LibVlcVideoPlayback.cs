@@ -12,24 +12,30 @@ public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPl
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback
+public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
-    private readonly LibVLC _libVlc;
+    private readonly LibVlcRuntime _runtime;
+    private readonly object _disposeGate = new();
+    private Task? _disposeTask;
     private readonly MediaPlayer _player;
+    private readonly LibVlcVideoOutput _output;
     private Media? _media;
     private string? _filePath;
-    private bool _opening;
-    private bool _disposed;
+    private volatile bool _opening;
+    private bool _waitingForOutput;
+    private int _openGeneration;
+    private volatile bool _disposed;
     private double _playbackSpeed = 1;
 
     public LibVlcVideoPlayback(LibVlcRuntime runtime)
     {
         ArgumentNullException.ThrowIfNull(runtime);
+        _runtime = runtime;
         _dispatcher = Dispatcher.CurrentDispatcher;
-        _libVlc = runtime.Instance;
-        _player = new MediaPlayer(_libVlc);
-        VideoOutput = new LibVlcVideoOutput(_player);
+        _player = new MediaPlayer(runtime.Instance);
+        _output = new LibVlcVideoOutput(_player, OnOutputAttached);
+        VideoOutput = _output;
         _player.Playing += OnPlaying;
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnEncounteredError;
@@ -92,15 +98,32 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback
         Stop();
         _media?.Dispose();
         _filePath = Path.GetFullPath(filePath);
-        _media = new Media(_libVlc, new Uri(_filePath, UriKind.Absolute));
+        _media = _runtime.CreateMedia(_filePath);
         _player.Media = _media;
         _opening = true;
+        _waitingForOutput = true;
+        // VideoView's binding can arrive before its template has built a native HWND.
+        // Starting without that HWND lets LibVLC create its own top-level video window.
+        StartOpeningWhenAttached();
+    }
+
+    private void OnOutputAttached()
+    {
+        if (_disposed) return;
+        try { StartOpeningWhenAttached(); }
+        catch (Exception exception) { PostFailure(exception); }
+    }
+
+    private void StartOpeningWhenAttached()
+    {
+        if (!_waitingForOutput || _disposed || _player.Hwnd == IntPtr.Zero) return;
+        _waitingForOutput = false;
         if (!_player.Play())
         {
             _opening = false;
             throw new MediaPlaybackException(
                 MediaPlaybackFailureKind.UnsupportedFormat,
-                _filePath,
+                _filePath!,
                 "LibVLC could not start the media.");
         }
     }
@@ -108,6 +131,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback
     public void Play()
     {
         ThrowIfDisposed();
+        if (_player.Hwnd == IntPtr.Zero || _waitingForOutput)
+            throw new InvalidOperationException("The embedded video output is not ready.");
         _player.SetPause(false);
         if (!_player.IsPlaying && !_player.Play())
             throw new InvalidOperationException("LibVLC could not resume playback.");
@@ -123,23 +148,32 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback
     {
         ThrowIfDisposed();
         _opening = false;
+        _waitingForOutput = false;
+        Interlocked.Increment(ref _openGeneration);
         _player.Stop();
     }
 
     private void OnPlaying(object? sender, EventArgs args)
     {
+        var generation = Volatile.Read(ref _openGeneration);
         if (_disposed || !_opening) return;
         _opening = false;
-        _player.SetPause(true);
-        if (_player.VideoTrackCount <= 0)
+        // Never acquire VLC's input lock from its own event callback: Stop on a
+        // release worker can hold that lock while waiting for this thread to exit.
+        Post(() =>
         {
-            PostFailure(new MediaPlaybackException(
-                MediaPlaybackFailureKind.UnsupportedFormat,
-                _filePath ?? string.Empty,
-                "The file has no playable video stream."));
-            return;
-        }
-        Post(() => Opened?.Invoke(this, EventArgs.Empty));
+            if (generation != _openGeneration) return;
+            _player.SetPause(true);
+            if (_player.VideoTrackCount <= 0)
+            {
+                PostFailure(new MediaPlaybackException(
+                    MediaPlaybackFailureKind.UnsupportedFormat,
+                    _filePath ?? string.Empty,
+                    "The file has no playable video stream."));
+                return;
+            }
+            Opened?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     private void OnEndReached(object? sender, EventArgs args)
@@ -179,11 +213,23 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback
 
     private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(_disposed, this);
 
-    public void Dispose()
+    public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+    public ValueTask DisposeAsync()
     {
-        if (_disposed) return;
-        _disposed = true;
-        _opening = false;
+        lock (_disposeGate)
+        {
+            if (_disposeTask is not null) return new ValueTask(_disposeTask);
+            _disposed = true;
+            _opening = false;
+            _waitingForOutput = false;
+            _disposeTask = _runtime.ReleaseAsync(DisposeNativeResources);
+            return new ValueTask(_disposeTask);
+        }
+    }
+
+    private void DisposeNativeResources()
+    {
         _player.Playing -= OnPlaying;
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnEncounteredError;
@@ -192,11 +238,16 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback
         _media?.Dispose();
         _media = null;
         _player.Dispose();
+        _output.NotifyReleased();
         _filePath = null;
     }
 }
 
-internal sealed class LibVlcVideoOutput(MediaPlayer mediaPlayer) : IVideoOutput
+internal sealed class LibVlcVideoOutput(MediaPlayer mediaPlayer, Action onAttached) : IVideoOutput
 {
+    private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal MediaPlayer MediaPlayer { get; } = mediaPlayer;
+    internal Task Released => _released.Task;
+    internal void NotifyAttached() => onAttached();
+    internal void NotifyReleased() => _released.TrySetResult();
 }

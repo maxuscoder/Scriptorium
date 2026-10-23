@@ -20,6 +20,7 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
     private readonly IFavoriteService _favoriteService;
     private readonly ILogger<SearchPageViewModel>? _logger;
     private readonly IOperationMetrics? _operationMetrics;
+    private readonly IAutomaticThumbnailService? _automaticThumbnails;
     private CancellationTokenSource? _searchCancellationSource;
     private string _query = string.Empty;
     private string? _statusMessage;
@@ -33,13 +34,15 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         IMediaDetailsNavigationCoordinator detailsCoordinator,
         IFavoriteService favoriteService,
         ILogger<SearchPageViewModel>? logger = null,
-        IOperationMetrics? operationMetrics = null)
+        IOperationMetrics? operationMetrics = null,
+        IAutomaticThumbnailService? automaticThumbnails = null)
     {
         _mediaItemRepository = mediaItemRepository;
         _detailsCoordinator = detailsCoordinator;
         _favoriteService = favoriteService;
         _logger = logger;
         _operationMetrics = operationMetrics;
+        _automaticThumbnails = automaticThumbnails;
         OpenResultCommand = new AsyncRelayCommand(OpenResultAsync, parameter => parameter is SearchResultViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem);
         LoadMoreResultsCommand = new AsyncRelayCommand(LoadMoreResultsAsync, () => HasMoreResults && !IsSearching);
@@ -145,15 +148,18 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         try
         {
             await Task.Delay(SearchDebounceDelay, cancellationSource.Token);
+            using var foreground = _automaticThumbnails?.PauseBackgroundWork();
             timing = _operationMetrics?.Start("Search.Query");
             timing?.SetTag("QueryLength", query.Length);
             timing?.SetTag("PageSize", SearchPageSize);
-            var page = await _mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+            var browseQuery = new MediaItemBrowseQuery
             {
                 SearchText = query,
                 SortOrder = MediaItemBrowseSortOrder.Ascending,
                 PageSize = SearchPageSize
-            }, cancellationToken: cancellationSource.Token);
+            };
+            var page = await Task.Run(() => _mediaItemRepository.GetBrowsePageAsync(browseQuery,
+                cancellationToken: cancellationSource.Token), cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
                 timing?.SetOutcome("Superseded");
@@ -216,17 +222,20 @@ public sealed class SearchPageViewModel : PageViewModel, IDisposable
         IOperationMetricScope? timing = null;
         try
         {
+            using var foreground = _automaticThumbnails?.PauseBackgroundWork();
             timing = _operationMetrics?.Start("Search.LoadMore");
             timing?.SetTag("QueryLength", query.Length);
             timing?.SetTag("Skip", Results.Count);
             timing?.SetTag("PageSize", SearchPageSize);
-            var page = await _mediaItemRepository.GetBrowsePageAsync(new MediaItemBrowseQuery
+            var browseQuery = new MediaItemBrowseQuery
             {
                 SearchText = query,
                 SortOrder = MediaItemBrowseSortOrder.Ascending,
                 Skip = Results.Count,
                 PageSize = SearchPageSize
-            }, includeTotalCount: false, cancellationToken: cancellationSource.Token);
+            };
+            var page = await Task.Run(() => _mediaItemRepository.GetBrowsePageAsync(browseQuery,
+                includeTotalCount: false, cancellationToken: cancellationSource.Token), cancellationSource.Token);
             if (searchVersion != Volatile.Read(ref _searchVersion))
             {
                 timing?.SetOutcome("Superseded");

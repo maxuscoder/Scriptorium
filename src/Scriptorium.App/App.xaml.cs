@@ -12,6 +12,7 @@ using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.Infrastructure;
+using Scriptorium.Core.Services;
 using System.Windows.Threading;
 
 namespace Scriptorium.App;
@@ -23,6 +24,7 @@ public partial class App : Application
     private ISettingsService? _settingsService;
     private IThemeService? _themeService;
     private IMemoryUsageMonitor? _memoryUsageMonitor;
+    private IAutomaticThumbnailService? _automaticThumbnails;
     private bool _settingsFlushInProgress;
     private bool _allowWindowClose;
 
@@ -30,8 +32,14 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        var applyingReset = true;
         try
         {
+            // Reset before opening logs, SQLite, settings or starting any background work.
+            var applicationReset = ApplicationResetService.CreateDefault();
+            await applicationReset.ApplyPendingResetAsync();
+            applyingReset = false;
+
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(AppContext.BaseDirectory)
                 .AddJsonFile("appsettings.json", optional: false)
@@ -54,6 +62,7 @@ public partial class App : Application
                 settingsFileLocation,
                 databaseLocation,
                 Log.Logger);
+            services.AddSingleton<IApplicationResetService>(applicationReset);
 
             _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
             {
@@ -86,7 +95,14 @@ public partial class App : Application
 
             var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
             var libraryPage = _serviceProvider.GetRequiredService<LibraryPageViewModel>();
-            mainWindow.Loaded += (_, _) => libraryPage.StartAutomaticScanning();
+            _automaticThumbnails = _serviceProvider.GetRequiredService<IAutomaticThumbnailService>();
+            _automaticThumbnails.ArtworkChanged += OnArtworkChanged;
+            _automaticThumbnails.Enabled = _settingsService.Settings.AutomaticThumbnailsEnabled;
+            mainWindow.Loaded += (_, _) =>
+            {
+                libraryPage.StartAutomaticScanning();
+                _automaticThumbnails.Start();
+            };
             mainWindow.Closing += OnMainWindowClosing;
             mainWindow.Show();
         }
@@ -94,7 +110,9 @@ public partial class App : Application
         {
             Log.Fatal(exception, "Scriptorium failed during startup.");
             MessageBox.Show(
-                "Scriptorium could not start. Details have been written to the application log.",
+                applyingReset
+                    ? $"Scriptorium could not finish clearing its app data. Close other Scriptorium instances and reopen the app to retry. {exception.Message}"
+                    : "Scriptorium could not start. Details have been written to the application log.",
                 "Scriptorium",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
@@ -120,6 +138,19 @@ public partial class App : Application
 
         try
         {
+            if (_serviceProvider is not null)
+            {
+                // Finish detached sessions and their final snapshots before disposing database/native services.
+                var players = new[]
+                {
+                    _serviceProvider.GetRequiredService<MovieDetailsPageViewModel>().Player,
+                    _serviceProvider.GetRequiredService<TutorialDetailsPageViewModel>().Player,
+                    _serviceProvider.GetRequiredService<TvShowDetailsPageViewModel>().Player
+                };
+                await Task.WhenAll(players.OfType<Scriptorium.App.ViewModels.VideoPlayerViewModel>()
+                    .Select(player => player.DeactivateAsync()));
+            }
+            if (_automaticThumbnails is not null) await _automaticThumbnails.StopAsync();
             if (_settingsService is not null)
             {
                 await _settingsService.FlushAsync();
@@ -177,6 +208,8 @@ public partial class App : Application
         {
             _memoryUsageMonitor.HighMemoryUsageDetected -= OnHighMemoryUsageDetected;
         }
+        if (_automaticThumbnails is not null) _automaticThumbnails.ArtworkChanged -= OnArtworkChanged;
+        _automaticThumbnails?.StopAsync().GetAwaiter().GetResult();
         ThumbnailCache.ReleaseCompletedMemoryEntries();
         _serviceProvider?.Dispose();
         Log.CloseAndFlush();
@@ -188,6 +221,12 @@ public partial class App : Application
         if (_settingsService?.Settings.Theme != Models.ThemeNames.System) return;
 
         Dispatcher.BeginInvoke(() => _themeService?.Apply(Models.ThemeNames.System));
+    }
+
+    private void OnArtworkChanged(string path)
+    {
+        if (!Dispatcher.HasShutdownStarted)
+            Dispatcher.BeginInvoke(() => ThumbnailCache.NotifySourceChanged(path));
     }
 
     private void OnHighMemoryUsageDetected(Models.MemoryUsageSnapshot snapshot)
@@ -212,7 +251,10 @@ public partial class App : Application
         return new LoggerConfiguration()
             .MinimumLevel.Is(minimumLevel)
             .Enrich.FromLogContext()
-            .WriteTo.Debug()
+            // Debug output is a process-wide debugger event under F5. A burst of EF/SQL
+            // messages from a background Home refresh can therefore suspend the UI too.
+            // Preserve detailed diagnostics in the file while keeping debugger output quiet.
+            .WriteTo.Debug(restrictedToMinimumLevel: LogEventLevel.Warning)
             .WriteTo.File(
                 logFileLocation.FilePathTemplate,
                 rollingInterval: RollingInterval.Day,

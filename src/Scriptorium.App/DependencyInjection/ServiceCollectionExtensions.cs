@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddLogging(logging => logging.AddSerilog(logger, dispose: false));
         services.AddScriptoriumInfrastructure(databaseLocation.ConnectionString);
 
+        services.AddSingleton<IApplicationResetService>(_ => ApplicationResetService.CreateDefault());
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
         services.AddSingleton<INotificationService, NotificationService>();
@@ -46,6 +47,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFolderManagementViewModelFactory, FolderManagementViewModelFactory>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
         services.AddSingleton<LibVlcRuntime>();
+        services.AddSingleton<IThumbnailGenerator>(provider => new LibVlcThumbnailGenerator(
+            () => provider.GetRequiredService<LibVlcRuntime>()));
         services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();
         services.AddTransient<VideoPlayerViewModel>();
 

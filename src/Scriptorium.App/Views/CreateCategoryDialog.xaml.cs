@@ -15,7 +15,6 @@ public partial class CreateCategoryDialog : Window
 
         _existingCategoryNames = new HashSet<string>(existingCategoryNames, StringComparer.OrdinalIgnoreCase);
         InitializeComponent();
-        UpdateColorPreview();
         ValidateInput();
     }
 
@@ -30,7 +29,6 @@ public partial class CreateCategoryDialog : Window
             return;
         }
 
-        UpdateColorPreview();
         ValidateInput();
     }
 
@@ -72,32 +70,13 @@ public partial class CreateCategoryDialog : Window
         }
         else if (!TryParseColor(color, out _))
         {
-            message = "Enter a valid hex color such as #CC4B08.";
+            message = "Enter a valid hex color such as #FF6508.";
         }
 
         CreateButton.IsEnabled = message.Length == 0;
         ValidationMessage.Text = message;
         ValidationMessage.Visibility = message.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
         return message.Length == 0;
-    }
-
-    private void UpdateColorPreview()
-    {
-        if (ColorPreview is null || CategoryColorTextBox is null)
-        {
-            return;
-        }
-
-        if (TryParseColor(CategoryColorTextBox.Text, out var color))
-        {
-            var brush = new SolidColorBrush(color);
-            brush.Freeze();
-            ColorPreview.Background = brush;
-        }
-        else
-        {
-            ColorPreview.Background = (Brush)FindResource("Brush.SurfaceOverlay");
-        }
     }
 
     private static bool TryParseColor(string value, out Color color)
