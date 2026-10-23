@@ -87,9 +87,9 @@ public sealed class VideoBackgroundTests
                     LibVlcVideoViewBinding.SetOutput(surface, null);
                     Assert.True(matte.Data.FillContains(new Point(surface.ActualWidth / 2, surface.ActualHeight / 2)));
                     surface.LayoutUpdated -= OnLayout;
+                    await playback.DisposeAsync();
                     window.Content = new TextBlock { Text = "Home" };
                     surface.Dispose();
-                    await playback.DisposeAsync();
                 }
                 window.Width = 800;
                 window.Height = 400;

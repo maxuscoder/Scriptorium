@@ -13,6 +13,74 @@ namespace Scriptorium.App.Tests;
 public sealed class EpisodeVideoOutputTests
 {
     [Fact]
+    public Task ReplacingOutputKeepsThePreviousHwndUntilNativeRelease() => StaTest.Run(async () =>
+    {
+        using var runtime = new LibVlcRuntime();
+        using var first = new LibVlcVideoPlayback(runtime);
+        using var superseded = new LibVlcVideoPlayback(runtime);
+        using var replacement = new LibVlcVideoPlayback(runtime);
+        var firstOutput = (LibVlcVideoOutput)first.VideoOutput;
+        var replacementOutput = (LibVlcVideoOutput)replacement.VideoOutput;
+        using var surface = new VideoView();
+        var window = new Window
+        {
+            Width = 320, Height = 240, Content = surface,
+            ShowActivated = false, ShowInTaskbar = false, Opacity = 0
+        };
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4");
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        first.Opened += (_, _) => opened.TrySetResult();
+        first.Failed += (_, error) => opened.TrySetException(error);
+        var replacementOpened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        replacement.Opened += (_, _) => replacementOpened.TrySetResult();
+        replacement.Failed += (_, error) => replacementOpened.TrySetException(error);
+        try
+        {
+            window.Show();
+            await StaTest.DrainDispatcherAsync();
+            LibVlcVideoViewBinding.SetOutput(surface, firstOutput);
+            first.Open(path);
+            await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            first.Play();
+            var host = firstOutput.MediaPlayer.Hwnd;
+            Assert.NotEqual(IntPtr.Zero, host);
+
+            // Hold native release until after the binding has processed replacement.
+            // A fixed sleep cannot guarantee this overlap on a faster test machine.
+            LibVlcVideoViewBinding.SetOutput(surface, superseded.VideoOutput);
+            LibVlcVideoViewBinding.SetOutput(surface, replacementOutput);
+            replacement.Open(path);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Same(firstOutput.MediaPlayer, surface.MediaPlayer);
+            Assert.Equal(host, firstOutput.MediaPlayer.Hwnd);
+            Assert.Equal(IntPtr.Zero, replacementOutput.MediaPlayer.Hwnd);
+            Assert.False(replacementOpened.Task.IsCompleted);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
+
+            await first.DisposeAsync();
+            await replacementOpened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.Same(replacementOutput.MediaPlayer, surface.MediaPlayer);
+            Assert.Equal(host, replacementOutput.MediaPlayer.Hwnd);
+            Assert.Equal(IntPtr.Zero, ((LibVlcVideoOutput)superseded.VideoOutput).MediaPlayer.Hwnd);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
+
+            LibVlcVideoViewBinding.SetOutput(surface, null);
+            Assert.Equal(host, replacementOutput.MediaPlayer.Hwnd);
+            await replacement.DisposeAsync();
+            await StaTest.DrainDispatcherAsync();
+            Assert.Null(surface.MediaPlayer);
+        }
+        finally
+        {
+            LibVlcVideoViewBinding.SetOutput(surface, null);
+            await first.DisposeAsync();
+            await replacement.DisposeAsync();
+            await StaTest.DrainDispatcherAsync();
+            window.Close();
+        }
+    }, timeout: TimeSpan.FromMinutes(1));
+
+    [Fact]
     public Task SwitchingEpisodesKeepsVideoEmbedded() => StaTest.Run(async () =>
     {
         using var runtime = new LibVlcRuntime();

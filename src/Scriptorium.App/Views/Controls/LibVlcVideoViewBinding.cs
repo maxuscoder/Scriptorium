@@ -38,7 +38,8 @@ public static class LibVlcVideoViewBinding
         view.SetValue(LetterboxProperty, matte);
         var surface = new Rect(view.RenderSize);
         var picture = Rect.Empty;
-        var host = view.MediaPlayer?.Hwnd ?? IntPtr.Zero;
+        var host = GetOutput(view) is LibVlcVideoOutput output && ReferenceEquals(view.MediaPlayer, output.MediaPlayer)
+            ? output.MediaPlayer.Hwnd : IntPtr.Zero;
         if (host != IntPtr.Zero && PresentationSource.FromVisual(view)?.CompositionTarget is { } target)
         {
             var background = FindWindowEx(host, IntPtr.Zero, null, null);
@@ -75,7 +76,9 @@ public static class LibVlcVideoViewBinding
     /// <summary>Crops the backdrop to fill its card while preserving the video's proportions.</summary>
     public static void FillToBounds(VideoView view)
     {
-        if (view.MediaPlayer is not { } player || view.ActualWidth <= 0 || view.ActualHeight <= 0) return;
+        if (GetOutput(view) is not LibVlcVideoOutput output || !ReferenceEquals(view.MediaPlayer, output.MediaPlayer) ||
+            view.ActualWidth <= 0 || view.ActualHeight <= 0) return;
+        var player = output.MediaPlayer;
         var crop = $"{(int)Math.Round(view.ActualWidth)}:{(int)Math.Round(view.ActualHeight)}";
         if (player.CropGeometry != crop) player.CropGeometry = crop;
     }
@@ -97,7 +100,8 @@ public static class LibVlcVideoViewBinding
         var diameterX = (int)Math.Round(cornerRadius * 2 * transform.M11);
         var diameterY = (int)Math.Round(cornerRadius * 2 * transform.M22);
         var foregroundHandle = new WindowInteropHelper(foreground).Handle;
-        var videoHandle = view.MediaPlayer?.Hwnd ?? IntPtr.Zero;
+        var videoHandle = GetOutput(view) is LibVlcVideoOutput output && ReferenceEquals(view.MediaPlayer, output.MediaPlayer)
+            ? output.MediaPlayer.Hwnd : IntPtr.Zero;
         var clip = new BackdropClip(foregroundHandle, videoHandle, left, top, right, bottom,
             width, height, diameterX, diameterY);
         if (Equals(view.GetValue(BackdropClipProperty), clip)) return;
@@ -153,12 +157,26 @@ public static class LibVlcVideoViewBinding
     {
         if (target is VideoView videoView)
         {
-            (videoView.GetValue(AttachmentProperty) as OutputAttachment)?.Detach();
-            videoView.SetValue(AttachmentProperty, args.NewValue is LibVlcVideoOutput output
-                ? new OutputAttachment(videoView, output) : null);
-            if (args.NewValue is not LibVlcVideoOutput) videoView.MediaPlayer = null;
+            var previous = videoView.GetValue(AttachmentProperty) as OutputAttachment;
+            previous?.Detach();
+            // VideoView clears the old player's HWND when MediaPlayer changes. Keep
+            // that HWND attached until native teardown has finished, so a late vout
+            // cannot fall back to a standalone window during episode replacement.
+            _ = ChangeOutputAsync(videoView, previous, args.NewValue as IVideoOutput);
             if (videoView.GetValue(LetterboxProperty) is ShapePath matte) UpdateLetterbox(videoView, matte);
         }
+    }
+
+    private static async Task ChangeOutputAsync(VideoView view, OutputAttachment? previous, IVideoOutput? requested)
+    {
+        if (previous is not null && !ReferenceEquals(previous.Output, requested))
+            await previous.Output.Released;
+        // Several selections can arrive while the previous player is being released.
+        if (!ReferenceEquals(GetOutput(view), requested)) return;
+        var output = requested as LibVlcVideoOutput;
+        view.SetValue(AttachmentProperty, output is not null ? new OutputAttachment(view, output) : null);
+        if (output is null) view.MediaPlayer = null;
+        if (view.GetValue(LetterboxProperty) is ShapePath matte) UpdateLetterbox(view, matte);
     }
 
     private static readonly DependencyProperty AttachmentProperty = DependencyProperty.RegisterAttached(
@@ -175,6 +193,7 @@ public static class LibVlcVideoViewBinding
         private readonly IntPtr _nativeEventHook;
         private readonly HashSet<IntPtr> _nativeWindows = [];
         private int _letterboxRefreshes;
+        internal LibVlcVideoOutput Output => _output;
 
         internal OutputAttachment(VideoView view, LibVlcVideoOutput output)
         {
@@ -270,6 +289,7 @@ public static class LibVlcVideoViewBinding
 
         internal void Detach()
         {
+            if (_detached) return;
             _detached = true;
             if (_nativeEventHook != IntPtr.Zero) UnhookWinEvent(_nativeEventHook);
             _nativeWindows.Clear();

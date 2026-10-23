@@ -9,6 +9,34 @@ namespace Scriptorium.App.Tests;
 public sealed class LocalVideoPlaybackTests
 {
     [Fact]
+    public Task StoppingBeforeQueuedStartupRunsCancelsTheOpen() => StaTest.Run(async () =>
+    {
+        using var runtime = new LibVlcRuntime();
+        using var player = new LibVlcVideoPlayback(runtime);
+        using var host = AttachOutput(player);
+        var output = (LibVlcVideoOutput)player.VideoOutput;
+        using var nativePlaying = new ManualResetEventSlim();
+        output.MediaPlayer.Playing += (_, _) => nativePlaying.Set();
+        var opened = false;
+        Exception? failure = null;
+        player.Opened += (_, _) => opened = true;
+        player.Failed += (_, error) => failure = error;
+        try
+        {
+            player.Open(Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"));
+            // Deliberately hold this dispatcher until VLC queues its startup work.
+            // Stop must invalidate that work before it can publish a ready event.
+            Assert.True(nativePlaying.Wait(TimeSpan.FromSeconds(15)), "VLC did not start the native input.");
+            player.Stop();
+            await StaTest.DrainDispatcherAsync();
+            Assert.False(opened);
+            Assert.Null(failure);
+            Assert.Equal(LibVLCSharp.Shared.VLCState.Stopped, output.MediaPlayer.State);
+        }
+        finally { await player.DisposeAsync(); }
+    });
+
+    [Fact]
     public Task LocalMp4WaitsForEmbeddedOutputThenPausesResumesAndReleasesFile() => StaTest.Run(async () =>
     {
         // Copy to a filename that also checks spaces and non-ASCII local paths.

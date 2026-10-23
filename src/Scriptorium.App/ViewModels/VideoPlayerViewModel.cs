@@ -575,7 +575,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         if (_playback is { } playback)
         {
             _playback = null;
-            // Detach VideoView before disposing the native MediaPlayer it was rendering.
+            // Withdraw the output before release. The view adapter retains its native
+            // HWND until teardown completes, without blocking navigation.
             OnPropertyChanged(nameof(VideoOutput));
             playback.Opened -= OnOpened;
             playback.Ended -= OnEnded;

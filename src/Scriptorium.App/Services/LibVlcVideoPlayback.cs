@@ -22,8 +22,9 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     private readonly LibVlcVideoOutput _output;
     private Media? _media;
     private string? _filePath;
-    private bool _opening;
+    private volatile bool _opening;
     private bool _waitingForOutput;
+    private int _openGeneration;
     private volatile bool _disposed;
     private double _playbackSpeed = 1;
 
@@ -148,23 +149,31 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         ThrowIfDisposed();
         _opening = false;
         _waitingForOutput = false;
+        Interlocked.Increment(ref _openGeneration);
         _player.Stop();
     }
 
     private void OnPlaying(object? sender, EventArgs args)
     {
+        var generation = Volatile.Read(ref _openGeneration);
         if (_disposed || !_opening) return;
         _opening = false;
-        _player.SetPause(true);
-        if (_player.VideoTrackCount <= 0)
+        // Never acquire VLC's input lock from its own event callback: Stop on a
+        // release worker can hold that lock while waiting for this thread to exit.
+        Post(() =>
         {
-            PostFailure(new MediaPlaybackException(
-                MediaPlaybackFailureKind.UnsupportedFormat,
-                _filePath ?? string.Empty,
-                "The file has no playable video stream."));
-            return;
-        }
-        Post(() => Opened?.Invoke(this, EventArgs.Empty));
+            if (generation != _openGeneration) return;
+            _player.SetPause(true);
+            if (_player.VideoTrackCount <= 0)
+            {
+                PostFailure(new MediaPlaybackException(
+                    MediaPlaybackFailureKind.UnsupportedFormat,
+                    _filePath ?? string.Empty,
+                    "The file has no playable video stream."));
+                return;
+            }
+            Opened?.Invoke(this, EventArgs.Empty);
+        });
     }
 
     private void OnEndReached(object? sender, EventArgs args)
@@ -229,12 +238,16 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         _media?.Dispose();
         _media = null;
         _player.Dispose();
+        _output.NotifyReleased();
         _filePath = null;
     }
 }
 
 internal sealed class LibVlcVideoOutput(MediaPlayer mediaPlayer, Action onAttached) : IVideoOutput
 {
+    private readonly TaskCompletionSource _released = new(TaskCreationOptions.RunContinuationsAsynchronously);
     internal MediaPlayer MediaPlayer { get; } = mediaPlayer;
+    internal Task Released => _released.Task;
     internal void NotifyAttached() => onAttached();
+    internal void NotifyReleased() => _released.TrySetResult();
 }
