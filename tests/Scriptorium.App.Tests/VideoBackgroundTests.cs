@@ -19,9 +19,7 @@ public sealed class VideoBackgroundTests
     [Fact]
     public Task OpeningAndReopeningPausedVideoPaintsBlackBarsBeforeScrolling() => StaTest.Run(async () =>
     {
-        // Direct3D may repeatedly hide an occluded picture on hosted runners. GDI
-        // keeps native visibility under this test's control while paused.
-        using var runtime = new LibVlcRuntime(["--avcodec-hw=none", "--vout=wingdi"]);
+        using var runtime = new LibVlcRuntime();
         var window = new Window
         {
             Width = 800, Height = 400,
@@ -67,49 +65,20 @@ public sealed class VideoBackgroundTests
                     var name = new StringBuilder(128);
                     GetClassName(nativePicture, name, name.Capacity);
                     Assert.StartsWith("VLC video output", name.ToString());
-                    // This deliberately invisible test window can be occluded before the first
-                    // Direct3D presentation. Drive its native visibility explicitly to test the mask.
-                    if (!IsWindowVisible(nativePicture))
-                    {
-                        await WaitUntil(() => matte.Data.FillContains(center));
-                        AssertBlackPixel(matte, center);
-                        ShowWindowAsync(nativePicture, 4 /* SW_SHOWNOACTIVATE */);
-                    }
-                    await WaitUntil(() => !matte.Data.FillContains(center),
-                        () => $"center={center}; surface={surface.RenderSize}; geometry={string.Join(';', ((GeometryGroup)matte.Data).Children.Select(g=>g.Bounds))}; {DescribeNativeWindows(surface)}");
+                    // An occluded renderer may hide its picture even while paused. In that
+                    // state the entire gray parent must stay covered, including the center.
+                    await WaitForPictureMask(surface, matte, nativePicture, center);
                     Assert.False(playback.IsPlaying);
                     AssertBlackPixel(matte, new Point(2, 2));
-                    AssertTransparentPixel(matte, center);
                     Assert.True(matte.Data.FillContains(new Point(2, center.Y)), "Wide layout needs side bars.");
-
-                    if (visit == 0)
-                    {
-                        // A native output may hide/reappear after the initial settling timer.
-                        // Without any WPF resize or scroll, its gray parent must stay covered.
-                        await Task.Delay(1500);
-                        try
-                        {
-                            ShowWindowAsync(nativePicture, 0 /* SW_HIDE */);
-                            await WaitUntil(() => matte.Data.FillContains(center),
-                                () => "Hidden native video still exposes its gray parent before scrolling.");
-                            AssertBlackPixel(matte, center);
-                        }
-                        finally { ShowWindowAsync(nativePicture, 4 /* SW_SHOWNOACTIVATE */); }
-                        await WaitUntil(() => !matte.Data.FillContains(center));
-                        AssertTransparentPixel(matte, center);
-                        Assert.False(playback.IsPlaying);
-                    }
 
                     // Native picture dimensions settle asynchronously after a resize while paused.
                     window.Width = 400;
                     window.Height = 700;
                     await StaTest.DrainDispatcherAsync();
                     center = new Point(surface.ActualWidth / 2, surface.ActualHeight / 2);
-                    await WaitUntil(() => !matte.Data.FillContains(center) &&
-                        matte.Data.FillContains(new Point(center.X, 2)) &&
-                        !matte.Data.FillContains(new Point(2, center.Y)));
+                    await WaitForPictureMask(surface, matte, nativePicture, center);
                     AssertBlackPixel(matte, new Point(center.X, 2));
-                    AssertTransparentPixel(matte, center);
                     Assert.False(playback.IsPlaying);
                     NativeVideoWindowChecks.AssertNoStandaloneOutput();
                 }
@@ -129,6 +98,75 @@ public sealed class VideoBackgroundTests
         }
         finally { window.Close(); }
     }, timeout: TimeSpan.FromMinutes(1));
+
+    [Fact]
+    public Task NativeVisibilityChangesAndPausedResizeUpdateLetterboxWithoutScrolling() => StaTest.Run(async () =>
+    {
+        using var runtime = new LibVlcRuntime();
+        using var playback = new LibVlcVideoPlayback(runtime);
+        var matte = new ShapePath { Fill = Brushes.Black, Stretch = Stretch.Fill };
+        var overlay = new Grid();
+        overlay.Children.Add(matte);
+        using var surface = new VideoView { Content = overlay };
+        var window = new Window
+        {
+            Width = 800, Height = 400, Content = surface,
+            ShowActivated = false, ShowInTaskbar = false
+        };
+        window.Show();
+        try
+        {
+            await StaTest.DrainDispatcherAsync();
+            LibVlcVideoViewBinding.UpdateLetterbox(surface, matte);
+            LibVlcVideoViewBinding.SetOutput(surface, playback.VideoOutput);
+            using var picture = new NativePictureWindow(surface.MediaPlayer!.Hwnd);
+            var center = new Point(surface.ActualWidth / 2, surface.ActualHeight / 2);
+            await WaitUntil(() => !matte.Data.FillContains(center), () => DescribeNativeWindows(surface));
+            AssertTransparentPixel(matte, center);
+            AssertBlackPixel(matte, new Point(2, center.Y));
+
+            // Let the initial polling timer expire; subsequent changes must be
+            // observed through the native event hook without a WPF layout event.
+            await Task.Delay(1500);
+            picture.Show(false);
+            await WaitUntil(() => matte.Data.FillContains(center), () => DescribeNativeWindows(surface));
+            AssertBlackPixel(matte, center);
+            picture.Show(true);
+            await WaitUntil(() => !matte.Data.FillContains(center), () => DescribeNativeWindows(surface));
+            AssertTransparentPixel(matte, center);
+
+            window.Width = 400;
+            window.Height = 700;
+            await StaTest.DrainDispatcherAsync();
+            center = new Point(surface.ActualWidth / 2, surface.ActualHeight / 2);
+            await WaitUntil(() => !matte.Data.FillContains(center) &&
+                matte.Data.FillContains(new Point(center.X, 2)) &&
+                !matte.Data.FillContains(new Point(2, center.Y)));
+            AssertBlackPixel(matte, new Point(center.X, 2));
+            AssertTransparentPixel(matte, center);
+            Assert.False(playback.IsPlaying);
+            picture.Dispose();
+            await WaitUntil(() => matte.Data.FillContains(center));
+            AssertBlackPixel(matte, center);
+        }
+        finally
+        {
+            LibVlcVideoViewBinding.SetOutput(surface, null);
+            window.Close();
+        }
+    });
+
+    private static async Task WaitForPictureMask(VideoView surface, ShapePath matte, IntPtr picture, Point center)
+    {
+        await WaitUntil(() => IsWindowVisible(picture)
+            ? !matte.Data.FillContains(center) &&
+                (surface.ActualWidth > surface.ActualHeight
+                    ? matte.Data.FillContains(new Point(2, center.Y))
+                    : matte.Data.FillContains(new Point(center.X, 2)) && !matte.Data.FillContains(new Point(2, center.Y)))
+            : matte.Data.FillContains(center), () => DescribeNativeWindows(surface));
+        if (IsWindowVisible(picture)) AssertTransparentPixel(matte, center);
+        else AssertBlackPixel(matte, center);
+    }
 
     private static void AssertBlackPixel(ShapePath matte, Point point) =>
         Assert.Equal(new byte[] { 0, 0, 0, 255 }, Pixel(matte, point));
@@ -159,9 +197,6 @@ public sealed class VideoBackgroundTests
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern int GetClassName(IntPtr hwnd, StringBuilder name, int capacity);
-
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindowAsync(IntPtr hwnd, int command);
 
     private static void AssertTransparentPixel(ShapePath matte, Point point) =>
         Assert.Equal(new byte[] { 0, 0, 0, 0 }, Pixel(matte, point));

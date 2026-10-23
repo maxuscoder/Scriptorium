@@ -15,17 +15,13 @@ public sealed class LibVlcRuntime : IDisposable
     private readonly List<Task> _pendingReleases = [];
     private bool _disposed;
 
-    public LibVlcRuntime() : this([])
-    {
-    }
-
-    internal LibVlcRuntime(string[] options)
+    public LibVlcRuntime()
     {
         var nativeDirectory = GetNativeDirectory();
         InitializeNativeLibrary(nativeDirectory);
 
         // Scriptorium supplies its own controls. This only suppresses LibVLC's filename overlay.
-        Instance = new LibVLC(["--no-video-title-show", .. options]);
+        Instance = new LibVLC("--no-video-title-show");
     }
 
     internal LibVLC Instance { get; }

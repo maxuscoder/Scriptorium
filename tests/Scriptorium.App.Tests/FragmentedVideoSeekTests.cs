@@ -1,9 +1,9 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using LibVLCSharp.Shared;
 using Scriptorium.App.Services;
 using Xunit;
 using MediaPlayer = LibVLCSharp.Shared.MediaPlayer;
@@ -18,64 +18,95 @@ public sealed class FragmentedVideoSeekTests
     [InlineData(true)]
     public Task RandomSeeksPreserveDecodedReferencePictures(bool playing) => StaTest.Run(async () =>
     {
-        var directory = Path.Combine(Path.GetTempPath(), $"Scriptorium seek {Guid.NewGuid():N}");
-        Directory.CreateDirectory(directory);
-        try
+        using var host = new HwndSource(new HwndSourceParameters("Fragmented seek test")
         {
-            // Keep the native parent alive until the player has stopped and disposed.
-            using var host = new HwndSource(new HwndSourceParameters("Fragmented seek test")
-            {
-                Width = 192, Height = 108, WindowStyle = unchecked((int)0x80000000)
-            });
-            // Snapshot/color assertions must work without a GPU or a visible swap chain.
-            // Other playback tests exercise the application's default Direct3D output.
-            using var runtime = new LibVlcRuntime(["--avcodec-hw=none", "--vout=wingdi"]);
-            using var player = new LibVlcVideoPlayback(runtime);
-            var output = (LibVlcVideoOutput)player.VideoOutput;
-            output.MediaPlayer.Hwnd = host.Handle;
-            var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            player.Opened += (_, _) => opened.TrySetResult();
-            player.Failed += (_, error) => opened.TrySetException(error);
-            player.Open(Path.Combine(AppContext.BaseDirectory, "Fixtures", "fragmented-seek.mp4"));
-            await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
-            // Match the view model's initial positioning of a paused preview.
-            player.Position = TimeSpan.Zero;
+            Width = 192, Height = 108, WindowStyle = unchecked((int)0x80000000)
+        });
+        using var runtime = new LibVlcRuntime();
+        // Keep the callback buffer alive until native playback has stopped.
+        using var frames = new DecodedFrames();
+        using var player = new LibVlcVideoPlayback(runtime);
+        var output = (LibVlcVideoOutput)player.VideoOutput;
+        output.MediaPlayer.Hwnd = host.Handle;
+        // Set callbacks AFTER Hwnd: VLC 3 resets the output and hardware decoder
+        // when attaching a window. Memory output needs neither a GPU nor snapshots.
+        frames.Attach(output.MediaPlayer);
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        player.Opened += (_, _) => opened.TrySetResult();
+        player.Failed += (_, error) => opened.TrySetException(error);
+        player.Open(Path.Combine(AppContext.BaseDirectory, "Fixtures", "fragmented-seek.mp4"));
+        await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        // Match the view model's initial positioning of a paused preview.
+        player.Position = TimeSpan.Zero;
+        await Task.Delay(300);
+        if (playing) player.Play();
+        foreach (var seconds in new[] { 6.2, 1.3, 5.2, 2.1, 6.4 })
+        {
+            var nextFrame = frames.ExpectFrame();
+            player.Position = TimeSpan.FromSeconds(seconds);
+            await nextFrame.WaitAsync(TimeSpan.FromSeconds(15));
             await Task.Delay(300);
-            if (playing) player.Play();
-            var index = 0;
-            foreach (var seconds in new[] { 6.2, 1.3, 5.2, 2.1, 6.4 })
-            {
-                player.Position = TimeSpan.FromSeconds(seconds);
-                await Task.Delay(300);
-                var snapshot = Path.Combine(directory, $"seek-{index++}.png");
-                await TakeSnapshot(output.MediaPlayer, snapshot);
-                using var stream = File.OpenRead(snapshot);
-                var image = new FormatConvertedBitmap(
-                    BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad), PixelFormats.Bgra32, null, 0);
-                // The large patch changes color within each GOP, so stale decoder
-                // references cannot pass by preserving a static corner of the frame.
-                var expected = seconds < 2 ? new[] { 2 } : seconds < 4 ? new[] { 1 }
-                    : seconds < 6 ? new[] { 0 } : new[] { 1, 2 };
-                AssertPatch(image, 16, 16, expected);
-                AssertPatch(image, 176, 16, [1]);
-                AssertPatch(image, 16, 92, [0]);
-                Assert.Equal(playing, player.IsPlaying);
-            }
+            var image = frames.Capture();
+            // The large patch changes color within each GOP, so stale decoder
+            // references cannot pass by preserving a static corner of the frame.
+            var expected = seconds < 2 ? new[] { 2 } : seconds < 4 ? new[] { 1 }
+                : seconds < 6 ? new[] { 0 } : new[] { 1, 2 };
+            AssertPatch(image, 16, 16, expected);
+            AssertPatch(image, 176, 16, [1]);
+            AssertPatch(image, 16, 92, [0]);
+            Assert.Equal(playing, player.IsPlaying);
         }
-        finally { Directory.Delete(directory, recursive: true); }
     });
 
-    private static async Task TakeSnapshot(MediaPlayer player, string path)
+    private sealed class DecodedFrames : IDisposable
     {
-        var taken = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        void OnTaken(object? sender, MediaPlayerSnapshotTakenEventArgs args) => taken.TrySetResult();
-        player.SnapshotTaken += OnTaken;
-        try
+        private const int Width = 192, Height = 108, Pitch = Width * 4;
+        private readonly object _gate = new();
+        private readonly IntPtr _allocation = Marshal.AllocHGlobal(Pitch * 128 + 31);
+        private readonly IntPtr _buffer;
+        private byte[]? _pixels;
+        private TaskCompletionSource? _nextFrame;
+
+        public DecodedFrames() => _buffer = new IntPtr((_allocation.ToInt64() + 31) & ~31L);
+
+        public void Attach(MediaPlayer player)
         {
-            Assert.True(player.TakeSnapshot(0, path, 192, 108));
-            await taken.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            player.SetVideoFormat("RV32", Width, Height, Pitch);
+            player.SetVideoCallbacks((_, planes) =>
+            {
+                Monitor.Enter(_gate);
+                Marshal.WriteIntPtr(planes, _buffer);
+                return IntPtr.Zero;
+            }, (_, _, _) => Monitor.Exit(_gate), (_, _) =>
+            {
+                lock (_gate)
+                {
+                    _pixels = new byte[Pitch * Height];
+                    Marshal.Copy(_buffer, _pixels, 0, _pixels.Length);
+                    _nextFrame?.TrySetResult();
+                }
+            });
         }
-        finally { player.SnapshotTaken -= OnTaken; }
+
+        public Task ExpectFrame()
+        {
+            lock (_gate)
+            {
+                _nextFrame = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                return _nextFrame.Task;
+            }
+        }
+
+        public BitmapSource Capture()
+        {
+            lock (_gate)
+            {
+                Assert.NotNull(_pixels);
+                return BitmapSource.Create(Width, Height, 96, 96, PixelFormats.Bgr32, null, _pixels, Pitch);
+            }
+        }
+
+        public void Dispose() => Marshal.FreeHGlobal(_allocation);
     }
 
     private static void AssertPatch(BitmapSource image, int x, int y, int[] channels)
