@@ -9,14 +9,14 @@ namespace Scriptorium.App.Tests;
 public sealed class LocalVideoPlaybackTests
 {
     [Fact]
-    public Task StoppingBeforeQueuedStartupRunsCancelsTheOpen() => StaTest.Run(async () =>
+    public Task StoppingDuringSubtitleDiscoveryCancelsThePendingOpen() => StaTest.Run(async () =>
     {
         using var runtime = new LibVlcRuntime();
         using var player = new LibVlcVideoPlayback(runtime);
         using var host = AttachOutput(player);
         var output = (LibVlcVideoOutput)player.VideoOutput;
-        using var nativePlaying = new ManualResetEventSlim();
-        output.MediaPlayer.Playing += (_, _) => nativePlaying.Set();
+        var nativePlaying = false;
+        output.MediaPlayer.Playing += (_, _) => nativePlaying = true;
         var opened = false;
         Exception? failure = null;
         player.Opened += (_, _) => opened = true;
@@ -24,14 +24,15 @@ public sealed class LocalVideoPlaybackTests
         try
         {
             player.Open(Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"));
-            // Deliberately hold this dispatcher until VLC queues its startup work.
-            // Stop must invalidate that work before it can publish a ready event.
-            Assert.True(nativePlaying.Wait(TimeSpan.FromSeconds(15)), "VLC did not start the native input.");
+            // Open first prepares sidecars off-thread. Stop before its dispatcher continuation
+            // can attach media or begin decoding, even if directory discovery already finished.
             player.Stop();
             await StaTest.DrainDispatcherAsync();
+            await Task.Delay(100);
             Assert.False(opened);
+            Assert.False(nativePlaying);
             Assert.Null(failure);
-            Assert.Equal(LibVLCSharp.Shared.VLCState.Stopped, output.MediaPlayer.State);
+            Assert.Null(output.MediaPlayer.Media);
         }
         finally { await player.DisposeAsync(); }
     });

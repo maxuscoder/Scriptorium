@@ -84,8 +84,7 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
     public bool StartFullscreenOnPlayback { get; set; }
 
     /// <summary>
-    /// Gets or sets the preferred subtitle state. It is retained now so it can be applied when
-    /// subtitle-track support is added to the playback engine.
+    /// Gets or sets whether an available subtitle track is selected automatically for newly opened media.
     /// </summary>
     public bool SubtitlesEnabled { get; set; }
 

@@ -123,7 +123,7 @@
                                            VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Video duration" />
                             </Grid>
                             <Viewbox x:Name="ControlActionsViewport" Grid.Row="1" Margin="0,2,0,0" Stretch="Uniform" StretchDirection="DownOnly">
-                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="320">
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="440">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -217,6 +217,15 @@
                                                 Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 IsEnabled="{Binding IsReady}" PreviewMouseLeftButtonDown="OnVolumeSliderMouseLeftButtonDown"
                                                 AutomationProperties.Name="Volume" ToolTip="Volume" />
+                                        <ComboBox x:Name="SubtitleSelector" Width="116" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                  Style="{StaticResource Player.Speed}" AutomationProperties.Name="Subtitle track"
+                                                  ToolTip="{Binding SubtitleStatus}" ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanSelectSubtitles}"
+                                                  ItemsSource="{Binding SubtitleTracks}"
+                                                  SelectedItem="{Binding SelectedSubtitleTrack, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
                                         <ComboBox x:Name="PlaybackSpeedSelector" Margin="0,0,6,0" VerticalAlignment="Center"
                                                   Style="{StaticResource Player.Speed}" AutomationProperties.Name="Playback speed" ToolTip="Playback speed"
                                                   IsEnabled="{Binding IsReady}" ItemsSource="{Binding PlaybackSpeedOptions}"

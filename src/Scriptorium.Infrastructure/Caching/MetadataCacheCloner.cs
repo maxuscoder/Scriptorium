@@ -63,6 +63,7 @@ public static class MetadataCacheCloner
         DisplayName = source.DisplayName,
         LastScanned = source.LastScanned,
         IsEnabled = source.IsEnabled,
+        DetectMediaTypes = source.DetectMediaTypes,
         MediaType = source.MediaType
     };
 

@@ -142,6 +142,9 @@ namespace Scriptorium.Infrastructure.Migrations
 
             modelBuilder.Entity("Scriptorium.Core.Models.LibraryFolder", b =>
                 {
+                    b.Property<bool>("DetectMediaTypes")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");

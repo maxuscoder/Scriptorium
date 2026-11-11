@@ -61,7 +61,7 @@
                                                     <TextBlock Style="{StaticResource Text.Label}" Text="Display name" />
                                                     <TextBox Margin="0,6,0,0" Style="{StaticResource Input.TextBox}" Text="{Binding CustomDisplayName, UpdateSourceTrigger=PropertyChanged}" />
                                                     <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Label}" Text="Media type" />
-                                                    <ComboBox Margin="0,6,0,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding MediaTypes}" SelectedValue="{Binding SelectedMediaType, Mode=TwoWay}" SelectedValuePath="Value" Style="{StaticResource Library.ComboBox}" />
+                                                    <ComboBox Margin="0,6,0,0" DisplayMemberPath="DisplayName" ItemsSource="{Binding MediaTypes}" SelectedItem="{Binding SelectedMediaTypeChoice, Mode=TwoWay}" Style="{StaticResource Library.ComboBox}" />
                                                 </StackPanel>
                                             </Border>
                                         </Popup>

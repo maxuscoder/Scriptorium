@@ -60,6 +60,8 @@ public partial class VideoPlayer : UserControl
         VideoOverlay.PreviewKeyDown += OnPreviewKeyDown;
         PlaybackSpeedSelector.DropDownOpened += OnPlaybackSpeedDropDownChanged;
         PlaybackSpeedSelector.DropDownClosed += OnPlaybackSpeedDropDownChanged;
+        SubtitleSelector.DropDownOpened += OnPlaybackSpeedDropDownChanged;
+        SubtitleSelector.DropDownClosed += OnPlaybackSpeedDropDownChanged;
         ControlPanel.MouseEnter += OnControlPanelMouseEnter;
         ControlPanel.MouseLeave += OnControlPanelMouseLeave;
         Loaded += OnLoaded;
@@ -180,7 +182,7 @@ public partial class VideoPlayer : UserControl
     private void OnControlsIdle(object? sender, EventArgs args)
     {
         if (ControlPanel.IsMouseOver || _isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
-            PlaybackSpeedSelector.IsDropDownOpen)
+            PlaybackSpeedSelector.IsDropDownOpen || SubtitleSelector.IsDropDownOpen)
             return;
 
         _controlsIdleTimer.Stop();
@@ -350,7 +352,7 @@ public partial class VideoPlayer : UserControl
     private void OnPreviewKeyDown(object sender, KeyEventArgs args)
     {
         ShowControls();
-        if (IsTextInput(args.OriginalSource as DependencyObject)) return;
+        if (IsInputControl(args.OriginalSource as DependencyObject)) return;
 
         if (args.Key == Key.Escape && _fullscreenWindow is not null)
         {
@@ -424,11 +426,11 @@ public partial class VideoPlayer : UserControl
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ToggleFullscreen));
     }
 
-    private static bool IsTextInput(DependencyObject? element)
+    private static bool IsInputControl(DependencyObject? element)
     {
         while (element is not null)
         {
-            if (element is TextBoxBase or PasswordBox or ComboBox { IsEditable: true }) return true;
+            if (element is TextBoxBase or PasswordBox or ComboBox) return true;
             element = element switch
             {
                 Visual => VisualTreeHelper.GetParent(element),

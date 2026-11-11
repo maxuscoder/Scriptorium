@@ -12,7 +12,7 @@ public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPl
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
+public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly LibVlcRuntime _runtime;
@@ -27,6 +27,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     private int _openGeneration;
     private volatile bool _disposed;
     private double _playbackSpeed = 1;
+    private CancellationTokenSource? _subtitleDiscoveryCancellation;
 
     public LibVlcVideoPlayback(LibVlcRuntime runtime)
     {
@@ -39,11 +40,22 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         _player.Playing += OnPlaying;
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnEncounteredError;
+        _player.ESAdded += OnSubtitleAdded;
+        _player.ESDeleted += OnSubtitleDeleted;
     }
 
     public event EventHandler? Opened;
     public event EventHandler? Ended;
     public event EventHandler<Exception>? Failed;
+    public event EventHandler? SubtitleTracksChanged;
+    public IReadOnlyList<SubtitleTrack> SubtitleTracks { get; private set; } = [];
+    public string SubtitleStatus { get; private set; } = string.Empty;
+
+    public bool SelectSubtitleTrack(int id)
+    {
+        ThrowIfDisposed();
+        return _player.SetSpu(id);
+    }
 
     public IVideoOutput VideoOutput { get; }
 
@@ -97,14 +109,64 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
 
         Stop();
         _media?.Dispose();
+        _media = null;
         _filePath = Path.GetFullPath(filePath);
-        _media = _runtime.CreateMedia(_filePath);
-        _player.Media = _media;
+        SubtitleTracks = [];
+        SubtitleStatus = string.Empty;
         _opening = true;
+        _subtitleDiscoveryCancellation = new CancellationTokenSource();
+        _ = PrepareMediaAsync(_filePath, _openGeneration, _subtitleDiscoveryCancellation.Token);
+    }
+
+    private async Task PrepareMediaAsync(string path, int generation, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var discovery = await new LocalSubtitleDiscovery().DiscoverAsync(path, cancellationToken);
+            if (_disposed || generation != _openGeneration) return;
+            _media = _runtime.CreateMedia(path, ":no-sub-autodetect-file");
+            SubtitleStatus = discovery.Status;
+            foreach (var subtitle in discovery.Files)
+            {
+                // User priority prevents VLC from discarding additional language sidecars as optional inputs.
+                if (!_media.AddSlave(MediaSlaveType.Subtitle, 4, new Uri(subtitle, UriKind.Absolute)))
+                    SubtitleStatus = "Some local subtitles could not be loaded.";
+            }
+            _player.Media = _media;
+            WaitForOutput();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            if (!_disposed && generation == _openGeneration) PostFailure(exception);
+        }
+    }
+
+    private void WaitForOutput()
+    {
         _waitingForOutput = true;
         // VideoView's binding can arrive before its template has built a native HWND.
         // Starting without that HWND lets LibVLC create its own top-level video window.
         StartOpeningWhenAttached();
+    }
+
+    private void OnSubtitleAdded(object? sender, MediaPlayerESAddedEventArgs args) => PostSubtitleRefresh();
+    private void OnSubtitleDeleted(object? sender, MediaPlayerESDeletedEventArgs args) => PostSubtitleRefresh();
+
+    private void PostSubtitleRefresh()
+    {
+        var generation = Volatile.Read(ref _openGeneration);
+        // Read native state on the dispatcher, never inside VLC's input callbacks.
+        Post(() => { if (generation == _openGeneration) RefreshSubtitleTracks(); });
+    }
+
+    private void RefreshSubtitleTracks()
+    {
+        var tracks = _player.SpuDescription.Where(track => track.Id >= 0)
+            .Select(track => new SubtitleTrack(track.Id, track.Name)).ToArray();
+        if (SubtitleTracks.SequenceEqual(tracks)) return;
+        SubtitleTracks = tracks;
+        SubtitleTracksChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void OnOutputAttached()
@@ -131,7 +193,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
     public void Play()
     {
         ThrowIfDisposed();
-        if (_player.Hwnd == IntPtr.Zero || _waitingForOutput)
+        if (_player.Hwnd == IntPtr.Zero || _waitingForOutput || _opening)
             throw new InvalidOperationException("The embedded video output is not ready.");
         _player.SetPause(false);
         if (!_player.IsPlaying && !_player.Play())
@@ -149,6 +211,9 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         ThrowIfDisposed();
         _opening = false;
         _waitingForOutput = false;
+        _subtitleDiscoveryCancellation?.Cancel();
+        _subtitleDiscoveryCancellation?.Dispose();
+        _subtitleDiscoveryCancellation = null;
         Interlocked.Increment(ref _openGeneration);
         _player.Stop();
     }
@@ -172,6 +237,9 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
                     "The file has no playable video stream."));
                 return;
             }
+            RefreshSubtitleTracks();
+            // The owning player applies its preference after Opened; passive previews start without captions.
+            _player.SetSpu(-1);
             Opened?.Invoke(this, EventArgs.Empty);
         });
     }
@@ -223,6 +291,9 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
             _disposed = true;
             _opening = false;
             _waitingForOutput = false;
+            _subtitleDiscoveryCancellation?.Cancel();
+            _subtitleDiscoveryCancellation?.Dispose();
+            _subtitleDiscoveryCancellation = null;
             _disposeTask = _runtime.ReleaseAsync(DisposeNativeResources);
             return new ValueTask(_disposeTask);
         }
@@ -233,6 +304,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, IAsyncDisposable
         _player.Playing -= OnPlaying;
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnEncounteredError;
+        _player.ESAdded -= OnSubtitleAdded;
+        _player.ESDeleted -= OnSubtitleDeleted;
         _player.Stop();
         _player.Media = null;
         _media?.Dispose();

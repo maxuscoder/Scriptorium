@@ -85,6 +85,8 @@ public sealed class LibraryMediaItemViewModel(MediaItem mediaItem) : ViewModelBa
 
     public ICommand? CardFavoriteCommand { get; init; }
 
+    public ICommand? CardActionCommand { get; init; }
+
     public LibraryCardPresentation CardPresentation { get; init; } = new();
 
     /// <summary>Gets whether this indexed media item is marked as a favorite.</summary>

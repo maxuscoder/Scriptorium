@@ -29,11 +29,14 @@ public sealed class MediaDetailsNavigationCoordinator(
         };
     }
 
-    public async Task<bool> OpenTutorialAsync(Guid courseId, PageViewModel returnPage)
+    public Task<bool> OpenTutorialAsync(Guid courseId, PageViewModel returnPage) =>
+        OpenTutorialAsync(courseId, returnPage, selectedMediaItemId: null);
+
+    private async Task<bool> OpenTutorialAsync(Guid courseId, PageViewModel returnPage, Guid? selectedMediaItemId)
     {
         ArgumentNullException.ThrowIfNull(returnPage);
 
-        if (!await tutorialDetailsPage.LoadAsync(courseId, returnPage))
+        if (!await tutorialDetailsPage.LoadAsync(courseId, returnPage, selectedMediaItemId))
         {
             return false;
         }
@@ -42,11 +45,14 @@ public sealed class MediaDetailsNavigationCoordinator(
         return true;
     }
 
-    public async Task<bool> OpenTvShowAsync(Guid showId, PageViewModel returnPage)
+    public Task<bool> OpenTvShowAsync(Guid showId, PageViewModel returnPage) =>
+        OpenTvShowAsync(showId, returnPage, selectedMediaItemId: null);
+
+    private async Task<bool> OpenTvShowAsync(Guid showId, PageViewModel returnPage, Guid? selectedMediaItemId)
     {
         ArgumentNullException.ThrowIfNull(returnPage);
 
-        if (!await tvShowDetailsPage.LoadAsync(showId, returnPage))
+        if (!await tvShowDetailsPage.LoadAsync(showId, returnPage, selectedMediaItemId))
         {
             return false;
         }
@@ -72,13 +78,13 @@ public sealed class MediaDetailsNavigationCoordinator(
     {
         var course = await courseRepository.GetByMediaItemIdAsync(mediaItemId);
 
-        return course is not null && await OpenTutorialAsync(course.Id, returnPage);
+        return course is not null && await OpenTutorialAsync(course.Id, returnPage, mediaItemId);
     }
 
     private async Task<bool> OpenTvShowForMediaAsync(Guid mediaItemId, PageViewModel returnPage)
     {
         var show = await tvShowRepository.GetByMediaItemIdAsync(mediaItemId);
 
-        return show is not null && await OpenTvShowAsync(show.Id, returnPage);
+        return show is not null && await OpenTvShowAsync(show.Id, returnPage, mediaItemId);
     }
 }

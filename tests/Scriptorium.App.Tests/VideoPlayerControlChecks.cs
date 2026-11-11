@@ -71,6 +71,21 @@ internal static class VideoPlayerControlChecks
             Assert.Equal(0.7, engine.Volume, 3);
 
             var speed = (ComboBox)view.FindName("PlaybackSpeedSelector");
+            var subtitles = (ComboBox)view.FindName("SubtitleSelector");
+            Assert.True(subtitles.IsEnabled);
+            Assert.Equal(3, subtitles.Items.Count);
+            subtitles.SelectedItem = player.SubtitleTracks[1];
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(3, engine.SelectedSubtitle);
+            subtitles.SelectedItem = SubtitleTrack.Off;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(-1, engine.SelectedSubtitle);
+            var volumeBeforeSelection = player.Volume;
+            subtitles.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitles), 0, Key.Down)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(volumeBeforeSelection, player.Volume);
             foreach (var width in new[] { 960, 560, 390 })
             {
                 window.Width = width;
@@ -82,7 +97,7 @@ internal static class VideoPlayerControlChecks
                     await StaTest.DrainDispatcherAsync();
                     Assert.Equal(rate, engine.PlaybackSpeed);
                     // Check the rendered bounds after the narrow toolbar has scaled to fit.
-                    foreach (var control in buttons.Cast<FrameworkElement>().Append(speed).Append(volume))
+                    foreach (var control in buttons.Cast<FrameworkElement>().Append(speed).Append(volume).Append(subtitles))
                     {
                         var bounds = control.TransformToAncestor(panel).TransformBounds(new Rect(control.RenderSize));
                         Assert.True(bounds.Left >= 0 && bounds.Right <= panel.ActualWidth + 1,
@@ -218,7 +233,7 @@ internal static class VideoPlayerControlChecks
         public IVideoPlayback Create() => engine;
     }
 
-    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput
+    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput, ISubtitlePlayback
     {
         public event EventHandler? Opened;
         public event EventHandler? Ended { add { } remove { } }
@@ -229,6 +244,11 @@ internal static class VideoPlayerControlChecks
         public TimeSpan Duration => TimeSpan.FromSeconds(71);
         public double Volume { get; set; }
         public double PlaybackSpeed { get; set; }
+        public event EventHandler? SubtitleTracksChanged { add { } remove { } }
+        public IReadOnlyList<SubtitleTrack> SubtitleTracks { get; } = [new(3, "English"), new(5, "Romanian")];
+        public string SubtitleStatus => string.Empty;
+        public int SelectedSubtitle { get; private set; } = -1;
+        public bool SelectSubtitleTrack(int id) { SelectedSubtitle = id; return true; }
         public void Open(string filePath) => Opened?.Invoke(this, EventArgs.Empty);
         public void Play() => IsPlaying = true;
         public void Pause() => IsPlaying = false;

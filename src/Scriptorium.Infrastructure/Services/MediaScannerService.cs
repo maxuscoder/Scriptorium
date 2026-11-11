@@ -1,4 +1,5 @@
 using Scriptorium.Core.Models;
+using Scriptorium.Core.Repositories;
 using Scriptorium.Core.Services;
 using Microsoft.Extensions.Logging;
 using System.Security;
@@ -22,7 +23,8 @@ public sealed partial class MediaScannerService(
     ITutorialCourseSynchronizer tutorialCourseSynchronizer,
     ILogger<MediaScannerService>? logger = null,
     IOperationMetrics? operationMetrics = null,
-    IAutomaticThumbnailService? automaticThumbnails = null) : IMediaScannerService
+    IAutomaticThumbnailService? automaticThumbnails = null,
+    IMediaItemRepository? mediaItemRepository = null) : IMediaScannerService
 {
     private readonly SemaphoreSlim _scanGate = new(1, 1);
     private int _isScanning;
@@ -128,7 +130,10 @@ public sealed partial class MediaScannerService(
                     var extension = Path.GetExtension(path);
                     if (mediaFormatService.IsSupportedExtension(extension))
                     {
-                        supportedCandidates.Add(new MediaFileCandidate(folder.Id, folder.MediaType, path));
+                        var mediaType = folder.DetectMediaTypes
+                            ? MediaFileClassifier.Suggest(path, folder.Path).Type
+                            : folder.MediaType;
+                        supportedCandidates.Add(new MediaFileCandidate(folder.Id, mediaType, path));
                         progress?.Report(new MediaScanProgress(folder.Path, path, processedFileCount, supportedCandidates.Count));
                     }
                     else if (mediaFormatService.IsVideoExtension(extension))
@@ -152,16 +157,24 @@ public sealed partial class MediaScannerService(
                 .ConfigureAwait(false);
             var discoveredFiles = new List<DiscoveredMediaFile>();
             var scannedFoldersById = scannedFolders.ToDictionary(folder => folder.Id);
+            var overridesByPath = mediaItemRepository is null
+                ? new Dictionary<string, MediaType>(StringComparer.OrdinalIgnoreCase)
+                : (await mediaItemRepository.GetByLibraryFolderIdsOrPathsAsync(
+                        scannedFoldersById.Keys, uniqueCandidates.Select(candidate => candidate.Path), cancellationToken)
+                    .ConfigureAwait(false))
+                    .Where(item => item.MediaTypeOverride is not null)
+                    .ToDictionary(item => item.Path, item => item.MediaTypeOverride!.Value, StringComparer.OrdinalIgnoreCase);
             foreach (var candidate in uniqueCandidates)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    var discoveredFile = mediaMetadataReader.Read(candidate.LibraryFolderId, candidate.MediaType, candidate.Path)
+                    var effectiveType = overridesByPath.GetValueOrDefault(candidate.Path, candidate.MediaType);
+                    var discoveredFile = mediaMetadataReader.Read(candidate.LibraryFolderId, effectiveType, candidate.Path)
                         with { IsSupportedFormat = true };
                     discoveredFiles.Add(ApplyEpisodeInformation(
                         ApplyTvShowOrganization(discoveredFile, scannedFoldersById),
-                        scannedFoldersById));
+                        scannedFoldersById) with { MediaType = candidate.MediaType });
                 }
                 catch (Exception exception) when (CanSkip(exception))
                 {
@@ -241,7 +254,9 @@ public sealed partial class MediaScannerService(
             {
                 return discoveredFile with
                 {
-                    TVShowTitle = GetTvShowTitle(normalizedDirectory, libraryPath, libraryFolder),
+                    TVShowTitle = libraryFolder.DetectMediaTypes
+                        ? MediaFileClassifier.GetShowTitle(discoveredFile.FileName) ?? GetTvShowTitle(normalizedDirectory, libraryPath, libraryFolder)
+                        : GetTvShowTitle(normalizedDirectory, libraryPath, libraryFolder),
                     SeasonNumber = seasonNumber
                 };
             }
@@ -261,11 +276,29 @@ public sealed partial class MediaScannerService(
         DiscoveredMediaFile discoveredFile,
         IReadOnlyDictionary<Guid, LibraryFolder> scannedFoldersById)
     {
-        if (discoveredFile.MediaType != MediaType.TvShow ||
-            episodeFileNameParser.Parse(discoveredFile.FileName) is not { } episodeInfo)
+        if (discoveredFile.MediaType != MediaType.TvShow)
         {
             return discoveredFile;
         }
+
+        var episodeInfo = episodeFileNameParser.Parse(discoveredFile.FileName);
+        if (scannedFoldersById.TryGetValue(discoveredFile.LibraryFolderId, out var mixedFolder) && mixedFolder.DetectMediaTypes)
+        {
+            var isRootFile = string.Equals(Path.TrimEndingDirectorySeparator(discoveredFile.ContainingFolderPath),
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(mixedFolder.Path)), StringComparison.OrdinalIgnoreCase);
+            var showTitle = MediaFileClassifier.GetShowTitle(discoveredFile.FileName)
+                ?? (isRootFile
+                    ? Path.GetFileNameWithoutExtension(discoveredFile.FileName).Replace('.', ' ').Replace('_', ' ')
+                    : GetFlatFolderTvShowTitle(discoveredFile, mixedFolder));
+            return discoveredFile with
+            {
+                TVShowTitle = discoveredFile.TVShowTitle ?? showTitle,
+                SeasonNumber = episodeInfo?.SeasonNumber ?? discoveredFile.SeasonNumber ?? 1,
+                EpisodeNumber = episodeInfo?.EpisodeNumber
+            };
+        }
+
+        if (episodeInfo is null) return discoveredFile;
 
         return discoveredFile with
         {
@@ -297,6 +330,11 @@ public sealed partial class MediaScannerService(
         if (!string.IsNullOrWhiteSpace(libraryFolder.DisplayName))
         {
             return libraryFolder.DisplayName;
+        }
+
+        if (libraryFolder.DetectMediaTypes && MediaFileClassifier.GetShowTitle(discoveredFile.FileName) is { } showTitle)
+        {
+            return showTitle;
         }
 
         var sourceFolderName = string.Equals(

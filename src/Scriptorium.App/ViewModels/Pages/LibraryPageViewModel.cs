@@ -177,6 +177,7 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
         OpenTvShowCommand = _openTvShowCommand;
         _openMovieCommand = new AsyncRelayCommand(OpenMovieAsync, parameter => parameter is MovieItemViewModel);
         OpenMovieCommand = _openMovieCommand;
+        OpenMediaCommand = new AsyncRelayCommand(OpenMediaAsync, parameter => parameter is LibraryMediaItemViewModel);
         ToggleFavoriteCommand = new AsyncRelayCommand(ToggleFavoriteAsync, parameter => parameter is IMediaFavoriteItem or
             TutorialCollectionViewModel { LessonCount: > 0 } or TvShowCollectionViewModel { EpisodeCount: > 0 });
         _isListLayout = string.Equals(_settingsService.Settings.LibraryLayout, "List", StringComparison.OrdinalIgnoreCase);
@@ -634,6 +635,9 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
     /// <summary>Gets the command that opens a movie's metadata page.</summary>
     public ICommand OpenMovieCommand { get; }
 
+    /// <summary>Opens an individual search or filtered result in its owning media details page.</summary>
+    public ICommand OpenMediaCommand { get; }
+
     /// <summary>Gets the command that toggles a media item's favorite state.</summary>
     public ICommand ToggleFavoriteCommand { get; }
 
@@ -1053,6 +1057,7 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
 
     private LibraryMediaItemViewModel CreateLibraryMediaCard(MediaItem mediaItem) => new(mediaItem)
     {
+        CardActionCommand = OpenMediaCommand,
         CardFavoriteCommand = ToggleFavoriteCommand,
         CardPresentation = _cardPresentation
     };
@@ -1837,6 +1842,13 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
     {
         _scanCancellationSource?.Cancel();
         StatusMessage = "Stopping library scan…";
+    }
+
+    private async Task OpenMediaAsync(object? parameter)
+    {
+        if (parameter is not LibraryMediaItemViewModel item) return;
+        if (!await _detailsCoordinator.OpenMediaAsync(item.MediaItem, this))
+            StatusMessage = "This media is no longer available in the library.";
     }
 
     private async Task OpenTutorialAsync(object? parameter)

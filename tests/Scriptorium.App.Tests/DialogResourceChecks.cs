@@ -7,11 +7,14 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Scriptorium.App.Services;
+using Scriptorium.App.ViewModels;
 using Scriptorium.App.ViewModels.Pages;
 using Scriptorium.App.Views;
 using Scriptorium.App.Views.Controls;
 using Scriptorium.App.Views.Controls.Library;
 using Scriptorium.Core.Models;
+using Scriptorium.Core.Services;
+using Scriptorium.Infrastructure.Services;
 using Xunit;
 
 namespace Scriptorium.App.Tests;
@@ -21,12 +24,14 @@ internal static class DialogResourceChecks
     internal static async Task VerifyAsync(ResourceDictionary resources)
     {
         var theme = new ThemeService(resources);
+        var import = new FolderImportViewModel(@"C:\Media\My collection");
+        await import.LoadAsync(new PreviewFileSystem(), new MediaFormatService());
         Window[] dialogs =
         [
             new CreateCategoryDialog([]),
             new EditCategoryDialog(new CategoryItemViewModel(new Category { Name = "Movies", Color = "#FF6508" }, [])),
             new ConfirmationDialogWindow("Delete category", "Remove this category from your library?"),
-            new MediaTypeSelectionDialog(),
+            new MediaTypeSelectionDialog(import),
             new LibraryManagementWindow()
         ];
         foreach (var dialog in dialogs)
@@ -67,6 +72,27 @@ internal static class DialogResourceChecks
 
                 if (dialog is MediaTypeSelectionDialog)
                 {
+                    var list = Assert.IsType<ListBox>(dialog.FindName("MediaFilesList"));
+                    Assert.Equal(4, list.Items.Count);
+                    var add = Assert.IsType<Button>(dialog.FindName("AddFolderButton"));
+                    Assert.True(add.IsEnabled);
+                    var row = Assert.IsType<ListBoxItem>(list.ItemContainerGenerator.ContainerFromIndex(0));
+                    var selector = Descendants<ComboBox>(row).Single();
+                    Assert.Equal(import.Files[0].SuggestedMediaType, selector.SelectedValue);
+                    selector.SelectedValue = MediaType.Tutorial;
+                    Assert.Equal(MediaType.Tutorial, import.Files[0].MediaType);
+                    Assert.NotEqual(import.Files[1].MediaType, import.Files[0].MediaType);
+                    var fileName = Descendants<TextBlock>(row).First(text => text.Text == import.Files[0].FileName);
+                    Assert.Equal(((SolidColorBrush)resources["Brush.TextPrimary"]).Color, ((SolidColorBrush)fileName.Foreground).Color);
+                    selector.SelectedValue = import.Files[0].SuggestedMediaType;
+                    await StaTest.DrainDispatcherAsync();
+                    SavePreview(surface, "folder-import-overview.png");
+                    Assert.True(add.TranslatePoint(new Point(), dialog).Y + add.ActualHeight < dialog.ActualHeight - 20);
+                    theme.Apply("Light");
+                    await StaTest.DrainDispatcherAsync();
+                    SavePreview(surface, "folder-import-overview-light.png");
+                    Assert.Equal(((SolidColorBrush)resources["Brush.TextPrimary"]).Color, ((SolidColorBrush)fileName.Foreground).Color);
+                    theme.Apply("Dark");
                     dialog.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(dialog), 0, Key.Escape)
                         { RoutedEvent = Keyboard.KeyDownEvent });
                 }
@@ -82,6 +108,28 @@ internal static class DialogResourceChecks
                 dialog.Close();
                 theme.Apply("Dark");
             }
+        }
+    }
+
+    private sealed class PreviewFileSystem : IFileSystemService
+    {
+        public IReadOnlyList<string> EnumerateFiles(IEnumerable<string> folderPaths, CancellationToken cancellationToken = default,
+            Action<string>? onFileDiscovered = null, Action<string, Exception>? onError = null) =>
+        [
+            @"C:\Media\My collection\Dune.Part.Two.2024.2160p.mkv",
+            @"C:\Media\My collection\Foundation.S02E03.1080p.mkv",
+            @"C:\Media\My collection\Learning\Blender.Tutorial.01.mp4",
+            @"C:\Media\My collection\The.Expanse.S01E01.1080p.mp4"
+        ];
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
 

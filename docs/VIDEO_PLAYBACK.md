@@ -14,9 +14,19 @@ Native video dimensions are rounded from the local player size, independently of
 
 The foreground overlay paints opaque black bars using the display aspect ratio of VLC's native picture window, including sample aspect ratio and rotation. A hidden or unavailable picture stays fully covered in black, so the native gray background cannot show through. The adapter listens for native picture creation, visibility, and geometry changes, including changes after the initial preview has paused, and briefly follows the resulting layout while it settles. This keeps pillarbox and letterbox areas black on initial entry, return navigation, scrolling, and resizing, without repainting the paused Direct3D frame or polling continuously while paused.
 
+## Local subtitles
+
+The player discovers `.srt`, `.vtt` (WebVTT), `.ass`, and `.ssa` sidecars in the video's own folder whenever a media session opens. Names match case-insensitively: `Movie.mp4` can use `Movie.srt`, `Movie.en.srt`, `Movie.en.forced.srt`, or `Movie ro.srt`. A dot or space must separate a language/variant suffix; `Episode 1` does not match `Episode 10`. If multiple video names share a prefix, the longest matching video name owns the subtitle. Discovery does not search subfolders or download files.
+
+The **Subtitle track** selector lists loaded external and embedded tracks, with **Subtitles off** available explicitly. Selection changes take effect in the current session, including fullscreen. Turning subtitles on or off saves the existing `SubtitlesEnabled` preference; subsequent videos select the first available track when enabled. Opening a video without subtitles preserves that preference.
+
+Discovery and preliminary validation run off the UI thread and cancel when a session is stopped, replaced, or released. Empty, unreadable, oversized (over 16 MiB), and invalid files without a recognizable timed cue are skipped. BOM-marked UTF-8/UTF-16 files are supported. LibVLC performs the final format parsing; only tracks it exposes appear in the menu. Missing subtitles leave video playback available. Hovering the subtitle selector shows availability or skipped-file information, including when the selector is disabled. Sidecars are never modified or persisted in the library database; reopen the media to discover added or renamed files.
+
+SRT, WebVTT, ASS, and SSA are covered by native decoding/selection tests. Other formats, including bitmap subtitle pairs (`.idx`/`.sub`), remain outside automatic discovery because their pairing and validation need separate handling.
+
 ## Keyboard shortcuts
 
-When the player has focus, these shortcuts are available. They do not run while focus is in a text-entry control.
+When the player has focus, these shortcuts are available. They do not run while focus is in a text-entry control or a track/speed selector.
 
 | Key | Action |
 | --- | --- |
@@ -39,6 +49,8 @@ The player uses the official `LibVLCSharp`, `LibVLCSharp.WPF`, and `VideoLAN.Lib
 - `MovieDetailsPageViewModel` supplies the current movie, while `TutorialDetailsPageViewModel` and `TvShowDetailsPageViewModel` bind the same player to the selected lesson or episode. Loading a preview does not update playback history. First playback retains the existing last-played update, and saved positions are respected (completed items start at zero). Periodic, end-of-media, and close-time position updates are persisted through `IPlaybackProgressService`; playback at 95% or more of a known runtime is marked completed and refreshes the library through its saved-progress notification. Collection details pages select the first incomplete item when opened, preserve per-item resume positions, and expose sequential previous/next navigation. The **Reset progress** action clears the saved position and completion state.
 
 The player is connected to movie details, tutorial lessons, and TV-show episodes. Collection details pages select the first incomplete item when opened, preserve per-item resume positions, and expose sequential previous/next navigation.
+
+Individual media cards in search and filtered library results open their corresponding details page in both grid and list layouts. Episode and lesson results select the clicked media item; opening a collection still selects its first incomplete item. Back returns to the library with the search and filters preserved.
 
 ## Verification
 

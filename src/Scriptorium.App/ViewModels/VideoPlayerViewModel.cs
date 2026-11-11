@@ -40,6 +40,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private double _volume = 1;
     private double _volumeBeforeMute = 1;
     private double _playbackSpeed = 1;
+    private bool _subtitlesEnabled;
+    private IReadOnlyList<SubtitleTrack> _subtitleTracks = [SubtitleTrack.Off];
+    private SubtitleTrack _selectedSubtitleTrack = SubtitleTrack.Off;
+    private string _subtitleStatus = "No subtitles available.";
     private CancellationTokenSource? _preferenceSaveCancellationSource;
     private DateTimeOffset _lastProgressSaveRequested = DateTimeOffset.MinValue;
     private Guid? _lastSavedMediaItemId;
@@ -66,6 +70,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _volume = NormalizeVolume(settingsService.Settings.PlaybackVolume);
             _volumeBeforeMute = _volume;
             _playbackSpeed = NormalizePlaybackSpeed(settingsService.Settings.PlaybackSpeed);
+            _subtitlesEnabled = settingsService.Settings.SubtitlesEnabled;
         }
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
         ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
@@ -96,6 +101,38 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    public IReadOnlyList<SubtitleTrack> SubtitleTracks => _subtitleTracks;
+    public string SubtitleStatus { get => _subtitleStatus; private set => SetProperty(ref _subtitleStatus, value); }
+    public bool CanSelectSubtitles => IsReady && SubtitleTracks.Count > 1;
+    public SubtitleTrack SelectedSubtitleTrack
+    {
+        get => _selectedSubtitleTrack;
+        set
+        {
+            if (value is null || !CanSelectSubtitles || !SubtitleTracks.Contains(value) ||
+                value == _selectedSubtitleTrack || _playback is not ISubtitlePlayback subtitles) return;
+            try
+            {
+                if (!subtitles.SelectSubtitleTrack(value.Id))
+                {
+                    SubtitleStatus = "This subtitle track could not be loaded. Choose another track or turn subtitles off.";
+                    OnPropertyChanged();
+                    return;
+                }
+                SetProperty(ref _selectedSubtitleTrack, value);
+                _subtitlesEnabled = value.Id >= 0;
+                SubtitleStatus = subtitles.SubtitleStatus;
+                if (_settingsService is not null) _settingsService.Settings.SubtitlesEnabled = _subtitlesEnabled;
+                QueuePlaybackPreferenceSave();
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(exception, "The subtitle track could not be selected.");
+                SubtitleStatus = "This subtitle track could not be loaded.";
+                OnPropertyChanged();
+            }
+        }
+    }
     public bool StartFullscreenOnPlayback => _settingsService?.Settings.StartFullscreenOnPlayback ?? false;
     /// <summary>An engine-neutral token consumed only by the WPF video surface adapter.</summary>
     public IVideoOutput? VideoOutput => _playback?.VideoOutput;
@@ -104,7 +141,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         get => _isReady;
         private set
         {
-            if (SetProperty(ref _isReady, value)) OnPropertyChanged(nameof(IsStatusVisible));
+            if (SetProperty(ref _isReady, value))
+            {
+                OnPropertyChanged(nameof(IsStatusVisible));
+                OnPropertyChanged(nameof(CanSelectSubtitles));
+            }
         }
     }
     public bool IsPlaying => _isPlaying;
@@ -279,6 +320,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _playback.Opened += OnOpened;
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
+            if (_playback is ISubtitlePlayback subtitles) subtitles.SubtitleTracksChanged += OnSubtitleTracksChanged;
             ApplyVolume();
             OnPropertyChanged(nameof(VideoOutput));
             _playback.Open(_request.FilePath);
@@ -301,6 +343,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
             ApplyPlaybackSpeed();
             IsReady = true;
+            RefreshSubtitleTracks();
             SetPlaybackState(VideoPlaybackState.Paused);
             Status = "Ready to play";
             UpdatePosition();
@@ -354,6 +397,41 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         }
         NotifyPlaybackAction(action);
         if (notifyStarted) PlaybackStarted?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSubtitleTracksChanged(object? sender, EventArgs args)
+    {
+        if (ReferenceEquals(sender, _playback) && IsReady) RefreshSubtitleTracks();
+    }
+
+    private void RefreshSubtitleTracks()
+    {
+        if (_playback is not ISubtitlePlayback subtitles) return;
+        _subtitleTracks = [SubtitleTrack.Off, .. subtitles.SubtitleTracks];
+        OnPropertyChanged(nameof(SubtitleTracks));
+        OnPropertyChanged(nameof(CanSelectSubtitles));
+        var selected = _subtitleTracks.FirstOrDefault(track => track.Id == _selectedSubtitleTrack.Id);
+        if (_subtitlesEnabled && (selected is null || selected.Id < 0)) selected = subtitles.SubtitleTracks.FirstOrDefault();
+        selected ??= SubtitleTrack.Off;
+        try
+        {
+            // Refreshes never overwrite the saved preference, including files with no subtitles.
+            if (!subtitles.SelectSubtitleTrack(selected.Id) && selected.Id >= 0)
+            {
+                subtitles.SelectSubtitleTrack(-1);
+                SetProperty(ref _selectedSubtitleTrack, SubtitleTrack.Off, nameof(SelectedSubtitleTrack));
+                SubtitleStatus = "Subtitles could not be loaded. Video playback is still available.";
+                return;
+            }
+            SetProperty(ref _selectedSubtitleTrack, selected, nameof(SelectedSubtitleTrack));
+            SubtitleStatus = !string.IsNullOrEmpty(subtitles.SubtitleStatus) ? subtitles.SubtitleStatus
+                : subtitles.SubtitleTracks.Count == 0 ? "No subtitles available." : "Select a subtitle track or turn subtitles off.";
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Subtitle tracks could not be applied.");
+            SubtitleStatus = "Subtitles could not be loaded. Video playback is still available.";
+        }
     }
 
     private void OnEnded(object? sender, EventArgs args)
@@ -581,9 +659,16 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             playback.Opened -= OnOpened;
             playback.Ended -= OnEnded;
             playback.Failed -= OnFailed;
+            if (playback is ISubtitlePlayback subtitles) subtitles.SubtitleTracksChanged -= OnSubtitleTracksChanged;
             _playbackReleaseTask = Task.WhenAll(_playbackReleaseTask, DisposePlaybackAsync(playback));
         }
         IsReady = false;
+        _subtitleTracks = [SubtitleTrack.Off];
+        _selectedSubtitleTrack = SubtitleTrack.Off;
+        SubtitleStatus = "No subtitles available.";
+        OnPropertyChanged(nameof(SubtitleTracks));
+        OnPropertyChanged(nameof(SelectedSubtitleTrack));
+        OnPropertyChanged(nameof(CanSelectSubtitles));
         SetPlaybackState(VideoPlaybackState.Stopped);
         _hasEnded = false;
         _hasStarted = false;
@@ -806,6 +891,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
         var speed = NormalizePlaybackSpeed(_settingsService.Settings.PlaybackSpeed);
         SetProperty(ref _playbackSpeed, speed, nameof(PlaybackSpeed));
+        _subtitlesEnabled = _settingsService.Settings.SubtitlesEnabled;
     }
 
     private void ApplyPlaybackSpeed()
