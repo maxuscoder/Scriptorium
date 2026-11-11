@@ -51,7 +51,7 @@ public static class LegacyDatabaseBaseliner
             await using var command = connection.CreateCommand();
             command.CommandText = "INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ($migrationId, $productVersion);";
             AddParameter(command, "$migrationId", initialMigrationId);
-            AddParameter(command, "$productVersion", "9.0.0");
+            AddParameter(command, "$productVersion", "10.0.15");
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
         finally

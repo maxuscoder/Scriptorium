@@ -881,7 +881,7 @@ public sealed class MediaItemRepository(
 
     private async Task<bool> UpdateAsync(
         Guid mediaItemId,
-        Expression<Func<SetPropertyCalls<MediaItem>, SetPropertyCalls<MediaItem>>> configureSetters,
+        Action<UpdateSettersBuilder<MediaItem>> configureSetters,
         CancellationToken cancellationToken)
     {
         await using var context = await ContextFactory.CreateDbContextAsync(cancellationToken);
