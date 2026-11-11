@@ -22,6 +22,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly object _progressSaveGate = new();
     private readonly object _preferenceSaveGate = new();
     private Task _progressSaveTask = Task.CompletedTask;
+    private Task _preferenceSaveTask = Task.CompletedTask;
     private Task _playbackReleaseTask = Task.CompletedTask;
     private int _playbackGeneration;
     private IVideoPlayback? _playback;
@@ -44,6 +45,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private IReadOnlyList<SubtitleTrack> _subtitleTracks = [SubtitleTrack.Off];
     private SubtitleTrack _selectedSubtitleTrack = SubtitleTrack.Off;
     private string _subtitleStatus = "No subtitles available.";
+    private IReadOnlyList<AudioTrack> _audioTracks = [];
+    private AudioTrack? _selectedAudioTrack;
+    private string _audioStatus = "No audio tracks available.";
+    private MediaTrackPreferences _trackPreferences = new();
+    private bool _refreshingTracks;
     private CancellationTokenSource? _preferenceSaveCancellationSource;
     private DateTimeOffset _lastProgressSaveRequested = DateTimeOffset.MinValue;
     private Guid? _lastSavedMediaItemId;
@@ -109,7 +115,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         get => _selectedSubtitleTrack;
         set
         {
-            if (value is null || !CanSelectSubtitles || !SubtitleTracks.Contains(value) ||
+            if (_refreshingTracks || value is null || !CanSelectSubtitles || !SubtitleTracks.Contains(value) ||
                 value == _selectedSubtitleTrack || _playback is not ISubtitlePlayback subtitles) return;
             try
             {
@@ -122,13 +128,57 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 SetProperty(ref _selectedSubtitleTrack, value);
                 _subtitlesEnabled = value.Id >= 0;
                 SubtitleStatus = subtitles.SubtitleStatus;
-                if (_settingsService is not null) _settingsService.Settings.SubtitlesEnabled = _subtitlesEnabled;
+                _trackPreferences.Subtitle = PlaybackTrackSelection.Capture(value);
+                if (_settingsService is not null)
+                {
+                    _settingsService.Settings.SubtitlesEnabled = _subtitlesEnabled;
+                    if (_trackPreferences.Subtitle.Language is { } language && _subtitlesEnabled)
+                        _settingsService.Settings.PreferredSubtitleLanguage = language;
+                    RememberTrackPreferences();
+                }
                 QueuePlaybackPreferenceSave();
             }
             catch (Exception exception)
             {
                 _logger?.LogWarning(exception, "The subtitle track could not be selected.");
                 SubtitleStatus = "This subtitle track could not be loaded.";
+                OnPropertyChanged();
+            }
+        }
+    }
+    public IReadOnlyList<AudioTrack> AudioTracks => _audioTracks;
+    public string AudioStatus { get => _audioStatus; private set => SetProperty(ref _audioStatus, value); }
+    public bool CanSelectAudio => IsReady && AudioTracks.Count > 0;
+    public AudioTrack? SelectedAudioTrack
+    {
+        get => _selectedAudioTrack;
+        set
+        {
+            if (_refreshingTracks || value is null || !CanSelectAudio || !AudioTracks.Contains(value) ||
+                value == _selectedAudioTrack || _playback is not IAudioPlayback audio) return;
+            try
+            {
+                if (!audio.SelectAudioTrack(value.Id))
+                {
+                    AudioStatus = "This audio track could not be loaded. Choose another track.";
+                    OnPropertyChanged();
+                    return;
+                }
+                SetProperty(ref _selectedAudioTrack, value);
+                AudioStatus = "Select an audio track.";
+                _trackPreferences.Audio = PlaybackTrackSelection.Capture(value);
+                if (_settingsService is not null)
+                {
+                    if (_trackPreferences.Audio.Language is { } language)
+                        _settingsService.Settings.PreferredAudioLanguage = language;
+                    RememberTrackPreferences();
+                }
+                QueuePlaybackPreferenceSave();
+            }
+            catch (Exception exception)
+            {
+                _logger?.LogWarning(exception, "The audio track could not be selected.");
+                AudioStatus = "This audio track could not be loaded.";
                 OnPropertyChanged();
             }
         }
@@ -145,6 +195,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             {
                 OnPropertyChanged(nameof(IsStatusVisible));
                 OnPropertyChanged(nameof(CanSelectSubtitles));
+                OnPropertyChanged(nameof(CanSelectAudio));
             }
         }
     }
@@ -286,9 +337,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         _disposed = true;
         _timer.Stop();
         _timer.Tick -= OnTick;
-        _preferenceSaveCancellationSource?.Cancel();
-        _preferenceSaveCancellationSource?.Dispose();
-        _preferenceSaveCancellationSource = null;
+        // Let the last preference write finish even when navigation disposes this player immediately.
         Deactivate();
     }
 
@@ -301,7 +350,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
         Task progressSaveTask;
         lock (_progressSaveGate) progressSaveTask = _progressSaveTask;
-        await Task.WhenAll(progressSaveTask, _playbackReleaseTask).ConfigureAwait(true);
+        await Task.WhenAll(progressSaveTask, _playbackReleaseTask, _preferenceSaveTask).ConfigureAwait(true);
     }
 
     private async Task OpenPlaybackAsync()
@@ -315,12 +364,16 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             await _playbackReleaseTask;
             if (!_active || generation != _playbackGeneration) return;
             SynchronizePlaybackPreferences();
+            _trackPreferences = GetTrackPreferenceKey() is { } key && _settingsService is not null &&
+                _settingsService.Settings.MediaTrackPreferences.TryGetValue(key, out var preferences)
+                ? preferences : new MediaTrackPreferences();
             Status = "Loading video...";
             _playback = _factory.Create();
             _playback.Opened += OnOpened;
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
             if (_playback is ISubtitlePlayback subtitles) subtitles.SubtitleTracksChanged += OnSubtitleTracksChanged;
+            if (_playback is IAudioPlayback audio) audio.AudioTracksChanged += OnAudioTracksChanged;
             ApplyVolume();
             OnPropertyChanged(nameof(VideoOutput));
             _playback.Open(_request.FilePath);
@@ -344,6 +397,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             ApplyPlaybackSpeed();
             IsReady = true;
             RefreshSubtitleTracks();
+            RefreshAudioTracks();
             SetPlaybackState(VideoPlaybackState.Paused);
             Status = "Ready to play";
             UpdatePosition();
@@ -407,16 +461,22 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void RefreshSubtitleTracks()
     {
         if (_playback is not ISubtitlePlayback subtitles) return;
-        _subtitleTracks = [SubtitleTrack.Off, .. subtitles.SubtitleTracks];
-        OnPropertyChanged(nameof(SubtitleTracks));
-        OnPropertyChanged(nameof(CanSelectSubtitles));
-        var selected = _subtitleTracks.FirstOrDefault(track => track.Id == _selectedSubtitleTrack.Id);
-        if (_subtitlesEnabled && (selected is null || selected.Id < 0)) selected = subtitles.SubtitleTracks.FirstOrDefault();
-        selected ??= SubtitleTrack.Off;
+        _refreshingTracks = true;
         try
         {
+            _subtitleTracks = [SubtitleTrack.Off, .. subtitles.SubtitleTracks];
+            OnPropertyChanged(nameof(SubtitleTracks));
+            OnPropertyChanged(nameof(CanSelectSubtitles));
+            var saved = _trackPreferences.Subtitle;
+            var enabled = saved is not null ? saved.Id >= 0 : _subtitlesEnabled;
+            var language = saved?.Language ?? _settingsService?.Settings.PreferredSubtitleLanguage;
+            var selected = enabled
+                ? PlaybackTrackSelection.FindSaved(subtitles.SubtitleTracks, saved) ??
+                  PlaybackTrackSelection.FindLanguage(subtitles.SubtitleTracks, language) ??
+                  (language is null ? subtitles.SubtitleTracks.FirstOrDefault() : null) ?? SubtitleTrack.Off
+                : SubtitleTrack.Off;
             // Refreshes never overwrite the saved preference, including files with no subtitles.
-            if (!subtitles.SelectSubtitleTrack(selected.Id) && selected.Id >= 0)
+            if (subtitles.SelectedSubtitleTrackId != selected.Id && !subtitles.SelectSubtitleTrack(selected.Id) && selected.Id >= 0)
             {
                 subtitles.SelectSubtitleTrack(-1);
                 SetProperty(ref _selectedSubtitleTrack, SubtitleTrack.Off, nameof(SelectedSubtitleTrack));
@@ -425,13 +485,65 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             }
             SetProperty(ref _selectedSubtitleTrack, selected, nameof(SelectedSubtitleTrack));
             SubtitleStatus = !string.IsNullOrEmpty(subtitles.SubtitleStatus) ? subtitles.SubtitleStatus
-                : subtitles.SubtitleTracks.Count == 0 ? "No subtitles available." : "Select a subtitle track or turn subtitles off.";
+                : subtitles.SubtitleTracks.Count == 0 ? "No subtitles available."
+                : enabled && selected.Id < 0 ? "The preferred subtitle track is unavailable. Subtitles are off for this video."
+                : "Select a subtitle track or turn subtitles off.";
         }
         catch (Exception exception)
         {
             _logger?.LogWarning(exception, "Subtitle tracks could not be applied.");
             SubtitleStatus = "Subtitles could not be loaded. Video playback is still available.";
         }
+        finally { _refreshingTracks = false; }
+    }
+
+    private void OnAudioTracksChanged(object? sender, EventArgs args)
+    {
+        if (ReferenceEquals(sender, _playback) && IsReady) RefreshAudioTracks();
+    }
+
+    private void RefreshAudioTracks()
+    {
+        if (_playback is not IAudioPlayback audio) return;
+        _refreshingTracks = true;
+        try
+        {
+            _audioTracks = audio.AudioTracks;
+            OnPropertyChanged(nameof(AudioTracks));
+            OnPropertyChanged(nameof(CanSelectAudio));
+            var saved = _trackPreferences.Audio;
+            var language = saved?.Language ?? _settingsService?.Settings.PreferredAudioLanguage;
+            var preferred = PlaybackTrackSelection.FindSaved(AudioTracks, saved) ??
+                PlaybackTrackSelection.FindLanguage(AudioTracks, language);
+            var current = AudioTracks.FirstOrDefault(track => track.Id == audio.SelectedAudioTrackId);
+            var selected = preferred ?? current ?? AudioTracks.FirstOrDefault();
+            if (selected is not null && audio.SelectedAudioTrackId != selected.Id && !audio.SelectAudioTrack(selected.Id))
+            {
+                SetProperty(ref _selectedAudioTrack, current, nameof(SelectedAudioTrack));
+                AudioStatus = "The preferred audio track could not be loaded. Using the available audio.";
+                return;
+            }
+            SetProperty(ref _selectedAudioTrack, selected, nameof(SelectedAudioTrack));
+            AudioStatus = selected is null ? "No audio tracks available."
+                : preferred is null && (saved is not null || language is not null)
+                    ? "The preferred audio track is unavailable. Using the available audio."
+                    : "Select an audio track.";
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "Audio tracks could not be applied.");
+            AudioStatus = "Audio tracks could not be loaded. Video playback is still available.";
+        }
+        finally { _refreshingTracks = false; }
+    }
+
+    private string? GetTrackPreferenceKey() => _request is null ? null
+        : _request.MediaItemId is { } id ? $"media:{id:D}" : $"file:{_request.FilePath}";
+
+    private void RememberTrackPreferences()
+    {
+        if (_settingsService is not null && GetTrackPreferenceKey() is { } key)
+            _settingsService.Settings.MediaTrackPreferences[key] = _trackPreferences;
     }
 
     private void OnEnded(object? sender, EventArgs args)
@@ -660,6 +772,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             playback.Ended -= OnEnded;
             playback.Failed -= OnFailed;
             if (playback is ISubtitlePlayback subtitles) subtitles.SubtitleTracksChanged -= OnSubtitleTracksChanged;
+            if (playback is IAudioPlayback audio) audio.AudioTracksChanged -= OnAudioTracksChanged;
             _playbackReleaseTask = Task.WhenAll(_playbackReleaseTask, DisposePlaybackAsync(playback));
         }
         IsReady = false;
@@ -669,6 +782,12 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(SubtitleTracks));
         OnPropertyChanged(nameof(SelectedSubtitleTrack));
         OnPropertyChanged(nameof(CanSelectSubtitles));
+        _audioTracks = [];
+        _selectedAudioTrack = null;
+        AudioStatus = "No audio tracks available.";
+        OnPropertyChanged(nameof(AudioTracks));
+        OnPropertyChanged(nameof(SelectedAudioTrack));
+        OnPropertyChanged(nameof(CanSelectAudio));
         SetPlaybackState(VideoPlaybackState.Stopped);
         _hasEnded = false;
         _hasStarted = false;
@@ -918,7 +1037,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _preferenceSaveCancellationSource = cancellationSource;
         }
 
-        _ = SavePlaybackPreferencesAfterDelayAsync(settingsService, cancellationSource);
+        _preferenceSaveTask = SavePlaybackPreferencesAfterDelayAsync(settingsService, cancellationSource);
     }
 
     private async Task SavePlaybackPreferencesAfterDelayAsync(

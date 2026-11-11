@@ -315,6 +315,12 @@ public sealed class SettingsService : ISettingsService
         settings.PlaybackSpeed = double.IsFinite(settings.PlaybackSpeed)
             ? Math.Clamp(settings.PlaybackSpeed, 0.5, 2)
             : 1;
+        settings.PreferredSubtitleLanguage = TrackLanguage.Normalize(settings.PreferredSubtitleLanguage);
+        settings.PreferredAudioLanguage = TrackLanguage.Normalize(settings.PreferredAudioLanguage);
+        settings.MediaTrackPreferences = (settings.MediaTrackPreferences ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null)
+            .GroupBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.OrdinalIgnoreCase);
         return settings;
     }
 

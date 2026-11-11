@@ -6,10 +6,11 @@ public interface ISubtitlePlayback
     event EventHandler? SubtitleTracksChanged;
     IReadOnlyList<SubtitleTrack> SubtitleTracks { get; }
     string SubtitleStatus { get; }
+    int? SelectedSubtitleTrackId => null;
     bool SelectSubtitleTrack(int id);
 }
 
-public sealed record SubtitleTrack(int Id, string DisplayName)
+public sealed record SubtitleTrack(int Id, string DisplayName, string? Language = null) : IPlaybackTrack
 {
     public static SubtitleTrack Off { get; } = new(-1, "Subtitles off");
 }

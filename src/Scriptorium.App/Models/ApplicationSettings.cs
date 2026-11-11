@@ -88,6 +88,15 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
     /// </summary>
     public bool SubtitlesEnabled { get; set; }
 
+    /// <summary>Preferred language learned from an explicit subtitle selection.</summary>
+    public string? PreferredSubtitleLanguage { get; set; }
+
+    /// <summary>Preferred language learned from an explicit audio selection.</summary>
+    public string? PreferredAudioLanguage { get; set; }
+
+    /// <summary>Selected tracks, keyed by library media ID or by path for unindexed media.</summary>
+    public Dictionary<string, MediaTrackPreferences> MediaTrackPreferences { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Restores every persisted preference to its declared default value.</summary>
     public void ResetToDefaults()
     {

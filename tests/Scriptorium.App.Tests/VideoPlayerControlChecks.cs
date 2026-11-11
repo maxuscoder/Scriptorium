@@ -82,6 +82,12 @@ internal static class VideoPlayerControlChecks
 
             var speed = (ComboBox)view.FindName("PlaybackSpeedSelector");
             var subtitles = (ComboBox)view.FindName("SubtitleSelector");
+            var audio = (ComboBox)view.FindName("AudioSelector");
+            Assert.True(audio.IsEnabled);
+            Assert.Equal(2, audio.Items.Count);
+            audio.SelectedItem = player.AudioTracks[1];
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(2, engine.SelectedAudioTrackId);
             Assert.True(subtitles.IsEnabled);
             Assert.Equal(3, subtitles.Items.Count);
             subtitles.SelectedItem = player.SubtitleTracks[1];
@@ -107,7 +113,7 @@ internal static class VideoPlayerControlChecks
                     await StaTest.DrainDispatcherAsync();
                     Assert.Equal(rate, engine.PlaybackSpeed);
                     // Check the rendered bounds after the narrow toolbar has scaled to fit.
-                    foreach (var control in buttons.Cast<FrameworkElement>().Append(speed).Append(volume).Append(subtitles))
+                    foreach (var control in buttons.Cast<FrameworkElement>().Append(speed).Append(volume).Append(subtitles).Append(audio))
                     {
                         var bounds = control.TransformToAncestor(panel).TransformBounds(new Rect(control.RenderSize));
                         Assert.True(bounds.Left >= 0 && bounds.Right <= panel.ActualWidth + 1,
@@ -243,7 +249,7 @@ internal static class VideoPlayerControlChecks
         public IVideoPlayback Create() => engine;
     }
 
-    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput, ISubtitlePlayback
+    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput, ISubtitlePlayback, IAudioPlayback
     {
         public event EventHandler? Opened;
         public event EventHandler? Ended { add { } remove { } }
@@ -259,6 +265,10 @@ internal static class VideoPlayerControlChecks
         public string SubtitleStatus => string.Empty;
         public int SelectedSubtitle { get; private set; } = -1;
         public bool SelectSubtitleTrack(int id) { SelectedSubtitle = id; return true; }
+        public event EventHandler? AudioTracksChanged { add { } remove { } }
+        public IReadOnlyList<AudioTrack> AudioTracks { get; } = [new(1, "English", "en"), new(2, "Romanian", "ro")];
+        public int SelectedAudioTrackId { get; private set; } = 1;
+        public bool SelectAudioTrack(int id) { SelectedAudioTrackId = id; return true; }
         public void Open(string filePath) => Opened?.Invoke(this, EventArgs.Empty);
         public void Play() => IsPlaying = true;
         public void Pause() => IsPlaying = false;

@@ -123,7 +123,7 @@
                                            VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Video duration" />
                             </Grid>
                             <Viewbox x:Name="ControlActionsViewport" Grid.Row="1" Margin="0,2,0,0" Stretch="Uniform" StretchDirection="DownOnly">
-                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="500">
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="640">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -221,6 +221,15 @@
                                                    Width="42" Margin="0,0,8,0" VerticalAlignment="Center"
                                                    Foreground="{StaticResource Player.Text}" FontSize="11"
                                                    TextAlignment="Right" AutomationProperties.Name="Volume percentage" />
+                                        <ComboBox x:Name="AudioSelector" Width="116" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                  Style="{StaticResource Player.Speed}" AutomationProperties.Name="Audio track"
+                                                  ToolTip="{Binding AudioStatus}" ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanSelectAudio}"
+                                                  ItemsSource="{Binding AudioTracks}"
+                                                  SelectedItem="{Binding SelectedAudioTrack, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate><TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
                                         <ComboBox x:Name="SubtitleSelector" Width="116" Margin="0,0,6,0" VerticalAlignment="Center"
                                                   Style="{StaticResource Player.Speed}" AutomationProperties.Name="Subtitle track"
                                                   ToolTip="{Binding SubtitleStatus}" ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanSelectSubtitles}"

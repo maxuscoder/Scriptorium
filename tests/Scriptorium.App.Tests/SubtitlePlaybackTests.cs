@@ -79,6 +79,7 @@ public sealed class SubtitlePlaybackTests
             await WaitUntil(() => playback.SubtitleTracks.Count > 0);
             var track = Assert.Single(playback.SubtitleTracks);
             Assert.False(string.IsNullOrWhiteSpace(track.DisplayName));
+            Assert.Equal("en", track.Language);
             Assert.True(playback.SelectSubtitleTrack(track.Id));
             Assert.Equal(track.Id, ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer.Spu);
             playback.Play();
@@ -157,6 +158,52 @@ public sealed class SubtitlePlaybackTests
         Assert.Equal(21, player.SelectedSubtitleTrack.Id);
         await player.DeactivateAsync();
     });
+
+    [Fact]
+    public Task NativePlaybackRestoresEmbeddedLanguagesIncludingAfterStopAndReplay() => StaTest.Run(async () =>
+    {
+        using var runtime = new LibVlcRuntime(["--aout=amem"]);
+        using var playback = new LibVlcVideoPlayback(runtime);
+        var native = ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer;
+        native.SetAudioFormat("S16N", 44100, 2);
+        native.SetAudioCallbacks((_, _, _, _) => { }, null, null, null, null);
+        var settings = new SubtitleSettings
+        {
+            SettingsValue = new ApplicationSettings
+            {
+                SubtitlesEnabled = true, PreferredSubtitleLanguage = "ro", PreferredAudioLanguage = "ro"
+            }
+        };
+        using var player = new VideoPlayerViewModel(new NativeFactory(playback), settingsService: settings);
+        using var host = AttachOutput(playback);
+        player.SetMedia(new(Path.Combine(AppContext.BaseDirectory, "Fixtures", "multilingual.mkv"), 0));
+        player.Activate();
+        try
+        {
+            await WaitUntil(() => player.IsReady && player.AudioTracks.Count == 2 && player.SubtitleTracks.Count == 3);
+            Assert.Contains(player.AudioTracks, track => track.Language == "en");
+            Assert.Contains(player.SubtitleTracks, track => track.Language == "en");
+            Assert.Equal("ro", player.SelectedSubtitleTrack.Language);
+            Assert.Equal("ro", player.SelectedAudioTrack!.Language);
+            Assert.Equal(player.SelectedSubtitleTrack.Id, native.Spu);
+            Assert.Equal(player.SelectedAudioTrack.Id, native.AudioTrack);
+            player.TogglePlaybackCommand.Execute(null);
+            await WaitUntil(() => player.PositionSeconds > 0.3);
+            player.Stop();
+            player.TogglePlaybackCommand.Execute(null);
+            await WaitUntil(() => player.PositionSeconds > 0.3 && native.AudioTrack == player.SelectedAudioTrack.Id &&
+                native.Spu == player.SelectedSubtitleTrack.Id);
+            Assert.Equal("ro", player.SelectedSubtitleTrack.Language);
+            Assert.Equal("ro", player.SelectedAudioTrack.Language);
+            Assert.Empty(settings.Settings.MediaTrackPreferences);
+        }
+        finally { await player.DeactivateAsync(); }
+    });
+
+    private sealed class NativeFactory(LibVlcVideoPlayback playback) : IVideoPlaybackFactory
+    {
+        public IVideoPlayback Create() => playback;
+    }
 
     private static HwndSource AttachOutput(LibVlcVideoPlayback playback)
     {

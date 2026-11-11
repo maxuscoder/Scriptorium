@@ -54,6 +54,29 @@ The player is connected to movie details, tutorial lessons, and TV-show episodes
 
 Individual media cards in search and filtered library results open their corresponding details page in both grid and list layouts. Episode and lesson results select the clicked media item; opening a collection still selects its first incomplete item. Back returns to the library with the search and filters preserved.
 
+## Audio and subtitle preferences
+
+The player offers audio and subtitle track selectors. Explicit selections save the
+preferred language and the chosen track for that media item in local settings.
+Choosing **Subtitles off** is also remembered per item. A saved item choice takes
+priority over the language preference learned from other videos; media without a
+saved choice uses the preferred language. Library IDs retain choices after a file
+is renamed, and unindexed media uses its file path.
+
+Restoration runs when playback opens and when tracks arrive later. Track IDs are
+checked against their names and languages so reassigned IDs cannot silently select
+a different language. ISO language codes and common language names are normalized.
+If preferred subtitles are unavailable, subtitles stay off; unavailable audio
+preferences use the available native audio track. Missing or rejected tracks never
+overwrite saved preferences or prevent video playback. A later track-list update
+retries the saved choice. Tracks without language metadata can still be remembered
+for their individual media item. VTT filename language hints are used when the
+external tracks can be identified unambiguously.
+
+Preference writes are debounced, survive disposal during navigation, and are awaited
+by asynchronous player shutdown. Resetting settings clears the language and item
+choices along with the other preferences.
+
 ## Verification
 
 Run `dotnet test Scriptorium.sln` on Windows with the .NET 9 SDK. The official LibVLC Windows runtime is restored and copied to the application/test output by NuGet. The separate `Scriptorium.App.Tests` project keeps WPF checks out of the existing platform-independent Core/Infrastructure tests.
@@ -77,6 +100,16 @@ ffmpeg -f lavfi -i testsrc2=size=96x64:rate=15 -t 4 -c:v libx264 -pix_fmt yuv420
 ```
 
 FFmpeg is only needed to regenerate the fixture, not to run the app or tests.
+
+`Fixtures/multilingual.mkv` combines the silent audio fixture with two audio tracks
+and two embedded subtitle tracks tagged English and Romanian. Native tests verify
+language restoration and stop/replay; regression tests cover per-item overrides,
+save/reload, missing and late tracks, changed IDs, failed selections, and navigation.
+With a `sample.srt` containing a cue from 00:00:00,100 to 00:00:03,800, regenerate it:
+
+```powershell
+ffmpeg -i tests/Scriptorium.App.Tests/Fixtures/audio-preview.mp4 -i sample.srt -map 0:v -map 0:a -map 0:a -map 1:s -map 1:s -c copy -c:s srt -metadata:s:a:0 language=eng -metadata:s:a:1 language=ron -metadata:s:s:0 language=eng -metadata:s:s:1 language=ron tests/Scriptorium.App.Tests/Fixtures/multilingual.mkv
+```
 
 `Fixtures/audio-preview.mp4` is a synthetic black video with silent AAC audio. The audio-volume test uses it to verify that the native output accepts 150% and 200% volume, mute, and range limits without producing sound. Regenerate it with:
 

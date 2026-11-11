@@ -12,7 +12,7 @@ public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPl
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAsyncDisposable
+public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAudioPlayback, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly LibVlcRuntime _runtime;
@@ -30,6 +30,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
     private int _requestedVolume = 100;
     private bool _volumePending;
     private CancellationTokenSource? _subtitleDiscoveryCancellation;
+    private HashSet<int>? _embeddedSubtitleIds;
+    private readonly List<string?> _sidecarLanguages = [];
 
     public LibVlcVideoPlayback(LibVlcRuntime runtime)
     {
@@ -42,8 +44,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
         _player.Playing += OnPlaying;
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnEncounteredError;
-        _player.ESAdded += OnSubtitleAdded;
-        _player.ESDeleted += OnSubtitleDeleted;
+        _player.ESAdded += OnTrackAdded;
+        _player.ESDeleted += OnTrackDeleted;
     }
 
     public event EventHandler? Opened;
@@ -52,6 +54,16 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
     public event EventHandler? SubtitleTracksChanged;
     public IReadOnlyList<SubtitleTrack> SubtitleTracks { get; private set; } = [];
     public string SubtitleStatus { get; private set; } = string.Empty;
+    public int? SelectedSubtitleTrackId => _player.Spu;
+    public event EventHandler? AudioTracksChanged;
+    public IReadOnlyList<AudioTrack> AudioTracks { get; private set; } = [];
+    public int SelectedAudioTrackId => _player.AudioTrack;
+
+    public bool SelectAudioTrack(int id)
+    {
+        ThrowIfDisposed();
+        return _player.SetAudioTrack(id);
+    }
 
     public bool SelectSubtitleTrack(int id)
     {
@@ -120,7 +132,10 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
         _media = null;
         _filePath = Path.GetFullPath(filePath);
         SubtitleTracks = [];
+        AudioTracks = [];
         SubtitleStatus = string.Empty;
+        _embeddedSubtitleIds = null;
+        _sidecarLanguages.Clear();
         _opening = true;
         _subtitleDiscoveryCancellation = new CancellationTokenSource();
         _ = PrepareMediaAsync(_filePath, _openGeneration, _subtitleDiscoveryCancellation.Token);
@@ -132,6 +147,19 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
         {
             var discovery = await new LocalSubtitleDiscovery().DiscoverAsync(path, cancellationToken);
             if (_disposed || generation != _openGeneration) return;
+            // VLC's VTT demuxer omits the sidecar's language. Identify embedded streams
+            // separately so a filename hint can never relabel an embedded subtitle.
+            if (discovery.Files.Any(file => Path.GetExtension(file).Equals(".vtt", StringComparison.OrdinalIgnoreCase)))
+            {
+                using var source = _runtime.CreateMedia(path, ":no-sub-autodetect-file");
+                if (await source.Parse(MediaParseOptions.ParseLocal, 1000, cancellationToken) == MediaParsedStatus.Done)
+                {
+                    if (_disposed || generation != _openGeneration) return;
+                    _embeddedSubtitleIds = source.Tracks.Where(track => track.TrackType == TrackType.Text)
+                        .Select(track => track.Id).ToHashSet();
+                }
+            }
+            if (_disposed || generation != _openGeneration) return;
             _media = _runtime.CreateMedia(path, ":no-sub-autodetect-file");
             SubtitleStatus = discovery.Status;
             foreach (var subtitle in discovery.Files)
@@ -139,6 +167,11 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
                 // User priority prevents VLC from discarding additional language sidecars as optional inputs.
                 if (!_media.AddSlave(MediaSlaveType.Subtitle, 4, new Uri(subtitle, UriKind.Absolute)))
                     SubtitleStatus = "Some local subtitles could not be loaded.";
+                else
+                {
+                    var suffix = Path.GetFileNameWithoutExtension(subtitle)[Path.GetFileNameWithoutExtension(path).Length..];
+                    _sidecarLanguages.Add(TrackLanguage.Resolve(null, suffix));
+                }
             }
             _player.Media = _media;
             WaitForOutput();
@@ -158,7 +191,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
         StartOpeningWhenAttached();
     }
 
-    private void OnSubtitleAdded(object? sender, MediaPlayerESAddedEventArgs args) => PostSubtitleRefresh();
+    private void OnTrackAdded(object? sender, MediaPlayerESAddedEventArgs args) => PostTrackRefresh();
 
     private async Task ApplyPendingVolumeAsync()
     {
@@ -177,22 +210,54 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
         }
     }
 
-    private void OnSubtitleDeleted(object? sender, MediaPlayerESDeletedEventArgs args) => PostSubtitleRefresh();
+    private void OnTrackDeleted(object? sender, MediaPlayerESDeletedEventArgs args) => PostTrackRefresh();
 
-    private void PostSubtitleRefresh()
+    private void PostTrackRefresh()
     {
         var generation = Volatile.Read(ref _openGeneration);
         // Read native state on the dispatcher, never inside VLC's input callbacks.
-        Post(() => { if (generation == _openGeneration) RefreshSubtitleTracks(); });
+        Post(() => { if (generation == _openGeneration) RefreshTracks(); });
     }
 
-    private void RefreshSubtitleTracks()
+    private void RefreshTracks(bool force = false)
     {
+        var metadata = _media?.Tracks ?? [];
         var tracks = _player.SpuDescription.Where(track => track.Id >= 0)
-            .Select(track => new SubtitleTrack(track.Id, track.Name)).ToArray();
-        if (SubtitleTracks.SequenceEqual(tracks)) return;
-        SubtitleTracks = tracks;
-        SubtitleTracksChanged?.Invoke(this, EventArgs.Empty);
+            .Select(track => new SubtitleTrack(track.Id, track.Name,
+                TrackLanguage.Resolve(metadata.FirstOrDefault(info => info.Id == track.Id && info.TrackType == TrackType.Text).Language,
+                    track.Name))).ToArray();
+        ApplySidecarLanguageHints(tracks);
+        if (force || !SubtitleTracks.SequenceEqual(tracks))
+        {
+            SubtitleTracks = tracks;
+            SubtitleTracksChanged?.Invoke(this, EventArgs.Empty);
+        }
+        var audio = _player.AudioTrackDescription.Where(track => track.Id >= 0)
+            .Select(track => new AudioTrack(track.Id, track.Name,
+                TrackLanguage.Resolve(metadata.FirstOrDefault(info => info.Id == track.Id && info.TrackType == TrackType.Audio).Language,
+                    track.Name))).ToArray();
+        if (force || !AudioTracks.SequenceEqual(audio))
+        {
+            AudioTracks = audio;
+            AudioTracksChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void ApplySidecarLanguageHints(SubtitleTrack[] tracks)
+    {
+        if (_embeddedSubtitleIds is null) return;
+        var external = tracks.Where(track => !_embeddedSubtitleIds.Contains(track.Id)).ToArray();
+        if (external.Length != _sidecarLanguages.Count) return; // Wait for every slave to appear.
+        var remaining = new List<string?>(_sidecarLanguages);
+        foreach (var track in external.Where(track => track.Language is not null)) remaining.Remove(track.Language);
+        var languages = remaining.Distinct().ToArray();
+        // Multiple unidentified languages cannot safely be assigned by native track order.
+        if (languages.Length != 1 || languages[0] is not { } language) return;
+        for (var index = 0; index < tracks.Length; index++)
+        {
+            if (tracks[index].Language is null && !_embeddedSubtitleIds.Contains(tracks[index].Id))
+                tracks[index] = tracks[index] with { Language = language };
+        }
     }
 
     private void OnOutputAttached()
@@ -246,8 +311,14 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
 
     private void OnPlaying(object? sender, EventArgs args)
     {
-        Post(() => _ = ApplyPendingVolumeAsync());
         var generation = Volatile.Read(ref _openGeneration);
+        Post(() =>
+        {
+            if (generation != _openGeneration) return;
+            _ = ApplyPendingVolumeAsync();
+            // Stop/replay can reset native track choices even when the track list is unchanged.
+            if (!_opening) RefreshTracks(force: true);
+        });
         if (_disposed || !_opening) return;
         _opening = false;
         // Never acquire VLC's input lock from its own event callback: Stop on a
@@ -264,7 +335,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
                     "The file has no playable video stream."));
                 return;
             }
-            RefreshSubtitleTracks();
+            RefreshTracks();
             // The owning player applies its preference after Opened; passive previews start without captions.
             _player.SetSpu(-1);
             Opened?.Invoke(this, EventArgs.Empty);
@@ -331,8 +402,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
         _player.Playing -= OnPlaying;
         _player.EndReached -= OnEndReached;
         _player.EncounteredError -= OnEncounteredError;
-        _player.ESAdded -= OnSubtitleAdded;
-        _player.ESDeleted -= OnSubtitleDeleted;
+        _player.ESAdded -= OnTrackAdded;
+        _player.ESDeleted -= OnTrackDeleted;
         _player.Stop();
         _player.Media = null;
         _media?.Dispose();
