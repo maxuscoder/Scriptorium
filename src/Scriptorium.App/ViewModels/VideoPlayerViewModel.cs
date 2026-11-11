@@ -50,6 +50,10 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private string _audioStatus = "No audio tracks available.";
     private MediaTrackPreferences _trackPreferences = new();
     private bool _refreshingTracks;
+    private int _subtitleDelayMilliseconds;
+    private int _audioDelayMilliseconds;
+    private string _subtitleDelayStatus = string.Empty;
+    private string _audioDelayStatus = string.Empty;
     private CancellationTokenSource? _preferenceSaveCancellationSource;
     private DateTimeOffset _lastProgressSaveRequested = DateTimeOffset.MinValue;
     private Guid? _lastSavedMediaItemId;
@@ -80,6 +84,18 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         }
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
         ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
+        DecreaseSubtitleDelayCommand = new RelayCommand(() => SubtitleDelayMilliseconds -= PlaybackDelay.StepMilliseconds,
+            () => CanAdjustSubtitleDelay && SubtitleDelayMilliseconds > -PlaybackDelay.MaximumMilliseconds);
+        IncreaseSubtitleDelayCommand = new RelayCommand(() => SubtitleDelayMilliseconds += PlaybackDelay.StepMilliseconds,
+            () => CanAdjustSubtitleDelay && SubtitleDelayMilliseconds < PlaybackDelay.MaximumMilliseconds);
+        ResetSubtitleDelayCommand = new RelayCommand(() => SubtitleDelayMilliseconds = 0,
+            () => CanAdjustSubtitleDelay && SubtitleDelayMilliseconds != 0);
+        DecreaseAudioDelayCommand = new RelayCommand(() => AudioDelayMilliseconds -= PlaybackDelay.StepMilliseconds,
+            () => CanAdjustAudioDelay && AudioDelayMilliseconds > -PlaybackDelay.MaximumMilliseconds);
+        IncreaseAudioDelayCommand = new RelayCommand(() => AudioDelayMilliseconds += PlaybackDelay.StepMilliseconds,
+            () => CanAdjustAudioDelay && AudioDelayMilliseconds < PlaybackDelay.MaximumMilliseconds);
+        ResetAudioDelayCommand = new RelayCommand(() => AudioDelayMilliseconds = 0,
+            () => CanAdjustAudioDelay && AudioDelayMilliseconds != 0);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _timer.Tick += OnTick;
     }
@@ -106,6 +122,20 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     public RelayCommand TogglePlaybackCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
+    public RelayCommand DecreaseSubtitleDelayCommand { get; }
+    public RelayCommand IncreaseSubtitleDelayCommand { get; }
+    public RelayCommand ResetSubtitleDelayCommand { get; }
+    public RelayCommand DecreaseAudioDelayCommand { get; }
+    public RelayCommand IncreaseAudioDelayCommand { get; }
+    public RelayCommand ResetAudioDelayCommand { get; }
+    public bool CanAdjustSubtitleDelay => IsReady && _playback is IPlaybackTiming && SelectedSubtitleTrack.Id >= 0;
+    public bool CanAdjustAudioDelay => IsReady && _playback is IPlaybackTiming && SelectedAudioTrack is not null;
+    public bool CanAdjustTiming => CanAdjustSubtitleDelay || CanAdjustAudioDelay;
+    public int SubtitleDelayMilliseconds { get => _subtitleDelayMilliseconds; set => SetPlaybackDelay(value, subtitle: true); }
+    public int AudioDelayMilliseconds { get => _audioDelayMilliseconds; set => SetPlaybackDelay(value, subtitle: false); }
+    public string SubtitleDelayStatus { get => _subtitleDelayStatus; private set => SetProperty(ref _subtitleDelayStatus, value); }
+    public string AudioDelayStatus { get => _audioDelayStatus; private set => SetProperty(ref _audioDelayStatus, value); }
+    public string TimingSummary => $"Subtitle delay: {SubtitleDelayMilliseconds:+0;-0;0} ms\nAudio delay: {AudioDelayMilliseconds:+0;-0;0} ms";
     public IReadOnlyList<double> PlaybackSpeedOptions { get; } = [0.5, 0.75, 1, 1.25, 1.5, 2];
     public IReadOnlyList<SubtitleTrack> SubtitleTracks => _subtitleTracks;
     public string SubtitleStatus { get => _subtitleStatus; private set => SetProperty(ref _subtitleStatus, value); }
@@ -137,6 +167,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                     RememberTrackPreferences();
                 }
                 QueuePlaybackPreferenceSave();
+                NotifyTimingControlsChanged();
+                RestorePlaybackDelay(subtitle: true);
             }
             catch (Exception exception)
             {
@@ -174,6 +206,8 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                     RememberTrackPreferences();
                 }
                 QueuePlaybackPreferenceSave();
+                NotifyTimingControlsChanged();
+                RestorePlaybackDelay(subtitle: false);
             }
             catch (Exception exception)
             {
@@ -196,6 +230,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsStatusVisible));
                 OnPropertyChanged(nameof(CanSelectSubtitles));
                 OnPropertyChanged(nameof(CanSelectAudio));
+                NotifyTimingControlsChanged();
             }
         }
     }
@@ -367,6 +402,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _trackPreferences = GetTrackPreferenceKey() is { } key && _settingsService is not null &&
                 _settingsService.Settings.MediaTrackPreferences.TryGetValue(key, out var preferences)
                 ? preferences : new MediaTrackPreferences();
+            SetProperty(ref _subtitleDelayMilliseconds, PlaybackDelay.Normalize(_trackPreferences.SubtitleDelayMilliseconds), nameof(SubtitleDelayMilliseconds));
+            SetProperty(ref _audioDelayMilliseconds, PlaybackDelay.Normalize(_trackPreferences.AudioDelayMilliseconds), nameof(AudioDelayMilliseconds));
+            OnPropertyChanged(nameof(TimingSummary));
             Status = "Loading video...";
             _playback = _factory.Create();
             _playback.Opened += OnOpened;
@@ -494,7 +532,12 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _logger?.LogWarning(exception, "Subtitle tracks could not be applied.");
             SubtitleStatus = "Subtitles could not be loaded. Video playback is still available.";
         }
-        finally { _refreshingTracks = false; }
+        finally
+        {
+            _refreshingTracks = false;
+            NotifyTimingControlsChanged();
+            RestorePlaybackDelay(subtitle: true);
+        }
     }
 
     private void OnAudioTracksChanged(object? sender, EventArgs args)
@@ -534,7 +577,82 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _logger?.LogWarning(exception, "Audio tracks could not be applied.");
             AudioStatus = "Audio tracks could not be loaded. Video playback is still available.";
         }
-        finally { _refreshingTracks = false; }
+        finally
+        {
+            _refreshingTracks = false;
+            NotifyTimingControlsChanged();
+            RestorePlaybackDelay(subtitle: false);
+        }
+    }
+
+    private void SetPlaybackDelay(int milliseconds, bool subtitle)
+    {
+        var propertyName = subtitle ? nameof(SubtitleDelayMilliseconds) : nameof(AudioDelayMilliseconds);
+        var canAdjust = subtitle ? CanAdjustSubtitleDelay : CanAdjustAudioDelay;
+        var normalized = PlaybackDelay.Normalize(milliseconds);
+        var current = subtitle ? SubtitleDelayMilliseconds : AudioDelayMilliseconds;
+        if (!canAdjust || !TryApplyPlaybackDelay(normalized, subtitle) || current == normalized)
+        {
+            // Restore the input after a rejected value or a value clamped to the existing limit.
+            OnPropertyChanged(propertyName);
+            return;
+        }
+        if (subtitle)
+        {
+            SetProperty(ref _subtitleDelayMilliseconds, normalized, propertyName);
+            _trackPreferences.SubtitleDelayMilliseconds = normalized;
+        }
+        else
+        {
+            SetProperty(ref _audioDelayMilliseconds, normalized, propertyName);
+            _trackPreferences.AudioDelayMilliseconds = normalized;
+        }
+        RememberTrackPreferences();
+        QueuePlaybackPreferenceSave();
+        OnPropertyChanged(nameof(TimingSummary));
+        NotifyTimingControlsChanged();
+    }
+
+    private void RestorePlaybackDelay(bool subtitle)
+    {
+        if (subtitle ? CanAdjustSubtitleDelay : CanAdjustAudioDelay)
+            TryApplyPlaybackDelay(subtitle ? SubtitleDelayMilliseconds : AudioDelayMilliseconds, subtitle);
+    }
+
+    private bool TryApplyPlaybackDelay(int milliseconds, bool subtitle)
+    {
+        if (_playback is not IPlaybackTiming timing) return false;
+        try
+        {
+            var delay = TimeSpan.FromMilliseconds(milliseconds);
+            var current = subtitle ? timing.SubtitleDelay : timing.AudioDelay;
+            if (current == delay || (subtitle ? timing.SetSubtitleDelay(delay) : timing.SetAudioDelay(delay)))
+            {
+                if (subtitle) SubtitleDelayStatus = string.Empty;
+                else AudioDelayStatus = string.Empty;
+                return true;
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "The {TrackType} delay could not be applied.", subtitle ? "subtitle" : "audio");
+        }
+        if (subtitle) SubtitleDelayStatus = "The subtitle delay could not be applied. Try again.";
+        else AudioDelayStatus = "The audio delay could not be applied. Try again.";
+        return false;
+    }
+
+    private void NotifyTimingControlsChanged()
+    {
+        OnPropertyChanged(nameof(CanAdjustSubtitleDelay));
+        OnPropertyChanged(nameof(CanAdjustAudioDelay));
+        OnPropertyChanged(nameof(CanAdjustTiming));
+        DecreaseSubtitleDelayCommand.NotifyCanExecuteChanged();
+        IncreaseSubtitleDelayCommand.NotifyCanExecuteChanged();
+        ResetSubtitleDelayCommand.NotifyCanExecuteChanged();
+        DecreaseAudioDelayCommand.NotifyCanExecuteChanged();
+        IncreaseAudioDelayCommand.NotifyCanExecuteChanged();
+        ResetAudioDelayCommand.NotifyCanExecuteChanged();
     }
 
     private string? GetTrackPreferenceKey() => _request is null ? null
@@ -788,6 +906,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         OnPropertyChanged(nameof(AudioTracks));
         OnPropertyChanged(nameof(SelectedAudioTrack));
         OnPropertyChanged(nameof(CanSelectAudio));
+        SetProperty(ref _subtitleDelayMilliseconds, 0, nameof(SubtitleDelayMilliseconds));
+        SetProperty(ref _audioDelayMilliseconds, 0, nameof(AudioDelayMilliseconds));
+        SubtitleDelayStatus = AudioDelayStatus = string.Empty;
+        OnPropertyChanged(nameof(TimingSummary));
+        NotifyTimingControlsChanged();
         SetPlaybackState(VideoPlaybackState.Stopped);
         _hasEnded = false;
         _hasStarted = false;

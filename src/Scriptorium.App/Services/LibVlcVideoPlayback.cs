@@ -12,7 +12,7 @@ public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPl
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAudioPlayback, IAsyncDisposable
+public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly LibVlcRuntime _runtime;
@@ -58,6 +58,22 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
     public event EventHandler? AudioTracksChanged;
     public IReadOnlyList<AudioTrack> AudioTracks { get; private set; } = [];
     public int SelectedAudioTrackId => _player.AudioTrack;
+
+    public TimeSpan SubtitleDelay => TimeSpan.FromMicroseconds(_player.SpuDelay);
+    public TimeSpan AudioDelay => TimeSpan.FromMicroseconds(_player.AudioDelay);
+
+    public bool SetSubtitleDelay(TimeSpan delay)
+    {
+        ThrowIfDisposed();
+        // LibVLC uses microseconds; TimeSpan ticks are tenths of a microsecond.
+        return _player.SetSpuDelay(delay.Ticks / 10);
+    }
+
+    public bool SetAudioDelay(TimeSpan delay)
+    {
+        ThrowIfDisposed();
+        return _player.SetAudioDelay(delay.Ticks / 10);
+    }
 
     public bool SelectAudioTrack(int id)
     {

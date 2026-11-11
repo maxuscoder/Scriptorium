@@ -65,11 +65,15 @@ public sealed class TrackPreferenceTests
             OpenWithTracks(factory.Last!);
             player.SelectedSubtitleTrack = player.SubtitleTracks[2];
             player.SelectedAudioTrack = player.AudioTracks[1];
+            player.SubtitleDelayMilliseconds = -125;
+            player.AudioDelayMilliseconds = 200;
             Assert.Equal("ro", settings.Settings.PreferredSubtitleLanguage);
             Assert.Equal("ro", settings.Settings.PreferredAudioLanguage);
 
             player.SetMedia(new("second.mp4", 0, secondId));
             OpenWithTracks(factory.Last!);
+            Assert.Equal(0, player.SubtitleDelayMilliseconds);
+            Assert.Equal(0, player.AudioDelayMilliseconds);
             player.SelectedSubtitleTrack = player.SubtitleTracks[1];
             player.SelectedSubtitleTrack = SubtitleTrack.Off;
             player.SelectedAudioTrack = player.AudioTracks[0];
@@ -89,10 +93,16 @@ public sealed class TrackPreferenceTests
             OpenWithTracks(factory.Last!);
             Assert.Equal(11, next.SelectedSubtitleTrack.Id);
             Assert.Equal(3, next.SelectedAudioTrack!.Id);
+            Assert.Equal(-125, next.SubtitleDelayMilliseconds);
+            Assert.Equal(200, next.AudioDelayMilliseconds);
+            Assert.Equal(TimeSpan.FromMilliseconds(-125), factory.Last!.SubtitleDelay);
+            Assert.Equal(TimeSpan.FromMilliseconds(200), factory.Last.AudioDelay);
             next.SetMedia(new("second.mp4", 0, secondId));
             OpenWithTracks(factory.Last!);
             Assert.Equal(-1, next.SelectedSubtitleTrack.Id);
             Assert.Equal(2, next.SelectedAudioTrack!.Id);
+            Assert.Equal(0, next.SubtitleDelayMilliseconds);
+            Assert.Equal(0, next.AudioDelayMilliseconds);
             Assert.False(restored.Settings.SubtitlesEnabled);
             restored.Settings.ResetToDefaults();
             Assert.Empty(restored.Settings.MediaTrackPreferences);
@@ -227,6 +237,193 @@ public sealed class TrackPreferenceTests
         await player.DeactivateAsync();
     });
 
+    [Fact]
+    public Task DelayControlsApplyDuringPlaybackRespectLimitsAndResetIndependently() => StaTest.Run(async () =>
+    {
+        var settings = new MemorySettings();
+        settings.Settings.SubtitlesEnabled = true;
+        var factory = new Factory();
+        using var player = new VideoPlayerViewModel(factory, settingsService: settings);
+        player.SetMedia(new("timing.mp4", 0));
+        player.Activate();
+        OpenWithTracks(factory.Last!);
+        player.TogglePlaybackCommand.Execute(null);
+        factory.Last!.Position = TimeSpan.FromSeconds(12);
+        player.IncreaseSubtitleDelayCommand.Execute(null);
+        player.DecreaseAudioDelayCommand.Execute(null);
+        Assert.Equal(TimeSpan.FromMilliseconds(50), factory.Last.SubtitleDelay);
+        Assert.Equal(TimeSpan.FromMilliseconds(-50), factory.Last.AudioDelay);
+        Assert.Contains("+50 ms", player.TimingSummary);
+        Assert.Contains("-50 ms", player.TimingSummary);
+        player.ResetSubtitleDelayCommand.Execute(null);
+        Assert.Equal(TimeSpan.Zero, factory.Last.SubtitleDelay);
+        Assert.Equal(-50, player.AudioDelayMilliseconds);
+        player.SubtitleDelayMilliseconds = int.MaxValue;
+        player.AudioDelayMilliseconds = int.MinValue;
+        Assert.Equal(PlaybackDelay.MaximumMilliseconds, player.SubtitleDelayMilliseconds);
+        Assert.Equal(-PlaybackDelay.MaximumMilliseconds, player.AudioDelayMilliseconds);
+        Assert.False(player.IncreaseSubtitleDelayCommand.CanExecute(null));
+        Assert.False(player.DecreaseAudioDelayCommand.CanExecute(null));
+        player.ResetSubtitleDelayCommand.Execute(null);
+        player.ResetAudioDelayCommand.Execute(null);
+        Assert.False(player.ResetAudioDelayCommand.CanExecute(null));
+        Assert.False(player.ResetSubtitleDelayCommand.CanExecute(null));
+        Assert.True(player.IsPlaying);
+        Assert.Equal(TimeSpan.FromSeconds(12), factory.Last.Position);
+        var saved = Assert.Single(settings.Settings.MediaTrackPreferences).Value;
+        Assert.Equal(0, saved.SubtitleDelayMilliseconds);
+        Assert.Equal(0, saved.AudioDelayMilliseconds);
+        player.SelectedSubtitleTrack = SubtitleTrack.Off;
+        Assert.False(player.CanAdjustSubtitleDelay);
+        Assert.False(player.IncreaseSubtitleDelayCommand.CanExecute(null));
+        Assert.True(player.CanAdjustAudioDelay);
+        await player.DeactivateAsync();
+        Assert.False(player.CanAdjustTiming);
+    });
+
+    [Fact]
+    public Task SavedDelaysWaitForLateTracksAndReapplyAfterNativeResetWithoutSavingAgain() => StaTest.Run(async () =>
+    {
+        var settings = new MemorySettings();
+        settings.Settings.SubtitlesEnabled = true;
+        settings.Settings.MediaTrackPreferences["file:timing.mp4"] = new()
+        {
+            SubtitleDelayMilliseconds = 125, AudioDelayMilliseconds = -275
+        };
+        var factory = new Factory();
+        using var player = new VideoPlayerViewModel(factory, settingsService: settings);
+        player.SetMedia(new("timing.mp4", 0));
+        player.Activate();
+        var playback = factory.Last!;
+        playback.RaiseOpened();
+        Assert.Equal(125, player.SubtitleDelayMilliseconds);
+        Assert.Equal(-275, player.AudioDelayMilliseconds);
+        Assert.False(player.CanAdjustTiming);
+        Assert.Equal(TimeSpan.Zero, playback.SubtitleDelay);
+        playback.SubtitleTracks = [new(7, "English", "en")];
+        playback.AudioTracks = [new(2, "English", "en")];
+        playback.RaiseTracksChanged();
+        Assert.Equal(TimeSpan.FromMilliseconds(125), playback.SubtitleDelay);
+        Assert.Equal(TimeSpan.FromMilliseconds(-275), playback.AudioDelay);
+        playback.ResetDelays();
+        playback.RaiseTracksChanged();
+        Assert.Equal(TimeSpan.FromMilliseconds(125), playback.SubtitleDelay);
+        Assert.Equal(TimeSpan.FromMilliseconds(-275), playback.AudioDelay);
+        Assert.Equal(0, settings.SaveCount);
+        player.SetMedia(new("other.mp4", 0));
+        playback.RaiseTracksChanged(); // An old session cannot restore timing into its replacement.
+        OpenWithTracks(factory.Last!);
+        Assert.Equal(0, player.AudioDelayMilliseconds);
+        Assert.Equal(0, player.SubtitleDelayMilliseconds);
+        await player.DeactivateAsync();
+    });
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task FailedDelayChangesKeepPlaybackAndSavedOffsetsIntact(bool throws) => StaTest.Run(async () =>
+    {
+        var settings = new MemorySettings();
+        settings.Settings.SubtitlesEnabled = true;
+        var factory = new Factory();
+        using var player = new VideoPlayerViewModel(factory, settingsService: settings);
+        player.SetMedia(new("timing.mp4", 0));
+        player.Activate();
+        var playback = factory.Last!;
+        OpenWithTracks(playback);
+        player.TogglePlaybackCommand.Execute(null);
+        player.AudioDelayMilliseconds = 125;
+        player.SubtitleDelayMilliseconds = -175;
+        playback.RejectDelay = true;
+        playback.ThrowDelay = throws;
+        player.AudioDelayMilliseconds = 250;
+        player.SubtitleDelayMilliseconds = -300;
+        Assert.Equal(125, player.AudioDelayMilliseconds);
+        Assert.Equal(-175, player.SubtitleDelayMilliseconds);
+        var saved = Assert.Single(settings.Settings.MediaTrackPreferences).Value;
+        Assert.Equal(125, saved.AudioDelayMilliseconds);
+        Assert.Equal(-175, saved.SubtitleDelayMilliseconds);
+        Assert.Contains("could not", player.AudioDelayStatus);
+        Assert.Contains("could not", player.SubtitleDelayStatus);
+        Assert.True(player.IsReady);
+        Assert.True(player.IsPlaying);
+        playback.RejectDelay = playback.ThrowDelay = false;
+        player.ResetAudioDelayCommand.Execute(null);
+        player.ResetSubtitleDelayCommand.Execute(null);
+        Assert.Empty(player.AudioDelayStatus);
+        Assert.Empty(player.SubtitleDelayStatus);
+        await player.DeactivateAsync();
+    });
+
+    [Fact]
+    public Task SavedOffsetsSurviveFailedRestorationAndRetryingTheSameValueAppliesThem() => StaTest.Run(async () =>
+    {
+        var settings = new MemorySettings();
+        settings.Settings.SubtitlesEnabled = true;
+        var saved = new MediaTrackPreferences { SubtitleDelayMilliseconds = -125, AudioDelayMilliseconds = 250 };
+        settings.Settings.MediaTrackPreferences["file:timing.mp4"] = saved;
+        var factory = new Factory();
+        using var player = new VideoPlayerViewModel(factory, settingsService: settings);
+        player.SetMedia(new("timing.mp4", 0));
+        player.Activate();
+        var playback = factory.Last!;
+        playback.RejectDelay = true;
+        OpenWithTracks(playback);
+        Assert.Contains("could not", player.AudioDelayStatus);
+        Assert.Contains("could not", player.SubtitleDelayStatus);
+        Assert.Equal(250, saved.AudioDelayMilliseconds);
+        Assert.Equal(-125, saved.SubtitleDelayMilliseconds);
+        Assert.True(player.IsReady);
+        playback.RejectDelay = false;
+        player.AudioDelayMilliseconds = 250;
+        player.SubtitleDelayMilliseconds = -125;
+        Assert.Equal(TimeSpan.FromMilliseconds(250), playback.AudioDelay);
+        Assert.Equal(TimeSpan.FromMilliseconds(-125), playback.SubtitleDelay);
+        Assert.Empty(player.AudioDelayStatus);
+        Assert.Empty(player.SubtitleDelayStatus);
+        Assert.Equal(0, settings.SaveCount);
+        await player.DeactivateAsync();
+    });
+
+    [Fact]
+    public Task UnavailableTimingCapabilityDisablesControls() => StaTest.Run(async () =>
+    {
+        var factory = new VideoPlayerTests.FakeFactory();
+        using var player = new VideoPlayerViewModel(factory);
+        player.SetMedia(new("timing.mp4", 0));
+        player.Activate();
+        factory.Instances[0].RaiseOpened();
+        Assert.True(player.IsReady);
+        Assert.False(player.CanAdjustTiming);
+        player.SubtitleDelayMilliseconds = 100;
+        player.AudioDelayMilliseconds = -100;
+        Assert.Equal(0, player.SubtitleDelayMilliseconds);
+        Assert.Equal(0, player.AudioDelayMilliseconds);
+        await player.DeactivateAsync();
+    });
+
+    [Fact]
+    public async Task OldSettingsDefaultToZeroDelayAndExcessiveSavedOffsetsAreClamped()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "Scriptorium-delay-settings-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var location = new SettingsLocation(Path.Combine(directory, "settings.json"));
+        try
+        {
+            await File.WriteAllTextAsync(location.FilePath, """
+                {"MediaTrackPreferences":{"file:old.mp4":{},"file:large.mp4":{
+                    "SubtitleDelayMilliseconds":2147483647,"AudioDelayMilliseconds":-2147483648}}}
+                """);
+            var settings = new SettingsService(location, NullLogger<SettingsService>.Instance);
+            await settings.LoadAsync();
+            Assert.Equal(0, settings.Settings.MediaTrackPreferences["file:old.mp4"].AudioDelayMilliseconds);
+            Assert.Equal(0, settings.Settings.MediaTrackPreferences["file:old.mp4"].SubtitleDelayMilliseconds);
+            Assert.Equal(PlaybackDelay.MaximumMilliseconds, settings.Settings.MediaTrackPreferences["file:large.mp4"].SubtitleDelayMilliseconds);
+            Assert.Equal(-PlaybackDelay.MaximumMilliseconds, settings.Settings.MediaTrackPreferences["file:large.mp4"].AudioDelayMilliseconds);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
     private static void OpenWithTracks(Playback playback)
     {
         playback.SubtitleTracks = [new(7, "English", "eng"), new(11, "Romanian", "ron")];
@@ -254,7 +451,7 @@ public sealed class TrackPreferenceTests
         public IVideoPlayback Create() => Last = new Playback();
     }
 
-    private sealed class Playback : IVideoPlayback, IVideoOutput, ISubtitlePlayback, IAudioPlayback
+    private sealed class Playback : IVideoPlayback, IVideoOutput, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming
     {
         public event EventHandler? Opened;
         public event EventHandler? Ended { add { } remove { } }
@@ -274,6 +471,25 @@ public sealed class TrackPreferenceTests
         public int SelectedAudioTrackId { get; set; } = 2;
         public bool Reject { get; set; }
         public bool Throws { get; set; }
+        public bool RejectDelay { get; set; }
+        public bool ThrowDelay { get; set; }
+        public TimeSpan SubtitleDelay { get; private set; }
+        public TimeSpan AudioDelay { get; private set; }
+        public bool SetSubtitleDelay(TimeSpan delay)
+        {
+            if (ThrowDelay) throw new InvalidOperationException("Subtitle timing unavailable");
+            if (RejectDelay) return false;
+            SubtitleDelay = delay;
+            return true;
+        }
+        public bool SetAudioDelay(TimeSpan delay)
+        {
+            if (ThrowDelay) throw new InvalidOperationException("Audio timing unavailable");
+            if (RejectDelay) return false;
+            AudioDelay = delay;
+            return true;
+        }
+        public void ResetDelays() => SubtitleDelay = AudioDelay = TimeSpan.Zero;
         private bool Accept() { if (Throws) throw new InvalidOperationException("Track unavailable"); return !Reject; }
         public bool SelectSubtitleTrack(int id) { if (!Accept()) return false; SubtitleId = id; return true; }
         public bool SelectAudioTrack(int id) { if (!Accept()) return false; SelectedAudioTrackId = id; return true; }

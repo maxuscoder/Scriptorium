@@ -81,11 +81,13 @@ public sealed class SubtitlePlaybackTests
             Assert.False(string.IsNullOrWhiteSpace(track.DisplayName));
             Assert.Equal("en", track.Language);
             Assert.True(playback.SelectSubtitleTrack(track.Id));
+            await WaitUntil(() => ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer.Spu == track.Id);
             Assert.Equal(track.Id, ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer.Spu);
             playback.Play();
             await WaitUntil(() => playback.Position.TotalSeconds > 0.3);
             playback.Pause();
             Assert.True(playback.SelectSubtitleTrack(-1));
+            await WaitUntil(() => ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer.Spu == -1);
             Assert.Equal(-1, ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer.Spu);
             Assert.Contains("skipped", playback.SubtitleStatus);
         }
@@ -185,6 +187,10 @@ public sealed class SubtitlePlaybackTests
             Assert.Contains(player.SubtitleTracks, track => track.Language == "en");
             Assert.Equal("ro", player.SelectedSubtitleTrack.Language);
             Assert.Equal("ro", player.SelectedAudioTrack!.Language);
+            // VLC queues track changes on its input thread; discovery and selection requests
+            // can finish before the native tracks reflect the restored preferences.
+            await WaitUntil(() => native.Spu == player.SelectedSubtitleTrack.Id &&
+                native.AudioTrack == player.SelectedAudioTrack.Id);
             Assert.Equal(player.SelectedSubtitleTrack.Id, native.Spu);
             Assert.Equal(player.SelectedAudioTrack.Id, native.AudioTrack);
             player.TogglePlaybackCommand.Execute(null);
@@ -196,6 +202,47 @@ public sealed class SubtitlePlaybackTests
             Assert.Equal("ro", player.SelectedSubtitleTrack.Language);
             Assert.Equal("ro", player.SelectedAudioTrack.Language);
             Assert.Empty(settings.Settings.MediaTrackPreferences);
+        }
+        finally { await player.DeactivateAsync(); }
+    });
+
+    [Fact]
+    public Task NativeDelaysUseMicrosecondsAndSurviveTrackChangesAndReplay() => StaTest.Run(async () =>
+    {
+        using var runtime = new LibVlcRuntime(["--aout=amem"]);
+        using var playback = new LibVlcVideoPlayback(runtime);
+        var native = ((LibVlcVideoOutput)playback.VideoOutput).MediaPlayer;
+        native.SetAudioFormat("S16N", 44100, 2);
+        native.SetAudioCallbacks((_, _, _, _) => { }, null, null, null, null);
+        using var player = new VideoPlayerViewModel(new NativeFactory(playback));
+        using var host = AttachOutput(playback);
+        player.SetMedia(new(Path.Combine(AppContext.BaseDirectory, "Fixtures", "multilingual.mkv"), 0));
+        player.Activate();
+        try
+        {
+            await WaitUntil(() => player.IsReady && player.AudioTracks.Count == 2 && player.SubtitleTracks.Count == 3);
+            player.SelectedSubtitleTrack = player.SubtitleTracks[1];
+            player.SubtitleDelayMilliseconds = 175;
+            player.AudioDelayMilliseconds = -125;
+            Assert.Equal(175_000, native.SpuDelay);
+            Assert.Equal(-125_000, native.AudioDelay);
+            player.TogglePlaybackCommand.Execute(null);
+            await WaitUntil(() => player.PositionSeconds > 0.3);
+            player.SubtitleDelayMilliseconds = -225;
+            player.AudioDelayMilliseconds = 250;
+            Assert.Equal(-225_000, native.SpuDelay);
+            Assert.Equal(250_000, native.AudioDelay);
+            player.SelectedSubtitleTrack = player.SubtitleTracks[2];
+            player.SelectedAudioTrack = player.AudioTracks[1];
+            Assert.Equal(-225_000, native.SpuDelay);
+            Assert.Equal(250_000, native.AudioDelay);
+            player.Stop();
+            player.TogglePlaybackCommand.Execute(null);
+            await WaitUntil(() => player.PositionSeconds > 0.3 && native.SpuDelay == -225_000 && native.AudioDelay == 250_000);
+            player.ResetAudioDelayCommand.Execute(null);
+            player.ResetSubtitleDelayCommand.Execute(null);
+            Assert.Equal(0, native.SpuDelay);
+            Assert.Equal(0, native.AudioDelay);
         }
         finally { await player.DeactivateAsync(); }
     });

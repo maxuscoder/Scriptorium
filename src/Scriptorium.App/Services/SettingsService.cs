@@ -321,6 +321,11 @@ public sealed class SettingsService : ISettingsService
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null)
             .GroupBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.OrdinalIgnoreCase);
+        foreach (var preferences in settings.MediaTrackPreferences.Values)
+        {
+            preferences.SubtitleDelayMilliseconds = PlaybackDelay.Normalize(preferences.SubtitleDelayMilliseconds);
+            preferences.AudioDelayMilliseconds = PlaybackDelay.Normalize(preferences.AudioDelayMilliseconds);
+        }
         return settings;
     }
 

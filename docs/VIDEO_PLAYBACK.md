@@ -77,6 +77,28 @@ Preference writes are debounced, survive disposal during navigation, and are awa
 by asynchronous player shutdown. Resetting settings clears the language and item
 choices along with the other preferences.
 
+## Audio and subtitle synchronization
+
+Open the clock button in the player toolbar to adjust **Subtitles** and **Audio**
+independently. The Sync panel shows each signed delay in milliseconds. The minus
+and plus buttons adjust by 50 ms; a typed value applies on Enter or when leaving
+the field. Positive values play the track later, and negative values play it
+earlier relative to video. Each track has a Reset button that returns its delay
+to zero. Adjustments are limited to ten minutes in either direction.
+
+Changes apply while playing or paused. Subtitle controls are enabled when a
+subtitle track is selected, and audio controls when audio is available. Engines
+without timing support disable these controls. Failed adjustments show an error
+and retain the previous offset without interrupting playback.
+
+Timing offsets are saved per media item alongside its track choices, using the
+library ID or file path. Other media starts at zero unless it has its own saved
+correction. Opening a file, changing tracks, and stop/replay restore its saved
+offsets, including tracks discovered after opening. Resetting settings clears
+these corrections. Older settings default to zero delay. Native tests verify
+millisecond-to-microsecond conversion and adjustment during playback; UI checks
+cover signed values, direct input, validation, keyboard input, and toolbar layout.
+
 ## Verification
 
 Run `dotnet test Scriptorium.sln` on Windows with the .NET 9 SDK. The official LibVLC Windows runtime is restored and copied to the application/test output by NuGet. The separate `Scriptorium.App.Tests` project keeps WPF checks out of the existing platform-independent Core/Infrastructure tests.

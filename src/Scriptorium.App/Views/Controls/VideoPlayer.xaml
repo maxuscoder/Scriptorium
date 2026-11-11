@@ -95,7 +95,7 @@
                         </TextBlock.Style>
                     </TextBlock>
                     <Border x:Name="ControlPanel" Margin="0" VerticalAlignment="Bottom" Background="{StaticResource Player.Panel}"
-                            CornerRadius="0" Padding="14,14,14,6">
+                            CornerRadius="0" Padding="14,14,14,6" MinHeight="64">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="24" />
@@ -123,7 +123,7 @@
                                            VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Video duration" />
                             </Grid>
                             <Viewbox x:Name="ControlActionsViewport" Grid.Row="1" Margin="0,2,0,0" Stretch="Uniform" StretchDirection="DownOnly">
-                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="640">
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="680">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -249,6 +249,59 @@
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
+                                        <Button x:Name="TimingButton" Click="OnTimingClick" Style="{StaticResource Player.Icon}"
+                                                IsEnabled="{Binding CanAdjustTiming}" ToolTip="{Binding TimingSummary}"
+                                                AutomationProperties.Name="Audio and subtitle synchronization">
+                                            <Grid Width="20" Height="20">
+                                                <Ellipse Width="15" Height="15" Stroke="{StaticResource Player.Text}" StrokeThickness="1.5" />
+                                                <Path Data="M10,5 V10 L14,12" Stroke="{StaticResource Player.Text}" StrokeThickness="1.5" StrokeLineJoin="Round" />
+                                            </Grid>
+                                        </Button>
+                                        <Popup x:Name="TimingPopup" Placement="Top" PlacementTarget="{Binding ElementName=TimingButton}"
+                                               VerticalOffset="-6" AllowsTransparency="True" StaysOpen="False"
+                                               Opened="OnTimingPopupOpened" Closed="OnPlaybackSpeedDropDownChanged">
+                                            <Border x:Name="TimingPanel" Width="320" Padding="12" Background="#262629" BorderBrush="#414146"
+                                                    BorderThickness="1" CornerRadius="10" PreviewKeyDown="OnTimingPanelKeyDown"
+                                                    TextElement.FontFamily="{StaticResource FontFamily.Application}"
+                                                    TextElement.Foreground="{StaticResource Player.Text}" TextElement.FontSize="12">
+                                                <StackPanel>
+                                                    <TextBlock Text="Synchronization" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                                    <TextBlock Text="Positive = later. Negative = earlier."
+                                                               FontSize="11" Margin="0,0,0,8" />
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="Subtitles" Width="66" VerticalAlignment="Center" />
+                                                        <Button Width="28" Content="−" Style="{StaticResource Player.Icon}" Command="{Binding DecreaseSubtitleDelayCommand}"
+                                                                ToolTip="Show subtitles 50 ms earlier" AutomationProperties.Name="Decrease subtitle delay" />
+                                                        <TextBox x:Name="SubtitleDelayInput" Margin="2,0" Style="{StaticResource Player.DelayInput}"
+                                                                 Text="{Binding SubtitleDelayMilliseconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:+0;-0;0}, ValidatesOnExceptions=True}"
+                                                                 IsEnabled="{Binding CanAdjustSubtitleDelay}" AutomationProperties.Name="Subtitle delay in milliseconds"
+                                                                 ToolTip="Enter milliseconds (−600000 to +600000), then press Enter to apply." />
+                                                        <TextBlock Text="ms" Width="24" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                                        <Button Width="28" Content="+" Style="{StaticResource Player.Icon}" Command="{Binding IncreaseSubtitleDelayCommand}"
+                                                                ToolTip="Show subtitles 50 ms later" AutomationProperties.Name="Increase subtitle delay" />
+                                                        <Button Width="46" Content="Reset" Style="{StaticResource Player.Icon}" Command="{Binding ResetSubtitleDelayCommand}"
+                                                                FontSize="11" ToolTip="Reset subtitle delay to zero" AutomationProperties.Name="Reset subtitle delay" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding SubtitleDelayStatus}" Style="{StaticResource Player.DelayStatus}" />
+                                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                        <TextBlock Text="Audio" Width="66" VerticalAlignment="Center" />
+                                                        <Button Width="28" Content="−" Style="{StaticResource Player.Icon}" Command="{Binding DecreaseAudioDelayCommand}"
+                                                                ToolTip="Play audio 50 ms earlier" AutomationProperties.Name="Decrease audio delay" />
+                                                        <TextBox x:Name="AudioDelayInput" Margin="2,0" Style="{StaticResource Player.DelayInput}"
+                                                                 Text="{Binding AudioDelayMilliseconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus, StringFormat={}{0:+0;-0;0}, ValidatesOnExceptions=True}"
+                                                                 IsEnabled="{Binding CanAdjustAudioDelay}" AutomationProperties.Name="Audio delay in milliseconds"
+                                                                 ToolTip="Enter milliseconds (−600000 to +600000), then press Enter to apply." />
+                                                        <TextBlock Text="ms" Width="24" VerticalAlignment="Center" Margin="4,0,0,0" />
+                                                        <Button Width="28" Content="+" Style="{StaticResource Player.Icon}" Command="{Binding IncreaseAudioDelayCommand}"
+                                                                ToolTip="Play audio 50 ms later" AutomationProperties.Name="Increase audio delay" />
+                                                        <Button Width="46" Content="Reset" Style="{StaticResource Player.Icon}" Command="{Binding ResetAudioDelayCommand}"
+                                                                FontSize="11" ToolTip="Reset audio delay to zero" AutomationProperties.Name="Reset audio delay" />
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding AudioDelayStatus}" Style="{StaticResource Player.DelayStatus}" />
+                                                    <TextBlock Text="Saved for this media item." FontSize="11" Margin="0,8,0,0" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
                                         <Button x:Name="FullscreenButton" Click="OnFullscreenClick" ToolTip="Toggle fullscreen (F11); exit with Esc"
                                                 AutomationProperties.Name="Toggle fullscreen">
                                             <Path Width="20" Height="20" Data="M3,8 V3 H8 M12,3 H17 V8 M17,12 V17 H12 M8,17 H3 V12"

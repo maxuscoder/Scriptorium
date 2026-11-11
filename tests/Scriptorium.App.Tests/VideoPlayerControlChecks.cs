@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -93,6 +94,54 @@ internal static class VideoPlayerControlChecks
             subtitles.SelectedItem = player.SubtitleTracks[1];
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(3, engine.SelectedSubtitle);
+            var timingButton = Action("Audio and subtitle synchronization");
+            timingButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            var timingPopup = (Popup)view.FindName("TimingPopup");
+            var timingPanel = (Border)view.FindName("TimingPanel");
+            var subtitleDelay = (TextBox)view.FindName("SubtitleDelayInput");
+            var audioDelay = (TextBox)view.FindName("AudioDelayInput");
+            Assert.True(timingPopup.IsOpen);
+            Assert.True(subtitleDelay.IsEnabled);
+            Assert.True(audioDelay.IsEnabled);
+            var timingButtons = Descendants<Button>(timingPanel).ToArray();
+            Button TimingAction(string name) => timingButtons.Single(button => AutomationProperties.GetName(button) == name);
+            TimingAction("Increase subtitle delay").Command.Execute(null);
+            TimingAction("Decrease audio delay").Command.Execute(null);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal("+50", subtitleDelay.Text);
+            Assert.Equal("-50", audioDelay.Text);
+            Assert.Equal(TimeSpan.FromMilliseconds(50), engine.SubtitleDelay);
+            Assert.Equal(TimeSpan.FromMilliseconds(-50), engine.AudioDelay);
+            subtitleDelay.SetCurrentValue(TextBox.TextProperty, "-325");
+            subtitleDelay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitleDelay), 0, Key.Enter)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(TimeSpan.FromMilliseconds(-325), engine.SubtitleDelay);
+            var positionBeforeTimingInput = player.PositionSeconds;
+            var volumeBeforeTimingInput = player.Volume;
+            subtitleDelay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitleDelay), 0, Key.Left)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(positionBeforeTimingInput, player.PositionSeconds);
+            Assert.Equal(volumeBeforeTimingInput, player.Volume);
+            subtitleDelay.SetCurrentValue(TextBox.TextProperty, "invalid");
+            subtitleDelay.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+            Assert.True(Validation.GetHasError(subtitleDelay));
+            Assert.Equal(TimeSpan.FromMilliseconds(-325), engine.SubtitleDelay);
+            subtitleDelay.SetCurrentValue(TextBox.TextProperty, "-325");
+            subtitleDelay.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+            Assert.False(Validation.GetHasError(subtitleDelay));
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal("-325", subtitleDelay.Text);
+            Render(timingPanel, "video-synchronization.png");
+            subtitleDelay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitleDelay), 0, Key.Escape)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.False(timingPopup.IsOpen);
             subtitles.SelectedItem = SubtitleTrack.Off;
             await StaTest.DrainDispatcherAsync();
             Assert.Equal(-1, engine.SelectedSubtitle);
@@ -249,7 +298,7 @@ internal static class VideoPlayerControlChecks
         public IVideoPlayback Create() => engine;
     }
 
-    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput, ISubtitlePlayback, IAudioPlayback
+    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming
     {
         public event EventHandler? Opened;
         public event EventHandler? Ended { add { } remove { } }
@@ -269,6 +318,10 @@ internal static class VideoPlayerControlChecks
         public IReadOnlyList<AudioTrack> AudioTracks { get; } = [new(1, "English", "en"), new(2, "Romanian", "ro")];
         public int SelectedAudioTrackId { get; private set; } = 1;
         public bool SelectAudioTrack(int id) { SelectedAudioTrackId = id; return true; }
+        public TimeSpan SubtitleDelay { get; private set; }
+        public TimeSpan AudioDelay { get; private set; }
+        public bool SetSubtitleDelay(TimeSpan delay) { SubtitleDelay = delay; return true; }
+        public bool SetAudioDelay(TimeSpan delay) { AudioDelay = delay; return true; }
         public void Open(string filePath) => Opened?.Invoke(this, EventArgs.Empty);
         public void Play() => IsPlaying = true;
         public void Pause() => IsPlaying = false;
