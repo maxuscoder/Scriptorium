@@ -10,7 +10,8 @@ public sealed class FolderManagementViewModelFactory(
     IConfirmationDialog confirmationDialog,
     ILibraryFolderRepository libraryFolderRepository,
     ILibraryFolderValidator libraryFolderValidator,
-    IMediaItemRepository mediaItemRepository) : IFolderManagementViewModelFactory
+    IMediaItemRepository mediaItemRepository,
+    IMediaScannerService? mediaScanner = null) : IFolderManagementViewModelFactory
 {
     /// <inheritdoc />
     public FolderManagementViewModel Create(
@@ -24,5 +25,6 @@ public sealed class FolderManagementViewModelFactory(
             mediaItemRepository,
             refreshLibraryData,
             setStatusMessage,
-            isScanning);
+            isScanning,
+            mediaScanner);
 }

@@ -451,7 +451,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a tutorial collection before it becomes the current page.</summary>
-    public async Task<bool> LoadAsync(Guid courseId, PageViewModel returnPage)
+    public async Task<bool> LoadAsync(Guid courseId, PageViewModel returnPage, Guid? selectedLessonMediaItemId = null)
     {
         ArgumentNullException.ThrowIfNull(returnPage);
 
@@ -464,7 +464,7 @@ public sealed partial class TutorialDetailsPageViewModel : PageViewModel, IDispo
         _returnPage = returnPage;
         if (_courseId != course.Id) _isLessonListExpanded = false;
         _courseId = course.Id;
-        await PopulateCourseAsync(course, selectedLessonMediaItemId: null);
+        await PopulateCourseAsync(course, selectedLessonMediaItemId);
         return true;
     }
 

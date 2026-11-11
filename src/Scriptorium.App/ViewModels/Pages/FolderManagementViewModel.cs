@@ -22,6 +22,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
     private readonly Func<Task> _refreshLibraryData;
     private readonly Action<string> _setStatusMessage;
     private readonly Func<bool> _isScanning;
+    private readonly IMediaScannerService? _mediaScanner;
     private readonly AsyncRelayCommand _removeFolderCommand;
     private readonly AsyncRelayCommand _replaceFolderCommand;
     private readonly AsyncRelayCommand _reconnectFolderCommand;
@@ -41,7 +42,8 @@ public sealed class FolderManagementViewModel : ViewModelBase
         IMediaItemRepository mediaItemRepository,
         Func<Task> refreshLibraryData,
         Action<string> setStatusMessage,
-        Func<bool> isScanning)
+        Func<bool> isScanning,
+        IMediaScannerService? mediaScanner = null)
     {
         _importFolderDialog = importFolderDialog;
         _confirmationDialog = confirmationDialog;
@@ -51,8 +53,9 @@ public sealed class FolderManagementViewModel : ViewModelBase
         _refreshLibraryData = refreshLibraryData;
         _setStatusMessage = setStatusMessage;
         _isScanning = isScanning;
+        _mediaScanner = mediaScanner;
 
-        ImportFolderCommand = new AsyncRelayCommand(ImportFolderAsync);
+        ImportFolderCommand = new AsyncRelayCommand(ImportFolderAsync, () => !_isScanning() && _mediaScanner?.IsScanning != true);
         _removeFolderCommand = new AsyncRelayCommand(
             RemoveSelectedFolderAsync,
             parameter => parameter is ConfiguredFolderViewModel || SelectedFolder is not null);
@@ -78,8 +81,9 @@ public sealed class FolderManagementViewModel : ViewModelBase
         _changeMediaTypeCommand = new AsyncRelayCommand(
             ChangeSelectedFolderMediaTypeAsync,
             () => SelectedFolder is not null &&
-                  SelectedMediaType is { } mediaType &&
-                  mediaType != SelectedFolder.Folder.MediaType &&
+                  (SelectedMediaType is { } mediaType
+                      ? SelectedFolder.Folder.DetectMediaTypes || mediaType != SelectedFolder.Folder.MediaType
+                      : !SelectedFolder.Folder.DetectMediaTypes) &&
                   !_isScanning());
         ChangeMediaTypeCommand = _changeMediaTypeCommand;
     }
@@ -104,6 +108,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
     public IReadOnlyList<MediaTypeChoice> MediaTypes { get; } =
     [
+        new(null, "Mixed media (automatic)"),
         new(MediaType.Tutorial, "Tutorials"),
         new(MediaType.TvShow, "TV shows"),
         new(MediaType.Movie, "Movies")
@@ -124,7 +129,8 @@ public sealed class FolderManagementViewModel : ViewModelBase
                 _saveDisplayNameCommand.NotifyCanExecuteChanged();
                 _saveFolderChangesCommand.NotifyCanExecuteChanged();
                 CustomDisplayName = value?.Folder.DisplayName;
-                SelectedMediaType = value?.Folder.MediaType;
+                SelectedMediaType = value?.Folder.DetectMediaTypes == true ? null : value?.Folder.MediaType;
+                OnPropertyChanged(nameof(SelectedMediaTypeChoice));
                 OnPropertyChanged(nameof(SelectedFolderCountText));
             }
         }
@@ -146,8 +152,15 @@ public sealed class FolderManagementViewModel : ViewModelBase
             if (SetProperty(ref _selectedMediaType, value))
             {
                 _changeMediaTypeCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(SelectedMediaTypeChoice));
             }
         }
+    }
+
+    public MediaTypeChoice? SelectedMediaTypeChoice
+    {
+        get => SelectedFolder is null ? null : MediaTypes.First(choice => choice.Value == SelectedMediaType);
+        set => SelectedMediaType = value?.Value;
     }
 
     public string? SelectedFolderPath
@@ -182,6 +195,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
     public void NotifyScanningStateChanged()
     {
+        ((AsyncRelayCommand)ImportFolderCommand).NotifyCanExecuteChanged();
         _changeMediaTypeCommand.NotifyCanExecuteChanged();
         _replaceFolderCommand.NotifyCanExecuteChanged();
     }
@@ -204,17 +218,65 @@ public sealed class FolderManagementViewModel : ViewModelBase
             return;
         }
 
-        await _libraryFolderRepository.AddAsync(new LibraryFolder
+        var folder = new LibraryFolder
         {
             Path = folderPath,
             Name = GetFolderName(folderPath),
-            MediaType = selection.MediaType
-        });
+            MediaType = selection.MediaType,
+            DetectMediaTypes = selection.Files is not null
+        };
+        await _libraryFolderRepository.AddAsync(folder);
+        if (selection.Files is { } files)
+        {
+            await ImportFilesAsync(folder, files);
+            if (_mediaScanner is not null && !_mediaScanner.IsScanning)
+            {
+                _setStatusMessage("Adding media and organizing your library…");
+                try
+                {
+                    await _mediaScanner.ScanAsync();
+                }
+                catch (ScanAlreadyRunningException) { }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    await _refreshLibraryData();
+                    _setStatusMessage("Folder and media types saved. Rescan the library to finish reading metadata.");
+                    return;
+                }
+            }
+        }
 
         await RefreshAsync();
         SelectedFolderPath = folderPath;
         await _refreshLibraryData();
         _setStatusMessage("Library folder added.");
+    }
+
+    private async Task ImportFilesAsync(LibraryFolder folder, IReadOnlyList<ImportMediaFileSelection> files)
+    {
+        var existing = await _mediaItemRepository.GetByLibraryFolderIdsOrPathsAsync([], files.Select(file => file.Path));
+        var byPath = existing.ToDictionary(item => item.Path, StringComparer.OrdinalIgnoreCase);
+        var newItems = new List<MediaItem>();
+        foreach (var file in files.DistinctBy(file => file.Path, StringComparer.OrdinalIgnoreCase))
+        {
+            if (byPath.TryGetValue(file.Path, out var item))
+            {
+                if (item.MediaType != file.MediaType)
+                    await _mediaItemRepository.UpdateMediaTypeAsync(item.Id, file.MediaType);
+                continue;
+            }
+
+            newItems.Add(new MediaItem
+            {
+                Path = file.Path,
+                Title = Path.GetFileNameWithoutExtension(file.Path),
+                LibraryFolderId = folder.Id,
+                MediaType = file.MediaType,
+                DetectedMediaType = file.SuggestedMediaType,
+                MediaTypeOverride = file.MediaType != file.SuggestedMediaType ? file.MediaType : null
+            });
+        }
+        if (newItems.Count > 0) await _mediaItemRepository.AddRangeAsync(newItems);
     }
 
     private async Task RemoveSelectedFolderAsync(object? parameter)
@@ -347,11 +409,15 @@ public sealed class FolderManagementViewModel : ViewModelBase
             : CustomDisplayName.Trim();
 
         MediaType? changedMediaType = null;
-        if (SelectedMediaType is { } mediaType && configuredFolder.Folder.MediaType != mediaType)
+        if (SelectedMediaType is { } mediaType &&
+            (configuredFolder.Folder.DetectMediaTypes || configuredFolder.Folder.MediaType != mediaType))
         {
             configuredFolder.Folder.MediaType = mediaType;
             changedMediaType = mediaType;
         }
+
+        var automaticDetectionEnabled = SelectedMediaType is null && !configuredFolder.Folder.DetectMediaTypes;
+        configuredFolder.Folder.DetectMediaTypes = SelectedMediaType is null;
 
         await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
 
@@ -364,6 +430,12 @@ public sealed class FolderManagementViewModel : ViewModelBase
         }
 
         await _refreshLibraryData();
+
+        if (automaticDetectionEnabled)
+        {
+            _setStatusMessage("Mixed media enabled. Rescan the library to detect each file's type. Manual file types will be kept.");
+            return;
+        }
 
         if (changedMediaType is { } savedType)
         {
@@ -378,21 +450,7 @@ public sealed class FolderManagementViewModel : ViewModelBase
 
     private async Task ChangeSelectedFolderMediaTypeAsync()
     {
-        var configuredFolder = SelectedFolder;
-        var mediaType = SelectedMediaType;
-        if (configuredFolder is null || mediaType is null || configuredFolder.Folder.MediaType == mediaType)
-        {
-            return;
-        }
-
-        configuredFolder.Folder.MediaType = mediaType.Value;
-        await _libraryFolderRepository.UpdateAsync(configuredFolder.Folder);
-        var reclassifiedMediaCount = await _mediaItemRepository.UpdateMediaTypeByLibraryFolderIdAsync(
-            configuredFolder.Id,
-            mediaType.Value);
-        await _refreshLibraryData();
-
-        _setStatusMessage($"Media type changed to {GetMediaTypeDisplayName(mediaType.Value)}. Reclassified {reclassifiedMediaCount} indexed media file{(reclassifiedMediaCount == 1 ? string.Empty : "s")}.");
+        await SaveFolderChangesAsync();
     }
 
     private static string GetFolderName(string folderPath)
@@ -411,4 +469,4 @@ public sealed class FolderManagementViewModel : ViewModelBase
 }
 
 /// <summary>Represents a display-ready media type that can be selected for a library folder.</summary>
-public sealed record MediaTypeChoice(MediaType Value, string DisplayName);
+public sealed record MediaTypeChoice(MediaType? Value, string DisplayName);

@@ -74,7 +74,7 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
     /// <summary>Gets or sets the selected playback-completion filter.</summary>
     public string LibraryCompletionFilter { get; set; } = "All";
 
-    /// <summary>Gets or sets the volume used for newly opened media, from 0 to 1.</summary>
+    /// <summary>Gets or sets the volume used for newly opened media, from 0 to 2 (200%).</summary>
     public double PlaybackVolume { get; set; } = 1;
 
     /// <summary>Gets or sets the playback rate used for newly opened media.</summary>
@@ -84,10 +84,23 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
     public bool StartFullscreenOnPlayback { get; set; }
 
     /// <summary>
-    /// Gets or sets the preferred subtitle state. It is retained now so it can be applied when
-    /// subtitle-track support is added to the playback engine.
+    /// Gets or sets whether an available subtitle track is selected automatically for newly opened media.
     /// </summary>
     public bool SubtitlesEnabled { get; set; }
+
+    public SubtitleAppearance SubtitleAppearance { get; set; } = new();
+
+    /// <summary>Preferred language learned from an explicit subtitle selection.</summary>
+    public string? PreferredSubtitleLanguage { get; set; }
+
+    /// <summary>Preferred language learned from an explicit audio selection.</summary>
+    public string? PreferredAudioLanguage { get; set; }
+
+    /// <summary>Selected tracks, keyed by library media ID or by path for unindexed media.</summary>
+    public Dictionary<string, MediaTrackPreferences> MediaTrackPreferences { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Default audio and subtitle choices, keyed by the persistent TV show ID.</summary>
+    public Dictionary<Guid, SeriesTrackPreferences> SeriesTrackPreferences { get; set; } = [];
 
     /// <summary>Restores every persisted preference to its declared default value.</summary>
     public void ResetToDefaults()

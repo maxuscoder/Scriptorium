@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -47,6 +48,16 @@ internal static class VideoPlayerControlChecks
             Assert.Equal("00:12", player.CurrentPositionText);
             Assert.Equal("01:11", player.DurationText);
             var volume = (Slider)view.FindName("VolumeSlider");
+            Assert.Equal(2, volume.Maximum);
+            volume.Value = 1.5;
+            Assert.Equal(1.5, engine.Volume, 3);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Contains("150", ((TextBlock)view.FindName("VolumePercentage")).Text);
+            view.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(view), 0, Key.Up)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(1.55, engine.Volume, 3);
             volume.Value = 0.7;
             Assert.Equal(0.7, engine.Volume, 3);
             var overlay = (Grid)view.FindName("VideoOverlay");
@@ -71,6 +82,99 @@ internal static class VideoPlayerControlChecks
             Assert.Equal(0.7, engine.Volume, 3);
 
             var speed = (ComboBox)view.FindName("PlaybackSpeedSelector");
+            var subtitles = (ComboBox)view.FindName("SubtitleSelector");
+            var audio = (ComboBox)view.FindName("AudioSelector");
+            Assert.True(audio.IsEnabled);
+            Assert.Equal(2, audio.Items.Count);
+            audio.SelectedItem = player.AudioTracks[1];
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(2, engine.SelectedAudioTrackId);
+            Assert.True(subtitles.IsEnabled);
+            Assert.Equal(3, subtitles.Items.Count);
+            subtitles.SelectedItem = player.SubtitleTracks[1];
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(3, engine.SelectedSubtitle);
+            var timingButton = Action("Audio and subtitle settings");
+            timingButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await StaTest.DrainDispatcherAsync();
+            var timingPopup = (Popup)view.FindName("TimingPopup");
+            var timingPanel = (Border)view.FindName("TimingPanel");
+            var subtitleDelay = (TextBox)view.FindName("SubtitleDelayInput");
+            var audioDelay = (TextBox)view.FindName("AudioDelayInput");
+            Assert.True(timingPopup.IsOpen);
+            Assert.True(subtitleDelay.IsEnabled);
+            Assert.True(audioDelay.IsEnabled);
+            var timingButtons = Descendants<Button>(timingPanel).ToArray();
+            Button TimingAction(string name) => timingButtons.Single(button => AutomationProperties.GetName(button) == name);
+            TimingAction("Increase subtitle delay").Command.Execute(null);
+            TimingAction("Decrease audio delay").Command.Execute(null);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal("+50", subtitleDelay.Text);
+            Assert.Equal("-50", audioDelay.Text);
+            Assert.Equal(TimeSpan.FromMilliseconds(50), engine.SubtitleDelay);
+            Assert.Equal(TimeSpan.FromMilliseconds(-50), engine.AudioDelay);
+            subtitleDelay.SetCurrentValue(TextBox.TextProperty, "-325");
+            subtitleDelay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitleDelay), 0, Key.Enter)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(TimeSpan.FromMilliseconds(-325), engine.SubtitleDelay);
+            var positionBeforeTimingInput = player.PositionSeconds;
+            var volumeBeforeTimingInput = player.Volume;
+            subtitleDelay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitleDelay), 0, Key.Left)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(positionBeforeTimingInput, player.PositionSeconds);
+            Assert.Equal(volumeBeforeTimingInput, player.Volume);
+            subtitleDelay.SetCurrentValue(TextBox.TextProperty, "invalid");
+            subtitleDelay.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+            Assert.True(Validation.GetHasError(subtitleDelay));
+            Assert.Equal(TimeSpan.FromMilliseconds(-325), engine.SubtitleDelay);
+            subtitleDelay.SetCurrentValue(TextBox.TextProperty, "-325");
+            subtitleDelay.GetBindingExpression(TextBox.TextProperty)!.UpdateSource();
+            Assert.False(Validation.GetHasError(subtitleDelay));
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal("-325", subtitleDelay.Text);
+            var fontSize = (ComboBox)view.FindName("SubtitleFontSizeSelector");
+            var textColor = (ComboBox)view.FindName("SubtitleTextColorSelector");
+            var outline = (ComboBox)view.FindName("SubtitleOutlineSelector");
+            var outlineColor = (ComboBox)view.FindName("SubtitleOutlineColorSelector");
+            var subtitleMargin = (Slider)view.FindName("SubtitleMarginSlider");
+            Assert.True(fontSize.IsEnabled);
+            fontSize.SelectedValue = 12;
+            textColor.SelectedValue = "#FFFF00";
+            outline.SelectedValue = 6;
+            outlineColor.SelectedValue = "#000000";
+            subtitleMargin.Value = 50;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(12, player.SubtitleFontSize);
+            Assert.Equal("#FFFF00", player.SubtitleTextColor);
+            Assert.Equal(6, player.SubtitleOutlineThickness);
+            Assert.Equal(50, player.SubtitleBottomMargin);
+            Assert.Contains(Descendants<TextBlock>(fontSize), text => text.Text == "Large");
+            Assert.Contains(Descendants<TextBlock>(textColor), text => text.Text == "Yellow");
+            Render(timingPanel, "video-synchronization.png");
+            TimingAction("Reset subtitle appearance").Command.Execute(null);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(16, fontSize.SelectedValue);
+            Assert.Equal("#FFFFFF", textColor.SelectedValue);
+            Assert.Equal(4, outline.SelectedValue);
+            Assert.Equal(0, subtitleMargin.Value);
+            subtitleDelay.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitleDelay), 0, Key.Escape)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.False(timingPopup.IsOpen);
+            subtitles.SelectedItem = SubtitleTrack.Off;
+            await StaTest.DrainDispatcherAsync();
+            Assert.Equal(-1, engine.SelectedSubtitle);
+            var volumeBeforeSelection = player.Volume;
+            subtitles.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(subtitles), 0, Key.Down)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(volumeBeforeSelection, player.Volume);
             foreach (var width in new[] { 960, 560, 390 })
             {
                 window.Width = width;
@@ -82,7 +186,7 @@ internal static class VideoPlayerControlChecks
                     await StaTest.DrainDispatcherAsync();
                     Assert.Equal(rate, engine.PlaybackSpeed);
                     // Check the rendered bounds after the narrow toolbar has scaled to fit.
-                    foreach (var control in buttons.Cast<FrameworkElement>().Append(speed).Append(volume))
+                    foreach (var control in buttons.Cast<FrameworkElement>().Append(speed).Append(volume).Append(subtitles).Append(audio))
                     {
                         var bounds = control.TransformToAncestor(panel).TransformBounds(new Rect(control.RenderSize));
                         Assert.True(bounds.Left >= 0 && bounds.Right <= panel.ActualWidth + 1,
@@ -189,7 +293,7 @@ internal static class VideoPlayerControlChecks
         Assert.True(bounds.Top >= 0);
     }
 
-    private static void Render(FrameworkElement element, string filename)
+    internal static void Render(FrameworkElement element, string filename)
     {
         var bitmap = new RenderTargetBitmap((int)Math.Ceiling(element.ActualWidth), (int)Math.Ceiling(element.ActualHeight),
             96, 96, PixelFormats.Pbgra32);
@@ -218,7 +322,7 @@ internal static class VideoPlayerControlChecks
         public IVideoPlayback Create() => engine;
     }
 
-    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput
+    private sealed class PreviewPlayback : IVideoPlayback, IVideoOutput, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming, ISubtitleAppearancePlayback
     {
         public event EventHandler? Opened;
         public event EventHandler? Ended { add { } remove { } }
@@ -229,6 +333,20 @@ internal static class VideoPlayerControlChecks
         public TimeSpan Duration => TimeSpan.FromSeconds(71);
         public double Volume { get; set; }
         public double PlaybackSpeed { get; set; }
+        public event EventHandler? SubtitleTracksChanged { add { } remove { } }
+        public IReadOnlyList<SubtitleTrack> SubtitleTracks { get; } = [new(3, "English"), new(5, "Romanian")];
+        public string SubtitleStatus => string.Empty;
+        public int SelectedSubtitle { get; private set; } = -1;
+        public bool SelectSubtitleTrack(int id) { SelectedSubtitle = id; return true; }
+        public event EventHandler? AudioTracksChanged { add { } remove { } }
+        public IReadOnlyList<AudioTrack> AudioTracks { get; } = [new(1, "English", "en"), new(2, "Romanian", "ro")];
+        public int SelectedAudioTrackId { get; private set; } = 1;
+        public bool SelectAudioTrack(int id) { SelectedAudioTrackId = id; return true; }
+        public TimeSpan SubtitleDelay { get; private set; }
+        public TimeSpan AudioDelay { get; private set; }
+        public bool SetSubtitleDelay(TimeSpan delay) { SubtitleDelay = delay; return true; }
+        public bool SetAudioDelay(TimeSpan delay) { AudioDelay = delay; return true; }
+        public bool ConfigureSubtitleAppearance(Scriptorium.App.Models.SubtitleAppearance appearance) => true;
         public void Open(string filePath) => Opened?.Invoke(this, EventArgs.Empty);
         public void Play() => IsPlaying = true;
         public void Pause() => IsPlaying = false;

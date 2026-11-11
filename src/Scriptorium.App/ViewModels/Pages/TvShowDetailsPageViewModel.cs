@@ -464,7 +464,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
     public ICommand ToggleFavoriteCommand { get; }
 
     /// <summary>Loads a TV show before it becomes the current page.</summary>
-    public async Task<bool> LoadAsync(Guid showId, PageViewModel returnPage)
+    public async Task<bool> LoadAsync(Guid showId, PageViewModel returnPage, Guid? selectedEpisodeMediaItemId = null)
     {
         ArgumentNullException.ThrowIfNull(returnPage);
 
@@ -484,7 +484,7 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
         _showId = show.Id;
         await PopulateShowAsync(
             show,
-            selectedEpisodeMediaItemId: null,
+            selectedEpisodeMediaItemId,
             preserveExpansionState: preserveExpansionState);
         return true;
     }
@@ -694,7 +694,8 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
             episode.FilePath,
             episode.IsCompleted ? 0 : episode.PlaybackPositionSeconds,
             episode.MediaItemId,
-            episode.RuntimeSeconds));
+            episode.RuntimeSeconds,
+            SeriesId: _showId));
     }
 
     private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)

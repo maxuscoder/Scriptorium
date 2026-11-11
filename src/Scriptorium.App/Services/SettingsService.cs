@@ -310,11 +310,26 @@ public sealed class SettingsService : ISettingsService
             ? "All"
             : settings.LibraryCompletionFilter;
         settings.PlaybackVolume = double.IsFinite(settings.PlaybackVolume)
-            ? Math.Clamp(settings.PlaybackVolume, 0, 1)
+            ? Math.Clamp(settings.PlaybackVolume, 0, 2)
             : 1;
         settings.PlaybackSpeed = double.IsFinite(settings.PlaybackSpeed)
             ? Math.Clamp(settings.PlaybackSpeed, 0.5, 2)
             : 1;
+        settings.PreferredSubtitleLanguage = TrackLanguage.Normalize(settings.PreferredSubtitleLanguage);
+        settings.SubtitleAppearance = SubtitleAppearance.Normalize(settings.SubtitleAppearance);
+        settings.PreferredAudioLanguage = TrackLanguage.Normalize(settings.PreferredAudioLanguage);
+        settings.MediaTrackPreferences = (settings.MediaTrackPreferences ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null)
+            .GroupBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Last().Value, StringComparer.OrdinalIgnoreCase);
+        foreach (var preferences in settings.MediaTrackPreferences.Values)
+        {
+            preferences.SubtitleDelayMilliseconds = PlaybackDelay.Normalize(preferences.SubtitleDelayMilliseconds);
+            preferences.AudioDelayMilliseconds = PlaybackDelay.Normalize(preferences.AudioDelayMilliseconds);
+        }
+        settings.SeriesTrackPreferences = (settings.SeriesTrackPreferences ?? [])
+            .Where(pair => pair.Key != Guid.Empty && pair.Value is not null)
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
         return settings;
     }
 
@@ -331,7 +346,7 @@ public sealed class SettingsService : ISettingsService
             throw new InvalidDataException("The settings file contains an unsupported library scan frequency.");
         if (PlaybackCompletionThreshold.Normalize(settings.PlaybackCompletionThresholdPercent) != settings.PlaybackCompletionThresholdPercent)
             throw new InvalidDataException("The settings file contains an unsupported playback completion threshold.");
-        if (!double.IsFinite(settings.PlaybackVolume) || settings.PlaybackVolume is < 0 or > 1)
+        if (!double.IsFinite(settings.PlaybackVolume) || settings.PlaybackVolume is < 0 or > 2)
             throw new InvalidDataException("The settings file contains an invalid playback volume.");
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed is < 0.5 or > 2)
             throw new InvalidDataException("The settings file contains an invalid playback speed.");

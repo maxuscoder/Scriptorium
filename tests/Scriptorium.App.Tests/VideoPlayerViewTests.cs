@@ -69,6 +69,7 @@ public sealed class VideoPlayerViewTests
         {
             await VerticalScrollTests.VerifySharedViewportStyleAsync(application.Resources);
             await VideoPlayerControlChecks.VerifyAsync();
+            await TrackPreferenceTests.VerifySeriesTrackPreferenceControlsAsync();
             await DialogResourceChecks.VerifyAsync(application.Resources);
             await MediaDetailsResourceChecks.VerifyAsync();
             await TutorialDetailsResourceChecks.VerifyAsync();

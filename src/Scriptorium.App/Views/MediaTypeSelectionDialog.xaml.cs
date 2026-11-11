@@ -1,34 +1,44 @@
 using System.Windows;
-using System.Windows.Controls;
-using Scriptorium.Core.Models;
+using Scriptorium.App.Services;
+using Scriptorium.App.ViewModels;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.Views;
 
 /// <summary>
-/// Requires a classification before a selected library folder is imported.
+/// Presents an independently editable media type for every discovered file.
 /// </summary>
 public partial class MediaTypeSelectionDialog : Window
 {
-    public MediaTypeSelectionDialog()
+    private readonly CancellationTokenSource _cancellation = new();
+
+    public MediaTypeSelectionDialog() : this(new FolderImportViewModel()) { }
+
+    public MediaTypeSelectionDialog(FolderImportViewModel viewModel,
+        IFileSystemService? fileSystem = null, IMediaFormatService? formats = null)
     {
         InitializeComponent();
+        DataContext = viewModel;
+        MaxHeight = SystemParameters.WorkArea.Height;
+        MaxWidth = SystemParameters.WorkArea.Width;
+        if (fileSystem is not null && formats is not null)
+        {
+            Loaded += async (_, _) =>
+            {
+                try { await viewModel.LoadAsync(fileSystem, formats, _cancellation.Token); }
+                catch (OperationCanceledException) { }
+            };
+        }
+        Closed += (_, _) => _cancellation.Cancel();
     }
 
-    /// <summary>Gets the media type selected by the user after the dialog is accepted.</summary>
-    public MediaType? SelectedMediaType { get; private set; }
-
-    private void OnMediaTypeSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        SelectedMediaType = (MediaTypeComboBox.SelectedItem as ComboBoxItem)?.Tag is MediaType mediaType
-            ? mediaType
-            : null;
-        AddFolderButton.IsEnabled = SelectedMediaType.HasValue;
-    }
+    public ImportFolderSelection? Selection { get; private set; }
 
     private void OnAddFolder(object sender, RoutedEventArgs e)
     {
-        if (SelectedMediaType.HasValue)
+        if (DataContext is FolderImportViewModel { CanImport: true } viewModel)
         {
+            Selection = viewModel.CreateSelection();
             DialogResult = true;
         }
     }

@@ -278,7 +278,7 @@ public sealed class SettingsPageViewModel : PageViewModel
         get => _playbackVolume;
         set
         {
-            var normalized = Math.Clamp(value, 0, 1);
+            var normalized = double.IsFinite(value) ? Math.Clamp(value, 0, 2) : 1;
             if (!SetProperty(ref _playbackVolume, normalized)) return;
             _settingsService.Settings.PlaybackVolume = normalized;
             SaveChanges();

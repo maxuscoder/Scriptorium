@@ -9,6 +9,26 @@ namespace Scriptorium.Tests.Infrastructure;
 public sealed class ScriptoriumDbContextTests
 {
     [Fact]
+    public async Task Mixed_media_upgrade_preserves_existing_folder_classifications()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync("20260916140000_AddMediaBrowseIndexes");
+            await context.Database.ExecuteSqlRawAsync("""
+                INSERT INTO "LibraryFolders" ("Id", "Path", "Name", "IsEnabled", "MediaType")
+                VALUES ('55555555-5555-5555-5555-555555555555', 'C:\Courses', 'Courses', 1, 0);
+                """);
+            await context.Database.MigrateAsync();
+            var folder = await context.LibraryFolders.SingleAsync();
+            Assert.False(folder.DetectMediaTypes);
+            Assert.Equal(MediaType.Tutorial, folder.MediaType);
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    [Fact]
     public async Task MigrateAsync_creates_the_current_flat_media_schema()
     {
         var databasePath = CreateDatabasePath();
@@ -31,12 +51,13 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(24, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(25, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
                 .ToListAsync();
             Assert.Contains("MediaType", folderColumns);
+            Assert.Contains("DetectMediaTypes", folderColumns);
 
             var mediaItemColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('MediaItems')")

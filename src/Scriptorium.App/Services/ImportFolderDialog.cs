@@ -2,13 +2,15 @@ using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 using Scriptorium.App.Views;
+using Scriptorium.App.ViewModels;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.Services;
 
 /// <summary>
 /// Shows the Windows folder picker used to import a library folder.
 /// </summary>
-public sealed class ImportFolderDialog : IImportFolderDialog
+public sealed class ImportFolderDialog(IFileSystemService fileSystem, IMediaFormatService formats) : IImportFolderDialog
 {
     /// <inheritdoc />
     public ImportFolderSelection? SelectFolder(string? initialDirectory = null)
@@ -19,13 +21,13 @@ public sealed class ImportFolderDialog : IImportFolderDialog
             return null;
         }
 
-        var mediaTypeDialog = new MediaTypeSelectionDialog
+        var mediaTypeDialog = new MediaTypeSelectionDialog(new FolderImportViewModel(folderPath), fileSystem, formats)
         {
             Owner = Application.Current?.MainWindow
         };
 
-        return mediaTypeDialog.ShowDialog() == true && mediaTypeDialog.SelectedMediaType is { } mediaType
-            ? new ImportFolderSelection(folderPath, mediaType)
+        return mediaTypeDialog.ShowDialog() == true
+            ? mediaTypeDialog.Selection
             : null;
     }
 

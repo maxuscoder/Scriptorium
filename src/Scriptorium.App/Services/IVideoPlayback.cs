@@ -14,6 +14,7 @@ public interface IVideoPlayback : IDisposable
     bool IsPlaying { get; }
     TimeSpan Position { get; set; }
     TimeSpan Duration { get; }
+    /// <summary>Volume from 0 (silent) to 2 (200%); values above 1 amplify quiet audio.</summary>
     double Volume { get; set; }
     double PlaybackSpeed { get; set; }
     void Open(string filePath);

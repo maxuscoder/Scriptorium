@@ -21,7 +21,7 @@ public sealed class ConfiguredFolderViewModel(
     public string Path => Folder.Path;
 
     /// <summary>Gets the classification applied to files scanned from this folder.</summary>
-    public string MediaType => Folder.MediaType switch
+    public string MediaType => Folder.DetectMediaTypes ? "Mixed media" : Folder.MediaType switch
     {
         Scriptorium.Core.Models.MediaType.Tutorial => "Tutorials",
         Scriptorium.Core.Models.MediaType.TvShow => "TV shows",

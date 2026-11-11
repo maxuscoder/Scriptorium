@@ -17,6 +17,12 @@ The application indexes media without modifying the original files, allowing use
 - Resume playback and reading progress.
 - Remain fast with very large libraries.
 
+Adding a folder opens a review of supported files, including subfolders. Each file
+gets an editable type suggested from episode markers, tutorial or course names,
+and release years. Ambiguous names default to Movie and can be corrected before
+import. Mixed folders classify newly discovered files individually on later scans;
+manual corrections are preserved. Existing folders keep their configured type.
+
 ## Current Scope
 
 Supported media:
@@ -28,6 +34,7 @@ Supported media:
 ## Core Features
 
 - Import folders
+- Review mixed folders with a media type per file, suggested from filenames and subfolders
 - Scan media
 - Generate library
 - Search & Filter

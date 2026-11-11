@@ -60,6 +60,8 @@ public partial class VideoPlayer : UserControl
         VideoOverlay.PreviewKeyDown += OnPreviewKeyDown;
         PlaybackSpeedSelector.DropDownOpened += OnPlaybackSpeedDropDownChanged;
         PlaybackSpeedSelector.DropDownClosed += OnPlaybackSpeedDropDownChanged;
+        SubtitleSelector.DropDownOpened += OnPlaybackSpeedDropDownChanged;
+        SubtitleSelector.DropDownClosed += OnPlaybackSpeedDropDownChanged;
         ControlPanel.MouseEnter += OnControlPanelMouseEnter;
         ControlPanel.MouseLeave += OnControlPanelMouseLeave;
         Loaded += OnLoaded;
@@ -119,6 +121,7 @@ public partial class VideoPlayer : UserControl
 
     private async void OnUnloaded(object sender, RoutedEventArgs args)
     {
+        TimingPopup.IsOpen = false;
         if (Player is { } player)
         {
             player.PlaybackActionPerformed -= OnPlaybackActionPerformed;
@@ -142,6 +145,40 @@ public partial class VideoPlayer : UserControl
     }
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
+
+    private void OnTimingClick(object sender, RoutedEventArgs args)
+    {
+        TimingPopup.IsOpen = !TimingPopup.IsOpen;
+        ShowControls();
+    }
+
+    private void OnTimingPanelKeyDown(object sender, KeyEventArgs args)
+    {
+        if (args.Key == Key.Escape)
+        {
+            TimingPopup.IsOpen = false;
+            TimingButton.Focus();
+            args.Handled = true;
+        }
+        else if (args.Key == Key.Enter && args.OriginalSource is TextBox input)
+        {
+            input.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+            args.Handled = true;
+        }
+    }
+
+    private void OnTimingPopupOpened(object? sender, EventArgs args)
+    {
+        ShowControls();
+        if (SubtitleDelayInput.IsEnabled || AudioDelayInput.IsEnabled)
+        {
+            var input = SubtitleDelayInput.IsEnabled ? SubtitleDelayInput : AudioDelayInput;
+            input.Focus();
+            input.SelectAll();
+        }
+        else if (SaveSeriesTrackPreferencesButton.IsEnabled) SaveSeriesTrackPreferencesButton.Focus();
+        else TimingPanel.Focus();
+    }
 
     private void OnControlsPointerMoved(object sender, MouseEventArgs args)
     {
@@ -180,7 +217,7 @@ public partial class VideoPlayer : UserControl
     private void OnControlsIdle(object? sender, EventArgs args)
     {
         if (ControlPanel.IsMouseOver || _isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
-            PlaybackSpeedSelector.IsDropDownOpen)
+            PlaybackSpeedSelector.IsDropDownOpen || SubtitleSelector.IsDropDownOpen || AudioSelector.IsDropDownOpen || TimingPopup.IsOpen)
             return;
 
         _controlsIdleTimer.Stop();
@@ -229,6 +266,7 @@ public partial class VideoPlayer : UserControl
 
     private void OnPlayerPreviewMouseWheel(object sender, MouseWheelEventArgs args)
     {
+        if (TimingPopup.IsOpen && IsWithin(args.OriginalSource as DependencyObject, TimingPanel)) return;
         // VideoView's overlay lives in another Window, so its input route never reaches the page.
         // Use the inline control's ancestors for both the overlay and playback toolbar.
         if (IsFullscreen || args.Handled) return;
@@ -350,7 +388,17 @@ public partial class VideoPlayer : UserControl
     private void OnPreviewKeyDown(object sender, KeyEventArgs args)
     {
         ShowControls();
-        if (IsTextInput(args.OriginalSource as DependencyObject)) return;
+        if (TimingPopup.IsOpen)
+        {
+            if (args.Key == Key.Escape)
+            {
+                TimingPopup.IsOpen = false;
+                TimingButton.Focus();
+                args.Handled = true;
+            }
+            return;
+        }
+        if (IsInputControl(args.OriginalSource as DependencyObject)) return;
 
         if (args.Key == Key.Escape && _fullscreenWindow is not null)
         {
@@ -424,11 +472,11 @@ public partial class VideoPlayer : UserControl
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ToggleFullscreen));
     }
 
-    private static bool IsTextInput(DependencyObject? element)
+    private static bool IsInputControl(DependencyObject? element)
     {
         while (element is not null)
         {
-            if (element is TextBoxBase or PasswordBox or ComboBox { IsEditable: true }) return true;
+            if (element is TextBoxBase or PasswordBox or ComboBox) return true;
             element = element switch
             {
                 Visual => VisualTreeHelper.GetParent(element),
@@ -440,6 +488,7 @@ public partial class VideoPlayer : UserControl
 
     private void ToggleFullscreen()
     {
+        TimingPopup.IsOpen = false;
         if (_fullscreenWindow is not null)
         {
             _fullscreenWindow.Close();

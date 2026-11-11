@@ -367,8 +367,11 @@ public sealed class VideoPlayerTests
         return Task.CompletedTask;
     });
 
-    [Fact]
-    public Task VolumeUpdatesImmediatelyAndMuteRestoresThePreviousLevel() => StaTest.Run(() =>
+    [Theory]
+    [InlineData(0.35)]
+    [InlineData(1.5)]
+    [InlineData(2)]
+    public Task VolumeUpdatesImmediatelyAndMuteRestoresThePreviousLevel(double volume) => StaTest.Run(() =>
     {
         var factory = new FakeFactory();
         var player = new VideoPlayerViewModel(factory);
@@ -377,12 +380,12 @@ public sealed class VideoPlayerTests
         var playback = Assert.Single(factory.Instances);
         playback.RaiseOpened();
 
-        player.Volume = 0.35;
-        Assert.Equal(0.35, playback.Volume, 3);
+        player.Volume = volume;
+        Assert.Equal(volume, playback.Volume, 3);
 
         player.Volume = 0;
         Assert.True(player.IsMutedIconVisible);
-        player.Volume = 0.35;
+        player.Volume = volume;
 
         var changedProperties = new List<string?>();
         player.PropertyChanged += (_, args) => changedProperties.Add(args.PropertyName);
@@ -395,7 +398,7 @@ public sealed class VideoPlayerTests
         player.ToggleMuteCommand.Execute(null);
         Assert.False(player.IsMuted);
         Assert.Equal("Mute", player.MuteActionText);
-        Assert.Equal(0.35, playback.Volume, 3);
+        Assert.Equal(volume, playback.Volume, 3);
         player.Deactivate();
         return Task.CompletedTask;
     });
@@ -429,12 +432,12 @@ public sealed class VideoPlayerTests
     {
         var settings = new RecordingSettingsService
         {
-            Settings = new ApplicationSettings { PlaybackVolume = 0.4, PlaybackSpeed = 1.5, SubtitlesEnabled = true }
+            Settings = new ApplicationSettings { PlaybackVolume = 1.4, PlaybackSpeed = 1.5, SubtitlesEnabled = true }
         };
         var factory = new FakeFactory();
         var player = new VideoPlayerViewModel(factory, settingsService: settings);
 
-        Assert.Equal(0.4, player.Volume);
+        Assert.Equal(1.4, player.Volume);
         Assert.Equal(1.5, player.PlaybackSpeed);
         Assert.True(settings.Settings.SubtitlesEnabled);
 
@@ -445,14 +448,14 @@ public sealed class VideoPlayerTests
         Assert.Equal(1, playback.PlaybackSpeed);
         playback.RaiseOpened();
         Assert.True(player.IsReady);
-        Assert.Equal(0.4, playback.Volume);
+        Assert.Equal(1.4, playback.Volume);
         Assert.Equal(1.5, playback.PlaybackSpeed);
 
-        player.Volume = 0.7;
+        player.Volume = 1.7;
         player.PlaybackSpeed = 1.25;
         await WaitUntilAsync(() => settings.SaveCount == 1);
 
-        Assert.Equal(0.7, settings.Settings.PlaybackVolume);
+        Assert.Equal(1.7, settings.Settings.PlaybackVolume);
         Assert.Equal(1.25, settings.Settings.PlaybackSpeed);
         player.Deactivate();
     });

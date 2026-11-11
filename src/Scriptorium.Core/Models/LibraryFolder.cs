@@ -26,8 +26,11 @@ public class LibraryFolder
     /// <summary>Gets or sets whether the folder is included in library scans.</summary>
     public bool IsEnabled { get; set; } = true;
 
-    /// <summary>Gets or sets the type assigned to media discovered in this folder.</summary>
+    /// <summary>Gets or sets the type assigned to new files when automatic detection is disabled.</summary>
     public MediaType MediaType { get; set; } = MediaType.Movie;
+
+    /// <summary>Gets or sets whether new files are classified individually from their names.</summary>
+    public bool DetectMediaTypes { get; set; }
 
     /// <summary>Gets the media items discovered in this folder.</summary>
     public List<MediaItem> MediaItems { get; set; } = [];

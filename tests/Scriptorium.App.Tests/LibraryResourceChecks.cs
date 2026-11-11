@@ -305,6 +305,7 @@ internal static class LibraryResourceChecks
             management.Close();
 
             await VerifyCollectionFavoritesAsync(services, vm, page, location.DirectoryPath);
+            await VerifySearchNavigationAsync(services, vm, page);
 
             var settingsViewModel = services.GetRequiredService<SettingsPageViewModel>();
             var settingsPage = new SettingsPage { DataContext = settingsViewModel, Background = (Brush)resources["Brush.Background"] };
@@ -756,6 +757,62 @@ internal static class LibraryResourceChecks
         await Settle(vm);
         Assert.DoesNotContain(Cards(vm).OfType<LibraryMediaItemViewModel>(), item => item.MediaType != "Movie");
         vm.ClearFiltersCommand.Execute(null);
+        await Settle(vm);
+    }
+
+    private static async Task VerifySearchNavigationAsync(ServiceProvider services, LibraryPageViewModel vm, LibraryPage page)
+    {
+        var navigation = services.GetRequiredService<INavigationService>();
+        var toolbar = (LibraryToolbar)page.FindName("Toolbar");
+        var search = (TextBox)toolbar.FindName("SearchBox");
+        foreach (var listLayout in new[] { false, true })
+        {
+            await ((AsyncRelayCommand)(listLayout ? vm.SetListLayoutCommand : vm.SetGridLayoutCommand)).ExecuteAsync();
+            foreach (var title in new[] { "Interstellar", "Lesson 1", "Episode 1" })
+            {
+                search.Text = title;
+                await Settle(vm);
+                var result = Assert.Single(Cards(vm).OfType<LibraryMediaItemViewModel>());
+                var card = Assert.Single(Descendants<MediaCard>(page));
+                Assert.Same(result.CardActionCommand, card.ActionCommand);
+                Assert.Same(result, card.ActionParameter);
+                Assert.True(card.ActionCommand!.CanExecute(card.ActionParameter));
+                Assert.Equal(listLayout, card.IsListLayout);
+                var play = (Button)card.FindName("PrimaryAction");
+                Assert.Equal(Visibility.Visible, play.Visibility);
+                Assert.Same(card.ActionCommand, play.Command);
+                var command = (AsyncRelayCommand)card.ActionCommand;
+                // Exercise the actual card click, not just the ViewModel command in isolation.
+                card.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+                {
+                    RoutedEvent = UIElement.MouseLeftButtonUpEvent
+                });
+                var deadline = DateTime.UtcNow.AddSeconds(5);
+                while (command.IsExecuting && DateTime.UtcNow < deadline) await Task.Delay(10);
+                Assert.False(command.IsExecuting);
+                ICommand back = title switch
+                {
+                    "Interstellar" => Assert.IsType<MovieDetailsPageViewModel>(navigation.CurrentPage).BackCommand,
+                    "Lesson 1" => Assert.IsType<TutorialDetailsPageViewModel>(navigation.CurrentPage).BackCommand,
+                    _ => Assert.IsType<TvShowDetailsPageViewModel>(navigation.CurrentPage).BackCommand
+                };
+                if (navigation.CurrentPage is TutorialDetailsPageViewModel tutorial)
+                    Assert.Equal(result.MediaItemId, tutorial.SelectedLesson!.MediaItemId);
+                if (navigation.CurrentPage is TvShowDetailsPageViewModel show)
+                    Assert.Equal(result.MediaItemId, show.SelectedEpisode!.MediaItemId);
+                back.Execute(null);
+                Assert.Same(vm, navigation.CurrentPage);
+                Assert.Equal(title, vm.SearchQuery);
+            }
+        }
+        // Category/favorite/type filters use the same individual-result template as text search.
+        vm.ClearFiltersCommand.Execute(null);
+        vm.ShowFavoritesOnly = true;
+        await Settle(vm);
+        Assert.All(Cards(vm).OfType<LibraryMediaItemViewModel>(), result =>
+            Assert.True(result.CardActionCommand!.CanExecute(result)));
+        vm.ClearFiltersCommand.Execute(null);
+        await ((AsyncRelayCommand)vm.SetGridLayoutCommand).ExecuteAsync();
         await Settle(vm);
     }
 
