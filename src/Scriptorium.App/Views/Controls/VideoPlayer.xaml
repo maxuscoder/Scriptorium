@@ -123,7 +123,7 @@
                                            VerticalAlignment="Center" Margin="12,0,0,0" AutomationProperties.Name="Video duration" />
                             </Grid>
                             <Viewbox x:Name="ControlActionsViewport" Grid.Row="1" Margin="0,2,0,0" Stretch="Uniform" StretchDirection="DownOnly">
-                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="440">
+                                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Grid}}" MinWidth="500">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
@@ -212,11 +212,15 @@
                                                 </Path>
                                             </Grid>
                                         </Button>
-                                        <Slider x:Name="VolumeSlider" Width="56" Margin="6,0,10,0" VerticalAlignment="Center"
-                                                Style="{StaticResource Player.Slider}" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1"
+                                        <Slider x:Name="VolumeSlider" Width="56" Margin="6,0,6,0" VerticalAlignment="Center"
+                                                Style="{StaticResource Player.Slider}" Minimum="0" Maximum="2" SmallChange="0.05" LargeChange="0.1"
                                                 Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                 IsEnabled="{Binding IsReady}" PreviewMouseLeftButtonDown="OnVolumeSliderMouseLeftButtonDown"
-                                                AutomationProperties.Name="Volume" ToolTip="Volume" />
+                                                AutomationProperties.Name="Volume" ToolTip="Volume: boost quiet audio up to 200% (Up / Down)" />
+                                        <TextBlock x:Name="VolumePercentage" Text="{Binding Volume, StringFormat={}{0:P0}}"
+                                                   Width="42" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource Player.Text}" FontSize="11"
+                                                   TextAlignment="Right" AutomationProperties.Name="Volume percentage" />
                                         <ComboBox x:Name="SubtitleSelector" Width="116" Margin="0,0,6,0" VerticalAlignment="Center"
                                                   Style="{StaticResource Player.Speed}" AutomationProperties.Name="Subtitle track"
                                                   ToolTip="{Binding SubtitleStatus}" ToolTipService.ShowOnDisabled="True" IsEnabled="{Binding CanSelectSubtitles}"

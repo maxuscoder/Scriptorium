@@ -174,7 +174,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         get => _volume;
         set
         {
-            var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
+            var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 2) : 0;
             var previous = _volume;
             if (!SetProperty(ref _volume, bounded)) return;
             if (IsMuted) IsMuted = false;
@@ -953,7 +953,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     }
 
     private static double NormalizeVolume(double value) => double.IsFinite(value)
-        ? Math.Clamp(value, 0, 1)
+        ? Math.Clamp(value, 0, 2)
         : 1;
 
     private static double NormalizePlaybackSpeed(double value) => double.IsFinite(value)

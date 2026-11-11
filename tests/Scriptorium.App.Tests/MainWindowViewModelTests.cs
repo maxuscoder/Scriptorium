@@ -199,6 +199,16 @@ public sealed class MainWindowViewModelTests
             Assert.Equal("3m", tutorialDetails.TotalDurationText);
             Assert.Equal("3m", tutorialDetails.RemainingDurationText);
             Assert.True(tutorialDetails.HasLessons);
+            // Homepage cards select the clicked media, even when it is not first in course order.
+            Assert.Equal(tutorialMedia.Id, tutorialDetails.SelectedLesson!.MediaItemId);
+            Assert.Equal("Lesson 1", tutorialDetails.SelectedLesson.Title);
+            Assert.True(tutorialDetails.SelectedLesson.IsSelected);
+            Assert.False(tutorialDetails.Lessons[0].IsSelected);
+            Assert.True(tutorialDetails.PreviousLessonCommand.CanExecute(null));
+            Assert.False(tutorialDetails.NextLessonCommand.CanExecute(null));
+
+            tutorialDetails.PreviousLessonCommand.Execute(null);
+
             Assert.Equal("Lesson 2", tutorialDetails.SelectedLesson!.Title);
             Assert.True(tutorialDetails.SelectedLesson.IsSelected);
             Assert.False(tutorialDetails.PreviousLessonCommand.CanExecute(null));

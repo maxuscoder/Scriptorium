@@ -38,11 +38,11 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.ValueColumnWidth}" /></Grid.ColumnDefinitions>
                         <StackPanel Margin="{StaticResource Settings.RowContentMargin}" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource Settings.RowTitle}" Text="Default volume" />
-                            <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Volume for newly opened media." />
+                            <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Volume for newly opened media. Boost quiet audio up to 200%." />
                         </StackPanel>
                         <Grid Grid.Column="1" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="{StaticResource Settings.VolumeLabelWidth}" /></Grid.ColumnDefinitions>
-                            <Slider Style="{StaticResource Settings.VolumeSlider}" Maximum="1" Minimum="0" TickFrequency="0.05" Value="{Binding PlaybackVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Default playback volume" />
+                            <Slider Style="{StaticResource Settings.VolumeSlider}" Maximum="2" Minimum="0" TickFrequency="0.05" Value="{Binding PlaybackVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Default playback volume" />
                             <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right" Style="{StaticResource Text.Metadata}" Text="{Binding PlaybackVolume, StringFormat={}{0:P0}}" />
                         </Grid>
                     </Grid>

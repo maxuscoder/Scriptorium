@@ -310,7 +310,7 @@ public sealed class SettingsService : ISettingsService
             ? "All"
             : settings.LibraryCompletionFilter;
         settings.PlaybackVolume = double.IsFinite(settings.PlaybackVolume)
-            ? Math.Clamp(settings.PlaybackVolume, 0, 1)
+            ? Math.Clamp(settings.PlaybackVolume, 0, 2)
             : 1;
         settings.PlaybackSpeed = double.IsFinite(settings.PlaybackSpeed)
             ? Math.Clamp(settings.PlaybackSpeed, 0.5, 2)
@@ -331,7 +331,7 @@ public sealed class SettingsService : ISettingsService
             throw new InvalidDataException("The settings file contains an unsupported library scan frequency.");
         if (PlaybackCompletionThreshold.Normalize(settings.PlaybackCompletionThresholdPercent) != settings.PlaybackCompletionThresholdPercent)
             throw new InvalidDataException("The settings file contains an unsupported playback completion threshold.");
-        if (!double.IsFinite(settings.PlaybackVolume) || settings.PlaybackVolume is < 0 or > 1)
+        if (!double.IsFinite(settings.PlaybackVolume) || settings.PlaybackVolume is < 0 or > 2)
             throw new InvalidDataException("The settings file contains an invalid playback volume.");
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed is < 0.5 or > 2)
             throw new InvalidDataException("The settings file contains an invalid playback speed.");

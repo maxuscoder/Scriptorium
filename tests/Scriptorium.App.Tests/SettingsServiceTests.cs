@@ -127,6 +127,34 @@ public sealed class SettingsServiceTests
         finally { File.Delete(file); Directory.Delete(directory); }
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(1.5)]
+    [InlineData(2)]
+    public async Task PlaybackVolumeSurvivesSaveReloadAndImport(double volume)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Scriptorium-volume-settings-{Guid.NewGuid():N}");
+        var file = Path.Combine(directory, "settings.json");
+        var export = Path.Combine(directory, "export.json");
+        try
+        {
+            var service = new SettingsService(new TestSettingsFileLocation(file), NullLogger<SettingsService>.Instance);
+            service.Settings.PlaybackVolume = volume;
+            await service.SaveAsync();
+            await service.ExportAsync(export);
+            var restored = new SettingsService(new TestSettingsFileLocation(file), NullLogger<SettingsService>.Instance);
+            await restored.LoadAsync();
+            Assert.Equal(volume, restored.Settings.PlaybackVolume);
+            restored.Settings.PlaybackVolume = 0.5;
+            await restored.ImportAsync(export);
+            Assert.Equal(volume, restored.Settings.PlaybackVolume);
+        }
+        finally
+        {
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
+        }
+    }
+
     private sealed class TestSettingsFileLocation(string filePath) : ISettingsFileLocation
     {
         public string FilePath { get; } = filePath;

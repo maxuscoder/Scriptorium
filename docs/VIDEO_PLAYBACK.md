@@ -14,6 +14,8 @@ Native video dimensions are rounded from the local player size, independently of
 
 The foreground overlay paints opaque black bars using the display aspect ratio of VLC's native picture window, including sample aspect ratio and rotation. A hidden or unavailable picture stays fully covered in black, so the native gray background cannot show through. The adapter listens for native picture creation, visibility, and geometry changes, including changes after the initial preview has paused, and briefly follows the resulting layout while it settles. This keeps pillarbox and letterbox areas black on initial entry, return navigation, scrolling, and resizing, without repainting the paused Direct3D frame or polling continuously while paused.
 
+The volume slider and Up/Down shortcuts support **0–200%**. **100%** is the original level; higher values use LibVLC's software amplification for quiet movies. The player displays the selected percentage and remembers it for subsequent videos and app launches. Settings → Playback → Default volume supports the same range. Mute/unmute restores the selected boost. Start around 125% and increase as needed; high boosts can distort loud scenes.
+
 ## Local subtitles
 
 The player discovers `.srt`, `.vtt` (WebVTT), `.ass`, and `.ssa` sidecars in the video's own folder whenever a media session opens. Names match case-insensitively: `Movie.mp4` can use `Movie.srt`, `Movie.en.srt`, `Movie.en.forced.srt`, or `Movie ro.srt`. A dot or space must separate a language/variant suffix; `Episode 1` does not match `Episode 10`. If multiple video names share a prefix, the longest matching video name owns the subtitle. Discovery does not search subfolders or download files.
@@ -75,6 +77,12 @@ ffmpeg -f lavfi -i testsrc2=size=96x64:rate=15 -t 4 -c:v libx264 -pix_fmt yuv420
 ```
 
 FFmpeg is only needed to regenerate the fixture, not to run the app or tests.
+
+`Fixtures/audio-preview.mp4` is a synthetic black video with silent AAC audio. The audio-volume test uses it to verify that the native output accepts 150% and 200% volume, mute, and range limits without producing sound. Regenerate it with:
+
+```powershell
+ffmpeg -f lavfi -i color=c=black:s=96x64:r=10:d=4 -f lavfi -i anullsrc=r=8000:cl=mono -t 4 -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 16k -shortest tests/Scriptorium.App.Tests/Fixtures/audio-preview.mp4
+```
 
 `Fixtures/fragmented-seek.mp4` is an eight-second synthetic H.264 fixture with two four-second GOPs and half-second MP4 fragments. Its large corner patch changes from red to green to blue to yellow every two seconds, including between keyframes. `FragmentedVideoSeekTests` seeks out of order while paused and playing, captures decoded frames, and checks those colors so stale references cannot pass by reporting the right playback time. Both cases fail with the native MP4 demuxer and pass with `avformat`.
 

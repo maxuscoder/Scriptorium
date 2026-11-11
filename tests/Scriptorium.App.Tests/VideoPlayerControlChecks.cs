@@ -47,6 +47,16 @@ internal static class VideoPlayerControlChecks
             Assert.Equal("00:12", player.CurrentPositionText);
             Assert.Equal("01:11", player.DurationText);
             var volume = (Slider)view.FindName("VolumeSlider");
+            Assert.Equal(2, volume.Maximum);
+            volume.Value = 1.5;
+            Assert.Equal(1.5, engine.Volume, 3);
+            await StaTest.DrainDispatcherAsync();
+            Assert.Contains("150", ((TextBlock)view.FindName("VolumePercentage")).Text);
+            view.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(view), 0, Key.Up)
+            {
+                RoutedEvent = Keyboard.PreviewKeyDownEvent
+            });
+            Assert.Equal(1.55, engine.Volume, 3);
             volume.Value = 0.7;
             Assert.Equal(0.7, engine.Volume, 3);
             var overlay = (Grid)view.FindName("VideoOverlay");

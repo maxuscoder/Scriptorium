@@ -27,6 +27,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
     private int _openGeneration;
     private volatile bool _disposed;
     private double _playbackSpeed = 1;
+    private int _requestedVolume = 100;
+    private bool _volumePending;
     private CancellationTokenSource? _subtitleDiscoveryCancellation;
 
     public LibVlcVideoPlayback(LibVlcRuntime runtime)
@@ -78,12 +80,18 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
 
     public double Volume
     {
-        get => Math.Clamp(_player.Volume / 100d, 0, 1);
+        get => Math.Clamp(_player.Volume / 100d, 0, 2);
         set
         {
             ThrowIfDisposed();
-            var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
-            _player.Volume = (int)Math.Round(bounded * 100, MidpointRounding.AwayFromZero);
+            var bounded = double.IsFinite(value) ? Math.Clamp(value, 0, 2) : 0;
+            _requestedVolume = (int)Math.Round(bounded * 100, MidpointRounding.AwayFromZero);
+            // A paused preview can open before VLC creates its audio output.
+            // Retain the preference until playback creates that output.
+            _volumePending = _player.Volume < 0;
+            // LibVLC applies software gain above 100%, including on Windows audio output.
+            if (!_volumePending) _player.Volume = _requestedVolume;
+            else _ = ApplyPendingVolumeAsync();
         }
     }
 
@@ -151,6 +159,24 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
     }
 
     private void OnSubtitleAdded(object? sender, MediaPlayerESAddedEventArgs args) => PostSubtitleRefresh();
+
+    private async Task ApplyPendingVolumeAsync()
+    {
+        var generation = _openGeneration;
+        // Audio output can appear after Playing. Retry briefly while it starts;
+        // paused previews and videos without audio never leave a permanent poll.
+        for (var attempt = 0; attempt < 40 && !_disposed && generation == _openGeneration && _volumePending && _player.IsPlaying; attempt++)
+        {
+            if (_player.Volume >= 0)
+            {
+                _volumePending = false;
+                _player.Volume = _requestedVolume;
+                return;
+            }
+            await Task.Delay(50);
+        }
+    }
+
     private void OnSubtitleDeleted(object? sender, MediaPlayerESDeletedEventArgs args) => PostSubtitleRefresh();
 
     private void PostSubtitleRefresh()
@@ -220,6 +246,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAs
 
     private void OnPlaying(object? sender, EventArgs args)
     {
+        Post(() => _ = ApplyPendingVolumeAsync());
         var generation = Volatile.Read(ref _openGeneration);
         if (_disposed || !_opening) return;
         _opening = false;

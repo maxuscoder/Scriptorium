@@ -74,7 +74,7 @@ public sealed class ApplicationSettings : INotifyPropertyChanged
     /// <summary>Gets or sets the selected playback-completion filter.</summary>
     public string LibraryCompletionFilter { get; set; } = "All";
 
-    /// <summary>Gets or sets the volume used for newly opened media, from 0 to 1.</summary>
+    /// <summary>Gets or sets the volume used for newly opened media, from 0 to 2 (200%).</summary>
     public double PlaybackVolume { get; set; } = 1;
 
     /// <summary>Gets or sets the playback rate used for newly opened media.</summary>

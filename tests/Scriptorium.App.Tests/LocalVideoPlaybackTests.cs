@@ -9,6 +9,36 @@ namespace Scriptorium.App.Tests;
 public sealed class LocalVideoPlaybackTests
 {
     [Fact]
+    public Task AudioOutputAcceptsBoostAndClampsVolumeToTwoHundredPercent() => StaTest.Run(async () =>
+    {
+        // This fixture includes silent audio, so LibVLC creates a real audio output.
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "audio-preview.mp4");
+        using var runtime = new LibVlcRuntime();
+        using var player = new LibVlcVideoPlayback(runtime);
+        using var host = AttachOutput(player);
+        var opened = new TaskCompletionSource();
+        player.Opened += (_, _) => opened.TrySetResult();
+        player.Failed += (_, error) => opened.TrySetException(error);
+        try
+        {
+            player.Open(path);
+            await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            var native = ((LibVlcVideoOutput)player.VideoOutput).MediaPlayer;
+            player.Volume = 1.5;
+            player.Play();
+            await WaitUntil(() => native.Volume == 150);
+            foreach (var (requested, expected) in new[] { (1.5, 150), (2.5, 200), (0d, 0), (1.5, 150), (-1d, 0), (double.NaN, 0) })
+            {
+                player.Volume = requested;
+                await WaitUntil(() => native.Volume == expected);
+                Assert.Equal(expected, native.Volume);
+                Assert.Equal(expected / 100d, player.Volume, 3);
+            }
+        }
+        finally { await player.DisposeAsync(); }
+    });
+
+    [Fact]
     public Task StoppingDuringSubtitleDiscoveryCancelsThePendingOpen() => StaTest.Run(async () =>
     {
         using var runtime = new LibVlcRuntime();
