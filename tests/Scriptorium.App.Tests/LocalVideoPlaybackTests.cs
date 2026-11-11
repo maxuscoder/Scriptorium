@@ -11,28 +11,39 @@ public sealed class LocalVideoPlaybackTests
     [Fact]
     public Task AudioOutputAcceptsBoostAndClampsVolumeToTwoHundredPercent() => StaTest.Run(async () =>
     {
-        // This fixture includes silent audio, so LibVLC creates a real audio output.
+        // Decode audio in memory so this test does not require a Windows audio device.
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "audio-preview.mp4");
-        using var runtime = new LibVlcRuntime();
+        using var runtime = new LibVlcRuntime(["--aout=amem"]);
         using var player = new LibVlcVideoPlayback(runtime);
         using var host = AttachOutput(player);
-        var opened = new TaskCompletionSource();
+        var native = ((LibVlcVideoOutput)player.VideoOutput).MediaPlayer;
+        var audioDecoded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var appliedVolume = -1f;
+        native.SetAudioFormat("S16N", 44100, 2);
+        native.SetAudioCallbacks((_, _, _, _) => audioDecoded.TrySetResult(), null, null, null, null);
+        // Memory output does not report native.Volume. Observe volume delivered to the output callback.
+        native.SetVolumeCallback((_, volume, _) =>
+        {
+            Volatile.Write(ref appliedVolume, volume);
+        });
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         player.Opened += (_, _) => opened.TrySetResult();
         player.Failed += (_, error) => opened.TrySetException(error);
         try
         {
             player.Open(path);
             await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
-            var native = ((LibVlcVideoOutput)player.VideoOutput).MediaPlayer;
             player.Volume = 1.5;
             player.Play();
-            await WaitUntil(() => native.Volume == 150);
+            await audioDecoded.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            await WaitUntil(() => Volatile.Read(ref appliedVolume) == 1.5f,
+                () => $"LibVLC did not apply the initial 150% volume: actual={Volatile.Read(ref appliedVolume)}.");
             foreach (var (requested, expected) in new[] { (1.5, 150), (2.5, 200), (0d, 0), (1.5, 150), (-1d, 0), (double.NaN, 0) })
             {
                 player.Volume = requested;
-                await WaitUntil(() => native.Volume == expected);
-                Assert.Equal(expected, native.Volume);
-                Assert.Equal(expected / 100d, player.Volume, 3);
+                await WaitUntil(() => Volatile.Read(ref appliedVolume) == expected / 100f,
+                    () => $"LibVLC did not apply {expected}% volume: actual={Volatile.Read(ref appliedVolume)}.");
+                Assert.Equal(expected / 100f, Volatile.Read(ref appliedVolume), 3);
             }
         }
         finally { await player.DisposeAsync(); }
@@ -170,12 +181,12 @@ public sealed class LocalVideoPlaybackTests
         return host;
     }
 
-    private static async Task WaitUntil(Func<bool> predicate)
+    private static async Task WaitUntil(Func<bool> predicate, Func<string>? describeFailure = null)
     {
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (!predicate() && DateTime.UtcNow < deadline)
             await Task.Delay(50);
 
-        Assert.True(predicate(), "LibVLC playback position did not advance in time.");
+        Assert.True(predicate(), describeFailure?.Invoke() ?? "LibVLC playback position did not advance in time.");
     }
 }
