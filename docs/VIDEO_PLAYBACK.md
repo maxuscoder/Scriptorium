@@ -135,7 +135,7 @@ state restoration, failed configuration, and cancellation during navigation.
 
 ## Verification
 
-Run `dotnet test Scriptorium.sln` on Windows with the .NET 9 SDK. The official LibVLC Windows runtime is restored and copied to the application/test output by NuGet. The separate `Scriptorium.App.Tests` project keeps WPF checks out of the existing platform-independent Core/Infrastructure tests.
+Run `dotnet test Scriptorium.sln` on Windows with the .NET 10 SDK. The official LibVLC Windows runtime is restored and copied to the application/test output by NuGet. The separate `Scriptorium.App.Tests` project keeps WPF checks out of the existing platform-independent Core/Infrastructure tests.
 
 The tests cover paused initialization, resume without resetting position, end/replay, invalid or unavailable media, replacing a session, idempotent cleanup, actual local MP4 decoding and file release, `VideoView` attachment, fullscreen continuity, Escape, and navigation cleanup. A TV-page navigation check holds native-style teardown and progress writes behind separate gates, verifies that the destination tab loads and accepts input within 250 ms, and tests a quick return while the previous session is still closing. Native tests verify asynchronous/idempotent release, runtime shutdown file release, and repeated episode switches without standalone VLC output windows. Controlled cleanup tests also verify that rapid selections open only the latest episode and navigation cancels pending opens. UI checks load theme resources in an invisible test window and never start the application or access its database.
 

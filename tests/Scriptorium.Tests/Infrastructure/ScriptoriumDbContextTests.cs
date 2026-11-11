@@ -202,7 +202,7 @@ public sealed class ScriptoriumDbContextTests
             await context.Database.ExecuteSqlRawAsync("DROP TABLE \"Courses\";");
             await context.Database.ExecuteSqlRawAsync(
                 "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") " +
-                "VALUES ('20260907171307_RemoveTutorials', '9.0.0');");
+                "VALUES ('20260907171307_RemoveTutorials', '10.0.15');");
 
             await context.Database.MigrateAsync();
 

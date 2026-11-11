@@ -78,7 +78,7 @@ Run `dotnet build Scriptorium.sln` and `dotnet test Scriptorium.sln`. The existi
 STA resource checks exercise actual WPF controls, live theme changes, narrow and
 wide layouts, 150% scaling, navigation, native playback, scrollbar input and
 thumbnail/virtualization stability. The checks save PNG previews beneath
-`tests/Scriptorium.App.Tests/bin/Debug/net9.0-windows/`.
+  `tests/Scriptorium.App.Tests/bin/Debug/net10.0-windows/`.
 
 Preview renders use isolated test data and do not capture the DWM caption or the
 user's actual media library. Final manual review should include native title-bar
