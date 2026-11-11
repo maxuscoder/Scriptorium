@@ -8,7 +8,7 @@ using Xunit;
 namespace Scriptorium.App.Tests;
 
 [Collection("Native WPF UI")]
-public sealed class TrackPreferenceTests
+public sealed partial class TrackPreferenceTests
 {
     [Theory]
     [InlineData("eng", "en")]

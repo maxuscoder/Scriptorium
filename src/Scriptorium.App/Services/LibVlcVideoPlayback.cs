@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
+using Scriptorium.App.Models;
 
 namespace Scriptorium.App.Services;
 
@@ -12,14 +13,16 @@ public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPl
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming, IAsyncDisposable
+public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming, ISubtitleAppearancePlayback, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly LibVlcRuntime _runtime;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
-    private readonly MediaPlayer _player;
-    private readonly LibVlcVideoOutput _output;
+    private MediaPlayer _player;
+    private LibVlcVideoOutput _output;
+    private LibVLC? _styledInstance;
+    private SubtitleAppearance _appearance = new();
     private Media? _media;
     private string? _filePath;
     private volatile bool _opening;
@@ -40,12 +43,36 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
         _dispatcher = Dispatcher.CurrentDispatcher;
         _player = new MediaPlayer(runtime.Instance);
         _output = new LibVlcVideoOutput(_player, OnOutputAttached);
-        VideoOutput = _output;
+        AttachPlayerEvents();
+    }
+
+    private void AttachPlayerEvents()
+    {
         _player.Playing += OnPlaying;
         _player.EndReached += OnEndReached;
         _player.EncounteredError += OnEncounteredError;
         _player.ESAdded += OnTrackAdded;
         _player.ESDeleted += OnTrackDeleted;
+    }
+
+    public bool ConfigureSubtitleAppearance(SubtitleAppearance appearance)
+    {
+        ThrowIfDisposed();
+        var normalized = SubtitleAppearance.Normalize(appearance);
+        if (_appearance == normalized) return true;
+        if (_filePath is not null || _player.Hwnd != IntPtr.Zero) return false;
+        // VLC 3's text renderer inherits its options from the instance, not reliably
+        // from a media input. Keep customized instances private to their player.
+        var instance = normalized == new SubtitleAppearance() ? null : _runtime.CreateStyledInstance(normalized);
+        _player.Dispose();
+        _output.NotifyReleased();
+        _styledInstance?.Dispose();
+        _styledInstance = instance;
+        _player = new MediaPlayer(_styledInstance ?? _runtime.Instance);
+        _output = new LibVlcVideoOutput(_player, OnOutputAttached);
+        AttachPlayerEvents();
+        _appearance = normalized;
+        return true;
     }
 
     public event EventHandler? Opened;
@@ -87,7 +114,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
         return _player.SetSpu(id);
     }
 
-    public IVideoOutput VideoOutput { get; }
+    public IVideoOutput VideoOutput => _output;
 
     public bool IsPlaying => !_disposed && _player.IsPlaying;
 
@@ -167,7 +194,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
             // separately so a filename hint can never relabel an embedded subtitle.
             if (discovery.Files.Any(file => Path.GetExtension(file).Equals(".vtt", StringComparison.OrdinalIgnoreCase)))
             {
-                using var source = _runtime.CreateMedia(path, ":no-sub-autodetect-file");
+                using var source = _runtime.CreateMedia(_styledInstance ?? _runtime.Instance, path, ":no-sub-autodetect-file");
                 if (await source.Parse(MediaParseOptions.ParseLocal, 1000, cancellationToken) == MediaParsedStatus.Done)
                 {
                     if (_disposed || generation != _openGeneration) return;
@@ -176,7 +203,7 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
                 }
             }
             if (_disposed || generation != _openGeneration) return;
-            _media = _runtime.CreateMedia(path, ":no-sub-autodetect-file");
+            _media = _runtime.CreateMedia(_styledInstance ?? _runtime.Instance, path, ":no-sub-autodetect-file");
             SubtitleStatus = discovery.Status;
             foreach (var subtitle in discovery.Files)
             {
@@ -425,6 +452,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
         _media?.Dispose();
         _media = null;
         _player.Dispose();
+        _styledInstance?.Dispose();
+        _styledInstance = null;
         _output.NotifyReleased();
         _filePath = null;
     }

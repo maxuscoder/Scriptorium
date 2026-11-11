@@ -694,7 +694,8 @@ public sealed partial class TvShowDetailsPageViewModel : PageViewModel, IDisposa
             episode.FilePath,
             episode.IsCompleted ? 0 : episode.PlaybackPositionSeconds,
             episode.MediaItemId,
-            episode.RuntimeSeconds));
+            episode.RuntimeSeconds,
+            SeriesId: _showId));
     }
 
     private void OnPlaybackProgressPersisted(object? sender, PlaybackProgressSavedEventArgs args)

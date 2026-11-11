@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using LibVLCSharp.Shared;
+using Scriptorium.App.Models;
 
 namespace Scriptorium.App.Services;
 
@@ -14,6 +15,7 @@ public sealed class LibVlcRuntime : IDisposable
     private readonly object _releaseGate = new();
     private readonly List<Task> _pendingReleases = [];
     private bool _disposed;
+    private readonly string[] _options;
 
     public LibVlcRuntime() : this([])
     {
@@ -25,15 +27,22 @@ public sealed class LibVlcRuntime : IDisposable
         InitializeNativeLibrary(nativeDirectory);
 
         // Scriptorium supplies its own controls. This only suppresses LibVLC's filename overlay.
-        Instance = new LibVLC(["--no-video-title-show", .. options]);
+        _options = ["--no-video-title-show", .. options];
+        Instance = new LibVLC(_options);
     }
 
     internal LibVLC Instance { get; }
 
+    internal LibVLC CreateStyledInstance(SubtitleAppearance appearance) =>
+        new([.. _options, .. SubtitleAppearanceOptions.Create(appearance).Select(option => "--" + option[1..])]);
+
     internal Media CreateMedia(string sourcePath, params string[] options)
+        => CreateMedia(Instance, sourcePath, options);
+
+    internal Media CreateMedia(LibVLC instance, string sourcePath, params string[] options)
     {
         var path = Path.GetFullPath(sourcePath);
-        var media = new Media(Instance, new Uri(path, UriKind.Absolute), options);
+        var media = new Media(instance, new Uri(path, UriKind.Absolute), options);
         // Keep playback and thumbnail extraction on the same reference-safe path.
         // VLC 3's native MP4 demuxer can omit H.264 references in fragmented files.
         if (Path.GetExtension(path).ToLowerInvariant() is ".mp4" or ".m4v" or ".mov")

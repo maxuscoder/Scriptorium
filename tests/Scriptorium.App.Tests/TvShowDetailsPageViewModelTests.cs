@@ -73,6 +73,7 @@ public sealed partial class TvShowDetailsPageViewModelTests
             new VideoPlayerViewModel(playbackFactory, progressService));
 
         Assert.True(await viewModel.LoadAsync(showId, viewModel));
+        Assert.True(viewModel.Player!.HasSeriesTrackPreferencesContext);
         Assert.Equal("The Example Show", viewModel.Title);
         Assert.Equal("2 seasons", viewModel.SeasonCountText);
         Assert.Equal("3 episodes", viewModel.EpisodeCountText);
@@ -116,6 +117,7 @@ public sealed partial class TvShowDetailsPageViewModelTests
 
         var nextPlayback = playbackFactory.Instances[^1];
         nextPlayback.RaiseOpened();
+        Assert.True(viewModel.Player.HasSeriesTrackPreferencesContext);
         Assert.Equal(TimeSpan.FromSeconds(20), nextPlayback.Position);
 
         await ((AsyncRelayCommand)viewModel.ToggleEpisodeCompletionCommand).ExecuteAsync();

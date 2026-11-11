@@ -57,11 +57,19 @@ Individual media cards in search and filtered library results open their corresp
 ## Audio and subtitle preferences
 
 The player offers audio and subtitle track selectors. Explicit selections save the
-preferred language and the chosen track for that media item in local settings.
-Choosing **Subtitles off** is also remembered per item. A saved item choice takes
-priority over the language preference learned from other videos; media without a
-saved choice uses the preferred language. Library IDs retain choices after a file
-is renamed, and unindexed media uses its file path.
+chosen track for that media item in local settings. Movies and tutorials also learn
+global language preferences. Choosing **Subtitles off** is remembered per item.
+Library IDs retain choices after a file is renamed, and unindexed media uses its
+file path.
+
+For TV episodes, open the player's audio/subtitle settings (clock button) and choose
+**Use selected tracks for series** to save the displayed audio and subtitles as
+defaults for the entire show, across seasons. Series defaults use the persistent
+show ID, keeping different shows separate. Later track changes are episode-specific
+overrides; **Restore series tracks for this episode** clears those overrides.
+Selection priority is episode choice, series default, then global preference, with
+audio and subtitles resolved independently. TV choices do not alter global defaults.
+Synchronization delays always remain specific to each episode.
 
 Restoration runs when playback opens and when tracks arrive later. Track IDs are
 checked against their names and languages so reassigned IDs cannot silently select
@@ -74,8 +82,8 @@ for their individual media item. VTT filename language hints are used when the
 external tracks can be identified unambiguously.
 
 Preference writes are debounced, survive disposal during navigation, and are awaited
-by asynchronous player shutdown. Resetting settings clears the language and item
-choices along with the other preferences.
+by asynchronous player shutdown. Resetting settings clears the language, series,
+and item choices along with the other preferences.
 
 ## Audio and subtitle synchronization
 
@@ -98,6 +106,32 @@ offsets, including tracks discovered after opening. Resetting settings clears
 these corrections. Older settings default to zero delay. Native tests verify
 millisecond-to-microsecond conversion and adjustment during playback; UI checks
 cover signed values, direct input, validation, keyboard input, and toolbar layout.
+
+## Subtitle appearance
+
+Open **Audio and subtitle settings** (the clock button) and use **Subtitle
+appearance** to choose Small, Normal, Large, or Extra large text; text and outline
+colors; and no, thin, normal, or thick outlines. The bottom-margin slider raises
+subtitles by up to 200 video pixels where the format permits it. **Reset
+appearance** restores the defaults. Preferences are saved locally for all videos,
+and survive export/import; old settings use the defaults.
+
+Changes preview in the current video after a short debounce. The logical player
+keeps its position, play/pause/stopped/ended state, volume, speed, selected tracks,
+and per-item timing corrections. Refreshing a style does not generate another
+playback-start or completion event. Navigation cancels a pending preview.
+
+VLC 3's media-level text-renderer options are not reliable for every bundled
+renderer. Customized playback therefore uses an instance configured before its
+input opens; that instance belongs to its player and is released with it. A live
+change refreshes the native session while retaining the existing WPF player and
+fullscreen visual. Default playback continues to use the shared runtime.
+
+These controls target rendered text subtitles. Source-defined styles and absolute
+positions can take precedence, and bitmap or burned-in subtitles cannot be
+recolored or resized as text. Native frame tests verify font size, text color,
+colored outlines, and vertical placement; regression tests cover persistence,
+state restoration, failed configuration, and cancellation during navigation.
 
 ## Verification
 

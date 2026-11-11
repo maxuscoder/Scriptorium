@@ -250,8 +250,8 @@
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
                                         <Button x:Name="TimingButton" Click="OnTimingClick" Style="{StaticResource Player.Icon}"
-                                                IsEnabled="{Binding CanAdjustTiming}" ToolTip="{Binding TimingSummary}"
-                                                AutomationProperties.Name="Audio and subtitle synchronization">
+                                                IsEnabled="{Binding CanOpenTrackSettings}" ToolTip="Audio, subtitles, and synchronization"
+                                                AutomationProperties.Name="Audio and subtitle settings">
                                             <Grid Width="20" Height="20">
                                                 <Ellipse Width="15" Height="15" Stroke="{StaticResource Player.Text}" StrokeThickness="1.5" />
                                                 <Path Data="M10,5 V10 L14,12" Stroke="{StaticResource Player.Text}" StrokeThickness="1.5" StrokeLineJoin="Round" />
@@ -260,10 +260,11 @@
                                         <Popup x:Name="TimingPopup" Placement="Top" PlacementTarget="{Binding ElementName=TimingButton}"
                                                VerticalOffset="-6" AllowsTransparency="True" StaysOpen="False"
                                                Opened="OnTimingPopupOpened" Closed="OnPlaybackSpeedDropDownChanged">
-                                            <Border x:Name="TimingPanel" Width="320" Padding="12" Background="#262629" BorderBrush="#414146"
+                                            <Border x:Name="TimingPanel" Width="320" Padding="12" Background="#262629" BorderBrush="#414146" Focusable="True"
                                                     BorderThickness="1" CornerRadius="10" PreviewKeyDown="OnTimingPanelKeyDown"
                                                     TextElement.FontFamily="{StaticResource FontFamily.Application}"
                                                     TextElement.Foreground="{StaticResource Player.Text}" TextElement.FontSize="12">
+                                                <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                                 <StackPanel>
                                                     <TextBlock Text="Synchronization" FontWeight="SemiBold" Margin="0,0,0,8" />
                                                     <TextBlock Text="Positive = later. Negative = earlier."
@@ -299,7 +300,79 @@
                                                     </StackPanel>
                                                     <TextBlock Text="{Binding AudioDelayStatus}" Style="{StaticResource Player.DelayStatus}" />
                                                     <TextBlock Text="Saved for this media item." FontSize="11" Margin="0,8,0,0" />
+                                                    <StackPanel x:Name="SubtitleAppearancePanel" Margin="0,16,0,0">
+                                                        <TextBlock Text="Subtitle appearance" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                                        <StackPanel IsEnabled="{Binding CanStyleSubtitles}">
+                                                            <Grid Margin="0,0,0,4">
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Font size" VerticalAlignment="Center" />
+                                                                <ComboBox x:Name="SubtitleFontSizeSelector" Grid.Column="1" Style="{StaticResource Player.Speed}"
+                                                                          ItemsSource="{Binding SubtitleFontSizes}" DisplayMemberPath="DisplayName" SelectedValuePath="Value"
+                                                                          SelectedValue="{Binding SubtitleFontSize, Mode=TwoWay}" AutomationProperties.Name="Subtitle font size" />
+                                                            </Grid>
+                                                            <Grid Margin="0,0,0,4">
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Text color" VerticalAlignment="Center" />
+                                                                <ComboBox x:Name="SubtitleTextColorSelector" Grid.Column="1" Style="{StaticResource Player.Speed}"
+                                                                          ItemsSource="{Binding SubtitleColors}" DisplayMemberPath="DisplayName" SelectedValuePath="Value"
+                                                                          SelectedValue="{Binding SubtitleTextColor, Mode=TwoWay}" AutomationProperties.Name="Subtitle text color" />
+                                                            </Grid>
+                                                            <Grid Margin="0,0,0,4">
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Outline" VerticalAlignment="Center" />
+                                                                <ComboBox x:Name="SubtitleOutlineSelector" Grid.Column="1" Style="{StaticResource Player.Speed}"
+                                                                          ItemsSource="{Binding SubtitleOutlines}" DisplayMemberPath="DisplayName" SelectedValuePath="Value"
+                                                                          SelectedValue="{Binding SubtitleOutlineThickness, Mode=TwoWay}" AutomationProperties.Name="Subtitle outline thickness" />
+                                                            </Grid>
+                                                            <Grid Margin="0,0,0,4">
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Outline color" VerticalAlignment="Center" />
+                                                                <ComboBox x:Name="SubtitleOutlineColorSelector" Grid.Column="1" Style="{StaticResource Player.Speed}"
+                                                                          ItemsSource="{Binding SubtitleColors}" DisplayMemberPath="DisplayName" SelectedValuePath="Value"
+                                                                          SelectedValue="{Binding SubtitleOutlineColor, Mode=TwoWay}" AutomationProperties.Name="Subtitle outline color" />
+                                                            </Grid>
+                                                            <Grid Margin="0,2,0,4">
+                                                                <Grid.ColumnDefinitions><ColumnDefinition Width="110" /><ColumnDefinition Width="*" /><ColumnDefinition Width="48" /></Grid.ColumnDefinitions>
+                                                                <TextBlock Text="Bottom margin" VerticalAlignment="Center" />
+                                                                <Slider x:Name="SubtitleMarginSlider" Grid.Column="1" Style="{StaticResource Player.Slider}" Minimum="0" Maximum="200"
+                                                                        TickFrequency="5" IsSnapToTickEnabled="True" SmallChange="5" LargeChange="20"
+                                                                        Value="{Binding SubtitleBottomMargin, Mode=TwoWay}" AutomationProperties.Name="Subtitle bottom margin" />
+                                                                <TextBlock Grid.Column="2" Text="{Binding SubtitleBottomMargin, StringFormat={}{0} px}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                                            </Grid>
+                                                            <Button x:Name="ResetSubtitleAppearanceButton" Content="Reset appearance" Width="130" HorizontalAlignment="Left"
+                                                                    Style="{StaticResource Player.Icon}" FontSize="12" Command="{Binding ResetSubtitleAppearanceCommand}"
+                                                                    AutomationProperties.Name="Reset subtitle appearance" />
+                                                        </StackPanel>
+                                                        <TextBlock Text="Changes preview in this video and are saved for all videos. Styled or image subtitles may keep their own appearance."
+                                                                   TextWrapping="Wrap" FontSize="11" Margin="0,6,0,0" />
+                                                        <TextBlock Text="{Binding SubtitleAppearanceStatus}" Style="{StaticResource Player.DelayStatus}" Margin="0,4,0,0" />
+                                                    </StackPanel>
+                                                    <StackPanel x:Name="SeriesTrackPreferencesPanel" Margin="0,16,0,0">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasSeriesTrackPreferencesContext}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </StackPanel.Style>
+                                                        <TextBlock Text="Series track preferences" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                                        <TextBlock Text="{Binding SeriesTrackPreferenceSummary}" TextWrapping="Wrap" FontSize="11" />
+                                                        <TextBlock Text="Track changes apply to this episode. Save the selected audio and subtitles to use them for other episodes."
+                                                                   TextWrapping="Wrap" FontSize="11" Margin="0,6,0,8" />
+                                                        <Button x:Name="SaveSeriesTrackPreferencesButton" Content="Use selected tracks for series"
+                                                                Command="{Binding SaveSeriesTrackPreferencesCommand}" Style="{StaticResource Player.Icon}"
+                                                                Width="Auto" Padding="8,0" HorizontalAlignment="Left"
+                                                                AutomationProperties.Name="Use selected tracks for series" />
+                                                        <Button x:Name="UseSeriesTrackPreferencesButton" Content="Restore series tracks for this episode"
+                                                                Command="{Binding UseSeriesTrackPreferencesCommand}" Style="{StaticResource Player.Icon}"
+                                                                Width="Auto" Padding="8,0" HorizontalAlignment="Left" Margin="0,4,0,0"
+                                                                AutomationProperties.Name="Restore series tracks for this episode" />
+                                                    </StackPanel>
                                                 </StackPanel>
+                                                </ScrollViewer>
                                             </Border>
                                         </Popup>
                                         <Button x:Name="FullscreenButton" Click="OnFullscreenClick" ToolTip="Toggle fullscreen (F11); exit with Esc"

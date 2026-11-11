@@ -10,7 +10,7 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.App.ViewModels;
 
 /// <summary>Owns one preview session. Views only attach/detach and present its commands.</summary>
-public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
+public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
 {
     private static readonly TimeSpan ProgressSaveInterval = TimeSpan.FromSeconds(5);
     private readonly IVideoPlaybackFactory _factory;
@@ -54,6 +54,15 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     private int _audioDelayMilliseconds;
     private string _subtitleDelayStatus = string.Empty;
     private string _audioDelayStatus = string.Empty;
+    private SubtitleAppearance _subtitleAppearance = new();
+    private string _subtitleAppearanceStatus = string.Empty;
+    private bool _supportsSubtitleAppearance;
+    private bool _isApplyingSubtitleAppearance;
+    private CancellationTokenSource? _appearanceReloadCancellation;
+    private Task _appearanceReloadTask = Task.CompletedTask;
+    private AppearanceResume? _appearanceResume;
+    private sealed record AppearanceResume(TimeSpan Position, VideoPlaybackState State, bool HasStarted, bool HasEnded,
+        MediaTrackPreferences TrackPreferences);
     private CancellationTokenSource? _preferenceSaveCancellationSource;
     private DateTimeOffset _lastProgressSaveRequested = DateTimeOffset.MinValue;
     private Guid? _lastSavedMediaItemId;
@@ -81,9 +90,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _volumeBeforeMute = _volume;
             _playbackSpeed = NormalizePlaybackSpeed(settingsService.Settings.PlaybackSpeed);
             _subtitlesEnabled = settingsService.Settings.SubtitlesEnabled;
+            _subtitleAppearance = SubtitleAppearance.Normalize(settingsService.Settings.SubtitleAppearance);
         }
         TogglePlaybackCommand = new RelayCommand(TogglePlayback, () => IsReady);
         ToggleMuteCommand = new RelayCommand(ToggleMute, () => IsReady);
+        SaveSeriesTrackPreferencesCommand = new RelayCommand(SaveSeriesTrackPreferences,
+            () => CanManageSeriesTrackPreferences && (CanSelectSubtitles || CanSelectAudio));
+        UseSeriesTrackPreferencesCommand = new RelayCommand(UseSeriesTrackPreferences,
+            () => CanManageSeriesTrackPreferences && SeriesPreferences is not null && HasEpisodeTrackOverrides);
         DecreaseSubtitleDelayCommand = new RelayCommand(() => SubtitleDelayMilliseconds -= PlaybackDelay.StepMilliseconds,
             () => CanAdjustSubtitleDelay && SubtitleDelayMilliseconds > -PlaybackDelay.MaximumMilliseconds);
         IncreaseSubtitleDelayCommand = new RelayCommand(() => SubtitleDelayMilliseconds += PlaybackDelay.StepMilliseconds,
@@ -96,6 +110,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             () => CanAdjustAudioDelay && AudioDelayMilliseconds < PlaybackDelay.MaximumMilliseconds);
         ResetAudioDelayCommand = new RelayCommand(() => AudioDelayMilliseconds = 0,
             () => CanAdjustAudioDelay && AudioDelayMilliseconds != 0);
+        ResetSubtitleAppearanceCommand = new RelayCommand(() => UpdateSubtitleAppearance(new()), () => CanStyleSubtitles);
         _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _timer.Tick += OnTick;
     }
@@ -128,6 +143,18 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     public RelayCommand DecreaseAudioDelayCommand { get; }
     public RelayCommand IncreaseAudioDelayCommand { get; }
     public RelayCommand ResetAudioDelayCommand { get; }
+    public RelayCommand ResetSubtitleAppearanceCommand { get; }
+    public IReadOnlyList<SubtitleAppearanceOption<int>> SubtitleFontSizes => SubtitleAppearance.FontSizes;
+    public IReadOnlyList<SubtitleAppearanceOption<int>> SubtitleOutlines => SubtitleAppearance.Outlines;
+    public IReadOnlyList<SubtitleAppearanceOption<string>> SubtitleColors => SubtitleAppearance.Colors;
+    public int SubtitleFontSize { get => _subtitleAppearance.FontSize; set => UpdateSubtitleAppearance(_subtitleAppearance with { FontSize = value }); }
+    public string SubtitleTextColor { get => _subtitleAppearance.TextColor; set { if (value is not null) UpdateSubtitleAppearance(_subtitleAppearance with { TextColor = value }); } }
+    public int SubtitleOutlineThickness { get => _subtitleAppearance.OutlineThickness; set => UpdateSubtitleAppearance(_subtitleAppearance with { OutlineThickness = value }); }
+    public string SubtitleOutlineColor { get => _subtitleAppearance.OutlineColor; set { if (value is not null) UpdateSubtitleAppearance(_subtitleAppearance with { OutlineColor = value }); } }
+    public int SubtitleBottomMargin { get => _subtitleAppearance.BottomMargin; set => UpdateSubtitleAppearance(_subtitleAppearance with { BottomMargin = value }); }
+    public bool CanStyleSubtitles => _supportsSubtitleAppearance;
+    public bool IsApplyingSubtitleAppearance { get => _isApplyingSubtitleAppearance; private set => SetProperty(ref _isApplyingSubtitleAppearance, value); }
+    public string SubtitleAppearanceStatus { get => _subtitleAppearanceStatus; private set => SetProperty(ref _subtitleAppearanceStatus, value); }
     public bool CanAdjustSubtitleDelay => IsReady && _playback is IPlaybackTiming && SelectedSubtitleTrack.Id >= 0;
     public bool CanAdjustAudioDelay => IsReady && _playback is IPlaybackTiming && SelectedAudioTrack is not null;
     public bool CanAdjustTiming => CanAdjustSubtitleDelay || CanAdjustAudioDelay;
@@ -161,11 +188,15 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 _trackPreferences.Subtitle = PlaybackTrackSelection.Capture(value);
                 if (_settingsService is not null)
                 {
-                    _settingsService.Settings.SubtitlesEnabled = _subtitlesEnabled;
-                    if (_trackPreferences.Subtitle.Language is { } language && _subtitlesEnabled)
-                        _settingsService.Settings.PreferredSubtitleLanguage = language;
+                    if (!HasSeriesTrackPreferencesContext)
+                    {
+                        _settingsService.Settings.SubtitlesEnabled = _subtitlesEnabled;
+                        if (_trackPreferences.Subtitle.Language is { } language && _subtitlesEnabled)
+                            _settingsService.Settings.PreferredSubtitleLanguage = language;
+                    }
                     RememberTrackPreferences();
                 }
+                NotifySeriesTrackPreferencesChanged();
                 QueuePlaybackPreferenceSave();
                 NotifyTimingControlsChanged();
                 RestorePlaybackDelay(subtitle: true);
@@ -201,10 +232,11 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 _trackPreferences.Audio = PlaybackTrackSelection.Capture(value);
                 if (_settingsService is not null)
                 {
-                    if (_trackPreferences.Audio.Language is { } language)
+                    if (!HasSeriesTrackPreferencesContext && _trackPreferences.Audio.Language is { } language)
                         _settingsService.Settings.PreferredAudioLanguage = language;
                     RememberTrackPreferences();
                 }
+                NotifySeriesTrackPreferencesChanged();
                 QueuePlaybackPreferenceSave();
                 NotifyTimingControlsChanged();
                 RestorePlaybackDelay(subtitle: false);
@@ -230,6 +262,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
                 OnPropertyChanged(nameof(IsStatusVisible));
                 OnPropertyChanged(nameof(CanSelectSubtitles));
                 OnPropertyChanged(nameof(CanSelectAudio));
+                NotifySeriesTrackPreferencesChanged();
                 NotifyTimingControlsChanged();
             }
         }
@@ -291,12 +324,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     public void SetMedia(MediaPlaybackRequest request)
     {
+        CancelAppearanceRefresh();
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
         _completionOverrideMediaItemId = null;
         _request = _settingsService?.Settings.ResumePlaybackEnabled == false
             ? request with { ResumePositionSeconds = 0 }
             : request;
+        NotifySeriesTrackPreferencesChanged();
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
         ResetProgressSaveTracking();
@@ -310,11 +345,13 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     /// <summary>Clears the current media without opening a playback session and shows why it is unavailable.</summary>
     public void SetUnavailable(string message)
     {
+        CancelAppearanceRefresh();
         ArgumentException.ThrowIfNullOrWhiteSpace(message);
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
         _completionOverrideMediaItemId = null;
         _request = null;
+        NotifySeriesTrackPreferencesChanged();
         _position = TimeSpan.Zero;
         _duration = TimeSpan.Zero;
         ResetProgressSaveTracking();
@@ -357,6 +394,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     public void Deactivate()
     {
+        CancelAppearanceRefresh();
         _active = false;
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
@@ -379,13 +417,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
     /// <summary>Releases the player and waits for its final progress snapshot to be persisted.</summary>
     public async Task DeactivateAsync()
     {
+        CancelAppearanceRefresh();
         _active = false;
         QueuePlaybackProgressSave(force: true);
         ReleasePlayback();
 
         Task progressSaveTask;
         lock (_progressSaveGate) progressSaveTask = _progressSaveTask;
-        await Task.WhenAll(progressSaveTask, _playbackReleaseTask, _preferenceSaveTask).ConfigureAwait(true);
+        await Task.WhenAll(progressSaveTask, _playbackReleaseTask, _preferenceSaveTask, _appearanceReloadTask).ConfigureAwait(true);
     }
 
     private async Task OpenPlaybackAsync()
@@ -399,14 +438,20 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             await _playbackReleaseTask;
             if (!_active || generation != _playbackGeneration) return;
             SynchronizePlaybackPreferences();
-            _trackPreferences = GetTrackPreferenceKey() is { } key && _settingsService is not null &&
+            _trackPreferences = _appearanceResume?.TrackPreferences ?? (GetTrackPreferenceKey() is { } key && _settingsService is not null &&
                 _settingsService.Settings.MediaTrackPreferences.TryGetValue(key, out var preferences)
-                ? preferences : new MediaTrackPreferences();
+                ? preferences : new MediaTrackPreferences());
+            NotifySeriesTrackPreferencesChanged();
             SetProperty(ref _subtitleDelayMilliseconds, PlaybackDelay.Normalize(_trackPreferences.SubtitleDelayMilliseconds), nameof(SubtitleDelayMilliseconds));
             SetProperty(ref _audioDelayMilliseconds, PlaybackDelay.Normalize(_trackPreferences.AudioDelayMilliseconds), nameof(AudioDelayMilliseconds));
             OnPropertyChanged(nameof(TimingSummary));
             Status = "Loading video...";
             _playback = _factory.Create();
+            _supportsSubtitleAppearance = _playback is ISubtitleAppearancePlayback;
+            OnPropertyChanged(nameof(CanStyleSubtitles));
+            OnPropertyChanged(nameof(CanOpenTrackSettings));
+            ResetSubtitleAppearanceCommand.NotifyCanExecuteChanged();
+            ConfigureSubtitleAppearance();
             _playback.Opened += OnOpened;
             _playback.Ended += OnEnded;
             _playback.Failed += OnFailed;
@@ -430,14 +475,26 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _duration = _playback.Duration;
             OnPropertyChanged(nameof(DurationSeconds));
             OnPropertyChanged(nameof(DurationText));
-            var resume = Math.Max(0, _request?.ResumePositionSeconds ?? 0);
-            _playback.Position = _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
+            var appearanceResume = _appearanceResume;
+            var resume = Math.Max(0, appearanceResume?.Position.TotalSeconds ?? _request?.ResumePositionSeconds ?? 0);
+            _playback.Position = appearanceResume is not null
+                ? TimeSpan.FromSeconds(Math.Clamp(resume, 0, _duration.TotalSeconds))
+                : _duration.TotalSeconds > resume ? TimeSpan.FromSeconds(resume) : TimeSpan.Zero;
             ApplyPlaybackSpeed();
             IsReady = true;
             RefreshSubtitleTracks();
             RefreshAudioTracks();
-            SetPlaybackState(VideoPlaybackState.Paused);
-            Status = "Ready to play";
+            _hasStarted = appearanceResume?.HasStarted ?? false;
+            _hasEnded = appearanceResume?.HasEnded ?? false;
+            SetPlaybackState(appearanceResume?.State ?? VideoPlaybackState.Paused);
+            if (IsPlaying)
+            {
+                _playback.Play();
+                _timer.Start();
+            }
+            Status = IsPlaying ? "Playing" : IsEnded ? "Playback finished" : IsStopped ? "Stopped" : "Ready to play";
+            _appearanceResume = null;
+            IsApplyingSubtitleAppearance = false;
             UpdatePosition();
             NotifyPlaybackChanged();
         }
@@ -505,13 +562,14 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _subtitleTracks = [SubtitleTrack.Off, .. subtitles.SubtitleTracks];
             OnPropertyChanged(nameof(SubtitleTracks));
             OnPropertyChanged(nameof(CanSelectSubtitles));
-            var saved = _trackPreferences.Subtitle;
+            var saved = _trackPreferences.Subtitle ?? SeriesPreferences?.Subtitle;
             var enabled = saved is not null ? saved.Id >= 0 : _subtitlesEnabled;
-            var language = saved?.Language ?? _settingsService?.Settings.PreferredSubtitleLanguage;
+            var language = saved is not null ? TrackLanguage.Resolve(saved.Language, saved.DisplayName)
+                : _settingsService?.Settings.PreferredSubtitleLanguage;
             var selected = enabled
                 ? PlaybackTrackSelection.FindSaved(subtitles.SubtitleTracks, saved) ??
                   PlaybackTrackSelection.FindLanguage(subtitles.SubtitleTracks, language) ??
-                  (language is null ? subtitles.SubtitleTracks.FirstOrDefault() : null) ?? SubtitleTrack.Off
+                  (saved is null && language is null ? subtitles.SubtitleTracks.FirstOrDefault() : null) ?? SubtitleTrack.Off
                 : SubtitleTrack.Off;
             // Refreshes never overwrite the saved preference, including files with no subtitles.
             if (subtitles.SelectedSubtitleTrackId != selected.Id && !subtitles.SelectSubtitleTrack(selected.Id) && selected.Id >= 0)
@@ -535,6 +593,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         finally
         {
             _refreshingTracks = false;
+            NotifySeriesTrackPreferencesChanged();
             NotifyTimingControlsChanged();
             RestorePlaybackDelay(subtitle: true);
         }
@@ -554,8 +613,9 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
             _audioTracks = audio.AudioTracks;
             OnPropertyChanged(nameof(AudioTracks));
             OnPropertyChanged(nameof(CanSelectAudio));
-            var saved = _trackPreferences.Audio;
-            var language = saved?.Language ?? _settingsService?.Settings.PreferredAudioLanguage;
+            var saved = _trackPreferences.Audio ?? SeriesPreferences?.Audio;
+            var language = saved is not null ? TrackLanguage.Resolve(saved.Language, saved.DisplayName)
+                : _settingsService?.Settings.PreferredAudioLanguage;
             var preferred = PlaybackTrackSelection.FindSaved(AudioTracks, saved) ??
                 PlaybackTrackSelection.FindLanguage(AudioTracks, language);
             var current = AudioTracks.FirstOrDefault(track => track.Id == audio.SelectedAudioTrackId);
@@ -580,6 +640,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         finally
         {
             _refreshingTracks = false;
+            NotifySeriesTrackPreferencesChanged();
             NotifyTimingControlsChanged();
             RestorePlaybackDelay(subtitle: false);
         }
@@ -818,6 +879,7 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     private void Fail(Exception exception)
     {
+        CancelAppearanceRefresh();
         var kind = ClassifyFailure(exception);
         if (_notifications is null)
         {
@@ -1134,6 +1196,84 @@ public sealed class VideoPlayerViewModel : ViewModelBase, IDisposable
         var speed = NormalizePlaybackSpeed(_settingsService.Settings.PlaybackSpeed);
         SetProperty(ref _playbackSpeed, speed, nameof(PlaybackSpeed));
         _subtitlesEnabled = _settingsService.Settings.SubtitlesEnabled;
+        _subtitleAppearance = SubtitleAppearance.Normalize(_settingsService.Settings.SubtitleAppearance);
+        NotifySubtitleAppearanceChanged();
+    }
+
+    private void ConfigureSubtitleAppearance()
+    {
+        if (_playback is not ISubtitleAppearancePlayback appearance) return;
+        try
+        {
+            SubtitleAppearanceStatus = appearance.ConfigureSubtitleAppearance(_subtitleAppearance) ? string.Empty
+                : "The subtitle appearance could not be applied. Try again.";
+        }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "The subtitle appearance could not be applied.");
+            SubtitleAppearanceStatus = "The subtitle appearance could not be applied. Try again.";
+        }
+    }
+
+    private void UpdateSubtitleAppearance(SubtitleAppearance value)
+    {
+        var normalized = SubtitleAppearance.Normalize(value);
+        if (_subtitleAppearance == normalized && string.IsNullOrEmpty(SubtitleAppearanceStatus)) return;
+        _subtitleAppearance = normalized;
+        NotifySubtitleAppearanceChanged();
+        if (_settingsService is not null) _settingsService.Settings.SubtitleAppearance = normalized;
+        QueuePlaybackPreferenceSave();
+        _appearanceReloadCancellation?.Cancel();
+        var cancellation = new CancellationTokenSource();
+        _appearanceReloadCancellation = cancellation;
+        _appearanceReloadTask = RefreshSubtitleAppearanceAsync(_request, cancellation);
+    }
+
+    private async Task RefreshSubtitleAppearanceAsync(MediaPlaybackRequest? request, CancellationTokenSource cancellation)
+    {
+        try
+        {
+            await Task.Delay(300, cancellation.Token);
+            if (_disposed || !_active || request is null || !ReferenceEquals(request, _request) || !CanStyleSubtitles) return;
+            if (_appearanceResume is null)
+            {
+                UpdatePosition();
+                _appearanceResume = new(_position, PlaybackState, _hasStarted, _hasEnded, _trackPreferences);
+            }
+            IsApplyingSubtitleAppearance = true;
+            // Keep the latest watched position if navigation occurs during native teardown.
+            if (_hasStarted) QueuePlaybackProgressSave(force: true);
+            ReleasePlayback();
+            await OpenPlaybackAsync();
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        catch (Exception exception)
+        {
+            _logger?.LogWarning(exception, "The subtitle appearance preview could not be refreshed.");
+            SubtitleAppearanceStatus = "The subtitle appearance could not be previewed. Reopen the video to try again.";
+            IsApplyingSubtitleAppearance = false;
+        }
+        finally
+        {
+            if (ReferenceEquals(_appearanceReloadCancellation, cancellation)) _appearanceReloadCancellation = null;
+            cancellation.Dispose();
+        }
+    }
+
+    private void CancelAppearanceRefresh()
+    {
+        _appearanceReloadCancellation?.Cancel();
+        _appearanceResume = null;
+        IsApplyingSubtitleAppearance = false;
+    }
+
+    private void NotifySubtitleAppearanceChanged()
+    {
+        OnPropertyChanged(nameof(SubtitleFontSize));
+        OnPropertyChanged(nameof(SubtitleTextColor));
+        OnPropertyChanged(nameof(SubtitleOutlineThickness));
+        OnPropertyChanged(nameof(SubtitleOutlineColor));
+        OnPropertyChanged(nameof(SubtitleBottomMargin));
     }
 
     private void ApplyPlaybackSpeed()

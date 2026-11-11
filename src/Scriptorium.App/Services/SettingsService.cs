@@ -316,6 +316,7 @@ public sealed class SettingsService : ISettingsService
             ? Math.Clamp(settings.PlaybackSpeed, 0.5, 2)
             : 1;
         settings.PreferredSubtitleLanguage = TrackLanguage.Normalize(settings.PreferredSubtitleLanguage);
+        settings.SubtitleAppearance = SubtitleAppearance.Normalize(settings.SubtitleAppearance);
         settings.PreferredAudioLanguage = TrackLanguage.Normalize(settings.PreferredAudioLanguage);
         settings.MediaTrackPreferences = (settings.MediaTrackPreferences ?? [])
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value is not null)
@@ -326,6 +327,9 @@ public sealed class SettingsService : ISettingsService
             preferences.SubtitleDelayMilliseconds = PlaybackDelay.Normalize(preferences.SubtitleDelayMilliseconds);
             preferences.AudioDelayMilliseconds = PlaybackDelay.Normalize(preferences.AudioDelayMilliseconds);
         }
+        settings.SeriesTrackPreferences = (settings.SeriesTrackPreferences ?? [])
+            .Where(pair => pair.Key != Guid.Empty && pair.Value is not null)
+            .ToDictionary(pair => pair.Key, pair => pair.Value);
         return settings;
     }
 

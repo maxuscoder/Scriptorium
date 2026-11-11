@@ -170,9 +170,14 @@ public partial class VideoPlayer : UserControl
     private void OnTimingPopupOpened(object? sender, EventArgs args)
     {
         ShowControls();
-        var input = SubtitleDelayInput.IsEnabled ? SubtitleDelayInput : AudioDelayInput;
-        input.Focus();
-        input.SelectAll();
+        if (SubtitleDelayInput.IsEnabled || AudioDelayInput.IsEnabled)
+        {
+            var input = SubtitleDelayInput.IsEnabled ? SubtitleDelayInput : AudioDelayInput;
+            input.Focus();
+            input.SelectAll();
+        }
+        else if (SaveSeriesTrackPreferencesButton.IsEnabled) SaveSeriesTrackPreferencesButton.Focus();
+        else TimingPanel.Focus();
     }
 
     private void OnControlsPointerMoved(object sender, MouseEventArgs args)
@@ -261,6 +266,7 @@ public partial class VideoPlayer : UserControl
 
     private void OnPlayerPreviewMouseWheel(object sender, MouseWheelEventArgs args)
     {
+        if (TimingPopup.IsOpen && IsWithin(args.OriginalSource as DependencyObject, TimingPanel)) return;
         // VideoView's overlay lives in another Window, so its input route never reaches the page.
         // Use the inline control's ancestors for both the overlay and playback toolbar.
         if (IsFullscreen || args.Handled) return;
