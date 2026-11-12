@@ -151,9 +151,20 @@ public partial class VideoPlayer : UserControl
         {
             Owner = Window.GetWindow(this)
         };
+        if (dialog.ShowDialog() == true && dialog.MomentToReplay is { } moment && !player.ReplayMoment(moment))
+            MessageBox.Show(Window.GetWindow(this), "This sequence cannot be played for the current video.", "Saved moment", MessageBoxButton.OK, MessageBoxImage.Information);
+        ShowControls();
+    }
+
+    private void OnSavedMomentsClick(object sender, RoutedEventArgs args)
+    {
+        if (Player is not { } player) return;
+        var dialog = new Scriptorium.App.Views.SavedSequencesDialog(player) { Owner = Window.GetWindow(this) };
         dialog.ShowDialog();
         ShowControls();
     }
+
+    private void OnReturnToNormalClick(object sender, RoutedEventArgs args) => Player?.ReturnToNormalPlayback();
 
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
 
@@ -227,7 +238,7 @@ public partial class VideoPlayer : UserControl
 
     private void OnControlsIdle(object? sender, EventArgs args)
     {
-        if (ControlPanel.IsMouseOver || _isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
+        if (ControlPanel.IsMouseOver || MomentsChrome.IsMouseOver || _isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
             PlaybackSpeedSelector.IsDropDownOpen || SubtitleSelector.IsDropDownOpen || AudioSelector.IsDropDownOpen || TimingPopup.IsOpen)
             return;
 
@@ -243,7 +254,7 @@ public partial class VideoPlayer : UserControl
         PlayerLayout.Cursor = visible ? null : Cursors.None;
         VideoOverlay.Cursor = visible ? Cursors.Hand : Cursors.None;
         PlayerLayout.ForceCursor = VideoOverlay.ForceCursor = !visible;
-        foreach (var element in new FrameworkElement[] { BackButtonChrome, ControlPanel })
+        foreach (var element in new FrameworkElement[] { BackButtonChrome, MomentsChrome, ControlPanel })
         {
             var from = element.Opacity;
             element.BeginAnimation(OpacityProperty, null);

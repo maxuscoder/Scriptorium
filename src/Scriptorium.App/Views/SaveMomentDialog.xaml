@@ -27,6 +27,7 @@
         <TextBlock x:Name="ErrorText" Margin="0,12,0,0" Foreground="{DynamicResource Brush.Danger}" TextWrapping="Wrap" />
         <StackPanel Margin="0,20,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
             <Button x:Name="CancelButton" Margin="0,0,8,0" Click="OnCancel" Content="Cancel" Style="{StaticResource Button.Secondary}" IsCancel="True" />
+            <Button x:Name="ReplayButton" Margin="0,0,8,0" Click="OnSaveAndReplay" Content="Save &amp; replay" Style="{StaticResource Button.Secondary}" />
             <Button x:Name="SaveButton" Click="OnSave" Content="Save moment" Style="{StaticResource Button.Primary}" IsDefault="True" />
         </StackPanel>
     </StackPanel>

@@ -72,6 +72,13 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     private Guid? _completionOverrideMediaItemId;
     private bool _completionOverride;
     private bool _disposed;
+    private SavedMoment? _replayingMoment;
+    private TimeSpan _normalPosition;
+    private VideoPlaybackState _normalState;
+    private bool _normalHasStarted;
+    private bool _normalHasEnded;
+    private bool _loopMoment;
+    private bool _momentAtEnd;
 
     public VideoPlayerViewModel(
         IVideoPlaybackFactory factory,
@@ -114,7 +121,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         ResetAudioDelayCommand = new RelayCommand(() => AudioDelayMilliseconds = 0,
             () => CanAdjustAudioDelay && AudioDelayMilliseconds != 0);
         ResetSubtitleAppearanceCommand = new RelayCommand(() => UpdateSubtitleAppearance(new()), () => CanStyleSubtitles);
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
         _timer.Tick += OnTick;
     }
 
@@ -304,6 +311,94 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     public Task<bool> SaveMomentAsync(SavedMoment moment) =>
         _savedMomentService?.SaveAsync(moment) ?? Task.FromResult(false);
+    public bool IsReplayingMoment => _replayingMoment is not null;
+    public bool LoopMoment { get => _loopMoment; set => SetProperty(ref _loopMoment, value); }
+
+    public async Task<IReadOnlyList<SavedMoment>> GetSavedSequencesAsync()
+    {
+        if (!CanSaveMoment || _request?.MediaItemId is not { } id || _savedMomentService is null) return [];
+        var moments = await _savedMomentService.GetForMediaAsync(id);
+        return _request?.MediaItemId == id ? moments.Where(moment => moment.EndSeconds is not null).ToList() : [];
+    }
+
+    public bool ReplayMoment(SavedMoment moment)
+    {
+        if (!CanSeek || _playback is null || _request?.MediaItemId != moment.MediaItemId ||
+            moment.StartSeconds < 0 || moment.EndSeconds is not { } end || end <= moment.StartSeconds ||
+            end > DurationSeconds) return false;
+        try
+        {
+            if (!IsReplayingMoment)
+            {
+                if (_hasStarted) QueuePlaybackProgressSave(force: true);
+                _normalPosition = _playback.Position;
+                _normalState = PlaybackState;
+                _normalHasStarted = _hasStarted;
+                _normalHasEnded = _hasEnded;
+            }
+            _replayingMoment = moment;
+            _momentAtEnd = false;
+            OnPropertyChanged(nameof(IsReplayingMoment));
+            _playback.Position = TimeSpan.FromSeconds(moment.StartSeconds);
+            _hasEnded = false;
+            _playback.Play();
+            SetPlaybackState(VideoPlaybackState.Playing);
+            _timer.Start();
+            Status = "Playing saved moment";
+            UpdatePosition();
+            NotifyPlaybackChanged();
+            return true;
+        }
+        catch (Exception exception) { Fail(exception); return false; }
+    }
+
+    public void ReturnToNormalPlayback()
+    {
+        if (!IsReplayingMoment || _playback is null) return;
+        try
+        {
+            _playback.Pause();
+            _playback.Position = _normalPosition;
+            _hasStarted = _normalHasStarted;
+            _hasEnded = _normalHasEnded;
+            SetPlaybackState(_normalState);
+            if (_normalState == VideoPlaybackState.Playing) { _playback.Play(); _timer.Start(); }
+            else _timer.Stop();
+            _replayingMoment = null;
+            _momentAtEnd = false;
+            OnPropertyChanged(nameof(IsReplayingMoment));
+            Status = _normalState == VideoPlaybackState.Playing ? "Playing" : "Paused";
+            UpdatePosition();
+            NotifyPlaybackChanged();
+        }
+        catch (Exception exception) { Fail(exception); }
+    }
+
+    private void FinishMoment()
+    {
+        if (_replayingMoment is not { EndSeconds: { } end } moment || _playback is null) return;
+        if (LoopMoment)
+        {
+            _playback.Position = TimeSpan.FromSeconds(moment.StartSeconds);
+            _hasEnded = false;
+            _playback.Play();
+            SetPlaybackState(VideoPlaybackState.Playing);
+            _timer.Start();
+            Status = "Playing saved moment";
+        }
+        else
+        {
+            _playback.Pause();
+            _playback.Position = TimeSpan.FromSeconds(end);
+            _momentAtEnd = true;
+            _timer.Stop();
+            SetPlaybackState(VideoPlaybackState.Paused);
+            Status = "Saved moment finished";
+        }
+        UpdatePosition();
+        NotifyPlaybackChanged();
+    }
+
     public bool IsSeeking => _isSeeking;
     public bool IsMuted { get => _isMuted; private set => SetMuted(value); }
     public bool IsMutedIconVisible => IsMuted || Volume <= 0;
@@ -541,8 +636,13 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                if (_hasEnded) _playback.Position = TimeSpan.Zero;
-                if (_completionOverrideMediaItemId == _request?.MediaItemId)
+                if (_momentAtEnd && _replayingMoment is { } moment)
+                {
+                    _playback.Position = TimeSpan.FromSeconds(moment.StartSeconds);
+                    _momentAtEnd = false;
+                }
+                else if (_hasEnded) _playback.Position = TimeSpan.Zero;
+                if (!IsReplayingMoment && _completionOverrideMediaItemId == _request?.MediaItemId)
                 {
                     _completionOverrideMediaItemId = null;
                 }
@@ -550,8 +650,8 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
                 _playback.Play();
                 SetPlaybackState(VideoPlaybackState.Playing);
                 _lastProgressSaveRequested = DateTimeOffset.UtcNow;
-                notifyStarted = !_hasStarted;
-                _hasStarted = true;
+                notifyStarted = !IsReplayingMoment && !_hasStarted;
+                if (!IsReplayingMoment) _hasStarted = true;
                 _timer.Start();
                 Status = "Playing";
                 QueuePlaybackProgressSave(force: true);
@@ -748,6 +848,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void OnEnded(object? sender, EventArgs args)
     {
         if (!ReferenceEquals(sender, _playback)) return;
+        if (IsReplayingMoment) { FinishMoment(); return; }
         var completedMediaItemId = _request?.MediaItemId;
         _timer.Stop();
         _hasEnded = true;
@@ -853,6 +954,12 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     /// <summary>Stops playback at the beginning and can persist the cleared position when a media item is attached.</summary>
     public void ResetProgress(bool saveProgress = true)
     {
+        if (IsReplayingMoment)
+        {
+            _replayingMoment = null;
+            _momentAtEnd = false;
+            OnPropertyChanged(nameof(IsReplayingMoment));
+        }
         Stop();
         if (saveProgress)
         {
@@ -950,6 +1057,11 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         try
         {
             UpdatePosition();
+            if (_replayingMoment is { EndSeconds: { } end } && _position.TotalSeconds >= end)
+            {
+                FinishMoment();
+                return;
+            }
             QueuePlaybackProgressSave(force: false);
         }
         catch (Exception exception)
@@ -961,6 +1073,12 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void ReleasePlayback()
     {
         _playbackGeneration++;
+        if (!IsApplyingSubtitleAppearance && IsReplayingMoment)
+        {
+            _replayingMoment = null;
+            _momentAtEnd = false;
+            OnPropertyChanged(nameof(IsReplayingMoment));
+        }
         _timer.Stop();
         if (_playback is { } playback)
         {
@@ -1018,6 +1136,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
 
     private void QueuePlaybackProgressSave(bool force)
     {
+        if (IsReplayingMoment) return;
         var snapshot = CaptureProgressSnapshot();
         if (snapshot is null || _playbackProgressService is null)
         {
@@ -1366,8 +1485,10 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     private void NotifyPlaybackAction(VideoPlaybackAction action) => PlaybackActionPerformed?.Invoke(this, action);
 
     private double BoundSeekPosition(double seconds) => double.IsFinite(seconds)
-        ? Math.Clamp(seconds, 0, DurationSeconds)
-        : 0;
+        ? _replayingMoment is { EndSeconds: { } end } moment
+            ? Math.Clamp(seconds, moment.StartSeconds, end)
+            : Math.Clamp(seconds, 0, DurationSeconds)
+        : _replayingMoment?.StartSeconds ?? 0;
 
     private void NotifyPositionChanged()
     {

@@ -11,6 +11,7 @@ public partial class SaveMomentDialog : Window
     private readonly Guid _mediaItemId;
     private readonly long _durationSeconds;
     private bool _saving;
+    public SavedMoment? MomentToReplay { get; private set; }
 
     public SaveMomentDialog(VideoPlayerViewModel player, (Guid MediaItemId, long PositionSeconds, long DurationSeconds) snapshot)
     {
@@ -38,7 +39,10 @@ public partial class SaveMomentDialog : Window
     private void OnCurrentEnd(object sender, RoutedEventArgs e) => SetCurrent(EndInput);
     private void OnCancel(object sender, RoutedEventArgs e) => DialogResult = false;
 
-    private async void OnSave(object sender, RoutedEventArgs e)
+    private async void OnSave(object sender, RoutedEventArgs e) => await SaveAsync(false);
+    private async void OnSaveAndReplay(object sender, RoutedEventArgs e) => await SaveAsync(true);
+
+    private async Task SaveAsync(bool replay)
     {
         if (_saving) return;
         if (!MomentTimeParser.TryParse(StartInput.Text, out var start)) { ErrorText.Text = "Enter a valid start time (hours:minutes:seconds)."; return; }
@@ -49,6 +53,7 @@ public partial class SaveMomentDialog : Window
             end = parsedEnd;
             if (end <= start) { ErrorText.Text = "The end time must be after the start time."; return; }
         }
+        if (replay && end is null) { ErrorText.Text = "Add an end time to replay a sequence."; return; }
         if (_durationSeconds > 0 && (start > _durationSeconds || end > _durationSeconds)) { ErrorText.Text = "Times must be within the video duration."; return; }
         var title = TitleInput.Text.Trim();
         if (title.Length == 0) { ErrorText.Text = "Enter a title."; return; }
@@ -58,12 +63,14 @@ public partial class SaveMomentDialog : Window
             Notes = string.IsNullOrWhiteSpace(NotesInput.Text) ? null : NotesInput.Text.Trim(), Tags = tags };
         _saving = true;
         SaveButton.IsEnabled = false;
+        ReplayButton.IsEnabled = false;
         CancelButton.IsEnabled = false;
         ErrorText.Text = string.Empty;
         try
         {
             if (await _player.SaveMomentAsync(moment))
             {
+                MomentToReplay = replay ? moment : null;
                 _saving = false;
                 DialogResult = true;
             }
@@ -77,6 +84,7 @@ public partial class SaveMomentDialog : Window
         {
             _saving = false;
             SaveButton.IsEnabled = true;
+            ReplayButton.IsEnabled = true;
             CancelButton.IsEnabled = true;
         }
     }

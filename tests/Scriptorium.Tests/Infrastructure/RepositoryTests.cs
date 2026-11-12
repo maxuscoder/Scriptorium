@@ -70,6 +70,9 @@ public sealed class RepositoryTests
             var service = provider.GetRequiredService<ISavedMomentService>();
             var moment = new SavedMoment { MediaItemId = media.Id, StartSeconds = 10, EndSeconds = 20, Title = "Scene", Notes = "Note", Tags = [new SavedMomentTag { Name = "tag" }] };
             Assert.True(await service.SaveAsync(moment));
+            var listed = await service.GetForMediaAsync(media.Id);
+            Assert.Equal(moment.Id, Assert.Single(listed).Id);
+            Assert.Empty(await service.GetForMediaAsync(Guid.NewGuid()));
             Assert.False(await service.SaveAsync(new SavedMoment { MediaItemId = Guid.NewGuid(), Title = "Missing" }));
             await Assert.ThrowsAsync<ArgumentException>(() => service.SaveAsync(new SavedMoment { MediaItemId = media.Id, StartSeconds = 10, EndSeconds = 10, Title = "Invalid" }));
             await using var check = await factory.CreateDbContextAsync();
