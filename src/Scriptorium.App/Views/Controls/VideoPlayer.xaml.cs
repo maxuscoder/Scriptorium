@@ -144,6 +144,17 @@ public partial class VideoPlayer : UserControl
         if (Player is { } playerToDeactivate) await playerToDeactivate.DeactivateAsync();
     }
 
+    private void OnSaveMomentClick(object sender, RoutedEventArgs args)
+    {
+        if (Player is not { } player || player.CaptureMomentPosition() is not { } snapshot) return;
+        var dialog = new Scriptorium.App.Views.SaveMomentDialog(player, snapshot)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        dialog.ShowDialog();
+        ShowControls();
+    }
+
     private void OnFullscreenClick(object sender, RoutedEventArgs args) => ToggleFullscreen();
 
     private void OnTimingClick(object sender, RoutedEventArgs args)

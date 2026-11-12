@@ -45,8 +45,41 @@ public sealed class RepositoryTests
         Assert.IsType<MediaDescriptionService>(provider.GetRequiredService<IMediaDescriptionService>());
         Assert.IsType<MediaReleaseYearService>(provider.GetRequiredService<IMediaReleaseYearService>());
         Assert.IsType<PlaybackProgressService>(provider.GetRequiredService<IPlaybackProgressService>());
+        Assert.IsType<SavedMomentService>(provider.GetRequiredService<ISavedMomentService>());
         Assert.IsType<FavoriteService>(provider.GetRequiredService<IFavoriteService>());
         Assert.IsType<CategoryService>(provider.GetRequiredService<ICategoryService>());
+    }
+
+    [Fact]
+    public async Task Saved_moment_service_persists_user_content_and_handles_missing_media()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddScriptoriumInfrastructure($"Data Source={databasePath};Pooling=False");
+            using var provider = services.BuildServiceProvider();
+            var factory = provider.GetRequiredService<IDbContextFactory<ScriptoriumDbContext>>();
+            var media = new MediaItem { Title = "Video", Path = "C:\\video.mkv", PlaybackPositionSeconds = 5 };
+            await using (var context = await factory.CreateDbContextAsync())
+            {
+                await context.Database.MigrateAsync();
+                context.MediaItems.Add(media);
+                await context.SaveChangesAsync();
+            }
+            var service = provider.GetRequiredService<ISavedMomentService>();
+            var moment = new SavedMoment { MediaItemId = media.Id, StartSeconds = 10, EndSeconds = 20, Title = "Scene", Notes = "Note", Tags = [new SavedMomentTag { Name = "tag" }] };
+            Assert.True(await service.SaveAsync(moment));
+            Assert.False(await service.SaveAsync(new SavedMoment { MediaItemId = Guid.NewGuid(), Title = "Missing" }));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.SaveAsync(new SavedMoment { MediaItemId = media.Id, StartSeconds = 10, EndSeconds = 10, Title = "Invalid" }));
+            await using var check = await factory.CreateDbContextAsync();
+            var saved = await check.SavedMoments.Include(m => m.Tags).SingleAsync();
+            Assert.Equal("Scene", saved.Title);
+            Assert.Equal("Note", saved.Notes);
+            Assert.Equal("tag", Assert.Single(saved.Tags).Name);
+            Assert.Equal(5, (await check.MediaItems.SingleAsync()).PlaybackPositionSeconds);
+        }
+        finally { File.Delete(databasePath); }
     }
 
     [Fact]

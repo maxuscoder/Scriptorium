@@ -7,12 +7,55 @@ using System.Windows.Input;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels;
 using Scriptorium.App.Views.Controls;
+using Scriptorium.App.Views;
+using Scriptorium.Core.Models;
+using Scriptorium.Core.Services;
 using Xunit;
 
 namespace Scriptorium.App.Tests;
 
 public sealed class VideoProgressTests
 {
+    [Theory]
+    [InlineData("0:00:00", 0)]
+    [InlineData("12:34:56", 45296)]
+    public void MomentTimesAreParsed(string input, long expected) => Assert.True(MomentTimeParser.TryParse(input, out var value) && value == expected);
+
+    [Theory]
+    [InlineData("-1:00:00")]
+    [InlineData("0:60:00")]
+    [InlineData("0:00:60")]
+    [InlineData("1:00")]
+    [InlineData("99999999999999999999:00:00")]
+    public void InvalidMomentTimesAreRejected(string input) => Assert.False(MomentTimeParser.TryParse(input, out _));
+
+    [Fact]
+    public Task MomentCaptureUsesLivePlaybackPositionAndMediaId() => StaTest.Run(async () =>
+    {
+        var engine = new Playback();
+        var service = new MomentService();
+        using var player = new VideoPlayerViewModel(new Factory(engine), savedMomentService: service);
+        var id = Guid.NewGuid();
+        player.SetMedia(new MediaPlaybackRequest("progress.mp4", 0, id));
+        player.Activate();
+        engine.Position = TimeSpan.FromSeconds(21.9);
+        Assert.Equal((id, 21L, 60L), player.CaptureMomentPosition());
+        var moment = new SavedMoment { MediaItemId = id, StartSeconds = 21, Title = "Moment" };
+        Assert.True(await player.SaveMomentAsync(moment));
+        Assert.Same(moment, service.Moment);
+        await player.DeactivateAsync();
+    });
+
+    private sealed class MomentService : ISavedMomentService
+    {
+        public SavedMoment? Moment { get; private set; }
+        public Task<bool> SaveAsync(SavedMoment moment, CancellationToken cancellationToken = default)
+        {
+            Moment = moment;
+            return Task.FromResult(true);
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

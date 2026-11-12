@@ -178,6 +178,12 @@
                                         </Button>
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Click="OnSaveMomentClick" IsEnabled="{Binding CanSaveMoment}"
+                                                Style="{StaticResource Player.Icon}" ToolTip="Save moment" AutomationProperties.Name="Save moment">
+                                            <Path Width="18" Height="20" Data="M4,2 H14 V18 L9,14 L4,18 Z"
+                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                  StrokeThickness="1.7" StrokeLineJoin="Round" />
+                                        </Button>
                                         <Button Command="{Binding ToggleMuteCommand}" Style="{StaticResource Player.Icon}" Width="32"
                                                 ToolTip="{Binding MuteActionText}" AutomationProperties.Name="{Binding MuteActionText}">
                                             <Grid Width="20" Height="20">

@@ -18,6 +18,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly ISettingsService? _settingsService;
     private readonly ILogger<VideoPlayerViewModel>? _logger;
     private readonly INotificationService? _notifications;
+    private readonly ISavedMomentService? _savedMomentService;
     private readonly DispatcherTimer _timer;
     private readonly object _progressSaveGate = new();
     private readonly object _preferenceSaveGate = new();
@@ -77,13 +78,15 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         ILogger<VideoPlayerViewModel>? logger = null,
         IPlaybackProgressService? playbackProgressService = null,
         ISettingsService? settingsService = null,
-        INotificationService? notifications = null)
+        INotificationService? notifications = null,
+        ISavedMomentService? savedMomentService = null)
     {
         _factory = factory;
         _playbackProgressService = playbackProgressService;
         _settingsService = settingsService;
         _logger = logger;
         _notifications = notifications;
+        _savedMomentService = savedMomentService;
         if (settingsService is not null)
         {
             _volume = NormalizeVolume(settingsService.Settings.PlaybackVolume);
@@ -260,6 +263,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
             if (SetProperty(ref _isReady, value))
             {
                 OnPropertyChanged(nameof(IsStatusVisible));
+                OnPropertyChanged(nameof(CanSaveMoment));
                 OnPropertyChanged(nameof(CanSelectSubtitles));
                 OnPropertyChanged(nameof(CanSelectAudio));
                 NotifySeriesTrackPreferencesChanged();
@@ -284,6 +288,22 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     public double PositionSeconds => Math.Clamp(_position.TotalSeconds, 0, DurationSeconds);
     public double DurationSeconds => Math.Max(0, _duration.TotalSeconds);
     public bool CanSeek => IsReady && DurationSeconds > 0;
+    public bool CanSaveMoment => IsReady && _request?.MediaItemId is not null && _savedMomentService is not null;
+
+    public (Guid MediaItemId, long PositionSeconds, long DurationSeconds)? CaptureMomentPosition()
+    {
+        if (!CanSaveMoment || _request?.MediaItemId is not { } mediaId) return null;
+        double position;
+        try { position = _isSeeking || _playback is null ? _position.TotalSeconds : _playback.Position.TotalSeconds; }
+        catch { position = _position.TotalSeconds; }
+        var duration = Math.Max(0, (long)Math.Floor(_duration.TotalSeconds));
+        var seconds = Math.Max(0, (long)Math.Floor(position));
+        if (duration > 0) seconds = Math.Min(seconds, duration);
+        return (mediaId, seconds, duration);
+    }
+
+    public Task<bool> SaveMomentAsync(SavedMoment moment) =>
+        _savedMomentService?.SaveAsync(moment) ?? Task.FromResult(false);
     public bool IsSeeking => _isSeeking;
     public bool IsMuted { get => _isMuted; private set => SetMuted(value); }
     public bool IsMutedIconVisible => IsMuted || Volume <= 0;
@@ -1146,6 +1166,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     {
         OnPropertyChanged(nameof(PlayActionText));
         OnPropertyChanged(nameof(CanSeek));
+        OnPropertyChanged(nameof(CanSaveMoment));
         TogglePlaybackCommand.NotifyCanExecuteChanged();
         ToggleMuteCommand.NotifyCanExecuteChanged();
     }
