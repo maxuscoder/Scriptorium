@@ -70,6 +70,10 @@ public sealed class RepositoryTests
             var service = provider.GetRequiredService<ISavedMomentService>();
             var moment = new SavedMoment { MediaItemId = media.Id, StartSeconds = 10, EndSeconds = 20, Title = "Scene", Notes = "Note", Tags = [new SavedMomentTag { Name = "tag" }] };
             Assert.True(await service.SaveAsync(moment));
+            var all = await service.GetAllAsync();
+            var libraryMoment = Assert.Single(all);
+            Assert.Equal("Video", libraryMoment.MediaItem.Title);
+            Assert.Equal("tag", Assert.Single(libraryMoment.Tags).Name);
             var listed = await service.GetForMediaAsync(media.Id);
             Assert.Equal(moment.Id, Assert.Single(listed).Id);
             Assert.Empty(await service.GetForMediaAsync(Guid.NewGuid()));

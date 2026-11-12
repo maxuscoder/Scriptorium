@@ -6,6 +6,13 @@ namespace Scriptorium.Infrastructure.Services;
 
 public sealed class SavedMomentService(IDbContextFactory<ScriptoriumDbContext> contextFactory) : ISavedMomentService
 {
+    public async Task<IReadOnlyList<SavedMoment>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.SavedMoments.AsNoTracking().Include(moment => moment.MediaItem)
+            .Include(moment => moment.Tags).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SavedMoment>> GetForMediaAsync(Guid mediaItemId, CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);

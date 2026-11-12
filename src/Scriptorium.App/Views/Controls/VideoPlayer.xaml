@@ -83,7 +83,7 @@
                                         </Button>
                                         <CheckBox Content="Loop moment" IsChecked="{Binding LoopMoment}" Foreground="{StaticResource Player.Text}" VerticalAlignment="Center" Margin="4,0">
                                             <CheckBox.Style><Style TargetType="CheckBox"><Setter Property="Visibility" Value="Collapsed" />
-                                                <Style.Triggers><DataTrigger Binding="{Binding IsReplayingMoment}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
+                                                <Style.Triggers><DataTrigger Binding="{Binding CanLoopMoment}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                                             </Style></CheckBox.Style>
                                         </CheckBox>
                         </StackPanel>
