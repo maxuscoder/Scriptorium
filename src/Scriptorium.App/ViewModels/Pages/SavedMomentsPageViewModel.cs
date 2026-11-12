@@ -12,6 +12,7 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
 {
     private readonly ISavedMomentService _service;
     private readonly INotificationService? _notifications;
+    private readonly MomentPreviewService? _previews;
     private IReadOnlyList<SavedMoment> _all = [];
     private string _query = string.Empty;
     private string _filter = "All moments";
@@ -22,14 +23,17 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
     private string _playingTitle = string.Empty;
     private int _loadVersion;
 
-    public SavedMomentsPageViewModel(ISavedMomentService service, VideoPlayerViewModel player, INotificationService? notifications = null)
+    public SavedMomentsPageViewModel(ISavedMomentService service, VideoPlayerViewModel player, INotificationService? notifications = null, MomentPreviewService? previews = null)
     {
         _service = service;
         Player = player;
         _notifications = notifications;
+        _previews = previews;
         RefreshCommand = new AsyncRelayCommand(RefreshAsync);
         OpenMomentCommand = new RelayCommand(OpenMoment);
         BackToMomentsCommand = new RelayCommand(BackToMoments);
+        ChoosePreviewCommand = new AsyncRelayCommand(ChoosePreviewAsync);
+        RegenerateMissingCommand = new AsyncRelayCommand(RegenerateMissingAsync);
     }
 
     public override string Title => "Saved Moments";
@@ -40,6 +44,8 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
     public ICommand RefreshCommand { get; }
     public ICommand OpenMomentCommand { get; }
     public ICommand BackToMomentsCommand { get; }
+    public ICommand ChoosePreviewCommand { get; }
+    public ICommand RegenerateMissingCommand { get; }
     public bool IsPlayerVisible { get => _isPlayerVisible; private set => SetProperty(ref _isPlayerVisible, value); }
     public string PlayingTitle { get => _playingTitle; private set => SetProperty(ref _playingTitle, value); }
     public bool IsLoading { get => _isLoading; private set => SetProperty(ref _isLoading, value); }
@@ -85,8 +91,54 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
             _ => rows.OrderBy(m => m.Title, StringComparer.OrdinalIgnoreCase).ThenBy(m => m.StartSeconds)
         };
         Moments.Clear();
-        foreach (var moment in rows) Moments.Add(new SavedMomentRow(moment));
+        foreach (var moment in rows) Moments.Add(new SavedMomentRow(moment, _previews));
         OnPropertyChanged(nameof(CountText));
+    }
+
+    private async Task ChoosePreviewAsync(object? value)
+    {
+        if (value is not SavedMomentRow row || _previews is null) return;
+        if (!Scriptorium.App.Views.MomentTimeParser.TryParse(row.PreviewTime, out var seconds))
+        {
+            Status = "Enter a preview time as hours:minutes:seconds.";
+            return;
+        }
+        await GeneratePreviewAsync(row, seconds);
+    }
+
+    private async Task RegenerateMissingAsync()
+    {
+        if (_previews is null) return;
+        var missing = _all.Where(m => _previews.Get(m.Id, m.StartSeconds).Path is null).ToList();
+        if (missing.Count == 0) { Status = "All moment previews are available."; return; }
+        var failed = 0;
+        foreach (var moment in missing)
+        {
+            var row = new SavedMomentRow(moment, _previews);
+            if (!await GeneratePreviewAsync(row, _previews.Get(moment.Id, moment.StartSeconds).Seconds)) failed++;
+        }
+        ApplyFilters();
+        Status = failed == 0 ? "Missing previews regenerated." : $"Could not generate {failed} preview(s). Check that the source videos are available.";
+    }
+
+    private async Task<bool> GeneratePreviewAsync(SavedMomentRow row, long seconds)
+    {
+        var media = row.Moment.MediaItem;
+        Status = "Generating preview?";
+        try
+        {
+            var path = await _previews!.GenerateAsync(row.Moment.Id, media.Path, media.RuntimeSeconds, seconds);
+            if (path is null) { Status = "Could not generate the preview. Check the time and source video."; return false; }
+            row.SetPreview(path, seconds);
+            Status = "Preview updated.";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Status = "Could not generate the preview. Check the source video and try again.";
+            _notifications?.Report(exception, Status);
+            return false;
+        }
     }
 
     private void OpenMoment(object? value)
@@ -119,12 +171,27 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
     }
 }
 
-public sealed class SavedMomentRow(SavedMoment moment)
+public sealed class SavedMomentRow : ViewModelBase
 {
-    public SavedMoment Moment { get; } = moment;
+    private string? _thumbnailPath;
+    private string _previewTime;
+    public SavedMomentRow(SavedMoment moment, MomentPreviewService? previews = null)
+    {
+        Moment = moment;
+        var preview = previews?.Get(moment.Id, moment.StartSeconds) ?? (null, moment.StartSeconds);
+        _thumbnailPath = preview.Item1;
+        _previewTime = Format(preview.Item2);
+    }
+    public SavedMoment Moment { get; }
     public string Title => Moment.Title;
     public string Source => Moment.MediaItem.DisplayTitle;
-    public string? ThumbnailPath => Moment.MediaItem.ThumbnailPath;
+    public string? ThumbnailPath => _thumbnailPath;
+    public string PreviewTime { get => _previewTime; set => SetProperty(ref _previewTime, value); }
+    public void SetPreview(string path, long seconds)
+    {
+        SetProperty(ref _thumbnailPath, path, nameof(ThumbnailPath));
+        PreviewTime = Format(seconds);
+    }
     public string Timestamp => Moment.EndSeconds is { } end ? $"{Format(Moment.StartSeconds)} ? {Format(end)}" : Format(Moment.StartSeconds);
     public string Kind => Moment.EndSeconds is null ? "Timestamp" : "Sequence";
     public string? Notes => Moment.Notes;

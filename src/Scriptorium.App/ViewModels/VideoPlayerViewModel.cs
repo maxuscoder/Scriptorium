@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows.Threading;
 using Microsoft.Extensions.Logging;
 using Scriptorium.App.Commands;
@@ -19,6 +19,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
     private readonly ILogger<VideoPlayerViewModel>? _logger;
     private readonly INotificationService? _notifications;
     private readonly ISavedMomentService? _savedMomentService;
+    private readonly MomentPreviewService? _momentPreviews;
     private readonly DispatcherTimer _timer;
     private readonly object _progressSaveGate = new();
     private readonly object _preferenceSaveGate = new();
@@ -87,7 +88,8 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         IPlaybackProgressService? playbackProgressService = null,
         ISettingsService? settingsService = null,
         INotificationService? notifications = null,
-        ISavedMomentService? savedMomentService = null)
+        ISavedMomentService? savedMomentService = null,
+        MomentPreviewService? momentPreviews = null)
     {
         _factory = factory;
         _playbackProgressService = playbackProgressService;
@@ -95,6 +97,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         _logger = logger;
         _notifications = notifications;
         _savedMomentService = savedMomentService;
+        _momentPreviews = momentPreviews;
         if (settingsService is not null)
         {
             _volume = NormalizeVolume(settingsService.Settings.PlaybackVolume);
@@ -310,8 +313,16 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         return (mediaId, seconds, duration);
     }
 
-    public Task<bool> SaveMomentAsync(SavedMoment moment) =>
-        _savedMomentService?.SaveAsync(moment) ?? Task.FromResult(false);
+    public async Task<bool> SaveMomentAsync(SavedMoment moment)
+    {
+        if (_savedMomentService is null || !await _savedMomentService.SaveAsync(moment)) return false;
+        if (_momentPreviews is not null && _request?.MediaItemId == moment.MediaItemId)
+        {
+            try { await _momentPreviews.GenerateAsync(moment.Id, _request.FilePath, (long)DurationSeconds, moment.StartSeconds); }
+            catch (Exception exception) { _logger?.LogWarning(exception, "Could not generate saved moment preview."); }
+        }
+        return true;
+    }
     public bool IsReplayingMoment => _replayingMoment is not null;
     public bool CanLoopMoment => _replayingMoment?.EndSeconds is not null;
 
@@ -1578,3 +1589,4 @@ public enum VideoPlaybackState
     Playing,
     Ended
 }
+

@@ -17,6 +17,7 @@
                         <ComboBox Width="150" Style="{StaticResource Input.ComboBox}" ItemsSource="{Binding Filters}" SelectedItem="{Binding Filter}" AutomationProperties.Name="Filter moments" /></StackPanel>
                     <StackPanel Margin="0,0,12,10"><TextBlock Style="{StaticResource Text.Label}" Text="Sort by" Margin="0,0,0,6" />
                         <ComboBox Width="150" Style="{StaticResource Input.ComboBox}" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding Sort}" AutomationProperties.Name="Sort moments" /></StackPanel>
+                    <Button Margin="0,22,12,10" Command="{Binding RegenerateMissingCommand}" Content="Regenerate missing previews" Style="{StaticResource Button.Secondary}" />
                     <Button Margin="0,22,0,10" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource Button.Secondary}" />
                 </WrapPanel>
                 <TextBlock Margin="0,8,0,0" Text="{Binding CountText}" Foreground="{DynamicResource Brush.TextSecondary}" />
@@ -29,6 +30,11 @@
                             <controls:MediaCard CardWidth="220" IsListLayout="False" Title="{Binding Title}" Metadata="{Binding Metadata}"
                                 TypeLabel="{Binding Kind}" ThumbnailPath="{Binding ThumbnailPath}" ActionText="Open moment"
                                 ActionCommand="{Binding DataContext.OpenMomentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ActionParameter="{Binding}" />
+                            <TextBlock Margin="4,8,4,2" Text="Preview time (h:mm:ss)" Foreground="{DynamicResource Brush.TextSecondary}" />
+                            <DockPanel Margin="4,0,4,0">
+                                <Button DockPanel.Dock="Right" Content="Set frame" Margin="6,0,0,0" Style="{StaticResource Button.Secondary}" Command="{Binding DataContext.ChoosePreviewCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                                <TextBox Text="{Binding PreviewTime, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.TextBox}" AutomationProperties.Name="Preview time" />
+                            </DockPanel>
                             <TextBlock Margin="4,4,4,0" Text="{Binding Timestamp}" Foreground="{DynamicResource Brush.TextSecondary}" AutomationProperties.Name="Moment timestamp" />
                             <TextBlock Margin="4,4,4,0" Text="{Binding Notes}" Foreground="{DynamicResource Brush.TextSecondary}" TextWrapping="Wrap" MaxHeight="42" TextTrimming="CharacterEllipsis" />
                             <TextBlock Margin="4,3,4,0" Text="{Binding Tags}" Foreground="{DynamicResource Brush.TextSecondary}" TextTrimming="CharacterEllipsis" />

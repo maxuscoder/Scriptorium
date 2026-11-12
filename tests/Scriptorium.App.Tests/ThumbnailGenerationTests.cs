@@ -68,6 +68,32 @@ public sealed class ThumbnailGenerationTests
     }
 
     [Fact]
+    public async Task MomentPreviewRemembersSelectedTimeAndRegeneratesMissingFile()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Scriptorium-moment-{Guid.NewGuid():N}");
+        var source = Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4");
+        var id = Guid.NewGuid();
+        try
+        {
+            using var runtime = new LibVlcRuntime();
+            var previews = new MomentPreviewService(new LibVlcThumbnailGenerator(() => runtime), directory);
+            var first = await previews.GenerateAsync(id, source, 4, 1);
+            Assert.NotNull(first);
+            Assert.True(File.Exists(first));
+            Assert.Equal((first, 1L), previews.Get(id, 0));
+            File.Delete(first);
+            Assert.Equal((null, 1L), previews.Get(id, 0));
+            var regenerated = await previews.GenerateAsync(id, source, 4, previews.Get(id, 0).Seconds);
+            Assert.NotNull(regenerated);
+            Assert.True(File.Exists(regenerated));
+            Assert.Equal(1, previews.Get(id, 0).Seconds);
+            Assert.Null(await previews.GenerateAsync(id, source, 4, 4));
+            Assert.Equal(regenerated, previews.Get(id, 0).Path);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public async Task CancellationDoesNotWriteAPreview()
     {
         var output = Path.Combine(Path.GetTempPath(), $"Scriptorium-cancel-{Guid.NewGuid():N}.jpg");
