@@ -1,5 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.IO;
+using Microsoft.Win32;
+using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels.Pages;
 
 namespace Scriptorium.App.Views.Pages;
@@ -23,6 +26,78 @@ public partial class SavedMomentsPage : UserControl
         if (DataContext is not SavedMomentsPageViewModel page || sender is not FrameworkElement { DataContext: SavedMomentRow row }) return;
         var dialog = new EditMomentDialog(page, row.Moment) { Owner = Window.GetWindow(this) };
         dialog.ShowDialog();
+    }
+
+    private async void OnExportClip(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: SavedMomentRow row }) return;
+        var owner = Window.GetWindow(this);
+        if (row.Moment.EndSeconds is not { } end)
+        {
+            MessageBox.Show(owner, "Edit this moment and add an end time before exporting a clip.", "Export clip", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (row.IsSourceMissing)
+        {
+            MessageBox.Show(owner, "The source video is unavailable. Reconnect its folder and try again.", "Export clip", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var options = NewDialog("Export clip");
+        options.Width = 460;
+        options.SizeToContent = SizeToContent.Height;
+        var panel = new StackPanel { Margin = new Thickness(18) };
+        panel.Children.Add(new TextBlock { Text = "Create a separate Matroska (.mkv) file. The source and saved moment will not be changed.", TextWrapping = TextWrapping.Wrap });
+        var accurate = new RadioButton { Content = "Accurate boundaries (re-encode)", IsChecked = true, Margin = new Thickness(0, 14, 0, 2) };
+        panel.Children.Add(accurate);
+        panel.Children.Add(new TextBlock { Text = "Re-encoding takes longer and may reduce quality. Boundaries are limited by frame and audio timing.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20, 0, 0, 8) });
+        var fast = new RadioButton { Content = "Fast (no re-encoding)" };
+        panel.Children.Add(fast);
+        panel.Children.Add(new TextBlock { Text = "May include extra content around the selection. Do not use for exact removal of sensitive content. Some formats cannot be copied.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(20, 2, 0, 8) });
+        panel.Children.Add(new TextBlock { Text = "Includes the first video and audio tracks when available. Other tracks, subtitles, chapters, and metadata are omitted. Requires a local FFmpeg installation with ffprobe.", TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(DialogButtons(options));
+        options.Content = panel;
+        if (options.ShowDialog() != true) return;
+
+        var toolDialog = new OpenFileDialog { Title = "Select ffmpeg.exe (ffprobe.exe must be alongside it)", Filter = "FFmpeg executable (ffmpeg.exe)|ffmpeg.exe", CheckFileExists = true };
+        if (toolDialog.ShowDialog(owner) != true) return;
+        var safeName = new string(row.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c).ToArray()).Trim().TrimEnd('.');
+        if (string.IsNullOrWhiteSpace(safeName)) safeName = "clip";
+        var save = new SaveFileDialog { Title = "Export clip", Filter = "Matroska video (*.mkv)|*.mkv", DefaultExt = ".mkv", AddExtension = true, OverwritePrompt = false, FileName = safeName + ".mkv" };
+        if (save.ShowDialog(owner) != true) return;
+        if (File.Exists(save.FileName))
+        {
+            MessageBox.Show(owner, "That file already exists. Choose a different filename.", "Export clip", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        var progress = NewDialog("Exporting clip");
+        var progressPanel = new StackPanel { Margin = new Thickness(18) };
+        progressPanel.Children.Add(new TextBlock { Text = "Exporting clip…", Margin = new Thickness(0, 0, 0, 12) });
+        progressPanel.Children.Add(new ProgressBar { IsIndeterminate = true, Height = 8, MinWidth = 300 });
+        var cancel = new Button { Content = "Cancel", HorizontalAlignment = HorizontalAlignment.Right, MinWidth = 80, Margin = new Thickness(0, 14, 0, 0) };
+        cancel.Click += (_, _) => { cancellation.Cancel(); cancel.IsEnabled = false; };
+        progressPanel.Children.Add(cancel);
+        progress.Content = progressPanel;
+        var finished = false;
+        progress.Closing += (_, args) => { if (!finished) { args.Cancel = true; cancellation.Cancel(); cancel.IsEnabled = false; } };
+        progress.Loaded += async (_, _) =>
+        {
+            string message;
+            var icon = MessageBoxImage.Information;
+            try
+            {
+                await new MomentClipExportService().ExportAsync(toolDialog.FileName, row.Moment.MediaItem.Path, save.FileName, row.Moment.StartSeconds, end, accurate.IsChecked == true, cancellation.Token);
+                message = "Clip exported to:\n" + save.FileName;
+            }
+            catch (OperationCanceledException) { message = "Export canceled."; }
+            catch (Exception exception) { message = "Could not export the clip. " + exception.Message; icon = MessageBoxImage.Warning; }
+            finished = true;
+            progress.Close();
+            MessageBox.Show(owner, message, "Export clip", MessageBoxButton.OK, icon);
+        };
+        progress.ShowDialog();
     }
 
     private async void OnDeleteMoment(object sender, RoutedEventArgs e)
