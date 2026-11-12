@@ -8,7 +8,7 @@ namespace Scriptorium.Infrastructure.Services;
 /// Persists metadata found during media import and updates existing file-path matches.
 /// </summary>
 public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaItemRepository,
-    IAutomaticThumbnailService? automaticThumbnails = null)
+    IAutomaticThumbnailService? automaticThumbnails = null, IPrivatePathGuard? privatePaths = null)
     : IImportedMediaPersistenceService
 {
     /// <inheritdoc />
@@ -21,6 +21,8 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         ArgumentException.ThrowIfNullOrWhiteSpace(importedMedia.Title);
 
         var filePath = Path.GetFullPath(importedMedia.Path);
+        if (privatePaths is not null && await privatePaths.IsPrivatePathAsync(filePath, cancellationToken))
+            throw new UnauthorizedAccessException("This source belongs to the Private Library.");
         var existingItem = await mediaItemRepository.GetByPathAsync(filePath, cancellationToken);
 
         if (existingItem is not null)
@@ -63,6 +65,11 @@ public sealed class ImportedMediaPersistenceService(IMediaItemRepository mediaIt
         ArgumentNullException.ThrowIfNull(importedMedia);
 
         var importedItems = importedMedia.ToList();
+        if (privatePaths is not null)
+        {
+            var excluded = await privatePaths.GetExcludedPathHashesAsync(cancellationToken);
+            importedItems.RemoveAll(f => excluded.Contains(Privacy.PrivatePathHash.Compute(f.Path)));
+        }
         if (importedItems.Count == 0)
         {
             return [];

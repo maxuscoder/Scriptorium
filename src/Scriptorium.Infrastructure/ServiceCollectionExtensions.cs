@@ -6,6 +6,7 @@ using Scriptorium.Core.Services;
 using Scriptorium.Infrastructure.Repositories;
 using Scriptorium.Infrastructure.Services;
 using Scriptorium.Infrastructure.Caching;
+using Scriptorium.Infrastructure.Privacy;
 
 namespace Scriptorium.Infrastructure;
 
@@ -23,6 +24,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IOperationMetrics, OperationMetrics>();
         services.AddDbContextFactory<ScriptoriumDbContext>(options => options.UseSqlite(connectionString));
         services.AddSingleton<IMetadataCache, MetadataCache>();
+        services.AddSingleton<IPrivatePathGuard, PrivatePathGuard>();
+        services.AddSingleton(provider => new PrivateVaultOptions(Path.Combine(
+            Path.GetDirectoryName(provider.GetRequiredService<DatabaseLocation>().FilePath)!, "PrivateVault")));
+        services.AddSingleton<IPrivateLibrary, PrivateLibraryService>();
         services.AddSingleton<IDatabaseInitializer, DatabaseInitializer>();
         services.AddSingleton<IMediaItemRepository, MediaItemRepository>();
         services.AddSingleton<ICourseRepository, CourseRepository>();

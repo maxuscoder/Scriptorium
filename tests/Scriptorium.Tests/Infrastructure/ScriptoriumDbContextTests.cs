@@ -19,11 +19,13 @@ public sealed class ScriptoriumDbContextTests
             await db.Database.MigrateAsync("20261112120000_AddSavedMoments");
             var first = new MediaItem { Title = "First", Path = "C:\\first.mkv" };
             var second = new MediaItem { Title = "Second", Path = "C:\\second.mkv" };
-            db.MediaItems.AddRange(first, second);
+            // Seed the older schema directly: the current EF model contains newer columns.
+            foreach (var media in new[] { first, second })
+                await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO MediaItems (Id, Title, Path, DateAdded, IsFavorite, MediaType) VALUES ({media.Id}, {media.Title}, {media.Path}, {media.DateAdded}, 0, {(int)media.MediaType})");
             var one = new SavedMoment { MediaItem = first, Title = "One", StartSeconds = 1 };
             var two = new SavedMoment { MediaItem = second, Title = "Two", StartSeconds = 2 };
-            db.SavedMoments.AddRange(one, two);
-            await db.SaveChangesAsync();
+            foreach (var moment in new[] { one, two })
+                await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SavedMoments (Id, MediaItemId, Title, StartSeconds) VALUES ({moment.Id}, {moment.MediaItem.Id}, {moment.Title}, {moment.StartSeconds})");
             await db.Database.MigrateAsync();
             var service = new Scriptorium.Infrastructure.Services.MomentCollectionService(new TestFactory(options));
             await service.CreateAsync("  Scenes  ");
@@ -62,10 +64,10 @@ public sealed class ScriptoriumDbContextTests
             {
                 await context.Database.MigrateAsync("20261111120000_AddFolderMediaDetection");
                 var media = new MediaItem { Title = "Original", Path = "C:\\video.mkv", PlaybackPositionSeconds = 12 };
-                context.MediaItems.Add(media);
-                await context.SaveChangesAsync();
+                await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO MediaItems (Id, Title, Path, DateAdded, IsFavorite, MediaType, PlaybackPositionSeconds) VALUES ({media.Id}, {media.Title}, {media.Path}, {media.DateAdded}, 0, {(int)media.MediaType}, {media.PlaybackPositionSeconds})");
                 mediaId = media.Id;
                 await context.Database.MigrateAsync();
+                context.Attach(media);
                 context.SavedMoments.AddRange(
                     new SavedMoment { MediaItemId = mediaId, StartSeconds = 10, Title = "Point", Tags = [new SavedMomentTag { Name = "favorite" }] },
                     new SavedMoment { MediaItemId = mediaId, StartSeconds = 20, EndSeconds = 35, Title = "Clip", Notes = "Note", Tags = [new SavedMomentTag { Name = "scene" }, new SavedMomentTag { Name = "quote" }] });
@@ -156,7 +158,10 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(27, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(context.Database.GetMigrations().Count(), (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Contains("PrivateSources", tableNames);
+            Assert.Contains("PrivateMediaRecords", tableNames);
+            Assert.Contains("PrivateLibraryConfigurations", tableNames);
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")

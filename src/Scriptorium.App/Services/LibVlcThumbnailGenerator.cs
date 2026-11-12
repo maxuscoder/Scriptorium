@@ -9,7 +9,7 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.App.Services;
 
 /// <summary>Decodes into memory, with no window, sound, or playback-progress session.</summary>
-public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThumbnailGenerator
+public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime, IPrivatePathGuard? privatePaths = null) : IThumbnailGenerator
 {
     public Task<bool> GenerateAsync(string sourcePath, long? runtimeSeconds, string outputPath,
         CancellationToken cancellationToken = default) => Task.Run(
@@ -21,6 +21,7 @@ public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThu
     private async Task<bool> ExtractAsync(string sourcePath, long? runtimeSeconds, string outputPath, long? frameSeconds,
         CancellationToken cancellationToken)
     {
+        if (privatePaths is not null && await privatePaths.IsPrivatePathAsync(sourcePath, cancellationToken)) return false;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
         var token = timeout.Token;

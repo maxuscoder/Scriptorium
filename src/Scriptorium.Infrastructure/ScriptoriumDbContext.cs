@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Scriptorium.Core.Models;
+using Scriptorium.Infrastructure.Privacy;
 
 namespace Scriptorium.Infrastructure;
 
@@ -8,6 +9,27 @@ namespace Scriptorium.Infrastructure;
 /// </summary>
 public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> options) : DbContext(options)
 {
+    public DbSet<PrivateLibraryConfiguration> PrivateLibraryConfigurations => Set<PrivateLibraryConfiguration>();
+    public DbSet<PrivateMediaRecord> PrivateMediaRecords => Set<PrivateMediaRecord>();
+    public DbSet<PrivateSource> PrivateSources => Set<PrivateSource>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        PreparePrivacyPaths();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        PreparePrivacyPaths();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void PreparePrivacyPaths()
+    {
+        foreach (var entry in ChangeTracker.Entries<MediaItem>().Where(e => e.State is EntityState.Added or EntityState.Modified))
+            entry.Entity.PrivacyPathHash = PrivatePathHash.Compute(entry.Entity.Path);
+    }
     /// <summary>Gets the imported library folders.</summary>
     public DbSet<LibraryFolder> LibraryFolders => Set<LibraryFolder>();
 
@@ -46,6 +68,15 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
 
         modelBuilder.Ignore<Movie>();
         modelBuilder.Ignore<PlaybackProgress>();
+
+        modelBuilder.Entity<PrivateLibraryConfiguration>().HasKey(c => c.Id);
+        modelBuilder.Entity<PrivateMediaRecord>().HasKey(c => c.Id);
+        modelBuilder.Entity<PrivateSource>().HasKey(c => c.PathHash);
+        modelBuilder.Entity<SavedMoment>().HasQueryFilter(m => MediaItems.Any(i => i.Id == m.MediaItemId));
+        modelBuilder.Entity<SavedMomentTag>().HasQueryFilter(t => SavedMoments.Any(m => m.Id == t.SavedMomentId));
+        modelBuilder.Entity<MomentCollectionMembership>().HasQueryFilter(t => SavedMoments.Any(m => m.Id == t.SavedMomentId));
+        modelBuilder.Entity<Episode>().HasQueryFilter(e => MediaItems.Any(i => i.Id == e.MediaItemId));
+        modelBuilder.Entity<Lesson>().HasQueryFilter(e => MediaItems.Any(i => i.Id == e.MediaItemId));
 
         modelBuilder.Entity<LibraryFolder>(entity =>
         {
@@ -192,6 +223,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
 
         modelBuilder.Entity<MediaItem>(entity =>
         {
+            // Always applied, including while the Private Library is unlocked.
+            entity.HasQueryFilter(item => !PrivateSources.Any(source => source.PathHash == item.PrivacyPathHash));
+            entity.Property(item => item.PrivacyPathHash).HasDefaultValue(string.Empty);
             entity.ToTable("MediaItems");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).IsRequired();

@@ -10,7 +10,7 @@ namespace Scriptorium.App.Services;
 /// <summary>
 /// Shows the Windows folder picker used to import a library folder.
 /// </summary>
-public sealed class ImportFolderDialog(IFileSystemService fileSystem, IMediaFormatService formats) : IImportFolderDialog
+public sealed class ImportFolderDialog(IFileSystemService fileSystem, IMediaFormatService formats, IPrivatePathGuard? privatePaths = null) : IImportFolderDialog
 {
     /// <inheritdoc />
     public ImportFolderSelection? SelectFolder(string? initialDirectory = null)
@@ -21,7 +21,7 @@ public sealed class ImportFolderDialog(IFileSystemService fileSystem, IMediaForm
             return null;
         }
 
-        var mediaTypeDialog = new MediaTypeSelectionDialog(new FolderImportViewModel(folderPath), fileSystem, formats)
+        var mediaTypeDialog = new MediaTypeSelectionDialog(new FolderImportViewModel(folderPath, privatePaths), fileSystem, formats)
         {
             Owner = Application.Current?.MainWindow
         };

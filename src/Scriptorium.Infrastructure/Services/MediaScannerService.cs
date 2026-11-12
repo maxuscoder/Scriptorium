@@ -24,7 +24,8 @@ public sealed partial class MediaScannerService(
     ILogger<MediaScannerService>? logger = null,
     IOperationMetrics? operationMetrics = null,
     IAutomaticThumbnailService? automaticThumbnails = null,
-    IMediaItemRepository? mediaItemRepository = null) : IMediaScannerService
+    IMediaItemRepository? mediaItemRepository = null,
+    IPrivatePathGuard? privatePaths = null) : IMediaScannerService
 {
     private readonly SemaphoreSlim _scanGate = new(1, 1);
     private int _isScanning;
@@ -57,6 +58,7 @@ public sealed partial class MediaScannerService(
             var folders = folderSelection.EligibleFolders;
 
             var supportedCandidates = new List<MediaFileCandidate>();
+            var excludedPaths = privatePaths is null ? null : await privatePaths.GetExcludedPathHashesAsync(cancellationToken).ConfigureAwait(false);
             var unsupportedVideoFileExamples = new List<string>();
             var permissionDeniedPathExamples = new List<string>();
             var permissionDeniedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -107,11 +109,13 @@ public sealed partial class MediaScannerService(
                     cancellationToken,
                     filePath =>
                     {
+                        if (excludedPaths?.Contains(Privacy.PrivatePathHash.Compute(filePath)) == true) return;
                         processedFileCount++;
                         progress?.Report(new MediaScanProgress(folder.Path, filePath, processedFileCount, supportedCandidates.Count));
                     },
                     (path, exception) =>
                     {
+                        if (excludedPaths?.Contains(Privacy.PrivatePathHash.Compute(path)) == true) return;
                         nonCriticalErrorCount++;
                         logger?.LogDebug(exception, "Skipped file-system path during library scan: {Path}", path);
                         if (exception is UnauthorizedAccessException or SecurityException)
@@ -127,6 +131,7 @@ public sealed partial class MediaScannerService(
                 foreach (var path in folderFiles)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (excludedPaths?.Contains(Privacy.PrivatePathHash.Compute(path)) == true) continue;
                     var extension = Path.GetExtension(path);
                     if (mediaFormatService.IsSupportedExtension(extension))
                     {

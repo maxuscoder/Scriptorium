@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IApplicationResetService>(_ => ApplicationResetService.CreateDefault());
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
+        services.AddSingleton<IPrivateLibraryDialogs, PrivateLibraryDialogs>();
+        services.AddSingleton<PrivateLibraryPageViewModel>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<ICreateCategoryDialog, CreateCategoryDialogService>();
         services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
@@ -48,7 +50,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
         services.AddSingleton<LibVlcRuntime>();
         services.AddSingleton(provider => new LibVlcThumbnailGenerator(
-            () => provider.GetRequiredService<LibVlcRuntime>()));
+            () => provider.GetRequiredService<LibVlcRuntime>(), provider.GetRequiredService<IPrivatePathGuard>()));
         services.AddSingleton<IThumbnailGenerator>(provider => provider.GetRequiredService<LibVlcThumbnailGenerator>());
         services.AddSingleton<MomentPreviewService>();
         services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();

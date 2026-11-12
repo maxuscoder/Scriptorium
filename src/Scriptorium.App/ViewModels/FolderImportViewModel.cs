@@ -12,8 +12,13 @@ public sealed class FolderImportViewModel : ViewModelBase
 {
     private bool _isLoading;
     private string _status = "Choose a folder to review its media files.";
+    private readonly IPrivatePathGuard? _privatePaths;
 
-    public FolderImportViewModel(string folderPath = "") => FolderPath = folderPath;
+    public FolderImportViewModel(string folderPath = "", IPrivatePathGuard? privatePaths = null)
+    {
+        FolderPath = folderPath;
+        _privatePaths = privatePaths;
+    }
 
     public string FolderPath { get; }
     public string FolderName => string.IsNullOrEmpty(FolderPath) ? "Folder overview" : new DirectoryInfo(FolderPath).Name;
@@ -34,11 +39,13 @@ public sealed class FolderImportViewModel : ViewModelBase
         Status = "Looking for supported media in this folder and its subfolders…";
         try
         {
+            var excluded = _privatePaths is null ? null : await _privatePaths.GetExcludedPathHashesAsync(cancellationToken);
             var result = await Task.Run(() =>
             {
                 var skipped = 0;
                 var paths = fileSystem.EnumerateFiles([FolderPath], cancellationToken, onError: (_, _) => skipped++);
                 var files = paths.Where(path => formats.IsSupportedExtension(Path.GetExtension(path)))
+                    .Where(path => excluded?.Contains(Scriptorium.Infrastructure.Privacy.PrivatePathHash.Compute(path)) != true)
                     .OrderBy(path => Path.GetRelativePath(FolderPath, path), StringComparer.OrdinalIgnoreCase)
                     .Select(path => new ImportMediaFileViewModel(path, FolderPath)).ToArray();
                 return (Files: files, Skipped: skipped);

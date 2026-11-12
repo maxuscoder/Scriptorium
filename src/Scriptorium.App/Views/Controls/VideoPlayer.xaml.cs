@@ -616,4 +616,5 @@ public partial class VideoPlayer : UserControl
     }
 
     private void CloseFullscreen() => _fullscreenWindow?.Close();
+    public void ExitFullscreen() => CloseFullscreen();
 }

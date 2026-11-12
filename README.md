@@ -42,6 +42,7 @@ Supported media:
 - Favorites
 - Progress tracking
 - Resume playback
+- Private Library with password access and optional encrypted media storage ([guide](docs/PRIVATE_LIBRARY.md))
 
 ## Tech Stack
 

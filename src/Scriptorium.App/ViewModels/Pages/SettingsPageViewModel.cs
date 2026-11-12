@@ -35,6 +35,7 @@ public sealed class SettingsPageViewModel : PageViewModel
     private bool _showContinueWatching;
     private string _startupPage;
     private string _theme;
+    private readonly IPrivateLibrary? _privateLibrary;
 
     public SettingsPageViewModel(
         Scriptorium.App.Services.ISettingsService settingsService,
@@ -46,8 +47,10 @@ public sealed class SettingsPageViewModel : PageViewModel
         IApplicationResetService applicationResetService,
         IMediaFormatService mediaFormatService,
         INotificationService? notifications = null,
-        IAutomaticThumbnailService? automaticThumbnails = null)
+        IAutomaticThumbnailService? automaticThumbnails = null,
+        IPrivateLibrary? privateLibrary = null)
     {
+        _privateLibrary = privateLibrary;
         _automaticThumbnails = automaticThumbnails;
         _automaticThumbnailsEnabled = settingsService.Settings.AutomaticThumbnailsEnabled;
         _settingsService = settingsService;
@@ -402,6 +405,11 @@ public sealed class SettingsPageViewModel : PageViewModel
 
     private async Task ClearAllDataAsync()
     {
+        if (_privateLibrary is not null && (await _privateLibrary.GetStatusAsync()).IsConfigured)
+        {
+            _confirmationDialog.Confirm("App-data reset is disabled while a Private Library is configured because it would delete the vault and its only encryption key. Back up your entire Scriptorium data directory. You can reset preferences separately.", "Private Library protected");
+            return;
+        }
         if (!_confirmationDialog.Confirm(
                 "Permanently clear all Scriptorium app data? This removes indexed folders, your library, categories, favorites, playback history, settings and cached thumbnails. Your original media files will not be deleted. Scriptorium will restart with an empty library and default settings. This cannot be undone.",
                 "Clear all app data"))

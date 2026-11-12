@@ -15,7 +15,7 @@ namespace Scriptorium.Infrastructure.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.15");
 
             modelBuilder.Entity("Scriptorium.Core.Models.Category", b =>
                 {
@@ -46,12 +46,13 @@ namespace Scriptorium.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid>("LibraryFolderId")
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsOrderCustomized")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(false);
+
+                    b.Property<Guid>("LibraryFolderId")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -142,12 +143,12 @@ namespace Scriptorium.Infrastructure.Migrations
 
             modelBuilder.Entity("Scriptorium.Core.Models.LibraryFolder", b =>
                 {
-                    b.Property<bool>("DetectMediaTypes")
-                        .HasColumnType("INTEGER");
-
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("DetectMediaTypes")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("DisplayName")
                         .HasColumnType("TEXT");
@@ -206,10 +207,16 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<int?>("DetectedEpisodeNumber")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("DetectedMediaType")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int?>("DetectedSeasonNumber")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("DetectedTVShowTitle")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DetectedThumbnailPath")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("EpisodeNumber")
@@ -243,12 +250,6 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<Guid?>("LibraryFolderId")
                         .HasColumnType("TEXT");
 
-                    b.Property<int?>("DetectedMediaType")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("DetectedThumbnailPath")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("MediaType")
                         .HasColumnType("INTEGER");
 
@@ -271,6 +272,12 @@ namespace Scriptorium.Infrastructure.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0L);
 
+                    b.Property<string>("PrivacyPathHash")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("");
+
                     b.Property<int?>("ReleaseYear")
                         .HasColumnType("INTEGER");
 
@@ -292,22 +299,29 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Property<string>("TVShowTitleOverride")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ThumbnailPath")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("ThumbnailOverride")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("TitleOverride")
+                    b.Property<string>("ThumbnailPath")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TitleOverride")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
+
+                    b.HasIndex("LastPlayedUnixTimeMilliseconds");
+
+                    b.HasIndex("LibraryFolderId");
+
+                    b.HasIndex("Path")
+                        .IsUnique();
 
                     b.HasIndex("MediaType", "CategoryId");
 
@@ -315,51 +329,81 @@ namespace Scriptorium.Infrastructure.Migrations
 
                     b.HasIndex("MediaType", "LastPlayedUnixTimeMilliseconds");
 
-                    b.HasIndex("LibraryFolderId");
-
-                    b.HasIndex("LastPlayedUnixTimeMilliseconds");
-
-                    b.HasIndex("Path")
-                        .IsUnique();
-
                     b.ToTable("MediaItems", (string)null);
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.MomentCollection", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("TEXT");
-                    b.Property<string>("Name").IsRequired().HasColumnType("TEXT");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
+
                     b.ToTable("MomentCollections");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.MomentCollectionMembership", b =>
                 {
-                    b.Property<Guid>("CollectionId").HasColumnType("TEXT");
-                    b.Property<Guid>("SavedMomentId").HasColumnType("TEXT");
+                    b.Property<Guid>("CollectionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SavedMomentId")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("CollectionId", "SavedMomentId");
+
                     b.HasIndex("SavedMomentId");
+
                     b.ToTable("MomentCollectionMemberships");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
                 {
-                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("TEXT");
-                    b.Property<Guid>("MediaItemId").HasColumnType("TEXT");
-                    b.Property<long>("StartSeconds").HasColumnType("INTEGER");
-                    b.Property<long?>("EndSeconds").HasColumnType("INTEGER");
-                    b.Property<string>("Title").IsRequired().HasColumnType("TEXT");
-                    b.Property<string>("Notes").HasColumnType("TEXT");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("EndSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("MediaItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("StartSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
+
                     b.HasIndex("MediaItemId", "StartSeconds");
-                    b.ToTable("SavedMoments", t => t.HasCheckConstraint("CK_SavedMoments_TimeRange", "\"StartSeconds\" >= 0 AND (\"EndSeconds\" IS NULL OR \"EndSeconds\" > \"StartSeconds\")"));
+
+                    b.ToTable("SavedMoments", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_SavedMoments_TimeRange", "\"StartSeconds\" >= 0 AND (\"EndSeconds\" IS NULL OR \"EndSeconds\" > \"StartSeconds\")");
+                        });
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.SavedMomentTag", b =>
                 {
-                    b.Property<Guid>("SavedMomentId").HasColumnType("TEXT");
-                    b.Property<string>("Name").HasColumnType("TEXT");
+                    b.Property<Guid>("SavedMomentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("SavedMomentId", "Name");
+
                     b.ToTable("SavedMomentTags", (string)null);
                 });
 
@@ -411,6 +455,59 @@ namespace Scriptorium.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("TVShows", (string)null);
+                });
+
+            modelBuilder.Entity("Scriptorium.Infrastructure.Privacy.PrivateLibraryConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AutoLockMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("Salt")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<byte[]>("WrappedKey")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PrivateLibraryConfigurations");
+                });
+
+            modelBuilder.Entity("Scriptorium.Infrastructure.Privacy.PrivateMediaRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Payload")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PrivateMediaRecords");
+                });
+
+            modelBuilder.Entity("Scriptorium.Infrastructure.Privacy.PrivateSource", b =>
+                {
+                    b.Property<string>("PathHash")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("PrivateMediaId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PathHash");
+
+                    b.ToTable("PrivateSources");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.Course", b =>
@@ -477,16 +574,24 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("LibraryFolder");
-
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.MomentCollectionMembership", b =>
                 {
                     b.HasOne("Scriptorium.Core.Models.MomentCollection", "Collection")
-                        .WithMany("Memberships").HasForeignKey("CollectionId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                        .WithMany("Memberships")
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Scriptorium.Core.Models.SavedMoment", "SavedMoment")
-                        .WithMany("CollectionMemberships").HasForeignKey("SavedMomentId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                        .WithMany("CollectionMemberships")
+                        .HasForeignKey("SavedMomentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Collection");
+
                     b.Navigation("SavedMoment");
                 });
 
@@ -497,6 +602,7 @@ namespace Scriptorium.Infrastructure.Migrations
                         .HasForeignKey("MediaItemId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
                     b.Navigation("MediaItem");
                 });
 
@@ -507,6 +613,7 @@ namespace Scriptorium.Infrastructure.Migrations
                         .HasForeignKey("SavedMomentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
                     b.Navigation("SavedMoment");
                 });
 
@@ -531,16 +638,6 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Navigation("LibraryFolder");
                 });
 
-            modelBuilder.Entity("Scriptorium.Core.Models.MomentCollection", b =>
-                {
-                    b.Navigation("Memberships");
-                });
-
-            modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
-                {
-                    b.Navigation("CollectionMemberships");
-                });
-
             modelBuilder.Entity("Scriptorium.Core.Models.Category", b =>
                 {
                     b.Navigation("MediaItems");
@@ -558,6 +655,23 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Navigation("MediaItems");
 
                     b.Navigation("TVShows");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.MediaItem", b =>
+                {
+                    b.Navigation("SavedMoments");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.MomentCollection", b =>
+                {
+                    b.Navigation("Memberships");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
+                {
+                    b.Navigation("CollectionMemberships");
+
+                    b.Navigation("Tags");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.Season", b =>

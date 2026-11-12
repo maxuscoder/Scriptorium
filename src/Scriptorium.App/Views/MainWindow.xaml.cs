@@ -43,6 +43,10 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = viewModel;
+        PreviewMouseDown += (_, _) => viewModel.NotifyUserInteraction();
+        PreviewKeyDown += (_, _) => viewModel.NotifyUserInteraction();
+        PreviewMouseWheel += (_, _) => viewModel.NotifyUserInteraction();
+        Closed += (_, _) => viewModel.LockPrivateLibrary();
         SetResourceReference(ChromeBrushProperty, "Brush.SurfaceHeader");
         SourceInitialized += (_, _) =>
         {

@@ -1,0 +1,162 @@
+<UserControl x:Class="Scriptorium.App.Views.Pages.PrivateLibraryPage"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:controls="clr-namespace:Scriptorium.App.Views.Controls"
+ Loaded="OnLoaded" Unloaded="OnUnloaded">
+ <UserControl.Resources>
+  <Style x:Key="Private.Password" TargetType="PasswordBox">
+   <Setter Property="Background" Value="{DynamicResource Brush.SurfaceElevated}" />
+   <Setter Property="Foreground" Value="{DynamicResource Brush.TextPrimary}" />
+   <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+   <Setter Property="Padding" Value="12,10" /><Setter Property="MinHeight" Value="42" />
+   <Setter Property="MaxLength" Value="256" /><Setter Property="Margin" Value="0,6,0,16" />
+  </Style>
+ </UserControl.Resources>
+ <ScrollViewer Style="{StaticResource ScrollViewer.MainContent}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+  <StackPanel Margin="{StaticResource Padding.Page}" MaxWidth="1400">
+   <DockPanel Margin="0,0,0,20">
+    <Button DockPanel.Dock="Right" Content="Lock now" Command="{Binding LockCommand}" Style="{StaticResource Button.Secondary}"
+      Visibility="{Binding IsUnlocked, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    <StackPanel>
+     <TextBlock Text="Private Library" Style="{StaticResource Text.PageTitle}" />
+     <TextBlock Text="A separate space for your personal media." Style="{StaticResource Text.Body}" Margin="0,8,0,0" />
+    </StackPanel>
+   </DockPanel>
+   <StackPanel Visibility="{Binding IsLocked, Converter={StaticResource BooleanToVisibilityConverter}}" MaxWidth="840" HorizontalAlignment="Left">
+    <StackPanel Visibility="{Binding NeedsSetup, Converter={StaticResource BooleanToVisibilityConverter}}" IsEnabled="{Binding IsIdle}">
+     <TextBlock Text="Choose your protection" Style="{StaticResource Text.SubsectionTitle}" Margin="0,0,0,16" />
+     <Border Padding="20" Background="{DynamicResource Brush.SurfaceElevated}" BorderThickness="1" CornerRadius="12" Margin="0,0,0,12">
+      <Border.Style><Style TargetType="Border"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+       <Style.Triggers><DataTrigger Binding="{Binding UseStandardProtection}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers>
+      </Style></Border.Style>
+      <StackPanel>
+       <RadioButton x:Name="StandardMode" GroupName="Protection" IsChecked="{Binding UseStandardProtection, Mode=TwoWay}" Content="Standard Protection" FontWeight="SemiBold" />
+       <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Body}" TextWrapping="Wrap"
+        Text="A password hides your media, details, and history from regular Scriptorium pages. Original files stay exactly where they are, with no extra media storage or encryption work during playback." />
+       <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Warning}"
+        Text="Only hides content inside Scriptorium. Anyone who can access your files can still open them in File Explorer or another player. Media files are not encrypted." />
+      </StackPanel>
+     </Border>
+     <Border Padding="20" Background="{DynamicResource Brush.SurfaceElevated}" BorderThickness="1" CornerRadius="12" Margin="0,0,0,16">
+      <Border.Style><Style TargetType="Border"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Border}" />
+       <Style.Triggers><DataTrigger Binding="{Binding UseEncryption}" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent}" /></DataTrigger></Style.Triggers>
+      </Style></Border.Style>
+      <StackPanel>
+       <RadioButton x:Name="EncryptedMode" GroupName="Protection" IsChecked="{Binding UseEncryption, Mode=TwoWay}" Content="Encrypted Protection" FontWeight="SemiBold" />
+       <TextBlock Margin="0,12,0,0" Style="{StaticResource Text.Body}" TextWrapping="Wrap"
+        Text="Includes Standard Protection and creates an AES-256-GCM encrypted copy in a dedicated vault. Vault files cannot be played outside Scriptorium without decryption. Playback and seeking decrypt small authenticated chunks in memory; no decrypted playback files are written to disk." />
+       <TextBlock Margin="0,10,0,0" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Warning}"
+        Text="Requires free space for a full copy of each import, plus a small encryption overhead. Importing and verification take time. Originals are retained for safety and remain readable. After import, use Remove verified original to keep only the vault copy; other copies and backups must be removed separately. Playback uses a small amount of CPU and bounded memory." />
+      </StackPanel>
+     </Border>
+     <TextBlock Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,0,0,20"
+      Text="Choose carefully: protection modes cannot be switched in place. Forgotten passwords cannot be reset; encrypted files and the private catalog may become permanently inaccessible. Back up the entire vault together with the Scriptorium database. Protection does not cover an unlocked session, malware, or copies you keep elsewhere." />
+    </StackPanel>
+    <StackPanel MaxWidth="420" HorizontalAlignment="Left" Width="420" IsEnabled="{Binding IsIdle}">
+     <TextBlock Text="Password" Style="{StaticResource Text.Label}" />
+     <Grid Margin="0,6,0,16">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+       <PasswordBox x:Name="Password" Style="{StaticResource Private.Password}" Margin="0" AutomationProperties.Name="Private Library password" />
+       <TextBox x:Name="PasswordVisible" Grid.Column="0" Style="{StaticResource Input.TextBox}" MinHeight="42" MaxLength="256" Visibility="Collapsed" TextChanged="OnVisiblePasswordChanged" Tag="{Binding ElementName=Password}" AutomationProperties.Name="Private Library password" />
+       <Button Grid.Column="1" Content="Show" Click="OnTogglePassword" Tag="{Binding ElementName=Password}" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" AutomationProperties.Name="Show Private Library password" />
+      </Grid>
+     <StackPanel Visibility="{Binding NeedsSetup, Converter={StaticResource BooleanToVisibilityConverter}}">
+      <TextBlock Text="Confirm password (at least 12 characters)" Style="{StaticResource Text.Label}" />
+      <Grid Margin="0,6,0,16">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+       <PasswordBox x:Name="ConfirmPassword" Style="{StaticResource Private.Password}" Margin="0" AutomationProperties.Name="Confirm private password" />
+       <TextBox x:Name="ConfirmPasswordVisible" Grid.Column="0" Style="{StaticResource Input.TextBox}" MinHeight="42" MaxLength="256" Visibility="Collapsed" TextChanged="OnVisiblePasswordChanged" Tag="{Binding ElementName=ConfirmPassword}" AutomationProperties.Name="Confirm private password" />
+       <Button Grid.Column="1" Content="Show" Click="OnTogglePassword" Tag="{Binding ElementName=ConfirmPassword}" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" AutomationProperties.Name="Show Confirm private password" />
+      </Grid>
+     </StackPanel>
+     <Button Click="OnAuthenticate" Style="{StaticResource Button.Primary}" HorizontalAlignment="Left">
+      <TextBlock><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="Unlock Private Library" />
+       <Style.Triggers><DataTrigger Binding="{Binding NeedsSetup}" Value="True"><Setter Property="Text" Value="Create Private Library" /></DataTrigger></Style.Triggers>
+      </Style></TextBlock.Style></TextBlock>
+     </Button>
+    </StackPanel>
+   </StackPanel>
+   <StackPanel Visibility="{Binding IsUnlocked, Converter={StaticResource BooleanToVisibilityConverter}}">
+    <TextBlock Text="{Binding ModeDescription}" Style="{StaticResource Text.Label}" Margin="0,0,0,12" />
+    <TextBlock TextWrapping="Wrap" Style="{StaticResource Text.Body}" Margin="0,0,0,16"
+      Text="Private search and playback stay in this space. Imported originals are kept. With Encrypted Protection, select an item and use Remove verified original to keep only the vault copy. Other copies and backups remain your responsibility. Private artwork uses a neutral placeholder so it never enters the shared thumbnail cache." />
+    <WrapPanel Margin="0,0,0,16">
+     <Button Content="Import files" Command="{Binding ImportFilesCommand}" Style="{StaticResource Button.Primary}" Margin="0,0,8,8" />
+     <Button Content="Import folder" Command="{Binding ImportFolderCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8" />
+     <Button Content="Choose existing media" Command="{Binding LoadPublicItemsCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8" />
+    </WrapPanel>
+    <Expander Header="Move existing media into Private" Margin="0,0,0,16" Foreground="{DynamicResource Brush.TextPrimary}">
+     <StackPanel>
+      <ListBox ItemsSource="{Binding PublicItems}" SelectedItem="{Binding SelectedPublicItem}" DisplayMemberPath="DisplayTitle" MaxHeight="220" Margin="0,8" />
+      <Button Content="Move selected item to Private" Command="{Binding MoveExistingCommand}" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Left" />
+     </StackPanel>
+    </Expander>
+    <TextBox Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.TextBox}" Margin="0,0,0,16" AutomationProperties.Name="Search private titles and groups" ToolTip="Search private titles and groups" />
+    <CheckBox IsChecked="{Binding FavoritesOnly}" Content="Private favorites only" Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,16" />
+    <TextBlock Text="{Binding ResultSummary}" Style="{StaticResource Text.Metadata}" Margin="0,0,0,12" />
+    <TextBlock Text="{Binding EmptyMessage}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,0,0,16"
+      Visibility="{Binding HasNoResults, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    <controls:VideoPlayer x:Name="PrivatePlayer" Player="{Binding Player}" BackCommand="{Binding ClosePlayerCommand}" Height="420" Margin="0,0,0,20"
+      Visibility="{Binding IsPlayerVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    <ListBox ItemsSource="{Binding FilteredItems}" SelectedItem="{Binding SelectedItem}" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" MaxHeight="640"
+      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+     <ListBox.ItemTemplate><DataTemplate>
+      <controls:MediaCard Title="{Binding Media.DisplayTitle}" PrimaryMetadata="{Binding Group}" Status="Private"
+        TypeLabel="{Binding Media.MediaType}" FallbackGlyph="&#xE72E;" IsListLayout="True" ActionText="Play"
+        ActionCommand="{Binding DataContext.PlayCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ActionParameter="{Binding}" />
+     </DataTemplate></ListBox.ItemTemplate>
+    </ListBox>
+    <StackPanel Visibility="{Binding HasSelection, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,16,0,16" IsEnabled="{Binding IsIdle}">
+     <TextBlock Text="Private details" Style="{StaticResource Text.SubsectionTitle}" Margin="0,0,0,12" />
+     <TextBlock Text="Title" Style="{StaticResource Text.Label}" />
+     <TextBox Text="{Binding EditedTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.TextBox}" Margin="0,6,0,12" />
+     <TextBlock Text="Group / collection" Style="{StaticResource Text.Label}" />
+     <TextBox Text="{Binding SelectedItem.Group, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource Input.TextBox}" Margin="0,6,0,12" />
+     <CheckBox IsChecked="{Binding SelectedItem.Media.IsFavorite}" Content="Private favorite" Foreground="{DynamicResource Brush.TextPrimary}" Margin="0,0,0,12" />
+     <WrapPanel>
+      <Button Content="Save details" Command="{Binding SaveMetadataCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8" />
+      <Button Content="Return to regular library…" Command="{Binding ReturnCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8" />
+      <Button Content="Remove verified original…" Command="{Binding RemoveOriginalCommand}" Style="{StaticResource Button.Secondary}" Margin="0,0,8,8"
+        IsEnabled="{Binding CanRemoveOriginal}" Visibility="{Binding UseEncryption, Converter={StaticResource BooleanToVisibilityConverter}}" />
+     </WrapPanel>
+    </StackPanel>
+    <Expander Header="Privacy settings" Margin="0,20,0,16" Foreground="{DynamicResource Brush.TextPrimary}">
+     <StackPanel MaxWidth="620" HorizontalAlignment="Left" IsEnabled="{Binding IsIdle}">
+      <TextBlock Text="Lock after inactivity (minutes; 0 means on exit only)" Style="{StaticResource Text.Body}" Margin="0,12" />
+      <ComboBox ItemsSource="{Binding AutoLockOptions}" SelectedItem="{Binding AutoLockMinutes}" Style="{StaticResource Input.ComboBox}" Width="150" HorizontalAlignment="Left" />
+      <TextBlock Text="Playback does not count as interaction. Locking stops private playback and cancels unfinished transfers safely. Scriptorium always locks on exit." Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,10" />
+      <Button Content="Save automatic locking" Command="{Binding SaveLockSettingsCommand}" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Left" Margin="0,0,0,20" />
+      <TextBlock Text="Change password" Style="{StaticResource Text.SubsectionTitle}" />
+      <TextBlock Text="Current password" Style="{StaticResource Text.Label}" Margin="0,12,0,0" />
+      <Grid Margin="0,6,0,16">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+       <PasswordBox x:Name="CurrentPassword" Style="{StaticResource Private.Password}" Margin="0" AutomationProperties.Name="Current private password" />
+       <TextBox x:Name="CurrentPasswordVisible" Grid.Column="0" Style="{StaticResource Input.TextBox}" MinHeight="42" MaxLength="256" Visibility="Collapsed" TextChanged="OnVisiblePasswordChanged" Tag="{Binding ElementName=CurrentPassword}" AutomationProperties.Name="Current private password" />
+       <Button Grid.Column="1" Content="Show" Click="OnTogglePassword" Tag="{Binding ElementName=CurrentPassword}" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" AutomationProperties.Name="Show Current private password" />
+      </Grid>
+      <TextBlock Text="New password" Style="{StaticResource Text.Label}" />
+      <Grid Margin="0,6,0,16">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+       <PasswordBox x:Name="NewPassword" Style="{StaticResource Private.Password}" Margin="0" AutomationProperties.Name="New private password" />
+       <TextBox x:Name="NewPasswordVisible" Grid.Column="0" Style="{StaticResource Input.TextBox}" MinHeight="42" MaxLength="256" Visibility="Collapsed" TextChanged="OnVisiblePasswordChanged" Tag="{Binding ElementName=NewPassword}" AutomationProperties.Name="New private password" />
+       <Button Grid.Column="1" Content="Show" Click="OnTogglePassword" Tag="{Binding ElementName=NewPassword}" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" AutomationProperties.Name="Show New private password" />
+      </Grid>
+      <TextBlock Text="Confirm new password" Style="{StaticResource Text.Label}" />
+      <Grid Margin="0,6,0,16">
+       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+       <PasswordBox x:Name="ConfirmNewPassword" Style="{StaticResource Private.Password}" Margin="0" AutomationProperties.Name="Confirm new private password" />
+       <TextBox x:Name="ConfirmNewPasswordVisible" Grid.Column="0" Style="{StaticResource Input.TextBox}" MinHeight="42" MaxLength="256" Visibility="Collapsed" TextChanged="OnVisiblePasswordChanged" Tag="{Binding ElementName=ConfirmNewPassword}" AutomationProperties.Name="Confirm new private password" />
+       <Button Grid.Column="1" Content="Show" Click="OnTogglePassword" Tag="{Binding ElementName=ConfirmNewPassword}" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" AutomationProperties.Name="Show Confirm new private password" />
+      </Grid>
+      <Button Content="Change password" Click="OnChangePassword" Style="{StaticResource Button.Secondary}" HorizontalAlignment="Left" />
+     </StackPanel>
+    </Expander>
+   </StackPanel>
+   <StackPanel Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,16">
+    <ProgressBar Value="{Binding Progress, Mode=OneWay}" Maximum="100" Height="4" />
+    <Button Content="Cancel operation" Command="{Binding CancelCommand}" Style="{StaticResource Button.Text}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+   </StackPanel>
+   <TextBlock Text="{Binding Status}" Style="{StaticResource Text.Body}" TextWrapping="Wrap" Margin="0,12,0,20" AutomationProperties.LiveSetting="Polite" />
+  </StackPanel>
+ </ScrollViewer>
+</UserControl>

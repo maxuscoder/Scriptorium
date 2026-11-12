@@ -854,6 +854,19 @@ public sealed partial class LibraryPageViewModel : PageViewModel, IDisposable
         : string.Empty;
 
     /// <summary>Refreshes configured folders, the media browser, and the indexed-media summary.</summary>
+    public async Task RefreshAfterPrivacyChangeAsync()
+    {
+        // Wait for an initial load before refreshing so its older result cannot win the race.
+        _libraryLoadCancellationSource?.Cancel();
+        if (_initialDataLoadTask is { IsCompleted: false } initial)
+        {
+            try { await initial; } catch (OperationCanceledException) { }
+        }
+        _loadedBrowserMediaItems.Clear();
+        BrowserRows.Clear(); Tutorials.Clear(); TvShows.Clear();
+        await RefreshLibraryDataAsync();
+    }
+
     public async Task RefreshLibraryDataAsync(CancellationToken cancellationToken = default)
     {
         using var foreground = _automaticThumbnails?.PauseBackgroundWork();

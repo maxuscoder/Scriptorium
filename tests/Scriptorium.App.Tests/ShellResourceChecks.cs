@@ -75,8 +75,9 @@ internal static class ShellResourceChecks
             title.SetValue(FrameworkElement.MarginProperty, resources["Spacing.XL"]);
             host.ContentTemplate = new DataTemplate { VisualTree = title };
             var buttons = Descendants<Button>(sidebar).Where(button => button.CommandParameter is NavigationItem).ToArray();
-            Assert.Equal(new[] { "Home", "Library", "Favorites", "Categories", "Settings" },
-                buttons.Select(button => AutomationProperties.GetName(button)).OrderBy(name => Array.IndexOf(new[] { "Home", "Library", "Favorites", "Categories", "Settings" }, name)));
+            var destinations = new[] { "Home", "Library", "Favorites", "Saved Moments", "Categories", "Private", "Settings" };
+            Assert.Equal(destinations,
+                buttons.Select(button => AutomationProperties.GetName(button)).OrderBy(name => Array.IndexOf(destinations, name)));
             foreach (var width in new[] { 1200.0, 800.0, 1000.0 })
             {
                 window.Width = width;

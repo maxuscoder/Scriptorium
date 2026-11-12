@@ -3,6 +3,8 @@ obj/
 .vs/
 .dotnet-cli/
 .nuget/
+.tools/
+TestResults/
 **/artifacts/
 # Fontshare permits app embedding, but not redistribution of standalone font files.
 src/Scriptorium.App/Assets/Fonts/Satoshi/*.otf

@@ -12,6 +12,31 @@ namespace Scriptorium.Tests.Infrastructure;
 public sealed class MetadataCacheTests
 {
     [Fact]
+    public async Task Invalidated_metadata_cannot_be_republished_by_late_alias_writes()
+    {
+        using var cache = new MetadataCache();
+        var generation = cache.Generation;
+        cache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+        cache.Set("alias", [MetadataCacheKeys.AllMediaTag], "secret", value => value, generation);
+        var actual = await cache.GetOrCreateAsync("alias", [MetadataCacheKeys.AllMediaTag], _ => Task.FromResult<string?>("public"), value => value);
+        Assert.Equal("public", actual);
+    }
+
+    [Fact]
+    public async Task An_in_flight_read_is_reloaded_when_privacy_invalidation_occurs()
+    {
+        using var cache = new MetadataCache();
+        var release = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var attempts = 0;
+        var read = cache.GetOrCreateAsync("read", [MetadataCacheKeys.AllMediaTag], _ =>
+            Interlocked.Increment(ref attempts) == 1 ? release.Task : Task.FromResult<string?>("public"), value => value);
+        cache.RemoveByTag(MetadataCacheKeys.AllMediaTag);
+        release.SetResult("secret");
+        Assert.Equal("public", await read);
+        Assert.Equal(2, attempts);
+    }
+
+    [Fact]
     public async Task Reuses_values_and_returns_detached_copies()
     {
         using var cache = new MetadataCache();

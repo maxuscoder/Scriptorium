@@ -177,6 +177,9 @@
             <DataTrigger Binding="{Binding Label}" Value="Saved Moments">
                 <Setter Property="Text" Value="&#xE8A4;" />
             </DataTrigger>
+            <DataTrigger Binding="{Binding Label}" Value="Private">
+                <Setter Property="Text" Value="&#xE72E;" />
+            </DataTrigger>
             <DataTrigger Binding="{Binding Label}" Value="Categories">
                 <Setter Property="Text" Value="&#xE8EC;" />
             </DataTrigger>

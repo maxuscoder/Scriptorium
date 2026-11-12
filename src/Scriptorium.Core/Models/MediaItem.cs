@@ -7,6 +7,8 @@ namespace Scriptorium.Core.Models;
 /// </summary>
 public class MediaItem
 {
+    /// <summary>Normalized source digest used to enforce the public/private boundary in SQLite.</summary>
+    public string PrivacyPathHash { get; set; } = string.Empty;
     /// <summary>
     /// Gets or sets the unique identifier for the media item.
     /// </summary>

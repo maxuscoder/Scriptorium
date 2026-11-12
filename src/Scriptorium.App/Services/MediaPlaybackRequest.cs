@@ -6,4 +6,5 @@ public sealed record MediaPlaybackRequest(
     long ResumePositionSeconds,
     Guid? MediaItemId = null,
     long DurationSeconds = 0,
-    Guid? SeriesId = null);
+    Guid? SeriesId = null,
+    Func<CancellationToken, Task<System.IO.Stream>>? OpenPrivateStream = null);

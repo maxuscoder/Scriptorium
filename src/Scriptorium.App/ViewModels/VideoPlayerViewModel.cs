@@ -610,7 +610,19 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
             if (_playback is IAudioPlayback audio) audio.AudioTracksChanged += OnAudioTracksChanged;
             ApplyVolume();
             OnPropertyChanged(nameof(VideoOutput));
-            _playback.Open(_request.FilePath);
+            if (_request.OpenPrivateStream is { } openPrivate)
+            {
+                var stream = await openPrivate(CancellationToken.None);
+                if (!_active || generation != _playbackGeneration) { stream.Dispose(); return; }
+                if (_playback is not IStreamVideoPlayback streamPlayback)
+                {
+                    stream.Dispose();
+                    throw new NotSupportedException("The player does not support private streams.");
+                }
+                try { streamPlayback.Open(stream); }
+                catch { stream.Dispose(); throw; }
+            }
+            else _playback.Open(_request.FilePath);
         }
         catch (Exception exception)
         {
@@ -877,7 +889,7 @@ public sealed partial class VideoPlayerViewModel : ViewModelBase, IDisposable
         ResetAudioDelayCommand.NotifyCanExecuteChanged();
     }
 
-    private string? GetTrackPreferenceKey() => _request is null ? null
+    private string? GetTrackPreferenceKey() => _request is null || _request.OpenPrivateStream is not null ? null
         : _request.MediaItemId is { } id ? $"media:{id:D}" : $"file:{_request.FilePath}";
 
     private void RememberTrackPreferences()
