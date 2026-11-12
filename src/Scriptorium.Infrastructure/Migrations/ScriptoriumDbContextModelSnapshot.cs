@@ -325,6 +325,27 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.ToTable("MediaItems", (string)null);
                 });
 
+            modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("TEXT");
+                    b.Property<Guid>("MediaItemId").HasColumnType("TEXT");
+                    b.Property<long>("StartSeconds").HasColumnType("INTEGER");
+                    b.Property<long?>("EndSeconds").HasColumnType("INTEGER");
+                    b.Property<string>("Title").IsRequired().HasColumnType("TEXT");
+                    b.Property<string>("Notes").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("MediaItemId", "StartSeconds");
+                    b.ToTable("SavedMoments", t => t.HasCheckConstraint("CK_SavedMoments_TimeRange", "\"StartSeconds\" >= 0 AND (\"EndSeconds\" IS NULL OR \"EndSeconds\" > \"StartSeconds\")"));
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.SavedMomentTag", b =>
+                {
+                    b.Property<Guid>("SavedMomentId").HasColumnType("TEXT");
+                    b.Property<string>("Name").HasColumnType("TEXT");
+                    b.HasKey("SavedMomentId", "Name");
+                    b.ToTable("SavedMomentTags", (string)null);
+                });
+
             modelBuilder.Entity("Scriptorium.Core.Models.Season", b =>
                 {
                     b.Property<Guid>("Id")
@@ -439,6 +460,27 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("LibraryFolder");
+
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
+                {
+                    b.HasOne("Scriptorium.Core.Models.MediaItem", "MediaItem")
+                        .WithMany("SavedMoments")
+                        .HasForeignKey("MediaItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.Navigation("MediaItem");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.SavedMomentTag", b =>
+                {
+                    b.HasOne("Scriptorium.Core.Models.SavedMoment", "SavedMoment")
+                        .WithMany("Tags")
+                        .HasForeignKey("SavedMomentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.Navigation("SavedMoment");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.Season", b =>

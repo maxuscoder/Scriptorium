@@ -105,6 +105,9 @@ public class MediaItem
         ? Description
         : DescriptionOverride.Trim();
 
+    /// <summary>Gets or sets the moments saved for this media item.</summary>
+    public ICollection<SavedMoment> SavedMoments { get; set; } = new List<SavedMoment>();
+
     /// <summary>Gets or sets the resumable playback position in whole seconds.</summary>
     public long PlaybackPositionSeconds { get; set; }
 

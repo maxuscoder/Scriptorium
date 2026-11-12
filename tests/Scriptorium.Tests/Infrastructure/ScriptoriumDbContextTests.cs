@@ -9,6 +9,69 @@ namespace Scriptorium.Tests.Infrastructure;
 public sealed class ScriptoriumDbContextTests
 {
     [Fact]
+    public async Task Saved_moments_survive_metadata_and_playback_updates_after_upgrade()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            var options = CreateOptions(databasePath);
+            Guid mediaId;
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync("20261111120000_AddFolderMediaDetection");
+                var media = new MediaItem { Title = "Original", Path = "C:\\video.mkv", PlaybackPositionSeconds = 12 };
+                context.MediaItems.Add(media);
+                await context.SaveChangesAsync();
+                mediaId = media.Id;
+                await context.Database.MigrateAsync();
+                context.SavedMoments.AddRange(
+                    new SavedMoment { MediaItemId = mediaId, StartSeconds = 10, Title = "Point", Tags = [new SavedMomentTag { Name = "favorite" }] },
+                    new SavedMoment { MediaItemId = mediaId, StartSeconds = 20, EndSeconds = 35, Title = "Clip", Notes = "Note", Tags = [new SavedMomentTag { Name = "scene" }, new SavedMomentTag { Name = "quote" }] });
+                await context.SaveChangesAsync();
+                media.Title = "Updated";
+                media.Path = "C:\\renamed.mkv";
+                media.PlaybackPositionSeconds = 99;
+                await context.SaveChangesAsync();
+            }
+
+            await using var verification = new ScriptoriumDbContext(options);
+            var moments = await verification.SavedMoments.Include(m => m.Tags).OrderBy(m => m.StartSeconds).ToListAsync();
+            Assert.Equal(2, moments.Count);
+            Assert.All(moments, m => Assert.Equal(mediaId, m.MediaItemId));
+            Assert.Null(moments[0].EndSeconds);
+            Assert.Equal("favorite", Assert.Single(moments[0].Tags).Name);
+            Assert.Equal(35, moments[1].EndSeconds);
+            Assert.Equal("Note", moments[1].Notes);
+            Assert.Equal(2, moments[1].Tags.Count);
+            Assert.Equal(99, (await verification.MediaItems.SingleAsync()).PlaybackPositionSeconds);
+            verification.MediaItems.Remove(await verification.MediaItems.SingleAsync());
+            await verification.SaveChangesAsync();
+            Assert.Empty(await verification.SavedMoments.ToListAsync());
+            Assert.Empty(await verification.SavedMomentTags.ToListAsync());
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    [Theory]
+    [InlineData(-1, null)]
+    [InlineData(10L, 10L)]
+    [InlineData(10L, 9L)]
+    public async Task Saved_moments_reject_invalid_ranges(long start, long? end)
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync();
+            var media = new MediaItem { Title = "Video", Path = "C:\\video.mkv" };
+            context.MediaItems.Add(media);
+            context.SavedMoments.Add(new SavedMoment { MediaItem = media, StartSeconds = start, EndSeconds = end, Title = "Invalid" });
+            await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    [Fact]
     public async Task Mixed_media_upgrade_preserves_existing_folder_classifications()
     {
         var databasePath = CreateDatabasePath();
@@ -51,7 +114,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(25, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(26, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -322,3 +385,4 @@ public sealed class ScriptoriumDbContextTests
                           && foreignKey.DeleteBehavior == deleteBehavior);
     }
 }
+

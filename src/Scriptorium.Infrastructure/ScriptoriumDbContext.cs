@@ -14,6 +14,12 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
     /// <summary>Gets the indexed media items.</summary>
     public DbSet<MediaItem> MediaItems => Set<MediaItem>();
 
+    /// <summary>Gets the saved timestamps and sequences.</summary>
+    public DbSet<SavedMoment> SavedMoments => Set<SavedMoment>();
+
+    /// <summary>Gets the tags assigned to saved moments.</summary>
+    public DbSet<SavedMomentTag> SavedMomentTags => Set<SavedMomentTag>();
+
     /// <summary>Gets the user-defined categories.</summary>
     public DbSet<Category> Categories => Set<Category>();
 
@@ -131,6 +137,31 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
             entity.HasOne(episode => episode.MediaItem)
                 .WithOne()
                 .HasForeignKey<Episode>(episode => episode.MediaItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SavedMoment>(entity =>
+        {
+            entity.ToTable("SavedMoments", table => table.HasCheckConstraint(
+                "CK_SavedMoments_TimeRange",
+                "\"StartSeconds\" >= 0 AND (\"EndSeconds\" IS NULL OR \"EndSeconds\" > \"StartSeconds\")"));
+            entity.HasKey(moment => moment.Id);
+            entity.Property(moment => moment.Title).IsRequired();
+            entity.HasIndex(moment => new { moment.MediaItemId, moment.StartSeconds });
+            entity.HasOne(moment => moment.MediaItem)
+                .WithMany(item => item.SavedMoments)
+                .HasForeignKey(moment => moment.MediaItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SavedMomentTag>(entity =>
+        {
+            entity.ToTable("SavedMomentTags");
+            entity.HasKey(tag => new { tag.SavedMomentId, tag.Name });
+            entity.Property(tag => tag.Name).IsRequired();
+            entity.HasOne(tag => tag.SavedMoment)
+                .WithMany(moment => moment.Tags)
+                .HasForeignKey(tag => tag.SavedMomentId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
