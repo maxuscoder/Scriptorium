@@ -38,6 +38,20 @@ public sealed class MomentPreviewService
         return (null, defaultSeconds);
     }
 
+    public async Task DeleteAsync(Guid id)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            var image = Get(id, 0).Path;
+            if (image is not null) File.Delete(image);
+            File.Delete(MetadataPath(id));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        finally { _gate.Release(); }
+    }
+
     public async Task<string?> GenerateAsync(Guid id, string source, long? duration, long seconds)
     {
         await _gate.WaitAsync();

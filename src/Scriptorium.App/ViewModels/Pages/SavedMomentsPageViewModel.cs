@@ -1,3 +1,4 @@
+using System.IO;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Scriptorium.App.Commands;
@@ -141,11 +142,54 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
         }
     }
 
+    public async Task<bool> UpdateMomentAsync(SavedMoment edited)
+    {
+        try
+        {
+            if (!await _service.UpdateAsync(edited))
+            {
+                Status = "This moment no longer exists. Refresh the collection.";
+                return false;
+            }
+            await RefreshAsync();
+            Status = "Moment updated.";
+            return true;
+        }
+        catch (Exception exception)
+        {
+            Status = "The moment could not be updated. Try again.";
+            _notifications?.Report(exception, Status);
+            return false;
+        }
+    }
+
+    public async Task DeleteMomentAsync(SavedMomentRow row)
+    {
+        try
+        {
+            if (!await _service.DeleteAsync(row.Moment.Id))
+            {
+                await RefreshAsync();
+                Status = "This moment was already removed.";
+                return;
+            }
+            if (_previews is not null) await _previews.DeleteAsync(row.Moment.Id);
+            await RefreshAsync();
+            Status = "Moment deleted.";
+        }
+        catch (Exception exception)
+        {
+            await RefreshAsync();
+            Status = "The moment could not be deleted. Try again.";
+            _notifications?.Report(exception, Status);
+        }
+    }
+
     private void OpenMoment(object? value)
     {
         if (value is not SavedMomentRow row) return;
         var media = row.Moment.MediaItem;
-        if (media.IsMissing || string.IsNullOrWhiteSpace(media.Path))
+        if (media.IsMissing || string.IsNullOrWhiteSpace(media.Path) || !File.Exists(media.Path))
         {
             Status = "This media is unavailable. Reconnect its folder and rescan the library.";
             return;
@@ -185,6 +229,7 @@ public sealed class SavedMomentRow : ViewModelBase
     public SavedMoment Moment { get; }
     public string Title => Moment.Title;
     public string Source => Moment.MediaItem.DisplayTitle;
+    public bool IsSourceMissing => Moment.MediaItem.IsMissing || string.IsNullOrWhiteSpace(Moment.MediaItem.Path) || !File.Exists(Moment.MediaItem.Path);
     public string? ThumbnailPath => _thumbnailPath;
     public string PreviewTime { get => _previewTime; set => SetProperty(ref _previewTime, value); }
     public void SetPreview(string path, long seconds)

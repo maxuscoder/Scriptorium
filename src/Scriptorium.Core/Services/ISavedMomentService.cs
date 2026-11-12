@@ -7,5 +7,7 @@ public interface ISavedMomentService
 {
     Task<IReadOnlyList<SavedMoment>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SavedMoment>> GetForMediaAsync(Guid mediaItemId, CancellationToken cancellationToken = default);
+    Task<bool> UpdateAsync(SavedMoment moment, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> SaveAsync(SavedMoment moment, CancellationToken cancellationToken = default);
 }

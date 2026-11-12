@@ -43,7 +43,7 @@ public sealed class SavedMomentsPageTests
     [InlineData(25L)]
     public Task OpensMomentAtItsStartWithoutPersistingReplayProgress(long? end) => StaTest.Run(async () =>
     {
-        var media = new MediaItem { Title = "Video", Path = "video.mp4", PlaybackPositionSeconds = 40 };
+        var media = new MediaItem { Title = "Video", Path = System.IO.Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"), PlaybackPositionSeconds = 40 };
         var moment = new SavedMoment { MediaItem = media, MediaItemId = media.Id, Title = "Moment", StartSeconds = 10, EndSeconds = end };
         var playback = new Playback();
         var progress = new Progress();
@@ -64,7 +64,7 @@ public sealed class SavedMomentsPageTests
     [Fact]
     public Task OpensMomentAfterAsynchronousMediaLoad() => StaTest.Run(async () =>
     {
-        var media = new MediaItem { Title = "Video", Path = "video.mp4", PlaybackPositionSeconds = 40 };
+        var media = new MediaItem { Title = "Video", Path = System.IO.Path.Combine(AppContext.BaseDirectory, "Fixtures", "preview.mp4"), PlaybackPositionSeconds = 40 };
         var moment = new SavedMoment { MediaItem = media, MediaItemId = media.Id, Title = "Moment", StartSeconds = 12 };
         var playback = new Playback { DeferOpen = true };
         using var page = new SavedMomentsPageViewModel(new Service([moment]), new VideoPlayerViewModel(new Factory(playback)));
@@ -76,11 +76,66 @@ public sealed class SavedMomentsPageTests
         Assert.Equal(TimeSpan.FromSeconds(12), playback.Position);
     });
 
+    [Fact]
+    public Task MissingSourceCannotBeOpenedButMomentRemainsVisible() => StaTest.Run(async () =>
+    {
+        var media = new MediaItem { Title = "Unavailable", Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".mp4") };
+        var moment = new SavedMoment { MediaItem = media, MediaItemId = media.Id, Title = "Moment", StartSeconds = 10 };
+        using var page = new SavedMomentsPageViewModel(new Service([moment]), new VideoPlayerViewModel(new Factory(new Playback())));
+        await page.RefreshAsync();
+        var row = Assert.Single(page.Moments);
+        Assert.True(row.IsSourceMissing);
+        page.OpenMomentCommand.Execute(row);
+        Assert.False(page.IsPlayerVisible);
+        Assert.Contains("unavailable", page.Status);
+    });
+
+    [Fact]
+    public Task EditingAndDeletingRefreshesTheVisibleCollection() => StaTest.Run(async () =>
+    {
+        var media = new MediaItem { Title = "Missing", Path = "missing.mp4", IsMissing = true };
+        var moment = new SavedMoment { MediaItem = media, MediaItemId = media.Id, Title = "Before", StartSeconds = 10 };
+        var service = new MutableService(moment);
+        using var page = new SavedMomentsPageViewModel(service, new VideoPlayerViewModel(new Factory(new Playback())));
+        await page.RefreshAsync();
+        var edited = new SavedMoment { Id = moment.Id, MediaItemId = media.Id, Title = "After", StartSeconds = 20,
+            EndSeconds = 25, Notes = "Updated", Tags = [new SavedMomentTag { Name = "scene" }] };
+        Assert.True(await page.UpdateMomentAsync(edited));
+        var row = Assert.Single(page.Moments);
+        Assert.Equal("After", row.Title);
+        Assert.Equal("Updated", row.Notes);
+        Assert.Equal("scene", row.Tags);
+        Assert.Equal("Sequence", row.Kind);
+        page.Query = "scene";
+        Assert.Single(page.Moments);
+        await page.DeleteMomentAsync(Assert.Single(page.Moments));
+        Assert.Empty(page.Moments);
+        Assert.Equal("0 moments", page.CountText);
+    });
+
+    private sealed class MutableService(SavedMoment moment) : ISavedMomentService
+    {
+        private SavedMoment? _moment = moment;
+        public Task<IReadOnlyList<SavedMoment>> GetAllAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<SavedMoment>>(_moment is null ? [] : [_moment]);
+        public Task<IReadOnlyList<SavedMoment>> GetForMediaAsync(Guid id, CancellationToken cancellationToken = default) => GetAllAsync(cancellationToken);
+        public Task<bool> SaveAsync(SavedMoment value, CancellationToken cancellationToken = default) => Task.FromResult(false);
+        public Task<bool> UpdateAsync(SavedMoment value, CancellationToken cancellationToken = default)
+        {
+            value.MediaItem = _moment!.MediaItem;
+            _moment = value;
+            return Task.FromResult(true);
+        }
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) { _moment = null; return Task.FromResult(true); }
+    }
+
     private sealed class Service(IReadOnlyList<SavedMoment> moments) : ISavedMomentService
     {
         public Task<IReadOnlyList<SavedMoment>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult(moments);
         public Task<IReadOnlyList<SavedMoment>> GetForMediaAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<SavedMoment>>(moments.Where(m => m.MediaItemId == id).ToList());
         public Task<bool> SaveAsync(SavedMoment moment, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> UpdateAsync(SavedMoment moment, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     private sealed class Progress : IPlaybackProgressService

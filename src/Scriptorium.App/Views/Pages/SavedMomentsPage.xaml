@@ -28,8 +28,12 @@
                     <ItemsControl.ItemTemplate><DataTemplate>
                         <StackPanel Width="220" Margin="0,0,18,22">
                             <controls:MediaCard CardWidth="220" IsListLayout="False" Title="{Binding Title}" Metadata="{Binding Metadata}"
-                                TypeLabel="{Binding Kind}" ThumbnailPath="{Binding ThumbnailPath}" ActionText="Open moment"
+                                TypeLabel="{Binding Kind}" IsMissing="{Binding IsSourceMissing}" ThumbnailPath="{Binding ThumbnailPath}" ActionText="Open moment"
                                 ActionCommand="{Binding DataContext.OpenMomentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ActionParameter="{Binding}" />
+                            <StackPanel Orientation="Horizontal" Margin="4,8,0,0">
+                                <Button Content="Edit" Click="OnEditMoment" Style="{StaticResource Button.Secondary}" Margin="0,0,8,0" AutomationProperties.Name="Edit moment" />
+                                <Button Content="Delete" Click="OnDeleteMoment" Style="{StaticResource Button.Secondary}" AutomationProperties.Name="Delete moment" />
+                            </StackPanel>
                             <TextBlock Margin="4,8,4,2" Text="Preview time (h:mm:ss)" Foreground="{DynamicResource Brush.TextSecondary}" />
                             <DockPanel Margin="4,0,4,0">
                                 <Button DockPanel.Dock="Right" Content="Set frame" Margin="6,0,0,0" Style="{StaticResource Button.Secondary}" Command="{Binding DataContext.ChoosePreviewCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />

@@ -90,6 +90,49 @@ public sealed class RepositoryTests
     }
 
     [Fact]
+    public async Task Saved_moment_edits_and_deletion_preserve_the_source_media()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");
+        try
+        {
+            var services = new ServiceCollection();
+            services.AddScriptoriumInfrastructure($"Data Source={databasePath};Foreign Keys=True;Pooling=False");
+            using var provider = services.BuildServiceProvider();
+            var factory = provider.GetRequiredService<IDbContextFactory<ScriptoriumDbContext>>();
+            var media = new MediaItem { Title = "Missing video", Path = "missing.mkv", IsMissing = true, PlaybackPositionSeconds = 5 };
+            await using (var context = await factory.CreateDbContextAsync())
+            {
+                await context.Database.MigrateAsync();
+                context.MediaItems.Add(media);
+                await context.SaveChangesAsync();
+            }
+            var service = provider.GetRequiredService<ISavedMomentService>();
+            var moment = new SavedMoment { MediaItemId = media.Id, Title = "Before", StartSeconds = 10,
+                Tags = [new SavedMomentTag { Name = "keep" }, new SavedMomentTag { Name = "remove" }] };
+            Assert.True(await service.SaveAsync(moment));
+            var edited = new SavedMoment { Id = moment.Id, MediaItemId = Guid.NewGuid(), Title = "After", StartSeconds = 20,
+                EndSeconds = 30, Notes = "Changed", Tags = [new SavedMomentTag { Name = "KEEP" }, new SavedMomentTag { Name = "new" }] };
+            Assert.True(await service.UpdateAsync(edited));
+            var saved = Assert.Single(await service.GetAllAsync());
+            Assert.Equal("After", saved.Title);
+            Assert.Equal(20, saved.StartSeconds);
+            Assert.Equal(30, saved.EndSeconds);
+            Assert.Equal("Changed", saved.Notes);
+            Assert.Equal(new[] { "keep", "new" }, saved.Tags.Select(t => t.Name).OrderBy(x => x).ToArray());
+            Assert.Equal(media.Id, saved.MediaItemId);
+            await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateAsync(new SavedMoment { Id = moment.Id, Title = "Invalid", StartSeconds = 4, EndSeconds = 4 }));
+            Assert.True(await service.DeleteAsync(moment.Id));
+            Assert.False(await service.DeleteAsync(moment.Id));
+            Assert.False(await service.UpdateAsync(edited));
+            await using var check = await factory.CreateDbContextAsync();
+            Assert.Empty(await check.SavedMoments.ToListAsync());
+            Assert.Empty(await check.SavedMomentTags.ToListAsync());
+            Assert.Equal(5, (await check.MediaItems.SingleAsync()).PlaybackPositionSeconds);
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    [Fact]
     public async Task Hierarchy_repositories_find_owners_by_media_item_id()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"scriptorium-{Guid.NewGuid():N}.db");

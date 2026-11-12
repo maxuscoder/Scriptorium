@@ -136,6 +136,8 @@ public sealed class VideoProgressTests
         public SavedMoment? Moment { get; private set; }
         public Task<IReadOnlyList<SavedMoment>> GetAllAsync(CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<SavedMoment>>([]);
         public Task<IReadOnlyList<SavedMoment>> GetForMediaAsync(Guid mediaItemId, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<SavedMoment>>([]);
+        public Task<bool> UpdateAsync(SavedMoment moment, CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<bool> SaveAsync(SavedMoment moment, CancellationToken cancellationToken = default)
         {
             Moment = moment;
