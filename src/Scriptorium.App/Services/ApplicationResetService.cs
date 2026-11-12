@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
+using Microsoft.Data.Sqlite;
 
 namespace Scriptorium.App.Services;
 
@@ -27,6 +28,7 @@ internal sealed class ApplicationResetService : IApplicationResetService
     public async Task ResetAndRestartAsync()
     {
         EnsureSafeDirectory();
+        await EnsureNoPrivateLibraryAsync();
         Directory.CreateDirectory(_dataDirectory);
         using var current = Process.GetCurrentProcess();
         var request = new ResetRequest(current.Id, current.StartTime.ToUniversalTime().Ticks);
@@ -59,6 +61,7 @@ internal sealed class ApplicationResetService : IApplicationResetService
         var request = JsonSerializer.Deserialize<ResetRequest>(await File.ReadAllTextAsync(PendingResetPath))
             ?? throw new InvalidDataException("The pending app-data reset could not be read.");
         await _restartService.WaitForExitAsync(request.ProcessId, request.ProcessStartTimeUtcTicks);
+        await EnsureNoPrivateLibraryAsync();
         await Task.Run(() =>
         {
             EnsureSafeDirectory();
@@ -77,6 +80,31 @@ internal sealed class ApplicationResetService : IApplicationResetService
         if (Directory.Exists(_dataDirectory) &&
             (File.GetAttributes(_dataDirectory) & FileAttributes.ReparsePoint) != 0)
             throw new IOException("The app-data directory cannot be a link when clearing app data.");
+    }
+
+    private async Task EnsureNoPrivateLibraryAsync()
+    {
+        const string message = "App-data reset is disabled while private data exists because it would delete the vault and its encryption key. Back up the entire Scriptorium data directory first.";
+        if (!Directory.Exists(_dataDirectory)) return;
+        var vault = Path.Combine(_dataDirectory, "PrivateVault");
+        if (Directory.Exists(vault) && Directory.EnumerateFileSystemEntries(vault).Any()) throw new InvalidOperationException(message);
+        foreach (var file in Directory.EnumerateFiles(_dataDirectory, "*.db"))
+        {
+            var header = new byte[16];
+            using (var input = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                if (input.Length < 16) continue;
+                await input.ReadExactlyAsync(header);
+            }
+            if (!header.AsSpan().SequenceEqual("SQLite format 3\0"u8)) continue;
+            await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = file, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'PrivateLibraryConfigurations'";
+            if (Convert.ToInt64(await command.ExecuteScalarAsync()) == 0) continue;
+            command.CommandText = "SELECT COUNT(*) FROM PrivateLibraryConfigurations";
+            if (Convert.ToInt64(await command.ExecuteScalarAsync()) > 0) throw new InvalidOperationException(message);
+        }
     }
 
     private void DeleteEntry(string entry)

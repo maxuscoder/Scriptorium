@@ -170,6 +170,7 @@ public sealed class VideoPlayerViewTests
             await AmbientBokehResourceChecks.VerifyAsync(application.Resources);
             await ContentAtmosphereResourceChecks.VerifyAsync(application.Resources);
             await ShellResourceChecks.VerifyAsync(application.Resources);
+            await PrivateLibraryResourceChecks.VerifyAsync();
             await MediaCardResourceChecks.VerifyAsync(application.Resources);
             await HomeResourceChecks.VerifyAsync(application.Resources);
             await HomeHeroPreviewResourceChecks.VerifyAsync();

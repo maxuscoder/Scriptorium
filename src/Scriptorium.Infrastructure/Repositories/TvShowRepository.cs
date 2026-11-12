@@ -18,6 +18,7 @@ public sealed class TvShowRepository(
     /// <inheritdoc />
     public override async Task<TVShow?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var generation = _metadataCache.Generation;
         var show = await _metadataCache.GetOrCreateAsync(
             MetadataCacheKeys.TvShowById(id),
             [MetadataCacheKeys.TvShowTag(id), MetadataCacheKeys.AllTvShowsTag],
@@ -29,7 +30,7 @@ public sealed class TvShowRepository(
             MetadataCacheCloner.Clone,
             cancellationToken);
 
-        CacheAliases(show);
+        CacheAliases(show, generation);
         return show;
     }
 
@@ -45,6 +46,7 @@ public sealed class TvShowRepository(
         Guid mediaItemId,
         CancellationToken cancellationToken = default)
     {
+        var generation = _metadataCache.Generation;
         var show = await _metadataCache.GetOrCreateAsync(
             MetadataCacheKeys.TvShowByMediaItemId(mediaItemId),
             [MetadataCacheKeys.AllTvShowsTag],
@@ -58,7 +60,7 @@ public sealed class TvShowRepository(
             MetadataCacheCloner.Clone,
             cancellationToken);
 
-        CacheAliases(show);
+        CacheAliases(show, generation);
         return show;
     }
 
@@ -147,7 +149,7 @@ public sealed class TvShowRepository(
         }).ToArray();
     }
 
-    private void CacheAliases(TVShow? show)
+    private void CacheAliases(TVShow? show, long generation)
     {
         if (show is null)
         {
@@ -155,14 +157,14 @@ public sealed class TvShowRepository(
         }
 
         var tags = new[] { MetadataCacheKeys.TvShowTag(show.Id), MetadataCacheKeys.AllTvShowsTag };
-        _metadataCache.Set(MetadataCacheKeys.TvShowById(show.Id), tags, show, MetadataCacheCloner.Clone);
+        _metadataCache.Set(MetadataCacheKeys.TvShowById(show.Id), tags, show, MetadataCacheCloner.Clone, generation);
         foreach (var mediaItemId in show.Seasons.SelectMany(season => season.Episodes).Select(episode => episode.MediaItemId))
         {
             _metadataCache.Set(
                 MetadataCacheKeys.TvShowByMediaItemId(mediaItemId),
                 tags,
                 show,
-                MetadataCacheCloner.Clone);
+                MetadataCacheCloner.Clone, generation);
         }
     }
 

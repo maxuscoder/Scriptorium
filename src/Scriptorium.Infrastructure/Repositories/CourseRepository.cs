@@ -18,6 +18,7 @@ public sealed class CourseRepository(
     /// <inheritdoc />
     public override async Task<Course?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var generation = _metadataCache.Generation;
         var course = await _metadataCache.GetOrCreateAsync(
             MetadataCacheKeys.CourseById(id),
             [MetadataCacheKeys.CourseTag(id), MetadataCacheKeys.AllCoursesTag],
@@ -29,7 +30,7 @@ public sealed class CourseRepository(
             MetadataCacheCloner.Clone,
             cancellationToken);
 
-        CacheAliases(course);
+        CacheAliases(course, generation);
         return course;
     }
 
@@ -45,6 +46,7 @@ public sealed class CourseRepository(
         Guid mediaItemId,
         CancellationToken cancellationToken = default)
     {
+        var generation = _metadataCache.Generation;
         var course = await _metadataCache.GetOrCreateAsync(
             MetadataCacheKeys.CourseByMediaItemId(mediaItemId),
             [MetadataCacheKeys.AllCoursesTag],
@@ -57,7 +59,7 @@ public sealed class CourseRepository(
             MetadataCacheCloner.Clone,
             cancellationToken);
 
-        CacheAliases(course);
+        CacheAliases(course, generation);
         return course;
     }
 
@@ -181,7 +183,7 @@ public sealed class CourseRepository(
         }).ToArray();
     }
 
-    private void CacheAliases(Course? course)
+    private void CacheAliases(Course? course, long generation)
     {
         if (course is null)
         {
@@ -189,14 +191,14 @@ public sealed class CourseRepository(
         }
 
         var tags = new[] { MetadataCacheKeys.CourseTag(course.Id), MetadataCacheKeys.AllCoursesTag };
-        _metadataCache.Set(MetadataCacheKeys.CourseById(course.Id), tags, course, MetadataCacheCloner.Clone);
+        _metadataCache.Set(MetadataCacheKeys.CourseById(course.Id), tags, course, MetadataCacheCloner.Clone, generation);
         foreach (var mediaItemId in course.Lessons.Select(lesson => lesson.MediaItemId))
         {
             _metadataCache.Set(
                 MetadataCacheKeys.CourseByMediaItemId(mediaItemId),
                 tags,
                 course,
-                MetadataCacheCloner.Clone);
+                MetadataCacheCloner.Clone, generation);
         }
     }
 

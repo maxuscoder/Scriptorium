@@ -33,6 +33,12 @@ public interface IVideoPlaybackFactory
     IVideoPlayback Create();
 }
 
+/// <summary>Transfers ownership of a private stream to the embedded playback session.</summary>
+public interface IStreamVideoPlayback
+{
+    void Open(System.IO.Stream stream);
+}
+
 /// <summary>Identifies the user-actionable reason that a media engine rejected a file.</summary>
 public enum MediaPlaybackFailureKind
 {

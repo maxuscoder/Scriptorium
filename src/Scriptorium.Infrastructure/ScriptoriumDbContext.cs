@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Scriptorium.Core.Models;
+using Scriptorium.Infrastructure.Privacy;
 
 namespace Scriptorium.Infrastructure;
 
@@ -8,11 +9,40 @@ namespace Scriptorium.Infrastructure;
 /// </summary>
 public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> options) : DbContext(options)
 {
+    public DbSet<PrivateLibraryConfiguration> PrivateLibraryConfigurations => Set<PrivateLibraryConfiguration>();
+    public DbSet<PrivateMediaRecord> PrivateMediaRecords => Set<PrivateMediaRecord>();
+    public DbSet<PrivateSource> PrivateSources => Set<PrivateSource>();
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        PreparePrivacyPaths();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        PreparePrivacyPaths();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void PreparePrivacyPaths()
+    {
+        foreach (var entry in ChangeTracker.Entries<MediaItem>().Where(e => e.State is EntityState.Added or EntityState.Modified))
+            entry.Entity.PrivacyPathHash = PrivatePathHash.Compute(entry.Entity.Path);
+    }
     /// <summary>Gets the imported library folders.</summary>
     public DbSet<LibraryFolder> LibraryFolders => Set<LibraryFolder>();
 
     /// <summary>Gets the indexed media items.</summary>
     public DbSet<MediaItem> MediaItems => Set<MediaItem>();
+
+    /// <summary>Gets the saved timestamps and sequences.</summary>
+    public DbSet<MomentCollection> MomentCollections => Set<MomentCollection>();
+    public DbSet<MomentCollectionMembership> MomentCollectionMemberships => Set<MomentCollectionMembership>();
+    public DbSet<SavedMoment> SavedMoments => Set<SavedMoment>();
+
+    /// <summary>Gets the tags assigned to saved moments.</summary>
+    public DbSet<SavedMomentTag> SavedMomentTags => Set<SavedMomentTag>();
 
     /// <summary>Gets the user-defined categories.</summary>
     public DbSet<Category> Categories => Set<Category>();
@@ -38,6 +68,15 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
 
         modelBuilder.Ignore<Movie>();
         modelBuilder.Ignore<PlaybackProgress>();
+
+        modelBuilder.Entity<PrivateLibraryConfiguration>().HasKey(c => c.Id);
+        modelBuilder.Entity<PrivateMediaRecord>().HasKey(c => c.Id);
+        modelBuilder.Entity<PrivateSource>().HasKey(c => c.PathHash);
+        modelBuilder.Entity<SavedMoment>().HasQueryFilter(m => MediaItems.Any(i => i.Id == m.MediaItemId));
+        modelBuilder.Entity<SavedMomentTag>().HasQueryFilter(t => SavedMoments.Any(m => m.Id == t.SavedMomentId));
+        modelBuilder.Entity<MomentCollectionMembership>().HasQueryFilter(t => SavedMoments.Any(m => m.Id == t.SavedMomentId));
+        modelBuilder.Entity<Episode>().HasQueryFilter(e => MediaItems.Any(i => i.Id == e.MediaItemId));
+        modelBuilder.Entity<Lesson>().HasQueryFilter(e => MediaItems.Any(i => i.Id == e.MediaItemId));
 
         modelBuilder.Entity<LibraryFolder>(entity =>
         {
@@ -134,6 +173,43 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<SavedMoment>(entity =>
+        {
+            entity.ToTable("SavedMoments", table => table.HasCheckConstraint(
+                "CK_SavedMoments_TimeRange",
+                "\"StartSeconds\" >= 0 AND (\"EndSeconds\" IS NULL OR \"EndSeconds\" > \"StartSeconds\")"));
+            entity.HasKey(moment => moment.Id);
+            entity.Property(moment => moment.Title).IsRequired();
+            entity.HasIndex(moment => new { moment.MediaItemId, moment.StartSeconds });
+            entity.HasOne(moment => moment.MediaItem)
+                .WithMany(item => item.SavedMoments)
+                .HasForeignKey(moment => moment.MediaItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MomentCollection>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Name).IsRequired();
+        });
+        modelBuilder.Entity<MomentCollectionMembership>(entity =>
+        {
+            entity.HasKey(m => new { m.CollectionId, m.SavedMomentId });
+            entity.HasOne(m => m.Collection).WithMany(c => c.Memberships).HasForeignKey(m => m.CollectionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(m => m.SavedMoment).WithMany(m => m.CollectionMemberships).HasForeignKey(m => m.SavedMomentId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SavedMomentTag>(entity =>
+        {
+            entity.ToTable("SavedMomentTags");
+            entity.HasKey(tag => new { tag.SavedMomentId, tag.Name });
+            entity.Property(tag => tag.Name).IsRequired();
+            entity.HasOne(tag => tag.SavedMoment)
+                .WithMany(moment => moment.Tags)
+                .HasForeignKey(tag => tag.SavedMomentId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<Category>(entity =>
         {
             entity.ToTable("Categories");
@@ -147,6 +223,9 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
 
         modelBuilder.Entity<MediaItem>(entity =>
         {
+            // Always applied, including while the Private Library is unlocked.
+            entity.HasQueryFilter(item => !PrivateSources.Any(source => source.PathHash == item.PrivacyPathHash));
+            entity.Property(item => item.PrivacyPathHash).HasDefaultValue(string.Empty);
             entity.ToTable("MediaItems");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).IsRequired();

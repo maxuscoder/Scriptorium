@@ -7,7 +7,7 @@ namespace Scriptorium.Infrastructure.Services;
 /// <summary>
 /// Applies scan metadata changes while preserving media state controlled by the user.
 /// </summary>
-public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepository) : IMediaLibrarySynchronizer
+public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepository, IPrivatePathGuard? privatePaths = null) : IMediaLibrarySynchronizer
 {
     private static readonly StringComparer PathComparer = StringComparer.OrdinalIgnoreCase;
 
@@ -21,6 +21,11 @@ public sealed class MediaLibrarySynchronizer(IMediaItemRepository mediaItemRepos
         ArgumentNullException.ThrowIfNull(scannedFolderIds);
 
         var discoveredFileList = discoveredFiles.ToList();
+        if (privatePaths is not null)
+        {
+            var excluded = await privatePaths.GetExcludedPathHashesAsync(cancellationToken);
+            discoveredFileList.RemoveAll(f => excluded.Contains(Privacy.PrivatePathHash.Compute(f.Path)));
+        }
         var scannedFolderIdSet = scannedFolderIds.ToHashSet();
         var discoveredPaths = discoveredFileList
             .Where(discoveredFile => discoveredFile.IsSupportedFormat)

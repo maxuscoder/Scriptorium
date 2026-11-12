@@ -12,6 +12,21 @@ namespace Scriptorium.App.Tests;
 public sealed class ApplicationResetServiceTests
 {
     [Fact]
+    public async Task Reset_cannot_delete_the_private_vault_or_its_key()
+    {
+        using var fixture = new ResetFixture();
+        var options = new DbContextOptionsBuilder<ScriptoriumDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(fixture.DataDirectory, "library.db")};Pooling=False").Options;
+        await using var db = new ScriptoriumDbContext(options);
+        await db.Database.MigrateAsync();
+        db.PrivateLibraryConfigurations.Add(new() { Salt = [1], WrappedKey = [2] });
+        await db.SaveChangesAsync();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Service.ResetAndRestartAsync());
+        Assert.False(File.Exists(fixture.PendingResetPath));
+        Assert.Equal(0, fixture.Restart.Restarts);
+        Assert.Single(await db.PrivateLibraryConfigurations.ToListAsync());
+    }
+    [Fact]
     public async Task Reset_waits_for_old_instance_then_clears_app_data_and_rebuilds_empty_library()
     {
         using var fixture = new ResetFixture();

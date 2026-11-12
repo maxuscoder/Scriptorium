@@ -116,6 +116,16 @@ public sealed class MainWindowViewModel : PageViewModel, IDisposable
             : RefreshAsync();
 
     public void InvalidateHomepageData() => _lastSuccessfulRefreshUtc = DateTimeOffset.MinValue;
+    public void ClearForPrivacyChange()
+    {
+        _refreshAgain = true;
+        HeroPreview?.SetMedia(null);
+        IncompleteMedia.Clear(); RecentlyWatchedMedia.Clear(); Shelves.Clear();
+        _recentlyAdded = []; _favoriteItems = []; Hero = null;
+        _heroMetadataItemId = null; _heroShow = null; _heroCourse = null;
+        InvalidateHomepageData();
+        NotifyPresentation();
+    }
     public Task RefreshAsync()
     {
         if (_disposed) return Task.CompletedTask;

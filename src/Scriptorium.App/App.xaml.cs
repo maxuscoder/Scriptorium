@@ -87,6 +87,7 @@ public partial class App : Application
             _themeService = _serviceProvider.GetRequiredService<IThemeService>();
             _themeService.Apply(_settingsService.Settings.Theme);
             SystemEvents.UserPreferenceChanged += OnSystemUserPreferenceChanged;
+            SystemEvents.SessionSwitch += OnSessionSwitch;
             await _settingsService.SaveAsync();
 
             _memoryUsageMonitor = _serviceProvider.GetRequiredService<IMemoryUsageMonitor>();
@@ -203,6 +204,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnSystemUserPreferenceChanged;
+        SystemEvents.SessionSwitch -= OnSessionSwitch;
         _logger?.LogInformation("Shutting down Scriptorium with exit code {ExitCode}.", e.ApplicationExitCode);
         if (_memoryUsageMonitor is not null)
         {
@@ -280,6 +282,12 @@ public partial class App : Application
         }
 
         Log.Fatal(e.Exception, "Unhandled exception on the UI thread.");
+    }
+
+    private void OnSessionSwitch(object sender, SessionSwitchEventArgs e)
+    {
+        if (e.Reason is SessionSwitchReason.SessionLock or SessionSwitchReason.SessionLogoff)
+            Dispatcher.BeginInvoke(() => _serviceProvider?.GetService<IPrivateLibrary>()?.Lock());
     }
 
     private static void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

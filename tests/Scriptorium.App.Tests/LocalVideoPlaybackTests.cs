@@ -8,6 +8,48 @@ namespace Scriptorium.App.Tests;
 [Collection("Native WPF UI")]
 public sealed class LocalVideoPlaybackTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task PrivateStreamsPlayAndSeekThroughTheEmbeddedPlayer(bool encrypted) => StaTest.Run(async () =>
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"Scriptorium private {Guid.NewGuid():N}.spv");
+        var key = System.Security.Cryptography.RandomNumberGenerator.GetBytes(32);
+        var fixture = Path.Combine(AppContext.BaseDirectory, "Fixtures", "fragmented-seek.mp4");
+        try
+        {
+            if (encrypted)
+            {
+                await using var source = File.OpenRead(fixture);
+                await using var target = File.Create(path);
+                await Scriptorium.Infrastructure.Privacy.ChunkedVaultFile.EncryptAsync(source, target, key);
+            }
+            using var runtime = new LibVlcRuntime();
+            using var player = new LibVlcVideoPlayback(runtime);
+            using var host = AttachOutput(player);
+            var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            player.Opened += (_, _) => opened.TrySetResult();
+            player.Failed += (_, error) => opened.TrySetException(error);
+            Stream input = encrypted ? new Scriptorium.Infrastructure.Privacy.VaultReadStream(path, key) : File.OpenRead(fixture);
+            player.Open(input);
+            await opened.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            Assert.True(player.Duration.TotalSeconds > 2);
+            player.Play();
+            await WaitUntil(() => player.Position.TotalSeconds > 0.2);
+            var targetTime = TimeSpan.FromSeconds(player.Duration.TotalSeconds * 0.6);
+            player.Position = targetTime;
+            await WaitUntil(() => player.Position >= targetTime);
+            NativeVideoWindowChecks.AssertNoStandaloneOutput();
+            await player.DisposeAsync();
+            Assert.Throws<ObjectDisposedException>(() => input.ReadByte());
+        }
+        finally
+        {
+            System.Security.Cryptography.CryptographicOperations.ZeroMemory(key);
+            File.Delete(path);
+        }
+    });
+
     [Fact]
     public Task AudioOutputAcceptsBoostAndClampsVolumeToTwoHundredPercent() => StaTest.Run(async () =>
     {

@@ -4,6 +4,8 @@ using Scriptorium.App.Commands;
 using Scriptorium.App.Models;
 using Scriptorium.App.Services;
 using Scriptorium.App.ViewModels.Pages;
+using Scriptorium.Core.Services;
+using System.Windows;
 
 namespace Scriptorium.App.ViewModels;
 
@@ -23,6 +25,10 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     private NavigationItem? _selectedNavigationItem;
     private string _searchQuery = string.Empty;
     private bool _disposed;
+    private readonly IPrivateLibrary? _privateLibrary;
+    private readonly PrivateLibraryPageViewModel? _privatePage;
+    private readonly SavedMomentsPageViewModel _savedMomentsPage;
+    private readonly IPrivatePathGuard? _privatePaths;
 
     public ShellViewModel(
         INavigationService navigationService,
@@ -34,8 +40,17 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         SearchPageViewModel searchPage,
         ISearchQueryResetService searchQueryResetService,
         ISettingsService settingsService,
-        INotificationService notifications)
+        INotificationService notifications,
+        SavedMomentsPageViewModel savedMomentsPage,
+        PrivateLibraryPageViewModel? privatePage = null,
+        IPrivateLibrary? privateLibrary = null,
+        IPrivatePathGuard? privatePaths = null)
     {
+        _privatePaths = privatePaths;
+        _privatePage = privatePage;
+        _privateLibrary = privateLibrary;
+        _savedMomentsPage = savedMomentsPage;
+        if (_privateLibrary is not null) _privateLibrary.ContentsChanged += OnPrivateContentsChanged;
         _navigationService = navigationService;
         _libraryPage = libraryPage;
         _homePage = homePage;
@@ -54,6 +69,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
             new NavigationItem("Home", "M3,10.75 12,3 21,10.75V21H14.5V14H9.5V21H3V10.75Z", homePage),
             new NavigationItem("Library", "M4,4H20V20H4V4ZM6,6V18H18V6H6ZM8,8H10V10H8V8ZM12,8H16V10H12V8ZM8,12H10V14H8V12ZM12,12H16V14H12V12ZM8,16H10V18H8V16ZM12,16H16V18H12V16Z", libraryPage),
             new NavigationItem("Favorites", "M12,20.5 10.55,19.18C5.4,14.5 2,11.42 2,7.65 2,4.58 4.42,2.25 7.42,2.25 9.12,2.25 10.75,3.05 12,4.31 13.25,3.05 14.88,2.25 16.58,2.25 19.58,2.25 22,4.58 22,7.65 22,11.42 18.6,14.5 13.45,19.19L12,20.5Z", favoritesPage),
+            new NavigationItem("Saved Moments", "M5,3H19V21L12,16 5,21Z", savedMomentsPage),
             new NavigationItem("Categories", "M4,4H20V8H4V4ZM4,10H20V14H4V10ZM4,16H20V20H4V16ZM6,5V7H8V5H6ZM6,11V13H8V11H6ZM6,17V19H8V17H6Z", categoriesPage)
         ];
 
@@ -61,6 +77,9 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         [
             new NavigationItem("Settings", "M19.43,12.98C19.47,12.66 19.5,12.34 19.5,12 19.5,11.66 19.47,11.33 19.42,11.02L21.54,9.37 19.54,5.91 17.05,6.91C16.54,6.52 15.98,6.19 15.38,5.94L15,3.29H11L10.62,5.94C10.02,6.19 9.46,6.52 8.95,6.91L6.46,5.91 4.46,9.37 6.58,11.02C6.53,11.33 6.5,11.66 6.5,12 6.5,12.34 6.53,12.66 6.58,12.98L4.46,14.63 6.46,18.09 8.95,17.09C9.46,17.48 10.02,17.81 10.62,18.06L11,20.71H15L15.38,18.06C15.98,17.81 16.54,17.48 17.05,17.09L19.54,18.09 21.54,14.63 19.43,12.98ZM13,15.5A3.5,3.5 0 1,1 13,8A3.5,3.5 0 0,1 13,15.5Z", settingsPage)
         ];
+
+        if (privatePage is not null)
+            PrimaryNavigationItems = [.. PrimaryNavigationItems, new NavigationItem("Private", "M6,10V7A6,6 0 0 1 18,7V10H20V22H4V10ZM8,10H16V7A4,4 0 0 0 8,7ZM11,14V18H13V14Z", privatePage)];
 
         NavigateCommand = new RelayCommand(Navigate);
         BrowseLibraryCommand = new RelayCommand(() => _navigationService.NavigateTo(_libraryPage));
@@ -89,6 +108,41 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
     public ICommand BrowseLibraryCommand { get; }
 
     public INotificationService Notifications { get; }
+
+    public void NotifyUserInteraction() => _privatePage?.NotifyInteraction();
+    public void LockPrivateLibrary() => _privateLibrary?.Lock();
+
+    private async void OnPrivateContentsChanged(object? sender, EventArgs e)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            await dispatcher.InvokeAsync(() => OnPrivateContentsChanged(sender, e));
+            return;
+        }
+        _searchPage.UpdateQuery(string.Empty);
+        _favoritesPage.MediaItems.Clear();
+        _categoriesPage.MediaItems.Clear();
+        _savedMomentsPage.Player.SetUnavailable("The library changed.");
+        _savedMomentsPage.Moments.Clear();
+        _homePage.ClearForPrivacyChange();
+        try
+        {
+            if (_privatePaths is not null)
+            {
+                var privateIds = await _privatePaths.GetExcludedMediaIdsAsync();
+                foreach (var key in _settingsService.Settings.MediaTrackPreferences.Keys.ToArray())
+                    if ((key.StartsWith("media:", StringComparison.Ordinal) && Guid.TryParse(key[6..], out var id) && privateIds.Contains(id)) ||
+                        (key.StartsWith("file:", StringComparison.Ordinal) && await _privatePaths.IsPrivatePathAsync(key[5..])))
+                        _settingsService.Settings.MediaTrackPreferences.Remove(key);
+                await _settingsService.SaveDebouncedAsync();
+            }
+            await Task.WhenAll(_libraryPage.RefreshAfterPrivacyChangeAsync(), _homePage.RefreshAsync(),
+                _favoritesPage.RefreshAsync(), _categoriesPage.RefreshAsync(), _savedMomentsPage.RefreshAsync());
+            _searchPage.UpdateQuery(_searchQuery);
+        }
+        catch (Exception) { Notifications.Show("The library changed. Refresh the public pages to reload their contents.", NotificationSeverity.Warning); }
+    }
 
     public NavigationItem? SelectedNavigationItem
     {
@@ -159,6 +213,7 @@ public sealed class ShellViewModel : ViewModelBase, IDisposable
         }
 
         _disposed = true;
+        if (_privateLibrary is not null) _privateLibrary.ContentsChanged -= OnPrivateContentsChanged;
         _navigationService.Navigated -= OnNavigated;
         _searchQueryResetService.ClearRequested -= ClearSearchQuery;
         _libraryPage.PropertyChanged -= OnLibraryPagePropertyChanged;

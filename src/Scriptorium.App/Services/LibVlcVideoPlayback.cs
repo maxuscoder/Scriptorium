@@ -2,21 +2,23 @@ using System.IO;
 using System.Windows.Threading;
 using LibVLCSharp.Shared;
 using Scriptorium.App.Models;
+using Scriptorium.Core.Services;
 
 namespace Scriptorium.App.Services;
 
-public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime) : IVideoPlaybackFactory
+public sealed class LibVlcVideoPlaybackFactory(LibVlcRuntime runtime, IPrivatePathGuard? privatePaths = null) : IVideoPlaybackFactory
 {
-    public IVideoPlayback Create() => new LibVlcVideoPlayback(runtime);
+    public IVideoPlayback Create() => new LibVlcVideoPlayback(runtime, privatePaths);
 }
 
 /// <summary>
 /// Adapts one LibVLCSharp MediaPlayer session to Scriptorium's engine-neutral playback contract.
 /// </summary>
-public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming, ISubtitleAppearancePlayback, IAsyncDisposable
+public sealed class LibVlcVideoPlayback : IVideoPlayback, IStreamVideoPlayback, ISubtitlePlayback, IAudioPlayback, IPlaybackTiming, ISubtitleAppearancePlayback, IAsyncDisposable
 {
     private readonly Dispatcher _dispatcher;
     private readonly LibVlcRuntime _runtime;
+    private readonly IPrivatePathGuard? _privatePaths;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
     private MediaPlayer _player;
@@ -24,6 +26,8 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
     private LibVLC? _styledInstance;
     private SubtitleAppearance _appearance = new();
     private Media? _media;
+    private StreamMediaInput? _streamInput;
+    private Stream? _privateStream;
     private string? _filePath;
     private volatile bool _opening;
     private bool _waitingForOutput;
@@ -36,10 +40,11 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
     private HashSet<int>? _embeddedSubtitleIds;
     private readonly List<string?> _sidecarLanguages = [];
 
-    public LibVlcVideoPlayback(LibVlcRuntime runtime)
+    public LibVlcVideoPlayback(LibVlcRuntime runtime, IPrivatePathGuard? privatePaths = null)
     {
         ArgumentNullException.ThrowIfNull(runtime);
         _runtime = runtime;
+        _privatePaths = privatePaths;
         _dispatcher = Dispatcher.CurrentDispatcher;
         _player = new MediaPlayer(runtime.Instance);
         _output = new LibVlcVideoOutput(_player, OnOutputAttached);
@@ -173,6 +178,10 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
         Stop();
         _media?.Dispose();
         _media = null;
+        _streamInput?.Dispose();
+        _streamInput = null;
+        _privateStream?.Dispose();
+        _privateStream = null;
         _filePath = Path.GetFullPath(filePath);
         SubtitleTracks = [];
         AudioTracks = [];
@@ -184,10 +193,33 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
         _ = PrepareMediaAsync(_filePath, _openGeneration, _subtitleDiscoveryCancellation.Token);
     }
 
+    public void Open(Stream stream)
+    {
+        ThrowIfDisposed();
+        Stop();
+        _media?.Dispose();
+        _streamInput?.Dispose();
+        _privateStream?.Dispose();
+        _filePath = "private://media";
+        _privateStream = stream;
+        _streamInput = new PrivateStreamInput(stream, () => PostFailure(new IOException("Private playback stopped: the file is damaged or the library was locked.")));
+        _media = new Media(_styledInstance ?? _runtime.Instance, _streamInput, ":no-sub-autodetect-file", ":demux=avformat");
+        SubtitleTracks = [];
+        AudioTracks = [];
+        _embeddedSubtitleIds = null;
+        _sidecarLanguages.Clear();
+        SubtitleStatus = string.Empty;
+        _opening = true;
+        _player.Media = _media;
+        WaitForOutput();
+    }
+
     private async Task PrepareMediaAsync(string path, int generation, CancellationToken cancellationToken)
     {
         try
         {
+            if (_privatePaths is not null && await _privatePaths.IsPrivatePathAsync(path, cancellationToken))
+                throw new UnauthorizedAccessException("Private media must be opened through the Private Library.");
             var discovery = await new LocalSubtitleDiscovery().DiscoverAsync(path, cancellationToken);
             if (_disposed || generation != _openGeneration) return;
             // VLC's VTT demuxer omits the sidecar's language. Identify embedded streams
@@ -451,11 +483,26 @@ public sealed class LibVlcVideoPlayback : IVideoPlayback, ISubtitlePlayback, IAu
         _player.Media = null;
         _media?.Dispose();
         _media = null;
+        _streamInput?.Dispose();
+        _streamInput = null;
+        _privateStream?.Dispose();
+        _privateStream = null;
         _player.Dispose();
         _styledInstance?.Dispose();
         _styledInstance = null;
         _output.NotifyReleased();
         _filePath = null;
+    }
+}
+
+internal sealed class PrivateStreamInput(Stream stream, Action failed) : StreamMediaInput(stream)
+{
+    private int _reported;
+    public override int Read(IntPtr buf, uint len)
+    {
+        var read = base.Read(buf, Math.Min(len, 65536));
+        if (read < 0 && Interlocked.Exchange(ref _reported, 1) == 0) failed();
+        return read;
     }
 }
 

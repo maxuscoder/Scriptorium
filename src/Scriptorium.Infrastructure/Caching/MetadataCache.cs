@@ -25,6 +25,9 @@ public sealed class MetadataCache : IMetadataCache, IDisposable
     private long _hits;
     private long _misses;
     private long _evictions;
+    private long _generation;
+    private readonly object _mutationGate = new();
+    public long Generation => Volatile.Read(ref _generation);
 
     /// <inheritdoc />
     public async Task<T?> GetOrCreateAsync<T>(
@@ -47,18 +50,37 @@ public sealed class MetadataCache : IMetadataCache, IDisposable
         }
 
         Interlocked.Increment(ref _misses);
+        var generation = Volatile.Read(ref _generation);
         var value = await factory(cancellationToken).ConfigureAwait(false);
+        // A transfer may invalidate this tag while its database read is in flight.
+        // Reload rather than publishing metadata read before the privacy boundary changed.
+        while (generation != Volatile.Read(ref _generation))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            generation = Volatile.Read(ref _generation);
+            value = await factory(cancellationToken).ConfigureAwait(false);
+        }
         if (value is null)
         {
             return null;
         }
 
-        Set(key, tags, value, clone);
+        Set(key, tags, value, clone, generation);
         return clone(value);
     }
 
     /// <inheritdoc />
-    public void Set<T>(string key, IReadOnlyCollection<string> tags, T value, Func<T, T> clone)
+    public void Set<T>(string key, IReadOnlyCollection<string> tags, T value, Func<T, T> clone, long? expectedGeneration = null)
+        where T : class
+    {
+        lock (_mutationGate)
+        {
+            if (expectedGeneration is { } expected && expected != _generation) return;
+            SetCore(key, tags, value, clone);
+        }
+    }
+
+    private void SetCore<T>(string key, IReadOnlyCollection<string> tags, T value, Func<T, T> clone)
         where T : class
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -110,6 +132,12 @@ public sealed class MetadataCache : IMetadataCache, IDisposable
     /// <inheritdoc />
     public void RemoveByTag(string tag)
     {
+        lock (_mutationGate) RemoveByTagCore(tag);
+    }
+
+    private void RemoveByTagCore(string tag)
+    {
+        Interlocked.Increment(ref _generation);
         if (string.IsNullOrWhiteSpace(tag))
         {
             return;

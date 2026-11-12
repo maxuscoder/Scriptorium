@@ -9,6 +9,113 @@ namespace Scriptorium.Tests.Infrastructure;
 public sealed class ScriptoriumDbContextTests
 {
     [Fact]
+    public async Task Collections_support_multiple_media_and_memberships_and_preserve_moments_on_delete()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            var options = CreateOptions(databasePath);
+            await using var db = new ScriptoriumDbContext(options);
+            await db.Database.MigrateAsync("20261112120000_AddSavedMoments");
+            var first = new MediaItem { Title = "First", Path = "C:\\first.mkv" };
+            var second = new MediaItem { Title = "Second", Path = "C:\\second.mkv" };
+            // Seed the older schema directly: the current EF model contains newer columns.
+            foreach (var media in new[] { first, second })
+                await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO MediaItems (Id, Title, Path, DateAdded, IsFavorite, MediaType) VALUES ({media.Id}, {media.Title}, {media.Path}, {media.DateAdded}, 0, {(int)media.MediaType})");
+            var one = new SavedMoment { MediaItem = first, Title = "One", StartSeconds = 1 };
+            var two = new SavedMoment { MediaItem = second, Title = "Two", StartSeconds = 2 };
+            foreach (var moment in new[] { one, two })
+                await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO SavedMoments (Id, MediaItemId, Title, StartSeconds) VALUES ({moment.Id}, {moment.MediaItem.Id}, {moment.Title}, {moment.StartSeconds})");
+            await db.Database.MigrateAsync();
+            var service = new Scriptorium.Infrastructure.Services.MomentCollectionService(new TestFactory(options));
+            await service.CreateAsync("  Scenes  ");
+            await service.CreateAsync("Favorites");
+            var collections = await service.GetAllAsync();
+            var scenes = collections.Single(c => c.Name == "Scenes");
+            var favorites = collections.Single(c => c.Name == "Favorites");
+            await service.SetMembershipsAsync(one.Id, [scenes.Id, favorites.Id]);
+            await service.SetMembershipsAsync(two.Id, [scenes.Id]);
+            Assert.Equal(2, (await service.GetAllAsync()).Single(c => c.Id == scenes.Id).Memberships.Count);
+            await service.RenameAsync(scenes.Id, "Highlights");
+            Assert.Contains(await service.GetAllAsync(), c => c.Name == "Highlights");
+            await service.DeleteAsync(scenes.Id);
+            Assert.Equal(2, await db.SavedMoments.CountAsync());
+            Assert.Single((await service.GetAllAsync()).Single().Memberships);
+            await service.SetMembershipsAsync(one.Id, []);
+            Assert.Empty((await service.GetAllAsync()).Single().Memberships);
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    private sealed class TestFactory(DbContextOptions<ScriptoriumDbContext> options) : IDbContextFactory<ScriptoriumDbContext>
+    {
+        public ScriptoriumDbContext CreateDbContext() => new(options);
+    }
+
+    [Fact]
+    public async Task Saved_moments_survive_metadata_and_playback_updates_after_upgrade()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            var options = CreateOptions(databasePath);
+            Guid mediaId;
+            await using (var context = new ScriptoriumDbContext(options))
+            {
+                await context.Database.MigrateAsync("20261111120000_AddFolderMediaDetection");
+                var media = new MediaItem { Title = "Original", Path = "C:\\video.mkv", PlaybackPositionSeconds = 12 };
+                await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO MediaItems (Id, Title, Path, DateAdded, IsFavorite, MediaType, PlaybackPositionSeconds) VALUES ({media.Id}, {media.Title}, {media.Path}, {media.DateAdded}, 0, {(int)media.MediaType}, {media.PlaybackPositionSeconds})");
+                mediaId = media.Id;
+                await context.Database.MigrateAsync();
+                context.Attach(media);
+                context.SavedMoments.AddRange(
+                    new SavedMoment { MediaItemId = mediaId, StartSeconds = 10, Title = "Point", Tags = [new SavedMomentTag { Name = "favorite" }] },
+                    new SavedMoment { MediaItemId = mediaId, StartSeconds = 20, EndSeconds = 35, Title = "Clip", Notes = "Note", Tags = [new SavedMomentTag { Name = "scene" }, new SavedMomentTag { Name = "quote" }] });
+                await context.SaveChangesAsync();
+                media.Title = "Updated";
+                media.Path = "C:\\renamed.mkv";
+                media.PlaybackPositionSeconds = 99;
+                await context.SaveChangesAsync();
+            }
+
+            await using var verification = new ScriptoriumDbContext(options);
+            var moments = await verification.SavedMoments.Include(m => m.Tags).OrderBy(m => m.StartSeconds).ToListAsync();
+            Assert.Equal(2, moments.Count);
+            Assert.All(moments, m => Assert.Equal(mediaId, m.MediaItemId));
+            Assert.Null(moments[0].EndSeconds);
+            Assert.Equal("favorite", Assert.Single(moments[0].Tags).Name);
+            Assert.Equal(35, moments[1].EndSeconds);
+            Assert.Equal("Note", moments[1].Notes);
+            Assert.Equal(2, moments[1].Tags.Count);
+            Assert.Equal(99, (await verification.MediaItems.SingleAsync()).PlaybackPositionSeconds);
+            verification.MediaItems.Remove(await verification.MediaItems.SingleAsync());
+            await verification.SaveChangesAsync();
+            Assert.Empty(await verification.SavedMoments.ToListAsync());
+            Assert.Empty(await verification.SavedMomentTags.ToListAsync());
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    [Theory]
+    [InlineData(-1, null)]
+    [InlineData(10L, 10L)]
+    [InlineData(10L, 9L)]
+    public async Task Saved_moments_reject_invalid_ranges(long start, long? end)
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            await using var context = new ScriptoriumDbContext(CreateOptions(databasePath));
+            await context.Database.MigrateAsync();
+            var media = new MediaItem { Title = "Video", Path = "C:\\video.mkv" };
+            context.MediaItems.Add(media);
+            context.SavedMoments.Add(new SavedMoment { MediaItem = media, StartSeconds = start, EndSeconds = end, Title = "Invalid" });
+            await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    [Fact]
     public async Task Mixed_media_upgrade_preserves_existing_folder_classifications()
     {
         var databasePath = CreateDatabasePath();
@@ -51,7 +158,10 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(25, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(context.Database.GetMigrations().Count(), (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Contains("PrivateSources", tableNames);
+            Assert.Contains("PrivateMediaRecords", tableNames);
+            Assert.Contains("PrivateLibraryConfigurations", tableNames);
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -322,3 +432,5 @@ public sealed class ScriptoriumDbContextTests
                           && foreignKey.DeleteBehavior == deleteBehavior);
     }
 }
+
+

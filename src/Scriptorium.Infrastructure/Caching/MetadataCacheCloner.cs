@@ -7,6 +7,7 @@ public static class MetadataCacheCloner
 {
     public static MediaItem Clone(MediaItem source) => new()
     {
+        PrivacyPathHash = source.PrivacyPathHash,
         Id = source.Id,
         Title = source.Title,
         TitleOverride = source.TitleOverride,

@@ -126,9 +126,11 @@ public sealed class MediaItemRepository(
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = NormalizePath(path);
 
+        var generation = _metadataCache.Generation;
+
         var item = await _metadataCache.GetOrCreateAsync(
             MetadataCacheKeys.MediaByPath(path),
-            [MetadataCacheKeys.MediaTagForPath(path)],
+            [MetadataCacheKeys.MediaTagForPath(path), MetadataCacheKeys.AllMediaTag],
             async token =>
             {
                 await using var context = await ContextFactory.CreateDbContextAsync(token);
@@ -140,16 +142,17 @@ public sealed class MediaItemRepository(
             MetadataCacheCloner.Clone,
             cancellationToken);
 
-        CacheMediaAliases(item);
+        CacheMediaAliases(item, generation);
         return item;
     }
 
     /// <inheritdoc />
     public override async Task<MediaItem?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var generation = _metadataCache.Generation;
         var item = await _metadataCache.GetOrCreateAsync(
             MetadataCacheKeys.MediaById(id),
-            [MetadataCacheKeys.MediaTag(id)],
+            [MetadataCacheKeys.MediaTag(id), MetadataCacheKeys.AllMediaTag],
             async token =>
             {
                 await using var context = await ContextFactory.CreateDbContextAsync(token);
@@ -159,7 +162,7 @@ public sealed class MediaItemRepository(
             MetadataCacheCloner.Clone,
             cancellationToken);
 
-        CacheMediaAliases(item);
+        CacheMediaAliases(item, generation);
         return item;
     }
 
@@ -782,7 +785,7 @@ public sealed class MediaItemRepository(
         InvalidateMediaItem(entity.Id);
     }
 
-    private void CacheMediaAliases(MediaItem? item)
+    private void CacheMediaAliases(MediaItem? item, long generation)
     {
         if (item is null)
         {
@@ -791,8 +794,8 @@ public sealed class MediaItemRepository(
 
         var tags = GetMediaTags(item);
         var clone = MetadataCacheCloner.Clone(item);
-        _metadataCache.Set(MetadataCacheKeys.MediaById(item.Id), tags, clone, MetadataCacheCloner.Clone);
-        _metadataCache.Set(MetadataCacheKeys.MediaByPath(item.Path), tags, clone, MetadataCacheCloner.Clone);
+        _metadataCache.Set(MetadataCacheKeys.MediaById(item.Id), tags, clone, MetadataCacheCloner.Clone, generation);
+        _metadataCache.Set(MetadataCacheKeys.MediaByPath(item.Path), tags, clone, MetadataCacheCloner.Clone, generation);
     }
 
     private void InvalidateMediaItem(Guid mediaItemId)

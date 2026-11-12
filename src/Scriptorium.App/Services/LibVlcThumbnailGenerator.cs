@@ -9,15 +9,19 @@ using Scriptorium.Core.Services;
 namespace Scriptorium.App.Services;
 
 /// <summary>Decodes into memory, with no window, sound, or playback-progress session.</summary>
-public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThumbnailGenerator
+public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime, IPrivatePathGuard? privatePaths = null) : IThumbnailGenerator
 {
     public Task<bool> GenerateAsync(string sourcePath, long? runtimeSeconds, string outputPath,
         CancellationToken cancellationToken = default) => Task.Run(
-            () => ExtractAsync(sourcePath, runtimeSeconds, outputPath, cancellationToken), cancellationToken);
+            () => ExtractAsync(sourcePath, runtimeSeconds, outputPath, null, cancellationToken), cancellationToken);
 
-    private async Task<bool> ExtractAsync(string sourcePath, long? runtimeSeconds, string outputPath,
+    public Task<bool> GenerateFrameAsync(string sourcePath, long? runtimeSeconds, string outputPath, long seconds, CancellationToken cancellationToken = default) =>
+        Task.Run(() => ExtractAsync(sourcePath, runtimeSeconds, outputPath, seconds, cancellationToken), cancellationToken);
+
+    private async Task<bool> ExtractAsync(string sourcePath, long? runtimeSeconds, string outputPath, long? frameSeconds,
         CancellationToken cancellationToken)
     {
+        if (privatePaths is not null && await privatePaths.IsPrivatePathAsync(sourcePath, cancellationToken)) return false;
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(15));
         var token = timeout.Token;
@@ -81,7 +85,7 @@ public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThu
                     Marshal.Copy(buffer, pixels, 0, pixels.Length);
                     var score = Score(pixels, width, height, pitch);
                     if (score > bestScore) { best = pixels; bestScore = score; }
-                    if (++samples >= 32 || samples >= 4 && bestScore > 0) frameReady.TrySetResult();
+                    if (++samples >= (frameSeconds is null ? 32 : 1) || frameSeconds is null && samples >= 4 && bestScore > 0) frameReady.TrySetResult();
                 }
             }
             catch { frameReady.TrySetResult(); }
@@ -99,7 +103,7 @@ public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThu
                 if ((int)video.Orientation >= 4) (displayWidth, displayHeight) = (displayHeight, displayWidth);
             }
             var duration = media.Duration > 0 ? media.Duration : (runtimeSeconds ?? 0) * 1000d;
-            var seekSeconds = duration >= 1000 ? duration / 10000d : 0;
+            var seekSeconds = frameSeconds is { } requested ? (double)requested : duration >= 1000 ? duration / 10000d : 0;
             // Start at the sample directly, avoiding a second video-output setup after seeking.
             media.AddOption(":start-time=" + seekSeconds.ToString("0.###", CultureInfo.InvariantCulture));
             if (!player.Play(media)) return false;
@@ -119,7 +123,7 @@ public sealed class LibVlcThumbnailGenerator(Func<LibVlcRuntime> runtime) : IThu
             player.Dispose();
             if (allocation != IntPtr.Zero) Marshal.FreeHGlobal(allocation);
         }
-        if (best is null || bestScore <= 0) return false;
+        if (best is null || frameSeconds is null && bestScore <= 0) return false;
         var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgr32, null, best, pitch);
         bitmap.Freeze();
         var encoder = new JpegBitmapEncoder { QualityLevel = 85 };

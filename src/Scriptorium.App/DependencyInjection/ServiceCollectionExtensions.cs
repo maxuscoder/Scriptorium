@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IApplicationResetService>(_ => ApplicationResetService.CreateDefault());
         services.AddSingleton<IApplicationInfoService, ApplicationInfoService>();
         services.AddSingleton<IConfirmationDialog, ConfirmationDialog>();
+        services.AddSingleton<IPrivateLibraryDialogs, PrivateLibraryDialogs>();
+        services.AddSingleton<PrivateLibraryPageViewModel>();
         services.AddSingleton<INotificationService, NotificationService>();
         services.AddSingleton<ICreateCategoryDialog, CreateCategoryDialogService>();
         services.AddSingleton<IImportFolderDialog, ImportFolderDialog>();
@@ -47,8 +49,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFolderManagementViewModelFactory, FolderManagementViewModelFactory>();
         services.AddSingleton<IMediaPlaybackLauncher, SystemMediaPlaybackLauncher>();
         services.AddSingleton<LibVlcRuntime>();
-        services.AddSingleton<IThumbnailGenerator>(provider => new LibVlcThumbnailGenerator(
-            () => provider.GetRequiredService<LibVlcRuntime>()));
+        services.AddSingleton(provider => new LibVlcThumbnailGenerator(
+            () => provider.GetRequiredService<LibVlcRuntime>(), provider.GetRequiredService<IPrivatePathGuard>()));
+        services.AddSingleton<IThumbnailGenerator>(provider => provider.GetRequiredService<LibVlcThumbnailGenerator>());
+        services.AddSingleton<MomentPreviewService>();
         services.AddSingleton<IVideoPlaybackFactory, LibVlcVideoPlaybackFactory>();
         services.AddTransient<VideoPlayerViewModel>();
 
@@ -58,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TvShowDetailsPageViewModel>();
         services.AddSingleton<MovieDetailsPageViewModel>();
         services.AddSingleton<SearchPageViewModel>();
+        services.AddTransient<SavedMomentsPageViewModel>();
         services.AddTransient<FavoritesPageViewModel>();
         services.AddTransient<CategoriesPageViewModel>();
         services.AddTransient<SettingsPageViewModel>();

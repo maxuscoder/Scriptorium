@@ -5,6 +5,7 @@ namespace Scriptorium.Infrastructure.Caching;
 /// </summary>
 public interface IMetadataCache
 {
+    long Generation { get; }
     /// <summary>Gets a cached value or loads and caches it when absent.</summary>
     Task<T?> GetOrCreateAsync<T>(
         string key,
@@ -15,7 +16,7 @@ public interface IMetadataCache
         where T : class;
 
     /// <summary>Stores or replaces a value in the cache.</summary>
-    void Set<T>(string key, IReadOnlyCollection<string> tags, T value, Func<T, T> clone)
+    void Set<T>(string key, IReadOnlyCollection<string> tags, T value, Func<T, T> clone, long? expectedGeneration = null)
         where T : class;
 
     /// <summary>Removes one cache entry.</summary>
