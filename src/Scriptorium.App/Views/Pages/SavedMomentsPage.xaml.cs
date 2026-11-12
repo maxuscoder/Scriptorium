@@ -59,8 +59,14 @@ public partial class SavedMomentsPage : UserControl
         options.Content = panel;
         if (options.ShowDialog() != true) return;
 
-        var toolDialog = new OpenFileDialog { Title = "Select ffmpeg.exe (ffprobe.exe must be alongside it)", Filter = "FFmpeg executable (ffmpeg.exe)|ffmpeg.exe", CheckFileExists = true };
-        if (toolDialog.ShowDialog(owner) != true) return;
+        var ffmpegPath = MomentClipExportService.FindInstalledFfmpeg();
+        if (ffmpegPath is null)
+        {
+            MessageBox.Show(owner, "FFmpeg was not found automatically. Select ffmpeg.exe from an installed copy; ffprobe.exe must be in the same folder.", "Export clip", MessageBoxButton.OK, MessageBoxImage.Information);
+            var toolDialog = new OpenFileDialog { Title = "Select ffmpeg.exe (ffprobe.exe must be alongside it)", Filter = "FFmpeg executable (ffmpeg.exe)|ffmpeg.exe", CheckFileExists = true };
+            if (toolDialog.ShowDialog(owner) != true) return;
+            ffmpegPath = toolDialog.FileName;
+        }
         var safeName = new string(row.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c).ToArray()).Trim().TrimEnd('.');
         if (string.IsNullOrWhiteSpace(safeName)) safeName = "clip";
         var save = new SaveFileDialog { Title = "Export clip", Filter = "Matroska video (*.mkv)|*.mkv", DefaultExt = ".mkv", AddExtension = true, OverwritePrompt = false, FileName = safeName + ".mkv" };
@@ -88,7 +94,7 @@ public partial class SavedMomentsPage : UserControl
             var icon = MessageBoxImage.Information;
             try
             {
-                await new MomentClipExportService().ExportAsync(toolDialog.FileName, row.Moment.MediaItem.Path, save.FileName, row.Moment.StartSeconds, end, accurate.IsChecked == true, cancellation.Token);
+                await new MomentClipExportService().ExportAsync(ffmpegPath, row.Moment.MediaItem.Path, save.FileName, row.Moment.StartSeconds, end, accurate.IsChecked == true, cancellation.Token);
                 message = "Clip exported to:\n" + save.FileName;
             }
             catch (OperationCanceledException) { message = "Export canceled."; }

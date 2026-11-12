@@ -1,6 +1,6 @@
 ﻿# Exporting a moment as a clip
 
-From **Saved Moments**, choose **Export clip** on a saved sequence. Point moments need an end time before export; use **Edit** to add one. Select a mode, an installed `ffmpeg.exe` (with `ffprobe.exe` in the same folder), and a new `.mkv` destination. Scriptorium does not install or download FFmpeg. Canceling any dialog leaves the moment unchanged.
+From **Saved Moments**, choose **Export clip** on a saved sequence. Point moments need an end time before export; use **Edit** to add one. Select a mode and a new `.mkv` destination. Scriptorium looks for an installed `ffmpeg.exe` and `ffprobe.exe` together on PATH; if it cannot find them, it asks you to locate `ffmpeg.exe`. Scriptorium does not install or download FFmpeg. Canceling any dialog leaves the moment unchanged.
 
 - **Accurate boundaries** decodes and re-encodes video as MPEG-4 and audio as AAC. It can take longer and reduce quality. Cuts are limited by frame and audio timing; saved timestamps have whole-second precision.
 - **Fast** copies streams without re-encoding. The result may include material outside the selected range, especially before the start, and is unsuitable for removing sensitive content precisely. Some codecs cannot be copied to Matroska. The app reports failure instead of silently changing modes.

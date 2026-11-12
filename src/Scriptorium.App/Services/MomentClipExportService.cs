@@ -8,6 +8,28 @@ namespace Scriptorium.App.Services;
 /// <summary>Exports a bounded moment without modifying the source or the moment.</summary>
 public sealed class MomentClipExportService
 {
+    public static string? FindInstalledFfmpeg() => FindInstalledFfmpeg(
+        new[] { Environment.GetEnvironmentVariable("PATH"), Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.User),
+            Environment.GetEnvironmentVariable("PATH", EnvironmentVariableTarget.Machine) });
+
+    internal static string? FindInstalledFfmpeg(IEnumerable<string?> paths)
+    {
+        foreach (var entry in paths.Where(p => !string.IsNullOrWhiteSpace(p)).SelectMany(p => p!.Split(Path.PathSeparator)))
+        {
+            var directory = Environment.ExpandEnvironmentVariables(entry.Trim().Trim('"'));
+            if (!Path.IsPathFullyQualified(directory)) continue;
+            try
+            {
+                var ffmpeg = Path.Combine(directory, "ffmpeg.exe");
+                if (File.Exists(ffmpeg) && File.Exists(Path.Combine(directory, "ffprobe.exe"))) return ffmpeg;
+            }
+            catch (ArgumentException) { }
+            catch (NotSupportedException) { }
+            catch (PathTooLongException) { }
+        }
+        return null;
+    }
+
     public async Task ExportAsync(string ffmpegPath, string source, string destination, long start, long end, bool reencode, CancellationToken cancellationToken)
     {
         if (start < 0 || end <= start) throw new InvalidOperationException("Add a valid end time after the start time.");

@@ -7,6 +7,26 @@ namespace Scriptorium.App.Tests;
 
 public sealed class MomentClipExportTests
 {
+    [Fact]
+    public void Finds_complete_installation_on_path_and_ignores_incomplete_entries()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "scriptorium-ffmpeg-test-" + Guid.NewGuid().ToString("N"));
+        var incomplete = Path.Combine(dir, "incomplete");
+        var complete = Path.Combine(dir, "complete");
+        Directory.CreateDirectory(incomplete);
+        Directory.CreateDirectory(complete);
+        try
+        {
+            File.WriteAllText(Path.Combine(incomplete, "ffmpeg.exe"), "");
+            var expected = Path.Combine(complete, "ffmpeg.exe");
+            File.WriteAllText(expected, "");
+            File.WriteAllText(Path.Combine(complete, "ffprobe.exe"), "");
+            Assert.Equal(expected, MomentClipExportService.FindInstalledFfmpeg([incomplete + Path.PathSeparator + complete]));
+            Assert.Null(MomentClipExportService.FindInstalledFfmpeg([incomplete]));
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
