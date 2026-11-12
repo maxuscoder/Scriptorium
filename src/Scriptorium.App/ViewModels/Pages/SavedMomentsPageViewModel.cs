@@ -12,6 +12,8 @@ namespace Scriptorium.App.ViewModels.Pages;
 public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
 {
     private readonly ISavedMomentService _service;
+    private readonly IMomentCollectionService? _collections;
+    private MomentCollection? _selectedCollection;
     private readonly INotificationService? _notifications;
     private readonly MomentPreviewService? _previews;
     private IReadOnlyList<SavedMoment> _all = [];
@@ -24,9 +26,10 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
     private string _playingTitle = string.Empty;
     private int _loadVersion;
 
-    public SavedMomentsPageViewModel(ISavedMomentService service, VideoPlayerViewModel player, INotificationService? notifications = null, MomentPreviewService? previews = null)
+    public SavedMomentsPageViewModel(ISavedMomentService service, VideoPlayerViewModel player, INotificationService? notifications = null, MomentPreviewService? previews = null, IMomentCollectionService? collections = null)
     {
         _service = service;
+        _collections = collections;
         Player = player;
         _notifications = notifications;
         _previews = previews;
@@ -39,6 +42,9 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
 
     public override string Title => "Saved Moments";
     public VideoPlayerViewModel Player { get; }
+    public ObservableCollection<MomentCollection> Collections { get; } = [];
+    public MomentCollection? SelectedCollection { get => _selectedCollection; set { if (SetProperty(ref _selectedCollection, value)) { ApplyFilters(); OnPropertyChanged(nameof(CollectionTitle)); } } }
+    public string CollectionTitle => SelectedCollection?.Name ?? "All moments";
     public ObservableCollection<SavedMomentRow> Moments { get; } = [];
     public IReadOnlyList<string> Filters { get; } = ["All moments", "Timestamps", "Sequences"];
     public IReadOnlyList<string> SortOptions { get; } = ["Title", "Source media", "Timestamp"];
@@ -63,8 +69,13 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
         try
         {
             var result = await _service.GetAllAsync();
+            var collections = _collections is null ? [] : await _collections.GetAllAsync();
             if (version != _loadVersion) return;
             _all = result;
+            var selectedId = SelectedCollection?.Id;
+            Collections.Clear();
+            foreach (var collection in collections) Collections.Add(collection);
+            SelectedCollection = Collections.FirstOrDefault(c => c.Id == selectedId);
             Status = null;
             ApplyFilters();
         }
@@ -81,6 +92,7 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
     {
         var query = Query.Trim();
         var rows = _all.Where(m =>
+            (SelectedCollection is null || m.CollectionMemberships.Any(c => c.CollectionId == SelectedCollection.Id)) &&
             (Filter == "All moments" || (Filter == "Sequences" ? m.EndSeconds is not null : m.EndSeconds is null)) &&
             (query.Length == 0 || m.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
              (m.Notes?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
@@ -94,6 +106,17 @@ public sealed class SavedMomentsPageViewModel : PageViewModel, IDisposable
         Moments.Clear();
         foreach (var moment in rows) Moments.Add(new SavedMomentRow(moment, _previews));
         OnPropertyChanged(nameof(CountText));
+    }
+
+    public async Task ChangeCollectionsAsync(Func<IMomentCollectionService, Task> change)
+    {
+        if (_collections is null) return;
+        try { await change(_collections); await RefreshAsync(); }
+        catch (Exception exception)
+        {
+            Status = "Could not update collections. " + exception.Message;
+            _notifications?.Report(exception, Status);
+        }
     }
 
     private async Task ChoosePreviewAsync(object? value)

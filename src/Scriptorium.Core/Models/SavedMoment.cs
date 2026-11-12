@@ -14,5 +14,6 @@ public sealed class SavedMoment
     public long? EndSeconds { get; set; }
     public required string Title { get; set; }
     public string? Notes { get; set; }
+    public ICollection<MomentCollectionMembership> CollectionMemberships { get; set; } = new List<MomentCollectionMembership>();
     public ICollection<SavedMomentTag> Tags { get; set; } = new List<SavedMomentTag>();
 }

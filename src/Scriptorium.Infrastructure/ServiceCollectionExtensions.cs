@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMediaMetadataResetService, MediaMetadataResetService>();
         services.AddSingleton<IPlaybackProgressService, PlaybackProgressService>();
         services.AddSingleton<ISavedMomentService, SavedMomentService>();
+        services.AddSingleton<IMomentCollectionService, MomentCollectionService>();
         services.AddSingleton<IFavoriteService, FavoriteService>();
         services.AddSingleton<ICategoryService, CategoryService>();
 

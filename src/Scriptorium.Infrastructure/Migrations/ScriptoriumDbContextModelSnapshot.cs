@@ -325,6 +325,23 @@ namespace Scriptorium.Infrastructure.Migrations
                     b.ToTable("MediaItems", (string)null);
                 });
 
+            modelBuilder.Entity("Scriptorium.Core.Models.MomentCollection", b =>
+                {
+                    b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("TEXT");
+                    b.Property<string>("Name").IsRequired().HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.ToTable("MomentCollections");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.MomentCollectionMembership", b =>
+                {
+                    b.Property<Guid>("CollectionId").HasColumnType("TEXT");
+                    b.Property<Guid>("SavedMomentId").HasColumnType("TEXT");
+                    b.HasKey("CollectionId", "SavedMomentId");
+                    b.HasIndex("SavedMomentId");
+                    b.ToTable("MomentCollectionMemberships");
+                });
+
             modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
                 {
                     b.Property<Guid>("Id").ValueGeneratedOnAdd().HasColumnType("TEXT");
@@ -463,6 +480,16 @@ namespace Scriptorium.Infrastructure.Migrations
 
                 });
 
+            modelBuilder.Entity("Scriptorium.Core.Models.MomentCollectionMembership", b =>
+                {
+                    b.HasOne("Scriptorium.Core.Models.MomentCollection", "Collection")
+                        .WithMany("Memberships").HasForeignKey("CollectionId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.HasOne("Scriptorium.Core.Models.SavedMoment", "SavedMoment")
+                        .WithMany("CollectionMemberships").HasForeignKey("SavedMomentId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.Navigation("Collection");
+                    b.Navigation("SavedMoment");
+                });
+
             modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
                 {
                     b.HasOne("Scriptorium.Core.Models.MediaItem", "MediaItem")
@@ -502,6 +529,16 @@ namespace Scriptorium.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("LibraryFolder");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.MomentCollection", b =>
+                {
+                    b.Navigation("Memberships");
+                });
+
+            modelBuilder.Entity("Scriptorium.Core.Models.SavedMoment", b =>
+                {
+                    b.Navigation("CollectionMemberships");
                 });
 
             modelBuilder.Entity("Scriptorium.Core.Models.Category", b =>

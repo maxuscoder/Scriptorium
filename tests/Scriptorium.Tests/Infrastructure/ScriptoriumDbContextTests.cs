@@ -9,6 +9,48 @@ namespace Scriptorium.Tests.Infrastructure;
 public sealed class ScriptoriumDbContextTests
 {
     [Fact]
+    public async Task Collections_support_multiple_media_and_memberships_and_preserve_moments_on_delete()
+    {
+        var databasePath = CreateDatabasePath();
+        try
+        {
+            var options = CreateOptions(databasePath);
+            await using var db = new ScriptoriumDbContext(options);
+            await db.Database.MigrateAsync("20261112120000_AddSavedMoments");
+            var first = new MediaItem { Title = "First", Path = "C:\\first.mkv" };
+            var second = new MediaItem { Title = "Second", Path = "C:\\second.mkv" };
+            db.MediaItems.AddRange(first, second);
+            var one = new SavedMoment { MediaItem = first, Title = "One", StartSeconds = 1 };
+            var two = new SavedMoment { MediaItem = second, Title = "Two", StartSeconds = 2 };
+            db.SavedMoments.AddRange(one, two);
+            await db.SaveChangesAsync();
+            await db.Database.MigrateAsync();
+            var service = new Scriptorium.Infrastructure.Services.MomentCollectionService(new TestFactory(options));
+            await service.CreateAsync("  Scenes  ");
+            await service.CreateAsync("Favorites");
+            var collections = await service.GetAllAsync();
+            var scenes = collections.Single(c => c.Name == "Scenes");
+            var favorites = collections.Single(c => c.Name == "Favorites");
+            await service.SetMembershipsAsync(one.Id, [scenes.Id, favorites.Id]);
+            await service.SetMembershipsAsync(two.Id, [scenes.Id]);
+            Assert.Equal(2, (await service.GetAllAsync()).Single(c => c.Id == scenes.Id).Memberships.Count);
+            await service.RenameAsync(scenes.Id, "Highlights");
+            Assert.Contains(await service.GetAllAsync(), c => c.Name == "Highlights");
+            await service.DeleteAsync(scenes.Id);
+            Assert.Equal(2, await db.SavedMoments.CountAsync());
+            Assert.Single((await service.GetAllAsync()).Single().Memberships);
+            await service.SetMembershipsAsync(one.Id, []);
+            Assert.Empty((await service.GetAllAsync()).Single().Memberships);
+        }
+        finally { File.Delete(databasePath); }
+    }
+
+    private sealed class TestFactory(DbContextOptions<ScriptoriumDbContext> options) : IDbContextFactory<ScriptoriumDbContext>
+    {
+        public ScriptoriumDbContext CreateDbContext() => new(options);
+    }
+
+    [Fact]
     public async Task Saved_moments_survive_metadata_and_playback_updates_after_upgrade()
     {
         var databasePath = CreateDatabasePath();
@@ -114,7 +156,7 @@ public sealed class ScriptoriumDbContextTests
             Assert.Contains("Episodes", tableNames);
             Assert.Contains("Courses", tableNames);
             Assert.Contains("Lessons", tableNames);
-            Assert.Equal(26, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(27, (await context.Database.GetAppliedMigrationsAsync()).Count());
 
             var folderColumns = await context.Database
                 .SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('LibraryFolders')")
@@ -385,4 +427,5 @@ public sealed class ScriptoriumDbContextTests
                           && foreignKey.DeleteBehavior == deleteBehavior);
     }
 }
+
 

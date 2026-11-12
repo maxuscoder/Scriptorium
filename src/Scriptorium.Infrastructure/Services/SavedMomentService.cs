@@ -10,7 +10,7 @@ public sealed class SavedMomentService(IDbContextFactory<ScriptoriumDbContext> c
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         return await context.SavedMoments.AsNoTracking().Include(moment => moment.MediaItem)
-            .Include(moment => moment.Tags).ToListAsync(cancellationToken);
+            .Include(moment => moment.Tags).Include(moment => moment.CollectionMemberships).ToListAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<SavedMoment>> GetForMediaAsync(Guid mediaItemId, CancellationToken cancellationToken = default)

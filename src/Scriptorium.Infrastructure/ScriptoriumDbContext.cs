@@ -15,6 +15,8 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
     public DbSet<MediaItem> MediaItems => Set<MediaItem>();
 
     /// <summary>Gets the saved timestamps and sequences.</summary>
+    public DbSet<MomentCollection> MomentCollections => Set<MomentCollection>();
+    public DbSet<MomentCollectionMembership> MomentCollectionMemberships => Set<MomentCollectionMembership>();
     public DbSet<SavedMoment> SavedMoments => Set<SavedMoment>();
 
     /// <summary>Gets the tags assigned to saved moments.</summary>
@@ -152,6 +154,18 @@ public sealed class ScriptoriumDbContext(DbContextOptions<ScriptoriumDbContext> 
                 .WithMany(item => item.SavedMoments)
                 .HasForeignKey(moment => moment.MediaItemId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MomentCollection>(entity =>
+        {
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Name).IsRequired();
+        });
+        modelBuilder.Entity<MomentCollectionMembership>(entity =>
+        {
+            entity.HasKey(m => new { m.CollectionId, m.SavedMomentId });
+            entity.HasOne(m => m.Collection).WithMany(c => c.Memberships).HasForeignKey(m => m.CollectionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(m => m.SavedMoment).WithMany(m => m.CollectionMemberships).HasForeignKey(m => m.SavedMomentId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<SavedMomentTag>(entity =>

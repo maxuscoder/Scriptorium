@@ -10,6 +10,15 @@
             <StackPanel Margin="{StaticResource Padding.Page}" MaxWidth="1400">
                 <TextBlock Style="{StaticResource Text.PageTitle}" Text="Saved Moments" />
                 <TextBlock Margin="0,6,0,0" Style="{StaticResource Text.Body}" Text="Return to the timestamps and sequences saved across your library." TextWrapping="Wrap" />
+                <WrapPanel Margin="0,18,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="Collections" Style="{StaticResource Text.Label}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <ComboBox Width="220" Style="{StaticResource Input.ComboBox}" ItemsSource="{Binding Collections}" SelectedItem="{Binding SelectedCollection}" DisplayMemberPath="DisplayName" AutomationProperties.Name="Select collection" />
+                    <Button Content="All moments" Click="OnAllMoments" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" />
+                    <Button Content="New collection" Click="OnCreateCollection" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" />
+                    <Button Content="Rename" Click="OnRenameCollection" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" />
+                    <Button Content="Delete collection" Click="OnDeleteCollection" Style="{StaticResource Button.Secondary}" Margin="8,0,0,0" />
+                </WrapPanel>
+                <TextBlock Margin="0,14,0,0" Text="{Binding CollectionTitle}" Style="{StaticResource Text.PanelTitle}" />
                 <WrapPanel Margin="0,22,0,0" VerticalAlignment="Center">
                     <StackPanel Margin="0,0,12,10"><TextBlock Style="{StaticResource Text.Label}" Text="Search title, notes, or tags" Margin="0,0,0,6" />
                         <TextBox Width="260" Style="{StaticResource Input.TextBox}" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Search saved moments" /></StackPanel>
@@ -30,10 +39,11 @@
                             <controls:MediaCard CardWidth="220" IsListLayout="False" Title="{Binding Title}" Metadata="{Binding Metadata}"
                                 TypeLabel="{Binding Kind}" IsMissing="{Binding IsSourceMissing}" ThumbnailPath="{Binding ThumbnailPath}" ActionText="Open moment"
                                 ActionCommand="{Binding DataContext.OpenMomentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" ActionParameter="{Binding}" />
-                            <StackPanel Orientation="Horizontal" Margin="4,8,0,0">
+                            <WrapPanel Margin="4,8,0,0">
                                 <Button Content="Edit" Click="OnEditMoment" Style="{StaticResource Button.Secondary}" Margin="0,0,8,0" AutomationProperties.Name="Edit moment" />
+                                <Button Content="Collections" Click="OnAssignCollections" Style="{StaticResource Button.Secondary}" Margin="0,0,8,0" AutomationProperties.Name="Assign collections" />
                                 <Button Content="Delete" Click="OnDeleteMoment" Style="{StaticResource Button.Secondary}" AutomationProperties.Name="Delete moment" />
-                            </StackPanel>
+                            </WrapPanel>
                             <TextBlock Margin="4,8,4,2" Text="Preview time (h:mm:ss)" Foreground="{DynamicResource Brush.TextSecondary}" />
                             <DockPanel Margin="4,0,4,0">
                                 <Button DockPanel.Dock="Right" Content="Set frame" Margin="6,0,0,0" Style="{StaticResource Button.Secondary}" Command="{Binding DataContext.ChoosePreviewCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
