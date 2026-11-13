@@ -1,0 +1,26 @@
+﻿<UserControl x:Class="Scriptorium.App.Views.Controls.NetworkDevices"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel>
+        <Grid Style="{StaticResource Settings.Row}">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel Margin="{StaticResource Settings.RowContentMargin}">
+                <TextBlock Style="{StaticResource Settings.RowTitle}" Text="UPnP / DLNA media renderers" />
+                <TextBlock Style="{StaticResource Settings.RowDescription}" Text="Find compatible TVs and media receivers on your local network." TextWrapping="Wrap" />
+                <TextBlock x:Name="StatusText" Style="{StaticResource Settings.RowDescription}" Text="Searching for devices…" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button x:Name="RefreshButton" Grid.Column="1" Content="Refresh" Margin="{StaticResource Settings.ValueMargin}" VerticalAlignment="Center" Click="RefreshClick" />
+        </Grid>
+        <ItemsControl x:Name="DeviceList">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="20,4,20,12">
+                        <TextBlock Style="{StaticResource Settings.RowTitle}" Text="{Binding Name}" />
+                        <TextBlock Style="{StaticResource Settings.RowDescription}" Text="{Binding Details}" />
+                    </StackPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>
+

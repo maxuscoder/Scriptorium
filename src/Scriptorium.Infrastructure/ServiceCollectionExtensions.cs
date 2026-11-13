@@ -22,6 +22,7 @@ public static class ServiceCollectionExtensions
     {
         services.TryAddSingleton(PerformanceOptions.Default);
         services.AddSingleton<IOperationMetrics, OperationMetrics>();
+        services.AddSingleton<IDeviceDiscovery, UpnpDeviceDiscovery>();
         services.AddDbContextFactory<ScriptoriumDbContext>(options => options.UseSqlite(connectionString));
         services.AddSingleton<IMetadataCache, MetadataCache>();
         services.AddSingleton<IPrivatePathGuard, PrivatePathGuard>();
@@ -68,3 +69,4 @@ public static class ServiceCollectionExtensions
         return services;
     }
 }
+

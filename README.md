@@ -72,3 +72,15 @@ Embedded video playback and its verification steps are documented in [Video play
 Optional clip export and its requirements are documented in [Moment clip export](docs/MOMENT_CLIP_EXPORT.md).
 
 Automatic artwork lookup, video previews, and cache behavior are documented in [Thumbnails](docs/THUMBNAILS.md).
+
+## Network device discovery
+
+Settings lists UPnP/DLNA MediaRenderer devices found on the local IPv4 network.
+The list refreshes every 30 seconds while Settings is open; Refresh also starts a
+scan. Devices that no longer respond are shown as unavailable until Settings is
+closed. Discovery requires multicast SSDP and reachable HTTP device descriptions;
+network isolation, firewalls, VPNs or disabled UPnP can prevent detection. This
+feature discovers devices only and does not send media to them. Devices using
+other discovery protocols are not included.
+
+Discovery follows the [UPnP MediaRenderer specification](https://upnp.org/specs/av/UPnP-av-MediaRenderer-v3-Device.pdf).
