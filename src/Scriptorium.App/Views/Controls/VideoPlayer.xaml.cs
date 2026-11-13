@@ -1,4 +1,7 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
+using Scriptorium.Core.Services;
+using Scriptorium.Infrastructure.Services;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -26,6 +29,9 @@ public partial class VideoPlayer : UserControl
     public static readonly DependencyProperty IsEdgeToEdgeProperty = DependencyProperty.Register(
         nameof(IsEdgeToEdge), typeof(bool), typeof(VideoPlayer), new PropertyMetadata(false));
 
+    private readonly IDeviceDiscovery _deviceDiscovery = new UpnpDeviceDiscovery();
+    private readonly ObservableCollection<PlayOnDevice> _playOnDevices = new();
+    private CancellationTokenSource? _deviceScan;
     private Window? _fullscreenWindow;
     private Window? _ownerWindow;
     private object? _inlinePlayerContent;
@@ -40,6 +46,7 @@ public partial class VideoPlayer : UserControl
     public VideoPlayer()
     {
         InitializeComponent();
+        PlayOnDevices.ItemsSource = _playOnDevices;
         // The content moves into another window for fullscreen, and VideoView hosts its
         // overlay in a separate namescope. Neither binding may depend on that ancestry.
         PlayerLayout.SetBinding(DataContextProperty, new Binding(nameof(Player)) { Source = this });
@@ -121,6 +128,8 @@ public partial class VideoPlayer : UserControl
 
     private async void OnUnloaded(object sender, RoutedEventArgs args)
     {
+        PlayOnPopup.IsOpen = false;
+        _deviceScan?.Cancel();
         TimingPopup.IsOpen = false;
         if (Player is { } player)
         {
@@ -142,6 +151,59 @@ public partial class VideoPlayer : UserControl
         if (_ownerWindow is not null) _ownerWindow.Closed -= OnOwnerClosed;
         _ownerWindow = null;
         if (Player is { } playerToDeactivate) await playerToDeactivate.DeactivateAsync();
+    }
+
+    private async void OnPlayOnClick(object sender, RoutedEventArgs e)
+    {
+        PlayOnPopup.IsOpen = !PlayOnPopup.IsOpen;
+        if (PlayOnPopup.IsOpen) await RefreshPlayOnAsync();
+    }
+
+    private async void OnRefreshPlayOnClick(object sender, RoutedEventArgs e) => await RefreshPlayOnAsync();
+
+    private void OnPlayOnPcClick(object sender, RoutedEventArgs e) => PlayOnPopup.IsOpen = false;
+
+    private void OnPlayOnDeviceClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: PlayOnDevice device }) return;
+        PlayOnStatus.Text = device.Available
+            ? $"{device.Name} was found, but playback on network devices is not available yet. Playback remains on this PC."
+            : $"{device.Name} is unavailable. Refresh devices and try again.";
+    }
+
+    private async Task RefreshPlayOnAsync()
+    {
+        if (_deviceScan is not null) return;
+        using var scan = new CancellationTokenSource();
+        _deviceScan = scan;
+        PlayOnStatus.Text = "Searching for devices...";
+        try
+        {
+            var found = await _deviceDiscovery.DiscoverAsync(scan.Token);
+            if (scan.IsCancellationRequested) return;
+            var previous = _playOnDevices.ToDictionary(d => d.Id, StringComparer.OrdinalIgnoreCase);
+            _playOnDevices.Clear();
+            foreach (var device in found)
+            {
+                previous.Remove(device.Id);
+                _playOnDevices.Add(new PlayOnDevice(device.Id, device.Name, true));
+            }
+            foreach (var device in previous.Values) _playOnDevices.Add(device with { Available = false });
+            PlayOnStatus.Text = found.Count == 0 ? "No compatible devices responded." : "Choose a device.";
+        }
+        catch (OperationCanceledException) when (scan.IsCancellationRequested) { }
+        catch (Exception ex) when (ex is System.Net.Sockets.SocketException or System.IO.IOException)
+        {
+            for (var i = 0; i < _playOnDevices.Count; i++) _playOnDevices[i] = _playOnDevices[i] with { Available = false };
+            PlayOnStatus.Text = "Could not search the network. Check your connection and try again.";
+        }
+        finally { _deviceScan = null; }
+    }
+
+    private sealed record PlayOnDevice(string Id, string Name, bool Available)
+    {
+        public string Label => $"{Name} - {(Available ? "Available" : "Unavailable")}";
+        public string Details => Available ? "Network playback is not available yet" : "Device did not respond to the latest scan";
     }
 
     private void OnSaveMomentClick(object sender, RoutedEventArgs args)
@@ -239,7 +301,7 @@ public partial class VideoPlayer : UserControl
     private void OnControlsIdle(object? sender, EventArgs args)
     {
         if (ControlPanel.IsMouseOver || MomentsChrome.IsMouseOver || _isSeeking || SeekSlider.IsMouseCaptureWithin || VolumeSlider.IsMouseCaptureWithin ||
-            PlaybackSpeedSelector.IsDropDownOpen || SubtitleSelector.IsDropDownOpen || AudioSelector.IsDropDownOpen || TimingPopup.IsOpen)
+            PlaybackSpeedSelector.IsDropDownOpen || SubtitleSelector.IsDropDownOpen || AudioSelector.IsDropDownOpen || TimingPopup.IsOpen || PlayOnPopup.IsOpen)
             return;
 
         _controlsIdleTimer.Stop();

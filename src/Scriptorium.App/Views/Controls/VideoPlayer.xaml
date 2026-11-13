@@ -272,6 +272,31 @@
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>
                                         </ComboBox>
+                                        <Button x:Name="PlayOnButton" Content="Play on" Width="64" Margin="0,0,6,0"
+                                                Style="{StaticResource Player.Icon}" Click="OnPlayOnClick" IsEnabled="{Binding IsReady}"
+                                                ToolTip="Choose where to play" AutomationProperties.Name="Play on" />
+                                        <Popup x:Name="PlayOnPopup" Placement="Top" PlacementTarget="{Binding ElementName=PlayOnButton}"
+                                               VerticalOffset="-6" AllowsTransparency="True" StaysOpen="False" Closed="OnPlaybackSpeedDropDownChanged">
+                                            <Border Width="290" Padding="12" Background="#262629" BorderBrush="#414146" BorderThickness="1" CornerRadius="10"
+                                                    TextElement.FontFamily="{StaticResource FontFamily.Application}" TextElement.Foreground="{StaticResource Player.Text}" TextElement.FontSize="12">
+                                                <StackPanel>
+                                                    <TextBlock Text="Play on" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                                    <Button Content="This PC - Playing here" HorizontalContentAlignment="Left" Style="{StaticResource Player.Icon}" Click="OnPlayOnPcClick" AutomationProperties.Name="This PC, current output" />
+                                                    <TextBlock x:Name="PlayOnStatus" Text="Searching for devices..." TextWrapping="Wrap" Margin="0,8,0,6" />
+                                                    <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                                                        <ItemsControl x:Name="PlayOnDevices">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Button Content="{Binding Label}" Tag="{Binding}" Click="OnPlayOnDeviceClick" Style="{StaticResource Player.Icon}"
+                                                                            HorizontalContentAlignment="Left" ToolTip="{Binding Details}" AutomationProperties.Name="{Binding Label}" />
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </ScrollViewer>
+                                                    <Button Content="Refresh devices" Click="OnRefreshPlayOnClick" Style="{StaticResource Player.Icon}" HorizontalAlignment="Left" Margin="0,6,0,0" />
+                                                </StackPanel>
+                                            </Border>
+                                        </Popup>
                                         <Button x:Name="TimingButton" Click="OnTimingClick" Style="{StaticResource Player.Icon}"
                                                 IsEnabled="{Binding CanOpenTrackSettings}" ToolTip="Audio, subtitles, and synchronization"
                                                 AutomationProperties.Name="Audio and subtitle settings">
